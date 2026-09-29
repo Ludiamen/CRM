@@ -1,0 +1,24 @@
+# Окружение и секреты
+.env
+*.env
+!.env.example
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django: загруженные файлы, собранная статика
+/media/
+/staticfiles/
+
+# Прогоны браузера и записи
+/playwright-report/
+/test-results/
+
+# Рабочее место
+/.vscode/
+*.cpuprofile
