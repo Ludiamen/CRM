@@ -27,6 +27,11 @@ class ТестЗаглушек(unittest.TestCase):
         self.assertTrue(cs.похоже_на_заглушку("***"))
         self.assertTrue(cs.похоже_на_заглушку("${DB_PASSWORD}"))
 
+    def test_выражение_шаблона_заглушка(self):
+        self.assertTrue(cs.похоже_на_заглушку("{{ csrf_token }}"))
+        строка = "hx-headers='{\"X-CSRFTok" + "en\": \"{{ csrf_token }}\"}'"
+        self.assertEqual(cs.проверить_строку(строка), [])
+
     def test_changeme_и_example_заглушка(self):
         self.assertTrue(cs.похоже_на_заглушку("changeme"))
         self.assertTrue(cs.похоже_на_заглушку("CHANGEME"))
