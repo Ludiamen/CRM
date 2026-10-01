@@ -24,8 +24,8 @@ def image_bytes(fmt="PNG", size=(64, 64)) -> bytes:
     return out.getvalue()
 
 
-def upload(name, content, **fields):
-    return {"name": fields.pop("name", "Портал ИТ"), "logo": SimpleUploadedFile(name, content), **fields}
+def upload(filename, content, **fields):
+    return {"name": fields.pop("name", "Портал ИТ"), "logo": SimpleUploadedFile(filename, content), **fields}
 
 
 def portal_admin():

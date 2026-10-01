@@ -1,0 +1,41 @@
+<div data-sync-form="staff-filter" data-sync="{{ sync }}">
+  <ul class="chip-row" aria-label="Быстрый выбор по состоянию">
+    {% for chip in chips %}
+    <li><a class="chip{% if chip.active %} active{% endif %}" href="{{ chip.url }}" hx-get="{{ chip.url }}" hx-target="#staff-results" hx-swap="innerHTML" hx-push-url="true"{% if chip.active %} aria-current="true"{% endif %}>{{ chip.title }}</a></li>
+    {% endfor %}
+  </ul>
+  {% if page %}
+  <div class="table-wrap">
+    <table class="table table-hover align-middle grid-table">
+      <thead>
+        <tr>
+          {% for column in columns %}
+          <th scope="col"><a class="sort-link" href="{{ column.url }}" hx-get="{{ column.url }}" hx-target="#staff-results" hx-swap="innerHTML" hx-push-url="true">{{ column.title }}{% if column.mark %} <span aria-hidden="true">{{ column.mark }}</span>{% endif %}</a></th>
+          {% endfor %}
+          <th scope="col">Роли</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for person in page %}
+        <tr data-user-id="{{ person.pk }}" data-user-email="{{ person.email }}" data-state="{{ person.state }}">
+          <td><a href="/staff/{{ person.pk }}/" hx-get="/staff/{{ person.pk }}/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">{{ person.full_name }}</a></td>
+          <td>{{ person.email }}</td>
+          <td>{{ person.position|default:"—" }}</td>
+          <td>{% if person.state == "active" %}<span class="badge text-bg-success">активен</span>{% elif person.state == "invited" %}<span class="badge text-bg-warning">приглашён</span>{% else %}<span class="badge text-bg-danger">заблокирован</span>{% endif %}</td>
+          <td>{% for item in person.roles.all %}<span class="badge text-bg-secondary me-1">{{ item.name }}</span>{% empty %}<span class="text-muted">нет</span>{% endfor %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <nav class="grid-footer" aria-label="Страницы списка">
+    <span class="text-muted small">Всего: {{ total }}. Страница {{ page.number }} из {{ page.paginator.num_pages }}.</span>
+    <span class="d-flex gap-2">
+      {% if prev_url %}<a class="btn btn-outline-secondary btn-sm" href="{{ prev_url }}" hx-get="{{ prev_url }}" hx-target="#staff-results" hx-swap="innerHTML" hx-push-url="true">Назад</a>{% endif %}
+      {% if next_url %}<a class="btn btn-outline-secondary btn-sm" href="{{ next_url }}" hx-get="{{ next_url }}" hx-target="#staff-results" hx-swap="innerHTML" hx-push-url="true">Вперёд</a>{% endif %}
+    </span>
+  </nav>
+  {% else %}
+  <p class="empty-state">По этим условиям никого нет. Измените фильтр или <a href="/staff/">сбросьте его</a>.</p>
+  {% endif %}
+</div>

@@ -1,0 +1,51 @@
+{% extends layout %}
+{% block title %}Журнал событий{% endblock %}
+{% block content %}
+<h1 class="page-title">Журнал событий</h1>
+<p class="text-muted">Записи только читаются: изменить или удалить событие нельзя. Время — московское.</p>
+<form id="audit-filter" class="filter-bar card card-body mb-3" method="get" action="/audit/"
+      hx-get="/audit/" hx-target="#audit-results" hx-swap="innerHTML" hx-push-url="true">
+  <input type="hidden" name="preset" value="{{ filters.preset }}">
+  <input type="hidden" name="sort" value="{{ filters.sort }}">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1" for="id_date_from">С даты</label>
+      <input class="form-control" id="id_date_from" name="date_from" type="date" value="{{ filters.date_from|date:'Y-m-d' }}">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1" for="id_date_to">По дату</label>
+      <input class="form-control" id="id_date_to" name="date_to" type="date" value="{{ filters.date_to|date:'Y-m-d' }}">
+    </div>
+    <div class="col-12 col-md-3">
+      <label class="form-label small mb-1" for="id_user">Кто</label>
+      <select class="form-select" id="id_user" name="user">
+        <option value="">Любой</option>
+        {% for person in actors %}<option value="{{ person.pk }}"{% if filters.user == person.pk %} selected{% endif %}>{{ person.full_name }} ({{ person.email }})</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-12 col-md-3">
+      <label class="form-label small mb-1" for="id_action">Что сделано</label>
+      <select class="form-select" id="id_action" name="action">
+        <option value="">Любое действие</option>
+        {% for code, label in actions %}<option value="{{ code }}"{% if filters.action == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        {% if filters.action %}<option value="{{ filters.action }}" selected hidden>{{ filters.action }}</option>{% endif %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1" for="id_object_type">Вид объекта</label>
+      <input class="form-control" id="id_object_type" name="object_type" value="{{ filters.object_type }}" placeholder="user, role…">
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-1" for="id_object_id">Номер объекта</label>
+      <input class="form-control" id="id_object_id" name="object_id" value="{{ filters.object_id }}">
+    </div>
+    <div class="col-12 col-md-4 d-flex gap-2">
+      <button class="btn btn-primary" type="submit">Найти</button>
+      <a class="btn btn-outline-secondary" href="/audit/">Сбросить</a>
+    </div>
+  </div>
+</form>
+<div id="audit-results" class="audit-results">
+  {% include "audit/_results.html" %}
+</div>
+{% endblock %}

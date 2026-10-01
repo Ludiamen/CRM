@@ -85,3 +85,16 @@ def send(template: str, to: str, context: dict, *, related_user=None) -> MailMes
         related_user=related_user)
     enqueue(message.pk, {"context": public_context(context)})
     return message
+
+
+def last_message(user, template: str) -> MailMessage | None:
+    """Последнее письмо записи по шаблону (карточка сотрудника показывает его состояние, FR-009)."""
+    return MailMessage.objects.filter(related_user=user, template=template).order_by("-id").first()
+
+
+def delivery_log(*, page_size: int = 50, page=None):
+    """Журнал доставки для администратора (FR-053): письма по убыванию с попытками, без тел писем."""
+    from django.core.paginator import Paginator
+
+    qs = MailMessage.objects.prefetch_related("attempt_log").order_by("-id")
+    return Paginator(qs, page_size).get_page(page)

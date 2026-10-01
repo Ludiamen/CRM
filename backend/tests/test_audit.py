@@ -89,7 +89,8 @@ def test_audit_event_for_each_action_in_fr044_list(django_capture_on_commit_call
     client.post("/activate/password/", {"password1": password, "password2": password})
     _, codes = support.enroll_totp(client, user, totp_url="/activate/totp/", codes_url="/activate/codes/")
     user.test_password = password
-    client.post("/me/security/backup-codes/new/")
+    fresh = client.post("/me/security/backup-codes/new/")
+    codes = support.backup_code_values(fresh.content.decode())  # прежний набор погашен — входим кодом из нового
     client.post("/logout/")
     client.post("/login/", {"email": user.email, "password": password})
     client.post("/login/code/", {"backup_code": codes[0]})
@@ -107,7 +108,7 @@ def test_audit_event_has_actor_time_object_before_after_ip(clock):
     admin_user = support.make_admin()
     admin = support.logged_in(admin_user, ip="198.51.100.96")
     target = support.make_employee(position="Инженер")
-    clock.advance(hours=3)
+    clock.advance(minutes=30)  # меньше порога бездействия (60 мин): сессия жива, время события — сдвинутое
     admin.post(f"/staff/{target.pk}/edit/", staff_edit(target, position="Главный инженер"), REMOTE_ADDR="198.51.100.96")
     event = model("core.AuditEvent").objects.get(action="user.updated", object_id=str(target.pk))
     assert event.actor_id == admin_user.pk and event.at == clock._now and event.ip == "198.51.100.96"
@@ -220,9 +221,11 @@ def test_audit_never_contains_passwords_keys_codes_link_codes():
     admin = support.logged_in(support.make_admin(), ip="198.51.100.102")
     admin.post(f"/staff/{user.pk}/invite/")
     admin.get(f"/staff/{user.pk}/")
+    # код использованной ссылки по контракту стёрт (его и нечего расшифровывать) — проверяем исходный
+    # код активации и коды ссылок, которые ещё живы
+    live = model("core.OneTimeLink").objects.filter(user=user, used_at__isnull=True, revoked_at__isnull=True).exclude(code_encrypted="")
     secrets_ = [password, newer, wrong, code, key.hex(), factories.totp_code(key), *codes,
-                support.link_code(model("core.OneTimeLink").objects.filter(user=user, revoked_at__isnull=True).first() or link)
-                if model("core.OneTimeLink").objects.filter(user=user, revoked_at__isnull=True).exists() else code]
+                *[support.link_code(l) for l in live]]
     dump = " ".join(
         " ".join(str(getattr(e, f.name)) for f in e._meta.concrete_fields) for e in model("core.AuditEvent").objects.all())
     page = admin.get("/audit/").content.decode() + admin.get("/audit/export.csv").content.decode()

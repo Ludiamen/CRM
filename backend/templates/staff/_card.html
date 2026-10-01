@@ -1,0 +1,120 @@
+<section class="slider-section">
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    {% if target.state == "active" %}<span class="badge text-bg-success">активен</span>{% elif target.state == "invited" %}<span class="badge text-bg-warning">приглашён, ещё не активирован</span>{% else %}<span class="badge text-bg-danger">заблокирован</span>{% endif %}
+    {% if is_self %}<span class="badge text-bg-primary">это вы</span>{% endif %}
+  </div>
+  <dl class="row mb-0 small">
+    <dt class="col-sm-4">Почта</dt><dd class="col-sm-8 text-break">{{ target.email }}</dd>
+    <dt class="col-sm-4">Должность</dt><dd class="col-sm-8">{{ target.position|default:"не указана" }}</dd>
+    <dt class="col-sm-4">Телефон</dt><dd class="col-sm-8">{{ target.phone|default:"не указан" }}</dd>
+    <dt class="col-sm-4">Контакты</dt><dd class="col-sm-8">{% for line in target.contacts %}<div class="text-break">{{ line }}</div>{% empty %}не указаны{% endfor %}</dd>
+    <dt class="col-sm-4">Создана</dt><dd class="col-sm-8">{{ target.created_at|date:"d.m.Y H:i" }}</dd>
+    <dt class="col-sm-4">Активирована</dt><dd class="col-sm-8">{% if target.activated_at %}{{ target.activated_at|date:"d.m.Y H:i" }}{% else %}ещё нет{% endif %}</dd>
+    {% if target.state == "blocked" %}<dt class="col-sm-4">Причина блокировки</dt><dd class="col-sm-8 text-break">{{ target.blocked_reason|default:"не указана" }}</dd>{% endif %}
+  </dl>
+</section>
+
+{% if target.state == "invited" %}
+<section class="slider-section">
+  <h3>Приглашение</h3>
+  {% if invitation.url %}
+  <div x-data="copyLink">
+    <p class="small text-muted mb-1">Ссылка активации действует 72 часа и работает один раз. Её показ записан в журнал.</p>
+    <p class="invite-link" data-invitation-link x-ref="link">{{ invitation.url }}</p>
+    <button type="button" class="btn btn-outline-secondary btn-sm" x-on:click="copy" x-text="label">Копировать ссылку</button>
+  </div>
+  {% else %}
+  <p class="small text-muted">Действующей ссылки нет: она истекла или была погашена. Отправьте приглашение заново.</p>
+  {% endif %}
+  {% if invitation.mail %}
+  <p class="small mt-2 mb-2">Письмо: <span class="badge text-bg-light border" data-mail-status="{{ invitation.mail.status }}">{{ invitation.mail.title }}</span>
+    {% if invitation.mail.error %}<span class="d-block text-muted text-break mt-1">{{ invitation.mail.error }}</span>{% endif %}</p>
+  {% endif %}
+  <form method="post" action="/staff/{{ target.pk }}/invite/" class="mt-2">
+    {% csrf_token %}
+    <button class="btn btn-outline-primary btn-sm" type="submit">Отправить приглашение заново</button>
+  </form>
+</section>
+{% endif %}
+
+<section class="slider-section">
+  <h3>Профиль</h3>
+  <form method="post" action="/staff/{{ target.pk }}/edit/">
+    {% csrf_token %}
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_full_name">ФИО</label>
+      <input class="form-control" id="id_edit_full_name" name="full_name" value="{{ target.full_name }}" required maxlength="255"></div>
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_position">Должность</label>
+      <input class="form-control" id="id_edit_position" name="position" value="{{ target.position }}" required maxlength="255"></div>
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_email">Почта</label>
+      <input class="form-control" id="id_edit_email" name="email" type="email" value="{{ target.email }}" required></div>
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_phone">Телефон</label>
+      <input class="form-control" id="id_edit_phone" name="phone" type="tel" value="{{ target.phone }}"></div>
+    <div class="mb-3"><label class="form-label small mb-1" for="id_edit_contacts">Другие контакты</label>
+      <textarea class="form-control" id="id_edit_contacts" name="contacts" rows="2" placeholder="По одному на строку">{% for line in target.contacts %}{{ line }}
+{% endfor %}</textarea></div>
+    <button class="btn btn-primary btn-sm" type="submit">Сохранить профиль</button>
+  </form>
+</section>
+
+<section class="slider-section">
+  <h3>Роли</h3>
+  <form method="post" action="/staff/{{ target.pk }}/roles/">
+    {% csrf_token %}
+    {% for item in all_roles %}
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="roles" value="{{ item.pk }}" id="id_card_role_{{ item.pk }}"{% if item.pk in target_role_ids %} checked{% endif %}>
+      <label class="form-check-label" for="id_card_role_{{ item.pk }}">{{ item.name }}</label>
+    </div>
+    {% endfor %}
+    <button class="btn btn-primary btn-sm mt-3" type="submit">Сохранить роли</button>
+  </form>
+</section>
+
+<section class="slider-section">
+  <h3>Вход и второй фактор</h3>
+  {% if login_locked %}
+  <p class="small text-muted">Вход этой записи временно заблокирован после неудачных попыток.</p>
+  <form method="post" action="/staff/{{ target.pk }}/unlock/" class="mb-2">
+    {% csrf_token %}
+    <button class="btn btn-outline-primary btn-sm" type="submit">Снять блокировку входа</button>
+  </form>
+  {% endif %}
+  {% if can_view_logins %}
+  <p class="mb-2"><a class="btn btn-outline-secondary btn-sm" href="/staff/{{ target.pk }}/logins/" hx-get="/staff/{{ target.pk }}/logins/">Устройства и история входов</a></p>
+  {% endif %}
+  {% if can_reset_2fa %}
+  <form method="post" action="/staff/{{ target.pk }}/reset-2fa/">
+    {% csrf_token %}
+    <p class="small text-muted mb-2">Ключ приложения и резервные коды перестанут действовать, сессии закроются, сотруднику уйдёт письмо.</p>
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="id_confirm_reset_2fa" name="confirm" value="1" required>
+      <label class="form-check-label small" for="id_confirm_reset_2fa">Подтверждаю сброс</label>
+    </div>
+    <button class="btn btn-outline-danger btn-sm" type="submit">Сбросить второй фактор</button>
+  </form>
+  {% endif %}
+</section>
+
+{% if not is_self %}
+<section class="slider-section">
+  <h3>Блокировка</h3>
+  {% if target.state == "blocked" %}
+  <form method="post" action="/staff/{{ target.pk }}/unblock/">
+    {% csrf_token %}
+    <p class="small text-muted">Запись вернётся в прежнее состояние{% if target.blocked_from == "invited" %}; для входа понадобится новое приглашение{% endif %}.</p>
+    <button class="btn btn-outline-primary btn-sm" type="submit">Разблокировать</button>
+  </form>
+  {% else %}
+  <form method="post" action="/staff/{{ target.pk }}/block/">
+    {% csrf_token %}
+    <div class="mb-2"><label class="form-label small mb-1" for="id_block_reason">Причина (по желанию)</label>
+      <textarea class="form-control" id="id_block_reason" name="reason" rows="2" maxlength="500"></textarea></div>
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="id_confirm_block" name="confirm" value="1" required>
+      <label class="form-check-label small" for="id_confirm_block">Подтверждаю блокировку</label>
+    </div>
+    <button class="btn btn-outline-danger btn-sm" type="submit">Заблокировать</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}

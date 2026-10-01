@@ -1,0 +1,61 @@
+{% extends layout %}
+{% block title %}Блокировки входа{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Блокировки входа</h1>
+  <a class="btn btn-outline-secondary" href="/staff/">К списку сотрудников</a>
+</div>
+<p class="text-muted">Записи и адреса, вход с которых сейчас закрыт после неудачных попыток. Блокировка снимется сама по истечении срока; здесь её можно снять раньше.</p>
+<section class="card mb-3">
+  <div class="card-body">
+    <h2 class="h6">Записи</h2>
+    {% if accounts %}
+    <div class="table-wrap">
+      <table class="table align-middle mb-0">
+        <thead><tr><th scope="col">Сотрудник</th><th scope="col">Осталось</th><th scope="col"><span class="visually-hidden">Действие</span></th></tr></thead>
+        <tbody>
+          {% for item in accounts %}
+          <tr data-lock-kind="account" data-lock-target="{{ item.user.pk }}">
+            <td>{{ item.user.full_name }} <span class="text-muted">{{ item.user.email }}</span></td>
+            <td>{{ item.minutes }} мин.</td>
+            <td class="text-end">
+              <form method="post" action="/staff/locks/">
+                {% csrf_token %}<input type="hidden" name="kind" value="account"><input type="hidden" name="target" value="{{ item.user.pk }}">
+                <button class="btn btn-outline-primary btn-sm" type="submit">Снять блокировку входа</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="text-muted mb-0">Заблокированных записей нет.</p>{% endif %}
+  </div>
+</section>
+<section class="card">
+  <div class="card-body">
+    <h2 class="h6">Адреса</h2>
+    {% if ips %}
+    <div class="table-wrap">
+      <table class="table align-middle mb-0">
+        <thead><tr><th scope="col">Адрес</th><th scope="col">Осталось</th><th scope="col"><span class="visually-hidden">Действие</span></th></tr></thead>
+        <tbody>
+          {% for item in ips %}
+          <tr data-lock-kind="ip" data-lock-target="{{ item.address }}">
+            <td>{{ item.address }}</td>
+            <td>{{ item.minutes }} мин.</td>
+            <td class="text-end">
+              <form method="post" action="/staff/locks/">
+                {% csrf_token %}<input type="hidden" name="kind" value="ip"><input type="hidden" name="target" value="{{ item.address }}">
+                <button class="btn btn-outline-primary btn-sm" type="submit">Снять блокировку входа</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}<p class="text-muted mb-0">Заблокированных адресов нет.</p>{% endif %}
+  </div>
+</section>
+{% endblock %}

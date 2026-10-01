@@ -45,7 +45,7 @@
       </button>
     </nav>
     <main id="content" class="app-main container-fluid">
-      {% include "_flashes.html" %}
+      {% if not slider_flashes %}{% include "_flashes.html" %}{% endif %}
       {% block content %}{% endblock %}
     </main>
   </div>

@@ -1,0 +1,27 @@
+{% if can_manage %}<p><a href="/staff/{{ target.pk }}/" hx-get="/staff/{{ target.pk }}/">&larr; Карточка сотрудника</a></p>{% endif %}
+<section class="slider-section">
+  <h3>Известные устройства</h3>
+  {% if devices %}
+  <div class="table-wrap">
+    <table class="table table-sm align-middle">
+      <thead><tr><th scope="col">Браузер и платформа</th><th scope="col">Первый вход</th><th scope="col">Последний вход</th></tr></thead>
+      <tbody>
+        {% for device in devices %}
+        <tr data-device-id="{{ device.pk }}" data-current="false">
+          <td>{{ device.browser|default:"Браузер не определён" }}, {{ device.platform|default:"платформа не определена" }}</td>
+          <td>{{ device.first_seen|date:"d.m.Y H:i" }}</td>
+          <td>{{ device.last_seen|date:"d.m.Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="text-muted mb-0">Известных устройств пока нет.</p>
+  {% endif %}
+</section>
+<section class="slider-section">
+  <h3>История входов</h3>
+  {% include "partials/history_table.html" %}
+  {% if page.has_next %}<p class="mb-0"><a href="?page={{ page.next_page_number }}" hx-get="?page={{ page.next_page_number }}">Показать более ранние</a></p>{% endif %}
+</section>

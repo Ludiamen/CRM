@@ -1,0 +1,40 @@
+{% extends layout %}
+{% block title %}Журнал доставки писем{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Журнал доставки писем</h1>
+  <a class="btn btn-outline-secondary" href="/settings/portal/">Настройки портала</a>
+</div>
+<p class="text-muted">Каждая попытка отправки записывается сюда. Тела писем не хранятся.</p>
+{% if page %}
+<div class="table-wrap">
+  <table class="table table-sm align-top grid-table">
+    <thead><tr><th scope="col">Создано</th><th scope="col">Кому</th><th scope="col">Письмо</th><th scope="col">Состояние</th><th scope="col">Попытки</th></tr></thead>
+    <tbody>
+      {% for message in page %}
+      <tr data-mail-id="{{ message.pk }}" data-mail-status="{{ message.status }}">
+        <td class="text-nowrap">{{ message.created_at|date:"d.m.Y H:i" }}</td>
+        <td class="text-break">{{ message.to }}</td>
+        <td>{{ message.subject|default:"—" }}<div class="small text-muted">{{ message.template }}</div></td>
+        <td>{% if message.status == "sent" %}<span class="badge text-bg-success">отправлено</span>{% elif message.status == "failed" %}<span class="badge text-bg-danger">не доставлено</span>{% else %}<span class="badge text-bg-warning">в очереди</span>{% endif %}</td>
+        <td>
+          {% for attempt in message.attempt_log.all %}
+          <div class="small text-break"><span class="text-nowrap">{{ attempt.at|date:"d.m.Y H:i:s" }}</span> — {% if attempt.ok %}доставлено{% else %}ошибка: {{ attempt.error }}{% endif %}</div>
+          {% empty %}<span class="text-muted small">попыток ещё не было</span>{% endfor %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<nav class="grid-footer" aria-label="Страницы журнала">
+  <span class="text-muted small">Всего писем: {{ page.paginator.count }}. Страница {{ page.number }} из {{ page.paginator.num_pages }}.</span>
+  <span class="d-flex gap-2">
+    {% if page.has_previous %}<a class="btn btn-outline-secondary btn-sm" href="?page={{ page.previous_page_number }}">Назад</a>{% endif %}
+    {% if page.has_next %}<a class="btn btn-outline-secondary btn-sm" href="?page={{ page.next_page_number }}">Вперёд</a>{% endif %}
+  </span>
+</nav>
+{% else %}
+<p class="empty-state">Писем пока не отправлялось.</p>
+{% endif %}
+{% endblock %}

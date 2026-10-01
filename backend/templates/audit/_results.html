@@ -1,0 +1,50 @@
+{% load portal %}
+<div data-sync-form="audit-filter" data-sync="{{ sync }}">
+  <div class="results-bar">
+    <ul class="chip-row" aria-label="Готовые выборки">
+      {% for item in presets %}
+      <li><a class="chip{% if item.active %} active{% endif %}" href="{{ item.url }}" hx-get="{{ item.url }}" hx-target="#audit-results" hx-swap="innerHTML" hx-push-url="true"{% if item.active %} aria-current="true"{% endif %}>{{ item.title }}</a></li>
+      {% endfor %}
+    </ul>
+    <a class="btn btn-outline-secondary btn-sm" href="/audit/export.csv{{ export_query }}">Выгрузить выбранное</a>
+  </div>
+  {% if page %}
+  <div class="table-wrap">
+    <table class="table table-sm align-top grid-table audit-table">
+      <thead>
+        <tr>
+          <th scope="col"><a class="sort-link" href="{{ sort_time }}" hx-get="{{ sort_time }}" hx-target="#audit-results" hx-swap="innerHTML" hx-push-url="true">Время{% if sort_mark.time %} <span aria-hidden="true">{{ sort_mark.time }}</span>{% endif %}</a></th>
+          <th scope="col">Кто</th>
+          <th scope="col"><a class="sort-link" href="{{ sort_action }}" hx-get="{{ sort_action }}" hx-target="#audit-results" hx-swap="innerHTML" hx-push-url="true">Событие{% if sort_mark.action %} <span aria-hidden="true">{{ sort_mark.action }}</span>{% endif %}</a></th>
+          <th scope="col">Объект</th>
+          <th scope="col">Было</th>
+          <th scope="col">Стало</th>
+          <th scope="col">Адрес</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in page %}
+        <tr data-event-id="{{ event.pk }}" data-action="{{ event.action }}" data-at="{{ event.at|date:'c' }}">
+          <td class="text-nowrap">{{ event.at|date:"d.m.Y H:i:s" }}</td>
+          <td>{% if event.actor %}{{ event.actor.full_name }}<div class="small text-muted text-break">{{ event.actor.email }}</div>{% else %}<span class="text-muted">система</span>{% endif %}</td>
+          <td>{{ event.action|action_title }}<div class="small text-muted">{{ event.action }}</div></td>
+          <td>{% if event.object_type %}{{ event.object_type }}{% if event.object_id %} № <span class="text-break">{{ event.object_id }}</span>{% endif %}{% else %}—{% endif %}</td>
+          <td>{% for label, value in event.before|pairs %}<div class="small text-break"><span class="text-muted">{{ label }}:</span> {{ value }}</div>{% empty %}<span class="text-muted">—</span>{% endfor %}</td>
+          <td>{% for label, value in event.after|pairs %}<div class="small text-break"><span class="text-muted">{{ label }}:</span> {{ value }}</div>{% empty %}<span class="text-muted">—</span>{% endfor %}</td>
+          <td class="text-nowrap">{{ event.ip|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <nav class="grid-footer" aria-label="Страницы журнала">
+    <span class="text-muted small">Всего: {{ page.paginator.count }}. Страница {{ page.number }} из {{ page.paginator.num_pages }}.</span>
+    <span class="d-flex gap-2">
+      {% if prev_url %}<a class="btn btn-outline-secondary btn-sm" href="{{ prev_url }}" hx-get="{{ prev_url }}" hx-target="#audit-results" hx-swap="innerHTML" hx-push-url="true">Назад</a>{% endif %}
+      {% if next_url %}<a class="btn btn-outline-secondary btn-sm" href="{{ next_url }}" hx-get="{{ next_url }}" hx-target="#audit-results" hx-swap="innerHTML" hx-push-url="true">Вперёд</a>{% endif %}
+    </span>
+  </nav>
+  {% else %}
+  <p class="empty-state">Событий по этим условиям нет.</p>
+  {% endif %}
+</div>

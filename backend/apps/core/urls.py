@@ -1,7 +1,7 @@
-"""Маршруты ядра: вход и доступ, профиль, активация (срез 001). Разделы администратора добавляют следующие проходы."""
+"""Маршруты ядра: вход и доступ, профиль, активация, разделы администратора (срез 001)."""
 from django.urls import path, re_path
 
-from .views import activation, auth, me, pages
+from .views import activation, audit, auth, locks, me, pages, roles, settings, staff, staff_actions
 
 urlpatterns = [
     path("", pages.home, name="home"),
@@ -30,4 +30,29 @@ urlpatterns = [
     path("me/security/devices/<int:device_id>/close/", me.device_close, name="me-device-close"),
     path("me/security/devices/<int:device_id>/forget/", me.device_forget, name="me-device-forget"),
     path("me/security/history/", me.history_page, name="me-history"),
+    # сотрудники (T-244, T-245, T-246)
+    path("staff/", staff.staff_list, name="staff"),
+    path("staff/new/", staff_actions.staff_new, name="staff-new"),
+    path("staff/locks/", locks.locks, name="staff-locks"),
+    path("staff/<int:user_id>/", staff.staff_card, name="staff-card"),
+    path("staff/<int:user_id>/edit/", staff_actions.staff_edit, name="staff-edit"),
+    path("staff/<int:user_id>/roles/", staff_actions.staff_roles, name="staff-roles"),
+    path("staff/<int:user_id>/block/", staff_actions.staff_block, name="staff-block"),
+    path("staff/<int:user_id>/unblock/", staff_actions.staff_unblock, name="staff-unblock"),
+    path("staff/<int:user_id>/invite/", staff_actions.staff_invite, name="staff-invite"),
+    path("staff/<int:user_id>/unlock/", staff_actions.staff_unlock, name="staff-unlock"),
+    path("staff/<int:user_id>/reset-2fa/", staff_actions.staff_reset_2fa, name="staff-reset-2fa"),
+    path("staff/<int:user_id>/logins/", staff.staff_logins, name="staff-logins"),
+    # роли (T-247)
+    path("roles/", roles.role_list, name="roles"),
+    path("roles/new/", roles.role_new, name="role-new"),
+    path("roles/<int:role_id>/", roles.role_edit, name="role-edit"),
+    path("roles/<int:role_id>/delete/", roles.role_delete, name="role-delete"),
+    # журнал (T-248)
+    path("audit/", audit.audit_list, name="audit"),
+    path("audit/export.csv", audit.audit_export, name="audit-export"),
+    # настройки (T-249)
+    path("settings/portal/", settings.portal, name="settings-portal"),
+    path("settings/security/", settings.security, name="settings-security"),
+    path("settings/mail-log/", settings.mail_log, name="settings-mail-log"),
 ]

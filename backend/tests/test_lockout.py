@@ -146,7 +146,7 @@ def test_ip_thresholds_editable_in_settings():
     """FR-036, FR-027: порог, минимум записей, окно и срок блокировки адреса меняются в настройках безопасности."""
     admin = support.logged_in(support.make_admin(), ip="198.51.100.34")
     done = support.post_security_settings(admin, ip_lock_limit=6, ip_lock_min_accounts=2, ip_lock_window_minutes=5,
-                                          ip_lock_minutes=7)
+                                          ip_lock_minutes=16)  # граница 15…1440 (CONTRACT.md)
     # account_lock_limit не трогаем: граница формы — 3…5 (CONTRACT.md), а записи
     # ниже набирают не больше трёх неудач и не блокируются при значении по умолчанию 5
     assert done.status_code == 302
@@ -156,7 +156,7 @@ def test_ip_thresholds_editable_in_settings():
     assert not valkey_key(f"lock:ip:{IP}")
     assert 4 * 60 < ttl(f"fail:ip:{IP}") <= 5 * 60, "окно счёта — ip_lock_window_minutes"
     fail(two.email)
-    assert 6 * 60 < ttl(f"lock:ip:{IP}") <= 7 * 60, "срок блокировки адреса — ip_lock_minutes"
+    assert 15 * 60 < ttl(f"lock:ip:{IP}") <= 16 * 60, "срок блокировки адреса — ip_lock_minutes"
     changed = model("core.AuditEvent").objects.get(action="security_settings.updated")
     assert changed.before["ip_lock_limit"] == 20 and changed.after["ip_lock_limit"] == 6
 

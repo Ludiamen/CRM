@@ -1,0 +1,23 @@
+{% extends layout %}
+{% block title %}Роли и права{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Роли и права</h1>
+  <a class="btn btn-primary" href="/roles/new/">Новая роль</a>
+</div>
+<p class="text-muted">Права даются только через роли; у сотрудника с несколькими ролями права складываются. Роль назначают в карточке сотрудника.</p>
+<div class="table-wrap">
+  <table class="table table-hover align-middle grid-table">
+    <thead><tr><th scope="col">Роль</th><th scope="col">Права</th><th scope="col">Сотрудников</th></tr></thead>
+    <tbody>
+      {% for item in roles %}
+      <tr data-role-id="{{ item.pk }}" data-role-name="{{ item.name }}">
+        <td><a href="/roles/{{ item.pk }}/">{{ item.name }}</a>{% if item.is_builtin %} <span class="badge text-bg-light border">начальная</span>{% endif %}</td>
+        <td>{% for permission in item.permissions.all %}<span class="badge text-bg-secondary me-1">{{ permission.title }}</span>{% empty %}<span class="text-muted">только свои данные</span>{% endfor %}</td>
+        <td>{{ item.holders }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

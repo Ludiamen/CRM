@@ -1,0 +1,33 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Настройки портала{% endblock %}
+{% block content %}
+<h1 class="page-title">Настройки портала</h1>
+{% if errors %}<div class="alert alert-danger" role="alert"><ul class="mb-0">{% for field, message in errors.items %}<li>{{ message }}</li>{% endfor %}</ul></div>{% endif %}
+<section class="card form-card">
+  <div class="card-body">
+    <form method="post" action="/settings/portal/" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label" for="id_name">Название портала</label>
+        <input class="form-control{% if errors.name %} is-invalid{% endif %}" id="id_name" name="name" value="{{ name }}" maxlength="{{ max_name }}" required>
+        <div class="form-text">Показывается в верхней панели, на странице входа, во вкладке браузера и в письмах.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="id_logo">Логотип</label>
+        <div class="d-flex align-items-center gap-3 mb-2">
+          <img class="logo-preview" src="{% if portal.logo_url %}{{ portal.logo_url }}{% else %}{% static 'theme/logo-default.svg' %}{% endif %}" alt="Текущий логотип" width="48" height="48">
+          <span class="small text-muted">{% if portal.logo_url %}Загружен свой логотип.{% else %}Сейчас показан знак по умолчанию.{% endif %}</span>
+        </div>
+        <input class="form-control{% if errors.logo %} is-invalid{% endif %}" id="id_logo" name="logo" type="file" accept="image/png,image/jpeg">
+        <div class="form-text">Только PNG или JPEG, не больше 1 МБ и не больше 512×512 px. Формат определяется по содержимому файла.</div>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" type="submit">Сохранить</button>
+        <button class="btn btn-outline-secondary" type="submit" name="reset" value="1" formnovalidate>Вернуть по умолчанию</button>
+      </div>
+    </form>
+  </div>
+</section>
+<p class="mt-3"><a href="/settings/mail-log/">Журнал доставки писем</a></p>
+{% endblock %}

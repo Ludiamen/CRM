@@ -46,7 +46,7 @@ def test_create_user_needs_permission_and_required_fields():
     assert plain.get("/staff/new/").status_code == 403
     assert plain.post("/staff/new/", staff_form(role)).status_code == 403
     assert support.make_client().get("/staff/new/").status_code == 302
-    assert User.objects.count() == before
+    assert User.objects.count() == before + 1, "новая запись — только plain, созданная тестом"
 
 
 def test_email_unique_case_insensitive_and_is_login():
