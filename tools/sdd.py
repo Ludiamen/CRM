@@ -500,6 +500,11 @@ def проверить_инварианты(данные) -> list:
     ошибки = []
     if данные is None:
         return ошибки
+    не_проверять = данные.get("не_проверять")
+    if не_проверять is not None and (
+        not isinstance(не_проверять, list) or not all(isinstance(x, str) and x.strip() for x in не_проверять)
+    ):
+        ошибки.append("constitution.json: «не_проверять» — должен быть списком непустых строк (шаблонов путей)")
     инварианты = данные.get("инварианты", []) or []
     коды = {}
     for i, инв in enumerate(инварианты):
@@ -622,13 +627,19 @@ def похож_на_текст(путь: Path, предел_байт: int = ПР
     return True
 
 
-def собрать_файлы_для_проверки(root: Path, шаблоны: list) -> list:
+def собрать_файлы_для_проверки(root: Path, шаблоны: list, не_проверять=None) -> list:
+    """Файлы по шаблонам «проверять» минус файлы по шаблонам «не_проверять»."""
     найденные = set()
     for шаблон in шаблоны:
         for совпадение in glob.glob(str(root / шаблон), recursive=True):
             p = Path(совпадение)
             if p.is_file():
                 найденные.add(p.resolve())
+    for шаблон in не_проверять or []:
+        for совпадение in glob.glob(str(root / шаблон), recursive=True):
+            p = Path(совпадение)
+            if p.is_file():
+                найденные.discard(p.resolve())
     return sorted(найденные, key=lambda p: p.as_posix())
 
 
@@ -661,7 +672,7 @@ def проверить_код_по_конституции(данные, root: Pa
     if данные is None:
         return [], False
     шаблоны = данные.get("проверять", []) or []
-    файлы = собрать_файлы_для_проверки(root, шаблоны)
+    файлы = собрать_файлы_для_проверки(root, шаблоны, данные.get("не_проверять", []) or [])
     if not файлы:
         return [], False
 

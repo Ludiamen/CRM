@@ -156,3 +156,30 @@ class ТестНарушений(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ТестНеПроверять(unittest.TestCase):
+    """Поле «не_проверять» настоящей конституции: сторонняя статика вне проверки."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.данные = _загрузить_конституцию()
+
+    def test_vendor_объявлен_в_не_проверять(self):
+        self.assertIn("backend/static/vendor/**", self.данные.get("не_проверять", []))
+        self.assertEqual(sdd.проверить_инварианты(self.данные), [])
+
+    def test_файлы_vendor_не_попадают_в_проверку_а_наши_попадают(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            корень = Path(tmp)
+            (корень / "backend" / "static" / "vendor").mkdir(parents=True)
+            (корень / "backend" / "apps").mkdir(parents=True)
+            (корень / "backend" / "static" / "vendor" / "lib.js").write_text("x\n", encoding="utf-8")
+            (корень / "backend" / "apps" / "a.py").write_text("x\n", encoding="utf-8")
+            файлы = sdd.собрать_файлы_для_проверки(
+                корень, self.данные["проверять"], self.данные["не_проверять"]
+            )
+            имена = [f.relative_to(корень.resolve()).as_posix() for f in файлы]
+            self.assertEqual(имена, ["backend/apps/a.py"])

@@ -1,0 +1,96 @@
+# Стенд портала ИТ-отдела (PLAN-001, «Запуск»). Этап 1: база, Valkey, Mailpit и
+# контейнер тестов. Службы web, worker, scheduler и nginx (с TLS на 8031)
+# добавляются задачами T-262 и T-264.
+#
+#   docker compose --profile dev up -d          # postgres, valkey, mailpit
+#   docker compose --profile test run --rm test  # pytest на PostgreSQL
+#
+# Секреты — в deploy/.env (создаётся `python3 tools/make_dev_env.py`, в git не
+# попадает). Порты — только на 127.0.0.1; PostgreSQL и Valkey наружу не
+# публикуются (порт 5432 на хосте занят чужим контейнером).
+name: crm
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: crm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в deploy/.env}
+      CRM_OWNER_PASSWORD: ${CRM_OWNER_PASSWORD:?задайте CRM_OWNER_PASSWORD в deploy/.env}
+      CRM_APP_PASSWORD: ${CRM_APP_PASSWORD:?задайте CRM_APP_PASSWORD в deploy/.env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d crm"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--appendonly", "yes"]
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.31.3
+    profiles: ["dev"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8025:8025"   # ящик и API
+      - "127.0.0.1:1025:1025"   # SMTP
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Тесты: pytest + pytest-django на PostgreSQL этого же стенда.
+  # Тестовая база test_crm создаётся и мигрируется под crm_owner, запросы теста
+  # идут под crm_app. Valkey — база 15, не рабочая 0.
+  test:
+    image: python:3.12-slim-bookworm
+    profiles: ["test"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+        required: false   # профиль dev; нужен только тестам почты
+    env_file: .env
+    environment:
+      VALKEY_URL: redis://valkey:6379/15
+      PIP_ROOT_USER_ACTION: ignore
+      PIP_DEFAULT_TIMEOUT: "60"
+      PIP_RETRIES: "10"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    working_dir: /app/backend
+    volumes:
+      - ../backend:/app/backend
+      - ./run-tests.sh:/run-tests.sh:ro
+      - test-venv:/opt/venv
+    entrypoint: ["sh", "/run-tests.sh"]
+
+networks:
+  default:
+    driver_opts:
+      # меньше MTU обычных каналов (на машине разработчика выход наружу идёт
+      # через VPN с MTU 1376: при 1500 TLS из контейнеров к PyPI зависает)
+      com.docker.network.driver.mtu: "1360"
+
+volumes:
+  postgres-data:
+  valkey-data:
+  test-venv:
