@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"allowEval":false,"includeIndicatorStyles":false}'>
+  <title>{% block title %}Вход{% endblock %} — {{ portal.name }}</title>
+  {% include "_assets.html" %}
+</head>
+<body class="public-body">
+  <div class="container public-container">
+    <header class="public-brand">
+      <a class="brand" href="/">{% include "_brand.html" %}</a>
+    </header>
+    <main class="public-card card shadow-sm">
+      <div class="card-body">
+        {% include "_flashes.html" %}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+    {% if request.user.is_authenticated %}
+    <form class="public-footer" action="/logout/" method="post">{% csrf_token %}
+      <button class="btn btn-link btn-sm">Выйти</button>
+    </form>
+    {% endif %}
+  </div>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{% extends layout %}
+{% block title %}Второй фактор{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Подключите второй фактор</h1>
+<p class="text-muted">Пока приложение не подключено, портал открыт только для этой страницы и показа резервных кодов.</p>
+{% include "_totp_body.html" %}
+{% endblock %}

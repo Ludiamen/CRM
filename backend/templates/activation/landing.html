@@ -1,0 +1,16 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Активация{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Активация учётной записи</h1>
+{% if error %}
+<div class="alert alert-danger" role="alert">{{ error }} <a href="/login/">Перейти ко входу</a></div>
+{% else %}
+<p id="exchange-hint" class="text-muted">Откройте ссылку из письма-приглашения целиком: код в ней проверяется автоматически. Если письма нет или ссылка не работает, обратитесь к администратору портала.</p>
+<form id="exchange-form" method="post" action="/activate/exchange/">
+  {% csrf_token %}
+  <input type="hidden" name="code" value="">
+</form>
+<script src="{% static 'js/exchange.js' %}" defer></script>
+{% endif %}
+{% endblock %}

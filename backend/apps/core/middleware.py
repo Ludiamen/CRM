@@ -27,6 +27,29 @@ class ClientIPMiddleware:
         return self.get_response(request)
 
 
+class ResponseHeadersMiddleware:
+    """Заголовки по виду страницы (T-251, NFR-007, FR-012).
+
+    - `Cache-Control: no-store` на всём, кроме статики, логотипа и проверки здоровья: защищённые
+      страницы и страницы ввода секретов не должны оставаться в кэше («Назад» после выхода, сценарий 10);
+    Политика реферера везде одна — `same-origin` (SecurityMiddleware): код ссылки живёт только во
+    фрагменте адреса, а фрагмент браузер в Referer не передаёт никогда, поэтому отдельная политика
+    `no-referrer` для страниц ссылок не нужна — а с ней браузер слал бы `Origin: null`, и проверка
+    CSRF отвергала бы формы (решение Opus 2026-10-01). Остальные заголовки (CSP, HSTS, nosniff)
+    ставят django-csp и SecurityMiddleware.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        path = request.path
+        if not path.startswith(PUBLIC_PREFIXES):
+            response["Cache-Control"] = "no-store"
+        return response
+
+
 def _redirect(request, url: str):
     """Обычный запрос — перенаправление; запрос HTMX — заголовок HX-Redirect (страница целиком)."""
     if request.headers.get("HX-Request"):

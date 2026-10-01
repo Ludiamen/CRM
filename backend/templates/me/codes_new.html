@@ -1,0 +1,12 @@
+{% extends layout %}
+{% block title %}Новый набор резервных кодов{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Новый набор резервных кодов</h1>
+<div class="alert alert-success" role="status">Выпущен новый набор из 10 кодов. Прежние коды больше не действуют.</div>
+<p>Сохраните эти коды в надёжном месте. Каждый работает один раз. <strong>Повторно коды не показываются.</strong></p>
+<ol class="backup-codes">
+  {% for code in codes %}<li><code class="backup-code">{{ code }}</code></li>
+  {% endfor %}
+</ol>
+<a class="btn btn-primary" href="/me/security/">Я сохранил коды, вернуться в «Безопасность»</a>
+{% endblock %}

@@ -41,6 +41,8 @@ def run_scheduler_step() -> None:
 
     queue = mail_queue()
     scheduler = RQScheduler([queue], connection=queue.connection)
+    # без захваченных замков реестры отложенных заданий не готовятся, и шаг планировщика ничего не делает
+    scheduler.prepare_registries([queue.name])
     scheduler.enqueue_scheduled_jobs()
 
 

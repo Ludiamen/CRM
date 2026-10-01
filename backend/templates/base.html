@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"allowEval":false,"includeIndicatorStyles":false}'>
+  <title>{% block title %}Главная{% endblock %} — {{ portal.name }}</title>
+  {% include "_assets.html" %}
+</head>
+<body class="app-body">
+  <div class="app-shell" x-data="shell">
+    <header id="top-bar" class="app-top-bar">
+      <a class="brand" href="/">{% include "_brand.html" %}</a>
+      <div class="top-actions">
+        <a class="top-link" href="/me/" title="Мой профиль">
+          <span class="profile-initial" aria-hidden="true">{{ request.user.full_name|slice:":1"|upper }}</span>
+          <span class="top-label profile-name">{{ request.user.full_name }}</span>
+        </a>
+        <a class="top-link" href="/me/security/" title="Безопасность">
+          <span class="menu-icon" aria-hidden="true">{% include "icons/shield.html" %}</span>
+          <span class="top-label">Безопасность</span>
+        </a>
+        <form action="/logout/" method="post">{% csrf_token %}
+          <button class="top-link top-button" title="Выйти из портала">
+            <span class="menu-icon" aria-hidden="true">{% include "icons/logout.html" %}</span>
+            <span class="top-label">Выйти</span>
+          </button>
+        </form>
+      </div>
+    </header>
+    <nav id="main-menu" class="app-menu" aria-label="Разделы портала">
+      <ul class="menu-list">
+        {% for item in menu %}
+        <li>
+          <a class="menu-item{% if item.active %} active{% endif %}" href="{{ item.url }}" title="{{ item.title }}"{% if item.active %} aria-current="page"{% endif %}>
+            <span class="menu-icon" aria-hidden="true">{% include item.icon %}</span>
+            <span class="menu-label">{{ item.title }}</span>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      <button type="button" class="menu-toggle" data-menu-toggle x-on:click="toggleIcons" x-bind:aria-label="toggleLabel" x-bind:title="toggleLabel">
+        <span class="menu-icon" aria-hidden="true">{% include "icons/collapse.html" %}</span>
+        <span class="menu-label" x-text="toggleLabel">Свернуть меню</span>
+      </button>
+    </nav>
+    <main id="content" class="app-main container-fluid">
+      {% include "_flashes.html" %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

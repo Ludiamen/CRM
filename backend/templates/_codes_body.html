@@ -1,0 +1,19 @@
+{% if codes %}
+<p>Сохраните эти коды в надёжном месте. Каждый работает один раз и заменяет код из приложения, если телефон недоступен. <strong>Повторно коды не показываются.</strong></p>
+<ol class="backup-codes">
+  {% for code in codes %}<li><code class="backup-code">{{ code }}</code></li>
+  {% endfor %}
+</ol>
+<form method="post" action="{{ post_url }}">
+  {% csrf_token %}
+  <div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" id="id_confirm" name="confirm" value="1" required>
+    <label class="form-check-label" for="id_confirm">Я сохранил коды</label>
+  </div>
+  <button class="btn btn-primary w-100" type="submit">Продолжить</button>
+</form>
+{% else %}
+<p>Резервные коды уже показаны, повторно они не выводятся. Неиспользованных кодов: <strong>{{ remaining }}</strong>.</p>
+<p class="mb-0">Если коды потеряны, выпустите новый набор в разделе «Безопасность»: прежний перестанет действовать.</p>
+<a class="btn btn-primary mt-3" href="/me/security/">К разделу «Безопасность»</a>
+{% endif %}

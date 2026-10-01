@@ -64,6 +64,7 @@ LOGIN_URL = "/login/"
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "apps.core.middleware.ClientIPMiddleware",
+    "apps.core.middleware.ResponseHeadersMiddleware",
     "csp.middleware.CSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -74,6 +75,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "config.urls"
+CSRF_FAILURE_VIEW = "apps.core.views.pages.csrf_failure"
 ASGI_APPLICATION = "config.asgi.application"
 
 TEMPLATES = [
@@ -85,6 +87,7 @@ TEMPLATES = [
             "context_processors": [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
+                "apps.core.context.shell",
             ],
         },
     },

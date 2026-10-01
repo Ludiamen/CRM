@@ -1,0 +1,25 @@
+{% extends layout %}
+{% block title %}Главная{% endblock %}
+{% block content %}
+<h1 class="page-title">Здравствуйте, {{ request.user.full_name }}!</h1>
+<p class="text-muted">Добро пожаловать в портал «{{ portal.name }}». Здесь собраны разделы, которые вам доступны.</p>
+<div class="row g-3">
+  <div class="col-sm-6 col-lg-4">
+    <a class="card h-100 text-decoration-none" href="/me/">
+      <div class="card-body"><h2 class="h6 mb-1">Мой профиль</h2><p class="mb-0 small text-muted">Телефон и контакты, роль в портале.</p></div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-lg-4">
+    <a class="card h-100 text-decoration-none" href="/me/security/">
+      <div class="card-body"><h2 class="h6 mb-1">Безопасность</h2><p class="mb-0 small text-muted">Пароль, второй фактор, устройства и история входов.</p></div>
+    </a>
+  </div>
+  {% for item in menu %}{% if item.url != "/" %}
+  <div class="col-sm-6 col-lg-4">
+    <a class="card h-100 text-decoration-none" href="{{ item.url }}">
+      <div class="card-body"><h2 class="h6 mb-0">{{ item.title }}</h2></div>
+    </a>
+  </div>
+  {% endif %}{% endfor %}
+</div>
+{% endblock %}

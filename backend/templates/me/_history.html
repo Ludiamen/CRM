@@ -1,0 +1,3 @@
+{% include "me/_back.html" %}
+{% include "partials/history_table.html" %}
+{% if page.has_next %}<p><a href="?page={{ page.next_page_number }}" hx-get="?page={{ page.next_page_number }}">Показать более ранние</a></p>{% endif %}

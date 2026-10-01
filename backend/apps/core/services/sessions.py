@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from apps.core.models import UserSession
 
-from . import security_settings
+from . import audit, security_settings
 
 BACKEND = "django.contrib.auth.backends.ModelBackend"
 IDLE_KEY = "idle_timeout_minutes"
@@ -88,3 +88,11 @@ def keep_after_password_change(request, user) -> None:
     if old_key and new_key and old_key != new_key:
         UserSession.objects.filter(session_key=old_key).update(session_key=new_key)
 
+
+
+def logout_everywhere(request, user, *, ip=None) -> int:
+    """«Выйти со всех устройств»: остальные сессии закрываются, текущая остаётся; событие — в журнал (FR-030)."""
+    closed = close_all(user, except_key=request.session.session_key)
+    audit.record("sessions.logout_everywhere", actor=user, object_type="user", object_id=user.pk,
+                 after={"closed": closed}, ip=ip)
+    return closed

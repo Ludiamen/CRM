@@ -1,0 +1,1 @@
+{% load static %}<img data-portal-logo src="{% if portal.logo_url %}{{ portal.logo_url }}{% else %}{% static 'theme/logo-default.svg' %}{% endif %}" alt="" width="32" height="32"><span data-portal-name>{{ portal.name }}</span>

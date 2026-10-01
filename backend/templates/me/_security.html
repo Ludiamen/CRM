@@ -1,0 +1,37 @@
+<section class="slider-section">
+  <h3>Пароль</h3>
+  <p class="small text-muted">Пароль изменён {{ password_changed_at|date:"d.m.Y" }}.</p>
+  <a class="btn btn-outline-primary btn-sm" href="/me/security/password/" hx-get="/me/security/password/">Изменить пароль</a>
+</section>
+<section class="slider-section">
+  <h3>Выйти со всех устройств</h3>
+  <p class="small text-muted">Все остальные сессии будут закрыты, эта останется.</p>
+  <form method="post" action="/me/security/logout-everywhere/">
+    {% csrf_token %}
+    <button class="btn btn-outline-danger btn-sm" type="submit">Выйти со всех устройств</button>
+  </form>
+</section>
+<section class="slider-section">
+  <h3>Второй фактор</h3>
+  <p class="small text-muted">{% if has_totp %}Приложение-генератор кодов подключено. Код нужен при каждом входе.{% else %}Приложение-генератор кодов не подключено.{% endif %}</p>
+  <a class="btn btn-outline-primary btn-sm" href="/me/security/totp/">{% if has_totp %}Подключить заново{% else %}Подключить{% endif %}</a>
+</section>
+<section class="slider-section">
+  <h3>Резервные коды</h3>
+  <p class="mb-2">Осталось неиспользованных кодов: <strong data-backup-remaining="{{ backup_remaining }}">{{ backup_remaining }} из 10</strong></p>
+  <a class="btn btn-outline-secondary btn-sm mb-2" href="/me/security/backup-codes/">О резервных кодах</a>
+  <form method="post" action="/me/security/backup-codes/new/">
+    {% csrf_token %}
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" id="id_confirm_new_codes" name="confirm" value="1" required>
+      <label class="form-check-label small" for="id_confirm_new_codes">Прежние коды перестанут действовать</label>
+    </div>
+    <button class="btn btn-outline-primary btn-sm" type="submit">Выпустить новый набор</button>
+  </form>
+</section>
+<section class="slider-section">
+  <h3>Устройства и входы</h3>
+  <p class="small text-muted">Где выполнен вход, и что происходило с вашей записью.</p>
+  <a class="btn btn-outline-primary btn-sm me-1" href="/me/security/devices/" hx-get="/me/security/devices/">Устройства</a>
+  <a class="btn btn-outline-primary btn-sm" href="/me/security/history/" hx-get="/me/security/history/">История входов</a>
+</section>

@@ -1,0 +1,19 @@
+<ol class="ps-3">
+  <li>Установите на телефон приложение-генератор кодов (любое, что умеет TOTP).</li>
+  <li>Отсканируйте QR-код или введите ключ вручную.</li>
+  <li>Введите шестизначный код из приложения.</li>
+</ol>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<div class="mb-3 text-center">
+  <img id="totp-qr" class="totp-qr" src="{{ qr }}" width="198" height="198" alt="QR-код для приложения-генератора кодов">
+</div>
+<p class="mb-1 small text-muted">Ключ для ввода вручную:</p>
+<p><code id="totp-secret" class="totp-secret">{{ secret }}</code></p>
+<form method="post" action="{{ post_url }}">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label" for="id_code">Код из приложения</label>
+    <input class="form-control" id="id_code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" required>
+  </div>
+  <button class="btn btn-primary w-100" type="submit">Подтвердить</button>
+</form>

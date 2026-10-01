@@ -216,8 +216,12 @@ def set_profile_in_activation(user: User, *, phone: str, contacts) -> None:
     user.save(update_fields=["phone", "contacts"])
 
 
-def complete_activation(user: User, link, *, ip=None) -> None:
-    """Последний шаг мастера: запись активна, ссылка гаснет (FR-011, FR-013)."""
+def complete_activation(user: User, link=None, *, ip=None) -> None:
+    """Последний шаг мастера: запись активна, ссылка гаснет (FR-011, FR-013).
+
+    `link=None` — активацию завершают из ограниченной сессии (прервали мастер после пароля):
+    действующая ссылка, если она есть, гасится.
+    """
     if not totp.has_confirmed(user) or backup_codes.device_of(user) is None:
         raise AccountError("Подключите второй фактор и сохраните резервные коды.")
     if not user.has_usable_password():
@@ -225,7 +229,10 @@ def complete_activation(user: User, link, *, ip=None) -> None:
     with transaction.atomic():
         user.state, user.activated_at = UserState.ACTIVE, timezone.now()
         user.save(update_fields=["state", "activated_at"])
-        links.consume(link)
+        if link is not None:
+            links.consume(link)
+        else:
+            links.revoke(user, "activation")
         audit.record("user.activated", actor=user, object_type="user", object_id=user.pk,
                      before={"state": UserState.INVITED}, after={"state": UserState.ACTIVE}, ip=ip)
 

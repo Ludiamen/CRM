@@ -60,6 +60,17 @@ def _attempt(user, ip, user_agent, result, device=None) -> LoginAttempt:
                                        platform=platform, device=device, result=result)
 
 
+def _refuse(user, ip, user_agent, result: str) -> None:
+    """Отказ по блокировке (запись или адрес): история входов и журнал событий (FR-044).
+
+    В «стало» — только результат: ни пароля, ни кода, ни почты введённого логина.
+    """
+    with transaction.atomic():
+        _attempt(user, ip, user_agent, result)
+        audit.record("login.failed", object_type="user", object_id=user.pk if user else "",
+                     after={"result": result}, ip=ip)
+
+
 def _account_key(user, login_name: str) -> str:
     return str(user.pk) if user is not None else lockout.account_key_for_login(login_name)
 
@@ -95,11 +106,11 @@ def check_password(email: str, password: str, *, ip: str, user_agent: str = "") 
 
     if lockout.is_ip_locked(ip):
         _dummy_check(password)
-        _attempt(user, ip, user_agent, LoginResult.IP_LOCKED)
+        _refuse(user, ip, user_agent, LoginResult.IP_LOCKED)
         return PasswordStep(False, reason=REASON_IP_LOCKED)
     if lockout.is_account_locked(key) or (user is not None and user.state == UserState.BLOCKED):
         _dummy_check(password)
-        _attempt(user, ip, user_agent, LoginResult.LOCKED)
+        _refuse(user, ip, user_agent, LoginResult.LOCKED)
         return PasswordStep(False, reason=REASON_LOCKED)
 
     if user is None or not user.check_password(password or ""):
@@ -118,10 +129,10 @@ def check_code(user, *, code: str = "", backup_code: str = "", ip: str, user_age
     """Шаг 2: код приложения или резервный код. Неверный код — такая же неудача, как неверный пароль."""
     key = str(user.pk)
     if lockout.is_ip_locked(ip):
-        _attempt(user, ip, user_agent, LoginResult.IP_LOCKED)
+        _refuse(user, ip, user_agent, LoginResult.IP_LOCKED)
         return CodeStep(False, reason=REASON_IP_LOCKED)
     if lockout.is_account_locked(key) or user.state == UserState.BLOCKED:
-        _attempt(user, ip, user_agent, LoginResult.LOCKED)
+        _refuse(user, ip, user_agent, LoginResult.LOCKED)
         return CodeStep(False, reason=REASON_LOCKED)
 
     if backup_code:

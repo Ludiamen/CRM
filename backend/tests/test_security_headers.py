@@ -58,20 +58,23 @@ def test_hsts_nosniff_referrer_policy_headers():
     assert got.get("X-Frame-Options", "").upper() in ("DENY", "SAMEORIGIN") or "frame-ancestors" in got.get("Content-Security-Policy", "")
 
 
-def test_link_pages_send_no_referrer():
-    """FR-012, NFR-007: страницы ссылок (активация, восстановление) и ответы обмена — Referrer-Policy: no-referrer."""
+def test_link_pages_referrer_same_origin():
+    """FR-012, NFR-007: страницы ссылок и ответы обмена — Referrer-Policy: same-origin, как весь портал.
+
+    Код ссылки живёт только во фрагменте адреса, а фрагмент в Referer не уходит никогда; отдельный
+    no-referrer не нужен, а браузер с ним шлёт Origin: null и ломает проверку CSRF (решение Opus 2026-10-01)."""
     user = support.make_employee(state="invited", totp=False)
     link, code = factories.make_link(user, "activation")
     client = support.make_client(ip="198.51.100.171")
-    assert client.get("/activate/")["Referrer-Policy"] == "no-referrer"
+    assert client.get("/activate/")["Referrer-Policy"] == "same-origin"
     exchange = client.post("/activate/exchange/", {"code": code})
-    assert exchange["Referrer-Policy"] == "no-referrer"
-    assert client.get("/activate/profile/")["Referrer-Policy"] == "no-referrer"
+    assert exchange["Referrer-Policy"] == "same-origin"
+    assert client.get("/activate/profile/")["Referrer-Policy"] == "same-origin"
     active = support.make_employee()
     reset_link, reset_code = factories.make_link(active, "reset")
     other = support.make_client(ip="198.51.100.172")
-    assert other.post("/password/reset/exchange/", {"code": reset_code})["Referrer-Policy"] == "no-referrer"
-    assert other.get("/password/reset/")["Referrer-Policy"] == "no-referrer"
+    assert other.post("/password/reset/exchange/", {"code": reset_code})["Referrer-Policy"] == "same-origin"
+    assert other.get("/password/reset/")["Referrer-Policy"] == "same-origin"
 
 
 def test_no_store_on_protected_and_secret_pages():
@@ -121,7 +124,7 @@ def test_no_secret_or_code_in_any_url_or_redirect():
 
     client = support.make_client(ip="198.51.100.179")
     for path in (f"/activate/?code={code}", f"/activate/{code}/", f"/activate/exchange/?code={code}"):
-        got = watch(client.get(path), path)
+        got = watch(client.get(path), "проба " + path.replace(code, "<код>"))  # пробу с кодом шлёт сам тест
         assert got.status_code in (200, 302, 404, 405)
         assert code not in got.get("Location", "") and "/activate/profile/" not in got.get("Location", "")
     done = watch(client.post("/activate/exchange/", {"code": code}), "/activate/exchange/")

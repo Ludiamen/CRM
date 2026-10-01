@@ -1,0 +1,19 @@
+{% if page %}
+<div class="table-wrap">
+  <table class="table table-sm align-middle">
+    <thead><tr><th scope="col">Когда</th><th scope="col">Устройство</th><th scope="col">Адрес</th><th scope="col">Результат</th></tr></thead>
+    <tbody>
+      {% for row in page %}
+      <tr data-history-row data-result="{{ row.result }}" data-at="{{ row.at|date:'c' }}">
+        <td>{{ row.at|date:"d.m.Y" }} {{ row.at|date:"H:i" }}</td>
+        <td>{{ row.browser|default:"—" }}{% if row.platform %}, {{ row.platform }}{% endif %}</td>
+        <td>{{ row.ip|default:"—" }}</td>
+        <td>{{ row.result_title }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">Записей о входах пока нет.</p>
+{% endif %}

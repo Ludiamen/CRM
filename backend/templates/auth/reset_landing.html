@@ -1,0 +1,17 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Восстановление пароля{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Восстановление пароля</h1>
+{% if error %}
+<div class="alert alert-danger" role="alert">{{ error }}</div>
+<p class="mb-0"><a href="/password/forgot/">Запросить ссылку ещё раз</a></p>
+{% else %}
+<p id="exchange-hint" class="text-muted">Откройте ссылку из письма целиком: код в ней проверяется автоматически. Если письма нет, <a href="/password/forgot/">запросите ссылку</a>.</p>
+<form id="exchange-form" method="post" action="/password/reset/exchange/">
+  {% csrf_token %}
+  <input type="hidden" name="code" value="">
+</form>
+<script src="{% static 'js/exchange.js' %}" defer></script>
+{% endif %}
+{% endblock %}

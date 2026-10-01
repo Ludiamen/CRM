@@ -1,0 +1,10 @@
+<a class="slider-backdrop" href="/me/" hx-get="/me/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true" aria-label="Закрыть панель" tabindex="-1"></a>
+<section class="slider-panel" role="dialog" aria-labelledby="slider-title" tabindex="-1">
+  <header class="slider-header">
+    <h2 id="slider-title">{{ slider_title }}</h2>
+    <a class="slider-close" data-slider-close href="/me/" hx-get="/me/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true" aria-label="Закрыть">&times;</a>
+  </header>
+  <div class="slider-body" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">
+    {% include slider_body %}
+  </div>
+</section>

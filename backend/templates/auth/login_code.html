@@ -1,0 +1,28 @@
+{% extends layout %}
+{% block title %}Код подтверждения{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Второй шаг входа</h1>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<form method="post" action="/login/code/">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label" for="id_code">Код из приложения</label>
+    <input class="form-control" id="id_code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" required autofocus>
+    <div class="form-text">Шесть цифр из приложения-генератора кодов.</div>
+  </div>
+  <button class="btn btn-primary w-100" type="submit">Войти</button>
+</form>
+<details class="mt-3"{% if use_backup %} open{% endif %}>
+  <summary>Войти по резервному коду</summary>
+  <form method="post" action="/login/code/" class="mt-2">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label" for="id_backup_code">Резервный код</label>
+      <input class="form-control" id="id_backup_code" name="backup_code" type="text" autocomplete="off" required>
+      <div class="form-text">Каждый резервный код работает один раз.</div>
+    </div>
+    <button class="btn btn-outline-primary w-100" type="submit">Войти по резервному коду</button>
+  </form>
+</details>
+<p class="mt-3 mb-0 text-center"><a href="/login/">Начать вход заново</a></p>
+{% endblock %}

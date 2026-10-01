@@ -78,6 +78,11 @@ def consume(link: OneTimeLink) -> None:
     OneTimeLink.objects.filter(pk=link.pk).update(used_at=timezone.now(), code_encrypted="")
 
 
+def current_link(user, purpose: str) -> OneTimeLink | None:
+    """Действующая ссылка записи по цели (код ещё хранится зашифрованным); письмо достаёт её здесь, а не из очереди."""
+    return _live(OneTimeLink.objects.filter(user=user, purpose=purpose)).exclude(code_encrypted="").order_by("-id").first()
+
+
 def current_activation_link(user) -> OneTimeLink | None:
     return _live(OneTimeLink.objects.filter(user=user, purpose=LinkPurpose.ACTIVATION)).order_by("-id").first()
 

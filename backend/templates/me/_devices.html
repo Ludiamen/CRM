@@ -1,0 +1,29 @@
+{% include "me/_back.html" %}
+{% if devices %}
+<div class="table-wrap">
+  <table class="table align-middle">
+    <tbody>
+      {% for device in devices %}
+      <tr data-device-id="{{ device.pk }}" data-current="{% if device.pk == current_id %}true{% else %}false{% endif %}">
+        <td>
+          <strong>{{ device.browser|default:"Браузер не определён" }}</strong>, {{ device.platform|default:"платформа не определена" }}
+          {% if device.pk == current_id %}<span class="badge text-bg-primary ms-1">Это устройство</span>{% endif %}
+          <div class="small text-muted">Первый вход: {{ device.first_seen|date:"d.m.Y H:i" }}. Последний: {{ device.last_seen|date:"d.m.Y H:i" }}.</div>
+        </td>
+        <td class="text-end">
+          <form class="d-inline" method="post" action="/me/security/devices/{{ device.pk }}/close/">
+            {% csrf_token %}<button class="btn btn-outline-danger btn-sm" type="submit">Закрыть сессию</button>
+          </form>
+          <form class="d-inline" method="post" action="/me/security/devices/{{ device.pk }}/forget/">
+            {% csrf_token %}<button class="btn btn-outline-secondary btn-sm" type="submit">Забыть</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="small text-muted">«Закрыть сессию» завершает сессии устройства, «Забыть» убирает его из списка. В обоих случаях следующий вход с него портал сочтёт входом с нового устройства.</p>
+{% else %}
+<p class="text-muted">Известных устройств пока нет.</p>
+{% endif %}

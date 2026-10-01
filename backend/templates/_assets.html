@@ -1,0 +1,9 @@
+{% load static %}<link rel="icon" href="{% if portal.logo_url %}{{ portal.logo_url }}{% else %}{% static 'theme/logo-default.svg' %}{% endif %}">
+<link rel="stylesheet" href="{% static 'vendor/bootstrap-5.3.8.min.css' %}">
+<link rel="stylesheet" href="{% static 'theme/portal.css' %}">
+<script src="{% static 'js/shell-init.js' %}"></script>
+<script src="{% static 'js/shell.js' %}" defer></script>
+<script src="{% static 'js/htmx-glue.js' %}" defer></script>
+<script src="{% static 'vendor/bootstrap-5.3.8.bundle.min.js' %}" defer></script>
+<script src="{% static 'vendor/htmx-2.0.11.min.js' %}" defer></script>
+<script src="{% static 'vendor/alpine-3.17.4.csp.min.js' %}" defer></script>
