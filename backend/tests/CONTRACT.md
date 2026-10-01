@@ -221,3 +221,82 @@ ADR-0006, решения владельца), но не ослаблять. Зн
 `SimpleWorker` в процессе теста (настоящий рабочий процесс — Playwright и
 T-304); структурная проверка «журнал пишется из сервисов, не из
 представлений»; каталог `deploy/certs/` в `.gitignore`.
+
+## Дополнения исполнителя T-140…T-151 (проход в браузере)
+
+Имён плана и прежнего контракта не меняли. Ниже — разметка и служебные имена, которых e2e-тестам не
+хватало; их реализует Этап 3 (шаблоны T-24x, письма, сервис блокировки). Помощники — `tests/e2e/helpers.py`,
+общие фикстуры — `tests/e2e/conftest.py`.
+
+### Общая разметка и сообщения
+
+| Имя | Что | Тест |
+|---|---|---|
+| `[role=alert]` / `[role=status]` | ошибки форм и отказы (включая «ссылка просрочена / недействительна / уже использована») — `role="alert"`; подтверждения и «если такая запись есть, письмо отправлено» — `role="status"` | все e2e |
+| `[data-portal-name]`, `img[data-portal-logo]` | название и логотип портала на странице входа и в `#top-bar`; `<title>` содержит название; без загруженного логотипа `<img>` показывает знак по умолчанию | test_s14 |
+| сообщения мёртвых ссылок | просроченная и выдуманная — одно и то же сообщение со словами «просроч» и «администратор»; использованная — со словом «использован» и ссылкой `a[href="/login/"]`; ссылка восстановления — «недействит…»; после открытия адрес без `#…` | test_s08, test_s18 |
+| подтверждение в формах | если у меняющей формы есть `input[name=confirm]` (флажок), тесты отмечают его перед отправкой | helpers.submit |
+| `<html lang="ru">` | язык страниц | test_cross_cutting |
+| письмо | заголовок `X-Portal-Template: <MailMessage.template>` (`invitation`, `password_reset`, `account_locked`, `new_device`, `second_factor_reset`, `password_changed`); читается Mailpit по `/api/v1/message/<id>/headers` | helpers.template_of |
+
+### Вход и мастер
+
+| Имя | Что | Тест |
+|---|---|---|
+| `/login/` | ссылка «Забыли пароль?» (`a[href="/password/forgot/"]`); при выходе по бездействию в тексте страницы слово «бездейств» | test_s18, test_s10 |
+| `/login/code/` | поле `input[name=code]`; ссылка «Войти по резервному коду» показывает `input[name=backup_code]` (оба поля в формах с `button[type=submit]`) | helpers.use_backup_code |
+| `/activate/totp/`, `/me/security/totp/` | ключ в base32 — текст элемента `<code id="totp-secret">` (пробелы допустимы), QR — `<img id="totp-qr">`; поле `input[name=code]` | test_s03, test_s07 |
+| `/activate/codes/`, `/me/security/backup-codes/` | десять `<code class="backup-code">`; флажок `input[name=confirm]` и `button[type=submit]` («Я сохранил коды»): без флажка дальше не пускает | test_s03, test_s07 |
+| `/activate/profile/` | поле `phone`; `contacts` — `textarea`/поле; `button[type=submit]` | helpers.walk_activation |
+| ограниченная сессия после пароля без второго фактора | вход ведёт на `/me/security/totp/`; `/`, `/me/`, `/staff/` отвечают 302 туда же | test_s03, test_s07 |
+| `/staff/new/` | GET — страница формы (для рядового сотрудника — 403); поля `email`, `full_name`, `position`, `phone` (не обязательное), роли — флажки `roles`, у каждого `<label>` с названием роли; кнопка «Создать и пригласить»; не больше шести видимых полей | test_s02 |
+
+### Сотрудники, блокировки, роли
+
+| Имя | Что | Тест |
+|---|---|---|
+| `/staff/` | строка — `<tr data-user-id="<id>" data-user-email="<почта>" data-state="invited\|active\|blocked">` со ссылкой `a[href="/staff/<id>/"]`; фильтр `?state=blocked` | test_s01, test_s02, test_s15 |
+| `/staff/<id>/` | ссылка приглашения — текст элемента `[data-invitation-link]`; состояние письма — `[data-mail-status="queued\|sent\|failed"]`; формы `…/invite/`, `…/reset-2fa/`, `…/block/` (поле `reason`), `…/unblock/`, `…/roles/` (флажки `roles`, значение — id роли, `<label>` — название) с `button[type=submit]` | test_s02, test_s07, test_s12, test_s15 |
+| `/staff/<id>/logins/`, `/me/security/history/` | строки истории — `[data-history-row][data-result="success\|bad_password\|bad_code\|locked\|ip_locked\|backup_code"][data-at="<ISO 8601>"]` по убыванию времени, время в тексте строки по Москве `ЧЧ:ММ` | test_s09, test_s11, test_cross_cutting |
+| `/me/security/devices/`, `/staff/<id>/logins/` | строки устройств — `[data-device-id][data-current="true\|false"]`; формы `form[action$="/close/"]`, `form[action$="/forget/"]` | test_s05, test_s11 |
+| `/staff/locks/` | строка — `[data-lock-kind="account\|ip"][data-lock-target="<id записи \| адрес>"]` с формой POST и кнопкой «Снять блокировку входа» | test_s09 |
+| `/roles/` | строка — `[data-role-id="<id>"][data-role-name="<название>"]`; форма `/roles/new/` и страница роли: `name`, флажки `permissions` (значение — код права, `audit.view` и т. д.), у страницы роли форма удаления `form[action$="/delete/"]` | test_s12, test_s13 |
+| `/me/security/` | ссылки на пароль, устройства, историю, резервные коды; формы `/me/security/logout-everywhere/` и `/me/security/backup-codes/new/`; `data-backup-remaining` | test_s06, test_s10 |
+
+### Журнал, настройки
+
+| Имя | Что | Тест |
+|---|---|---|
+| `/audit/` | форма фильтра `form#audit-filter` (поля `date_from`, `date_to`, `user`, `action`, `object_type`, `object_id`, кнопка «Найти»); «Найти» и пресеты через HTMX обновляют только таблицу — элемент `#audit-filter` остаётся тем же; ссылки пресетов `a[href*="preset=access"]` (и `today`, `roles`, `settings`); заголовок сортировки — `?sort=at\|-at`; строка — `tr[data-event-id][data-action="<код>"][data-at="<ISO 8601>"]` с текстом «было» и «стало»; выгрузка — `a[href*="/audit/export.csv"]` («Выгрузить выбранное», с текущими параметрами); кнопок «Удалить/Изменить» нет, у `/audit/<id>/…` ответ 403/404/405 на POST и DELETE | test_s13 |
+| пресет «Вход и доступ» | события с кодами `login.*`, `logout`, `account.*`, `ip.*`, `totp.*`, `backup_code*`, `invitation.*`, `password.*`, `link.*`, `sessions.*`, `user.*`; ролей, настроек и писем (`role.*`, `security_settings.*`, `portal_settings.*`, `mail.*`) в нём нет; пресет «Права и роли» — `role.*` | test_s13 |
+| `/settings/portal/` | форма `form[action="/settings/portal/"]`: `name`, `logo`, кнопка «Вернуть по умолчанию» — `button[name=reset][value="1"]`; отказ — `[role=alert]` со словами «логотип» или «изображен», для размера — с числом `512` или `1 МБ` | test_s14 |
+| `/settings/security/` | форма `form[action="/settings/security/"]` с полями модели, кнопка `button[type=submit]`; при отказе по границе в `[role=alert]` названа граница числом (длина — 12, бездействие — 5…60) | test_s17 |
+
+### Ключи Valkey и команды стенда
+
+| Имя | Что | Тест |
+|---|---|---|
+| `lock:ip:<ip>` | ключ блокировки адреса (парный `lock:acct:<id>`); вместе с `fail:ip:<ip>` и `accts:ip:<ip>` e2e-фикстура `fresh_counters` удаляет их перед каждым тестом (все проходы идут с одного адреса, неудачи соседних тестов иначе заблокировали бы его) | conftest |
+| `forgot:email:<хеш адреса>`, `forgot:ip:<ip>` | счётчики запросов восстановления (3 письма в час на адрес, 10 в час на IP); имена содержат `forgot:`, фикстура удаляет `*forgot:*`; приставка Django-кэша допустима | test_s18, conftest |
+| `manage.py shell` в контейнере `web` | e2e состаривает ссылку активации (`core.OneTimeLink.expires_at`) и ставит порог бездействия (`core.SecuritySettings.idle_timeout_minutes`, форма не даёт меньше 5 минут); переопределяется `E2E_SHELL_CMD` | helpers.stand_shell |
+| журнал nginx | `docker compose logs --no-color --no-log-prefix nginx` (access_log в stdout) или файл из `E2E_NGINX_LOG_FILE`; в формате `$uri` — в журнале видны пути `/activate…` и `/password/reset…` | test_cross_cutting |
+| круг по браузеру | `create_first_admin` отказывает на непустой базе, поэтому проход идёт кругами chromium → firefox → edge, в начале круга база должна быть пуста (`E2E_RESET_CMD` — команда сброса данных стенда, выполняется один раз на круг); внутри круга первым идёт `test_s01_first_admin.py`; остальные тесты берут администратора круга фикстурой `stand_admin` | conftest |
+
+Идёт вне e2e: «письмо ждёт в очереди при недоступном SMTP» (сценарий 2, п. 3) и нагрузка 500 мс при 100
+пользователях — test_mail/test_mail_live и tests/load; порог бездействия формой — test_s17 (форма) и
+test_s10 (механика, 1 минута через базу).
+
+## Решения Opus по вопросам этапа 2в (2026-10-01)
+
+- **Сброс стенда для кругов по браузерам** (`E2E_RESET_CMD`): команда
+  `python manage.py e2e_reset_stand` очищает базу стенда и счётчики Valkey и
+  работает ТОЛЬКО при `E2E_STAND=1` в окружении (задаётся лишь профилем dev
+  compose); без флага отказывает с ненулевым кодом и ничего не трогает.
+  Тест сервера проверяет отказ без флага.
+- **Журнал доступа nginx** — в stdout контейнера (NFR-23), читается
+  `docker compose logs nginx`.
+- Правка сроков ссылок и порога бездействия через `manage.py shell` в
+  контейнере `web` — допустима только в приёмочных тестах стенда.
+- Заголовок письма `X-Portal-Template` (имя шаблона, без персональных
+  данных) и ключи Valkey `lock:ip:`, `forgot:email:<хеш>`, `forgot:ip:` —
+  принимаются как контракт этапа 3.
