@@ -79,6 +79,7 @@ services:
     working_dir: /app/backend
     volumes:
       - ../backend:/app/backend
+      - ../deploy:/app/deploy:ro   # тесты каркаса и развёртывания (T-100, T-118) читают deploy/
       - ./run-tests.sh:/run-tests.sh:ro
       - test-venv:/opt/venv
     entrypoint: ["sh", "/run-tests.sh"]
