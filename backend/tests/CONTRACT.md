@@ -157,3 +157,67 @@ ADR-0006, решения владельца), но не ослаблять. Зн
 состояние, из которого её заблокировали: `invited` остаётся `invited`
 (ссылка активации при блокировке погашена — нужна новая), `active` —
 `active`.
+
+## Дополнения исполнителя T-111…T-119 (новые имена)
+
+Имён плана и прежнего контракта не меняли; ниже — только то, чего в них не было.
+
+### Маршруты, параметры, разметка
+
+| Имя | Что | Тест |
+|---|---|---|
+| `/me/security/devices/<id>/close/`, `/me/security/devices/<id>/forget/` | POST: закрыть сессии устройства (следующий вход с него — снова новое устройство) и «забыть» устройство; чужое устройство — 403/404 без изменений | test_devices |
+| `/me/security/history/` | GET: история входов своя, по убыванию времени, с неудачами; время по Москве (`ЧЧ:ММ`, дата `ДД.ММ.ГГГГ` или «2 октября 2026») | test_devices, test_shell, test_security_headers |
+| кука устройства | имя не фиксируется: единственная кука кроме сессии и CSRF; `HttpOnly`, `Secure`, `SameSite=Lax`, `max-age` ≥ 30 дней; `KnownDevice.device_key_hash` — 64 hex, значение куки в базе не лежит | test_devices, test_security_headers |
+| параметры `/audit/` и `/audit/export.csv` | `date_from`, `date_to` (ГГГГ-ММ-ДД, по Москве), `user` (id), `action`, `object_type`, `object_id`, `preset` (`today`, `access`, `roles`, `settings`), `sort` (`at`, `-at`, `action`, `-action`; по умолчанию `-at`); строка таблицы — `data-event-id="<id>"`; выгрузка — `text/csv`, `Content-Disposition: attachment`, ячейки на `=+-@` с апострофом | test_audit |
+| `/settings/portal/` | POST `name`, файл `logo`, `reset=1` («Вернуть по умолчанию»); отказ — 200 с текстом о логотипе (граница 512 px / 1 МБ называется), успех — 302; `PortalSettings.logo.url` начинается с `/media/`, отдаётся с `nosniff` и типом `image/png` или `image/jpeg`, выводится только `<img>` | test_portal_settings |
+| событие `portal_settings.updated` | `before`/`after` с ключами `name` и `logo`; у логотипа значение содержит «заменён» | test_portal_settings |
+| оболочка | левое меню `<nav id="main-menu">`, пункт — `<span class="menu-icon">` и `<span class="menu-label">`; кнопка режима `data-menu-toggle`; ключ `localStorage` — `menu-icons-only` (скрипт — внешний файл в `static/`, не vendor); верхняя панель `<header id="top-bar">` (название, `<img>` логотипа, ссылки `/me/`, `/me/security/`, форма POST `/logout/`); inline-скриптов, `on*=` и `style=` нет | test_shell |
+| `/health/` | GET без входа: 200, тело короче 120 байт, без версий и названий служб; POST — 405 | test_shell |
+| `<meta name="htmx-config">` | JSON с `allowEval: false`, `includeIndicatorStyles: false` | test_security_headers |
+| заголовки | CSP: `script-src`/`default-src` без `'unsafe-inline'`, `'unsafe-eval'`, `*`, `data:`, внешних адресов; `style-src` без `'unsafe-inline'`; `object-src 'none'`; HSTS ≥ 31536000 (для запроса с `X-Forwarded-Proto: https`); `Referrer-Policy: same-origin`, а на `/activate/…`, `/password/reset/…` и ответах обмена — `no-referrer`; `Cache-Control: no-store` на защищённых страницах и страницах ввода секретов | test_security_headers |
+| `/settings/mail-log/` | показывает адресата, шаблон, статус и текст `MailAttempt.error` (без секретов) | test_mail |
+
+### Службы, команды, письма
+
+| Имя | Что | Тест |
+|---|---|---|
+| `apps.core.services.retention.purge_login_history() -> int`, `purge_expired_links()`, `purge_expired_sessions()` | ночные очистки; первая удаляет `LoginAttempt` старше `login_history_days` и возвращает число; журнал событий не трогают ни они, ни что-либо иное; зарегистрированы в `config/cron.py` вызовами `register(<функция>, …)` | test_devices, test_audit, test_deploy_files |
+| задание очереди `mail` | `Retry(max=11, interval=[60, 300, 900, 3600] + [10800]*7)` (`job.retries_left == 11`, `job.retry_intervals`), `failure_callback` задан; единственный аргумент — номер письма, `kwargs` пусты; первая попытка — сразу, не отложена; `MailMessage.attempts` растёт на каждой попытке, `last_error` — текст ошибки без секретов; смена статуса пишет `mail.status_changed` (`object_id` — номер письма, `before["status"]`, `after["status"]`) | test_mail, test_mail_live |
+| письма | текст и `Subject` по-русски, название портала в теме или тексте; время письма «о новом устройстве» — Москва, `ЧЧ:ММ` и дата, браузер, платформа, адрес, указание «закрыть сессию» и «сменить пароль», ссылок нет; ссылка активации `PORTAL_URL/activate/#<код>` — только в приглашении, `PORTAL_URL/password/reset/#<код>` — только в восстановлении | test_mail, test_devices |
+| рабочий процесс тестов | `tests/support_mail.py`: `deliver()` — `rq.SimpleWorker` в процессе теста (отдельный процесс не видит данных теста), `break_smtp(settings)`, `run_scheduler_step()`, `make_due(job)` | test_mail, test_mail_live |
+| `rotate_field_keys` | читает `settings.FIELD_ENCRYPTION_KEYS` при вызове; при шифротексте, не открывающемся ни одним ключом, — `CommandError` и ни одна строка не меняется (одна транзакция); вывод не содержит ключей и кодов | test_field_keys |
+| ключи настроек безопасности | таблица границ из «Решений Opus»: при отказе в ответе (200) названа нарушенная граница числом, значения и журнал не меняются; форма сохраняется целиком или не сохраняется; нечисловое и дробное — отказ | test_security_settings_bounds |
+
+### Файлы развёртывания (test_deploy_files)
+
+| Имя | Что |
+|---|---|
+| `deploy/nginx.conf` | `set_real_ip_from` с `${TRUSTED_PROXIES}` или адресами (не `0.0.0.0/0`, не `all`), `real_ip_header X-Forwarded-For`, `real_ip_recursive on`; в Django `X-Forwarded-For $remote_addr`; `X-Forwarded-Proto` только значением-переменной (`$scheme`…), не константой; `location /media/` с `add_header X-Content-Type-Options "nosniff" always;`; свой `log_format` без `$request`, `$request_uri`, `$args`, `$query_string`, `$http_cookie`, `$http_authorization`, `$request_body`, `$http_referer` (путь — `$uri`), `access_log` использует его; `listen … ssl`, `ssl_certificate` и `ssl_certificate_key` в `/etc/nginx/certs/`, `ssl_protocols` только TLSv1.2/1.3, `return 301 https://` для HTTP |
+| `deploy/dev-cert.sh` | исполняемый, `set -e…`, `openssl req -x509`, `subjectAltName` с `127.0.0.1`, пишет в `deploy/certs/` |
+| `deploy/.gitignore` | строка `certs/` |
+| `deploy/docker-compose.yml` | сервисы `web`, `worker`, `scheduler`, `nginx`, `postgres`, `valkey`, `mailpit`; `profiles: ["dev"]` только у `mailpit`; `worker`: `rq worker --with-scheduler … mail`; `scheduler`: `rq cron config.cron` без `--with-scheduler`; `web`: `gunicorn` + `uvicorn_worker.UvicornWorker` + `config.asgi` (compose или `Dockerfile`); у `nginx` — `./certs:/etc/nginx/certs` и `127.0.0.1:8031:`; порты postgres и valkey наружу не публикуются |
+| закрытые ключи | в `deploy/` и `backend/` нет `*.key`, `*.pem`, `*.p12` и текста `-----BEGIN … PRIVATE KEY-----` вне `deploy/certs/` |
+
+## Решения Opus по вопросам этапа 2б (2026-10-01)
+
+**Цепочка прокси: прокси администратора → наш nginx → Django.** Один список
+`TRUSTED_PROXIES` (адреса и сети CIDR через запятую) содержит адреса прокси
+администратора и внутреннюю сеть docker compose, в которой стоит наш nginx.
+- nginx: `set_real_ip_from` по каждому элементу списка, `real_ip_header
+  X-Forwarded-For`, `real_ip_recursive on`; в Django передаёт
+  `X-Forwarded-For $remote_addr` — один, уже восстановленный адрес клиента.
+- Django: если `REMOTE_ADDR` (наш nginx) входит в список, адрес клиента —
+  последний недоверенный адрес из `X-Forwarded-For`; иначе — `REMOTE_ADDR`.
+  Список понимает и адреса, и сети CIDR.
+- Без внутренней сети в списке Django увидел бы адрес nginx у всех клиентов,
+  без адреса прокси администратора — его адрес у всех клиентов; оба случая
+  сломали бы блокировку по адресу. Тест развёртывания проверяет, что в
+  `.env.example` и в nginx список не пуст и не `0.0.0.0/0`.
+
+**Остальное из итога исполнителя T-111…T-119 принимается:** имена
+маршрутов устройств и параметров журнала; «Закрыть сессию» и «Забыть
+устройство» оба делают следующий вход с него «новым»; почтовые тесты на
+`SimpleWorker` в процессе теста (настоящий рабочий процесс — Playwright и
+T-304); структурная проверка «журнал пишется из сервисов, не из
+представлений»; каталог `deploy/certs/` в `.gitignore`.
