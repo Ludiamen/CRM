@@ -146,7 +146,9 @@ def test_ip_thresholds_editable_in_settings():
     """FR-036, FR-027: порог, минимум записей, окно и срок блокировки адреса меняются в настройках безопасности."""
     admin = support.logged_in(support.make_admin(), ip="198.51.100.34")
     done = support.post_security_settings(admin, ip_lock_limit=6, ip_lock_min_accounts=2, ip_lock_window_minutes=5,
-                                          ip_lock_minutes=7, account_lock_limit=100)
+                                          ip_lock_minutes=7)
+    # account_lock_limit не трогаем: граница формы — 3…5 (CONTRACT.md), а записи
+    # ниже набирают не больше трёх неудач и не блокируются при значении по умолчанию 5
     assert done.status_code == 302
     one, two = support.make_employee(), support.make_employee()
     for i in range(5):

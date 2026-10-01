@@ -27,6 +27,14 @@ class ТестЗаглушек(unittest.TestCase):
         self.assertTrue(cs.похоже_на_заглушку("***"))
         self.assertTrue(cs.похоже_на_заглушку("${DB_PASSWORD}"))
 
+    def test_путь_и_адрес_не_секрет(self):
+        self.assertTrue(cs.похоже_на_заглушку("/me/security/password/"))
+        self.assertTrue(cs.похоже_на_заглушку("https://portal.example.invalid/reset/"))
+        self.assertEqual(cs.проверить_строку('PASSWORD_URL = "/me/security/password/"'), [])
+        # пароль в адресе базы по-прежнему ловится
+        dsn = "postgres://user:" + "S3cr3tValue" + "@db:5432/x"
+        self.assertNotEqual(cs.проверить_строку("DATABASE_URL = " + chr(34) + dsn + chr(34)), [])
+
     def test_выражение_шаблона_заглушка(self):
         self.assertTrue(cs.похоже_на_заглушку("{{ csrf_token }}"))
         строка = "hx-headers='{\"X-CSRFTok" + "en\": \"{{ csrf_token }}\"}'"

@@ -53,15 +53,23 @@ INSTALLED_APPS = [
 # Встроенной админки Django нет: администрирование — свой раздел с проверкой
 # прав и журналом (PLAN-001, «Решения плана»).
 
+# Миграции django_rq читают справочник типов из алиаса default (crm_app), а схему создаёт
+# crm_owner (алиас migrate): на пустой базе они падают. У приложения только неуправляемые
+# модели (панель админки, которой у нас нет), таблиц оно не создаёт.
+MIGRATION_MODULES = {"django_rq": None}
+
 AUTH_USER_MODEL = "core.User"
+LOGIN_URL = "/login/"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.core.middleware.ClientIPMiddleware",
     "csp.middleware.CSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.SessionGuardMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
@@ -125,6 +133,7 @@ SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_HSTS_SECONDS = 31536000
 SECURE_CONTENT_TYPE_NOSNIFF = True
