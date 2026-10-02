@@ -15,10 +15,10 @@ def test_s10_idle_timeout_logs_out_and_back_button_shows_nothing(employee, new_c
     базе командой в контейнере и возвращает 60 в `finally`. Форма и журнал значений — test_s17."""
     acc = employee()
     page = new_context().new_page()
-    helpers.sign_in(page, acc)
-    helpers.set_idle_minutes(1)
+    helpers.set_idle_minutes(1)  # до входа: порог запоминается при создании сессии (спека, сценарий 10.2)
     try:
-        page.goto("/me/security/")  # новая сессия отсчитывает порог от последнего действия
+        helpers.sign_in(page, acc)
+        page.goto("/me/security/")
         time.sleep(75)
         page.goto("/me/")
         page.wait_for_url(re.compile(r"/login/"))

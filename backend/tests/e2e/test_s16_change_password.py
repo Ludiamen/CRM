@@ -12,7 +12,8 @@ def _change(page, current: str, new: str) -> None:
     page.fill("input[name=current_password]", current)
     page.fill("input[name=password1]", new)
     page.fill("input[name=password2]", new)
-    page.click("button[type=submit]")
+    # на полной странице под слайдером виден и профиль со своей кнопкой — жмём кнопку формы пароля
+    page.locator("form:has(input[name=current_password]) button[type=submit]").click()
 
 
 def test_s16_change_password_mail_and_other_sessions_closed(admin_page, employee, mailpit, new_context):

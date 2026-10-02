@@ -1,9 +1,18 @@
-# Стенд портала ИТ-отдела (PLAN-001, «Запуск»). Этап 1: база, Valkey, Mailpit и
-# контейнер тестов. Службы web, worker, scheduler и nginx (с TLS на 8031)
-# добавляются задачами T-262 и T-264.
+# Стенд и установка портала ИТ-отдела (PLAN-001, «Запуск»).
 #
-#   docker compose --profile dev up -d          # postgres, valkey, mailpit
+#   deploy/dev-up.sh                          # сертификат стенда + всё одной командой
+#   docker compose --profile dev up -d --build # то же без выпуска сертификата
 #   docker compose --profile test run --rm test  # pytest на PostgreSQL
+#
+# Портал: https://127.0.0.1:8031/ (nginx со своим самоподписанным TLS, его
+# выпускает dev-cert.sh), ящик Mailpit: http://127.0.0.1:8025/. Профиль dev
+# добавляет Mailpit и службу standtools с E2E_STAND=1 (сброс данных стенда
+# между кругами приёмки: `exec standtools python manage.py e2e_reset_stand`);
+# без профиля dev этого флага нет ни в одной службе.
+#
+# Установка за прокси администратора: NGINX_CONF=./nginx.prod.conf,
+# NGINX_PORT=8080 (nginx слушает HTTP, TLS держит прокси), TRUSTED_PROXIES —
+# адреса прокси администратора; внутренняя сеть compose добавляется сама.
 #
 # Секреты — в deploy/.env (создаётся `python3 tools/make_dev_env.py`, в git не
 # попадает). Порты — только на 127.0.0.1; PostgreSQL и Valkey наружу не
@@ -40,6 +49,107 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  # Образ портала: web, worker, scheduler и standtools собираются из одного Dockerfile.
+  web:
+    build: &portal-build
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: app
+      network: host   # сборка ходит на PyPI с хоста: у bridge при VPN MTU мал
+    image: crm-portal:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RUN_MIGRATIONS: "1"   # миграции под crm_owner (DATABASE_MIGRATE_URL) — только здесь
+      # внутренняя сеть compose (там стоит наш nginx) в списке всегда
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-},${CRM_SUBNET:-172.31.77.0/24}"
+    command: >-
+      gunicorn config.asgi:application --bind 0.0.0.0:8000
+      --worker-class uvicorn_worker.UvicornWorker
+      --workers ${WEB_WORKERS:-4} --timeout 60 --graceful-timeout 30
+      --keep-alive 30 --error-logfile -
+    volumes:
+      - media:/app/media
+      - protected:/app/protected
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
+  # Рабочий процесс: очередь mail; --with-scheduler нужен для пауз между повторами писем.
+  worker:
+    image: crm-portal:local
+    restart: unless-stopped
+    env_file: .env
+    command: rq worker -c config.rq_settings --with-scheduler mail
+    depends_on:
+      web:
+        condition: service_healthy   # схема базы уже мигрирована
+      valkey:
+        condition: service_healthy
+
+  # Ночные задания: rq cron кладёт их в очередь, исполняет worker.
+  scheduler:
+    image: crm-portal:local
+    restart: unless-stopped
+    env_file: .env
+    command: rq cron config.cron -c config.rq_settings
+    depends_on:
+      web:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  nginx:
+    build:
+      <<: *portal-build
+      target: nginx
+    image: crm-portal-nginx:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8031:${NGINX_PORT:-8443}"   # единственный наружный порт портала
+    environment:
+      # список для set_real_ip_from; внутренняя сеть compose — всегда в нём
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-},${CRM_SUBNET:-172.31.77.0/24}"
+      PORTAL_URL: ${PORTAL_URL:?задайте PORTAL_URL в deploy/.env}
+      HEALTH_URL: ${NGINX_HEALTH_URL:-https://127.0.0.1:8443/health/}
+    volumes:
+      - ${NGINX_CONF:-./nginx.conf}:/etc/nginx/nginx.conf.template:ro
+      - ./nginx-render.sh:/docker-entrypoint.d/10-render-conf.sh:ro
+      - ./certs:/etc/nginx/certs:ro
+      - media:/srv/media:ro
+      - protected:/srv/protected:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    healthcheck:
+      # запрос к /health/ с тем же именем хоста, что в PORTAL_URL; самоподписанный сертификат не проверяется
+      test: ["CMD-SHELL", "wget -q --no-check-certificate -O /dev/null --header \"Host: $${PORTAL_URL#*://}\" $$HEALTH_URL"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # Только стенд разработки: команды управления с E2E_STAND=1 (e2e_reset_stand).
+  standtools:
+    image: crm-portal:local
+    profiles: ["dev"]
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      E2E_STAND: "1"
+    command: sleep infinity
+    depends_on:
+      web:
+        condition: service_healthy
 
   mailpit:
     image: axllent/mailpit:v1.31.3
@@ -87,11 +197,17 @@ services:
 networks:
   default:
     driver_opts:
-      # меньше MTU обычных каналов (на машине разработчика выход наружу идёт
-      # через VPN с MTU 1376: при 1500 TLS из контейнеров к PyPI зависает)
-      com.docker.network.driver.mtu: "1360"
+      # MTU сети — параметр: на ВМ общества 1500; на машине разработки выход
+      # наружу идёт через VPN с MTU 1376 и при 1500 TLS из контейнеров к PyPI
+      # зависает, поэтому в deploy/.env разработчика DOCKER_MTU=1360
+      com.docker.network.driver.mtu: "${DOCKER_MTU:-1500}"
+    ipam:
+      config:
+        - subnet: ${CRM_SUBNET:-172.31.77.0/24}   # известная сеть: её адреса — в TRUSTED_PROXIES
 
 volumes:
   postgres-data:
   valkey-data:
   test-venv:
+  media:
+  protected:

@@ -4,6 +4,7 @@
 уже есть — тест падает с подсказкой сбросить данные (E2E_RESET_CMD), а не пропускается.
 """
 import re
+from urllib.parse import urlparse
 import subprocess
 
 from playwright.sync_api import expect
@@ -53,7 +54,7 @@ def test_s01_fresh_install_one_admin_three_roles_activate_and_journal(browser, b
     page.click("button[type=submit]")
     page.wait_for_url(re.compile(r"/activate/totp/"))
     page.goto("/staff/")
-    assert "/staff/" not in page.url, "без второго фактора раздел сотрудников открылся"
+    assert not urlparse(page.url).path.startswith("/staff/"), "без второго фактора раздел сотрудников открылся"
     page.goto("/activate/totp/")
     account.totp_secret = page.locator("#totp-secret").inner_text().strip()
     page.fill("input[name=code]", helpers.totp_for(account.totp_secret))

@@ -125,7 +125,7 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 
 /* --- слайдер (UX-03): панель справа поверх страницы --- */
 .slider-root:empty { display: none; }
-.slider-root { position: fixed; inset: 0; z-index: 1040; display: flex; justify-content: flex-end; }
+.slider-root { position: fixed; inset: var(--top-bar-height) 0 0 0; z-index: 1040; display: flex; justify-content: flex-end; }
 .slider-backdrop { flex: 1 1 0; min-width: 0; background: rgba(10, 20, 40, 0.45); display: block; }
 .slider-panel {
   flex: 0 0 min(560px, 100%); max-width: 100%;

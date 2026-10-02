@@ -1,0 +1,11 @@
+# Контекст сборки образов портала — корень репозитория (deploy/Dockerfile);
+# в образ попадают только backend/ и deploy/ без секретов и тестов.
+*
+!backend
+!deploy
+backend/tests
+**/__pycache__
+**/*.pyc
+deploy/.env
+deploy/certs
+deploy/postgres-init

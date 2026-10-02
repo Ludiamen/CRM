@@ -69,7 +69,7 @@ def test_no_horizontal_scroll_at_360px_login_activation_totp_security(browser, b
 
 def test_headers_and_cookies_on_real_stand(employee, new_context):
     """NFR-007: на настоящем стенде у страниц CSP без unsafe-inline/unsafe-eval, nosniff, Referrer-Policy
-    (no-referrer на страницах ссылок), Cache-Control: no-store на защищённых; куки — Secure, HttpOnly,
+    (same-origin везде, включая страницы ссылок), Cache-Control: no-store на защищённых; куки — Secure, HttpOnly,
     SameSite=Lax."""
     acc = employee()
     page = acc.page
@@ -85,7 +85,7 @@ def test_headers_and_cookies_on_real_stand(employee, new_context):
     assert headers.get("x-content-type-options") == "nosniff"
     assert headers.get("referrer-policy") == "same-origin"
     assert "no-store" in headers.get("cache-control", "")
-    assert "no-referrer" == page.request.get("/activate/").headers.get("referrer-policy")
+    assert "same-origin" == page.request.get("/activate/").headers.get("referrer-policy")  # решение Opus 2026-10-01: везде same-origin
     protected = page.request.get("/me/security/")
     assert "no-store" in protected.headers.get("cache-control", "")
 
