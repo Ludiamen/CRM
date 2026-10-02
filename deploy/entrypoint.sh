@@ -1,7 +1,8 @@
 #!/bin/sh
 # Точка входа образа портала (T-260). Миграции идут под владельцем схемы
 # crm_owner (DATABASE_MIGRATE_URL), сам портал работает под crm_app.
-# RUN_MIGRATIONS=1 ставит compose только у web: миграции выполняет одна служба.
+# RUN_MIGRATIONS=1 ставит compose только у разовой службы migrate; у web, worker
+# и scheduler DATABASE_MIGRATE_URL пуст (PLAN-001 версии 3).
 set -eu
 
 if [ "${RUN_MIGRATIONS:-0}" = "1" ]; then

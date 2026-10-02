@@ -175,7 +175,7 @@ ADR-0006, решения владельца), но не ослаблять. Зн
 | оболочка | левое меню `<nav id="main-menu">`, пункт — `<span class="menu-icon">` и `<span class="menu-label">`; кнопка режима `data-menu-toggle`; ключ `localStorage` — `menu-icons-only` (скрипт — внешний файл в `static/`, не vendor); верхняя панель `<header id="top-bar">` (название, `<img>` логотипа, ссылки `/me/`, `/me/security/`, форма POST `/logout/`); inline-скриптов, `on*=` и `style=` нет | test_shell |
 | `/health/` | GET без входа: 200, тело короче 120 байт, без версий и названий служб; POST — 405 | test_shell |
 | `<meta name="htmx-config">` | JSON с `allowEval: false`, `includeIndicatorStyles: false` | test_security_headers |
-| заголовки | CSP: `script-src`/`default-src` без `'unsafe-inline'`, `'unsafe-eval'`, `*`, `data:`, внешних адресов; `style-src` без `'unsafe-inline'`; `object-src 'none'`; HSTS ≥ 31536000 (для запроса с `X-Forwarded-Proto: https`); `Referrer-Policy: same-origin`, а на `/activate/…`, `/password/reset/…` и ответах обмена — `no-referrer`; `Cache-Control: no-store` на защищённых страницах и страницах ввода секретов | test_security_headers |
+| заголовки | CSP: `script-src`/`default-src` без `'unsafe-inline'`, `'unsafe-eval'`, `*`, `data:`, внешних адресов; `style-src` без `'unsafe-inline'`; `object-src 'none'`; HSTS ≥ 31536000 (для запроса с `X-Forwarded-Proto: https`); `Referrer-Policy: same-origin` на всех страницах (см. «Дополнения… проход 2»); `Cache-Control: no-store` на защищённых страницах и страницах ввода секретов | test_security_headers |
 | `/settings/mail-log/` | показывает адресата, шаблон, статус и текст `MailAttempt.error` (без секретов) | test_mail |
 
 ### Службы, команды, письма
@@ -321,3 +321,14 @@ test_s10 (механика, 1 минута через базу).
 - **Страница входа не повторяет введённую почту** (одинаковый ответ на любой
   отказ, FR-034). Верхняя панель — ссылки и кнопка «Выйти» без выпадающего
   меню; кнопки, не отправляющие форму, — без `type="submit"`.
+
+## Дополнения по проверке PLAN-001 версии 3 (Opus, 2026-10-02)
+
+- **`/media/` в nginx** (`nginx.conf` и `nginx.prod.conf`): regex-location
+  отдаёт только `.png`, `.jpg`, `.jpeg` с типом по расширению и `nosniff`;
+  prefix-location `/media/` — `return 404`. Каталог целиком не отдаётся.
+- **Учётные данные владельца схемы**: миграции выполняет разовая служба
+  compose `migrate` (`RUN_MIGRATIONS=1`, `restart: "no"`), web ждёт её через
+  `service_completed_successfully`; у web, worker и scheduler
+  `DATABASE_MIGRATE_URL: ""`. `DATABASE_MIGRATE_URL` есть у `migrate`,
+  `standtools` и `test`. Тест — test_deploy_files::test_owner_credentials_only_in_one_shot_migrate_service.

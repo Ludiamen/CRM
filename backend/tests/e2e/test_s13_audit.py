@@ -36,6 +36,9 @@ def test_s13_presets_filters_sort_and_csv_export(admin_page, employee, new_conte
 
     # п. 1: пресет «Вход и доступ»
     admin_page.locator('a[href*="preset=access"]').first.click()
+    # пресеты лежат в обновляемом фрагменте: отмеченный пресет значит, что HTMX уже заменил таблицу
+    # (ссылка отмеченного пресета снимает его, поэтому ищем её по названию, а не по адресу)
+    expect(admin_page.locator('.chip-row a[aria-current="true"]', has_text="Вход и доступ")).to_have_count(1)
     expect(admin_page.locator("tr[data-event-id]").first).to_be_visible()
     actions = [r.get_attribute("data-action") for r in admin_page.locator("tr[data-event-id]").all()]
     assert actions and all(a.startswith(ACCESS_PREFIXES) for a in actions), actions

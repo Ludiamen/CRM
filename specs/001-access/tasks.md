@@ -4,7 +4,7 @@ id: TASKS-001
 статус: утверждён
 версия: 1
 зависит_от: PLAN-001
-основан_на: PLAN-001 sha256:dbc3cc961df1c76c02942eb98f5c15a88e2d4a3473d2288bcb451c96a3d4f208
+основан_на: PLAN-001 sha256:df9d5e690e91f852efa0fe2a1aed12315e4c05f1c5c32bc4c350b5d4e3ff4287
 подпись: Максим | 2026-10-01T09:07+03:00 | sha256:6d73012b0ce3326ec53f065895682dd16381c5b22b1f996eb583fcb1a7fa5a7e
 ---
 
@@ -133,7 +133,7 @@ FR-001…055, NFR-001…011); ни одной задачи вне плана з�
 - [x] T-262 [sonnet] дополнить `deploy/docker-compose.yml`: web, worker (`rq worker --with-scheduler`), scheduler (`rq cron config.cron`), nginx; зависимости и проверки здоровья (запрос к `/health/` идёт по `https://127.0.0.1:8031/` с тем же именем хоста, что в `PORTAL_URL`, и без проверки самоподписанного сертификата на стенде); `docker compose --profile dev up` поднимает рабочий стенд на `https://127.0.0.1:8031/` (TLS — по T-264) — deploy/docker-compose.yml; тесты T-118 (test_compose_services_and_dev_profile_mailpit, test_worker_runs_with_scheduler_and_cron_service_present) — (FR-053, NFR-001, NFR-003)
 - [x] T-224 [P] [sonnet] команда `python manage.py rotate_field_keys`: проходит `EncryptedTOTPDevice.key_encrypted` и `OneTimeLink.code_encrypted`, перешифровывает через `MultiFernet.rotate()` порциями в транзакциях, печатает только число записей (ключи и значения не выводит и не пишет в журнал); порядок смены — новый ключ первым, команда, затем старый убирается (PLAN-001 версия 2, «Окружение целиком») — backend/apps/core/management/commands/rotate_field_keys.py; тесты T-119 (test_field_keys.py целиком) — (FR-009, FR-021, NFR-011)
 - [x] T-264 [sonnet] TLS на стенде самим nginx (PLAN-001 версия 2, «Запуск»): `deploy/dev-cert.sh` выпускает самоподписанный сертификат для 127.0.0.1 в каталог вне git (приватный ключ в репозиторий не попадает), dev-конфиг nginx слушает `8031` по HTTPS, HTTP перенаправляет на HTTPS, отдаёт HSTS; заголовок `X-Forwarded-Proto` не подменяется; на проде nginx слушает HTTP за прокси администратора — deploy/dev-cert.sh, deploy/nginx.dev.conf; тесты T-118 (test_dev_cert_script_and_nginx_dev_tls_config), T-150 (test_https_redirect_hsts_and_secure_cookies_on_stand) — (NFR-007)
-- [ ] T-263 [sonnet] зелёный прогон по областям: довести до зелёного T-100…T-151, не ослабляя тестов; каждое изменение теста — только с записью причины в `docs/reviews/TASKS-001.md`; пропусков (`skip`) нет, кроме проекта Edge при его отсутствии — команда `tools/verify.sh`; все тесты Этапа 2 — (проверка вне требований)
+- [x] T-263 [sonnet] зелёный прогон по областям: довести до зелёного T-100…T-151, не ослабляя тестов; каждое изменение теста — только с записью причины в `docs/reviews/TASKS-001.md`; пропусков (`skip`) нет, кроме проекта Edge при его отсутствии — команда `tools/verify.sh`; все тесты Этапа 2 — (проверка вне требований)
 
 ## Этап 4 — финальная проверка
 

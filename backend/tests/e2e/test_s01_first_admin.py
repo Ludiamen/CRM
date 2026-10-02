@@ -75,6 +75,7 @@ def test_s01_fresh_install_one_admin_three_roles_activate_and_journal(browser, b
     names = [r.get_attribute("data-role-name") for r in page.locator("[data-role-id]").all()]
     for role in helpers.DEFAULT_ROLES:
         assert role in names, f"нет начальной роли «{role}»"
+    page.goto("/staff/")  # строка сотрудника — в списке сотрудников, а не на странице ролей
     page.locator(f'tr[data-user-email="{account.email}"] a[href^="/staff/"]').first.click()
     page.wait_for_url(re.compile(r"/staff/\d+/"))
     expect(page.locator("body")).to_contain_text(helpers.ADMIN_ROLE)

@@ -15,7 +15,8 @@ def _forgot(page, email: str) -> str:
     page.wait_for_url(re.compile(r"/password/forgot/"))
     page.fill("input[name=email]", email)
     page.click("button[type=submit]")
-    page.wait_for_load_state("networkidle")
+    # ответ — новая страница на том же адресе: ждём его текст, а не загрузку прежней формы
+    page.locator("[role=status], [role=alert]").first.wait_for()
     return (helpers.status_text(page) + " " + helpers.alert_text(page)).strip()
 
 

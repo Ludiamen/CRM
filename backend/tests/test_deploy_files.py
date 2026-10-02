@@ -62,6 +62,16 @@ def test_nginx_media_nosniff_and_access_log_format():
     media = re.search(r"location\s+(?:\^~\s+)?/media/\s*\{(.*?)\n\s*\}", conf, re.S)
     assert media, "нет location /media/"
     assert re.search(r"add_header\s+X-Content-Type-Options\s+[\"']?nosniff[\"']?\s+always\s*;", media.group(1))
+    for name in ("nginx.conf", "nginx.prod.conf"):
+        text = uncommented(deploy_text(name))
+        # отдаются только PNG и JPEG с типом по расширению, прочее под /media/ — 404 (PLAN-001 версии 3)
+        image = re.search(r"location\s+~\*?\s+\^/media/\(\.\+\\\.\(\?:png\|jpe\?g\)\)\$\s*\{(.*?)\n\s*\}", text, re.S)
+        assert image, f"{name}: нет location /media/ только для png, jpg, jpeg"
+        assert re.search(r"types\s*\{\s*image/png\s+png;\s*image/jpeg\s+jpg\s+jpeg;\s*\}", image.group(1))
+        assert re.search(r"add_header\s+X-Content-Type-Options\s+[\"']?nosniff[\"']?\s+always\s*;", image.group(1))
+        rest = re.search(r"location\s+/media/\s*\{(.*?)\n\s*\}", text, re.S)
+        assert rest and re.search(r"return\s+404\s*;", rest.group(1)), f"{name}: прочее под /media/ должно давать 404"
+        assert "alias /srv/media/;" not in text, f"{name}: каталог /media/ не отдаётся целиком"
     formats = dict(re.findall(r"log_format\s+(\w+)\s+([^;]+);", conf))
     used = re.findall(r"access_log\s+\S+\s+(\w+)", conf)
     assert used and all(name in formats for name in used), "access_log должен использовать свой log_format"
@@ -126,6 +136,19 @@ def test_compose_services_and_dev_profile_mailpit():
         assert "profiles:" not in services[name], f"{name} не должен зависеть от профиля"
     assert "valkey-server" in services["valkey"] and "postgres:17" in services["postgres"]
     assert not re.search(r"ports:\s*\n\s*-\s*[\"']?(?:5432|6379)", services["postgres"] + services["valkey"]), "базы наружу не публикуются"
+
+
+def test_owner_credentials_only_in_one_shot_migrate_service():
+    """Инвариант «аудит-изменений» (PLAN-001 версии 3): учётные данные владельца схемы получают только разовая
+    служба migrate и standtools профиля dev; у web, worker и scheduler DATABASE_MIGRATE_URL пуст, web ждёт миграций."""
+    services = compose_services()
+    migrate = services["migrate"]
+    assert re.search(r"RUN_MIGRATIONS:\s*[\"']?1", migrate)
+    assert re.search(r"restart:\s*[\"']?no", migrate), "migrate — разовая служба"
+    for name in ("web", "worker", "scheduler"):
+        assert re.search(r"DATABASE_MIGRATE_URL:\s*[\"']{2}", services[name]), f"{name}: DATABASE_MIGRATE_URL должен быть пуст"
+        assert "RUN_MIGRATIONS" not in services[name]
+    assert re.search(r"migrate:\s*\n\s*condition:\s*service_completed_successfully", services["web"])
 
 
 def test_worker_runs_with_scheduler_and_cron_service_present():

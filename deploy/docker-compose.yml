@@ -50,7 +50,7 @@ services:
       timeout: 3s
       retries: 20
 
-  # Образ портала: web, worker, scheduler и standtools собираются из одного Dockerfile.
+  # Образ портала: web, migrate, worker, scheduler и standtools собираются из одного Dockerfile.
   web:
     build: &portal-build
       context: ..
@@ -61,7 +61,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      RUN_MIGRATIONS: "1"   # миграции под crm_owner (DATABASE_MIGRATE_URL) — только здесь
+      DATABASE_MIGRATE_URL: ""   # владелец схемы портала не нужен: миграции — служба migrate
       # внутренняя сеть compose (там стоит наш nginx) в списке всегда
       TRUSTED_PROXIES: "${TRUSTED_PROXIES:-},${CRM_SUBNET:-172.31.77.0/24}"
     command: >-
@@ -73,6 +73,8 @@ services:
       - media:/app/media
       - protected:/app/protected
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       valkey:
@@ -84,11 +86,27 @@ services:
       retries: 12
       start_period: 60s
 
+  # Миграции под crm_owner (DATABASE_MIGRATE_URL): выполняются один раз и завершаются,
+  # web ждёт их успеха. Учётные данные владельца схемы есть только здесь и у standtools
+  # (профиль dev): иначе взлом портала обходил бы запрет crm_app менять журнал.
+  migrate:
+    image: crm-portal:local
+    restart: "no"
+    env_file: .env
+    environment:
+      RUN_MIGRATIONS: "1"
+    command: ["true"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # Рабочий процесс: очередь mail; --with-scheduler нужен для пауз между повторами писем.
   worker:
     image: crm-portal:local
     restart: unless-stopped
     env_file: .env
+    environment:
+      DATABASE_MIGRATE_URL: ""
     command: rq worker -c config.rq_settings --with-scheduler mail
     depends_on:
       web:
@@ -101,6 +119,8 @@ services:
     image: crm-portal:local
     restart: unless-stopped
     env_file: .env
+    environment:
+      DATABASE_MIGRATE_URL: ""
     command: rq cron config.cron -c config.rq_settings
     depends_on:
       web:
