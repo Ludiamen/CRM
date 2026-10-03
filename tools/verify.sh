@@ -26,6 +26,7 @@ step "ворота документов и конституции (sdd.py про
 step "тесты инструментов (unittest)" python3 -m unittest discover -s tools -p "test_*.py"
 step "тесты конституции" python3 -m unittest tools/test_constitution.py
 step "сканер секретов (индекс git)" python3 tools/check_secrets.py
+step "реестр источников и снимки (check_sources.py)" python3 tools/check_sources.py
 step "сверка сторонней статики (vendor) с реестром npm" python3 tools/verify_vendor.py
 
 if [ "${1:-}" != "--быстро" ]; then
