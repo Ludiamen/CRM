@@ -153,3 +153,18 @@ def test_user_without_confirmed_device_after_reset_gets_limited_session():
     assert client.get("/me/").status_code == 200
     again = support.make_client(ip="198.51.100.123")
     assert support.post_password(again, user)["Location"].endswith("/login/code/"), "теперь фактор подключён"
+
+
+def test_profile_step_change_written_to_audit_unchanged_not():
+    """FR-044 (этап 4, T-305): шаг «профиль» меняет телефон и контакты записи — это изменение учётной записи,
+    в журнал «user.updated» с «было» и «стало»; тот же профиль без изменений журнал не засоряет."""
+    user, client, _ = begin(phone="+7 900 000-00-07", contacts=[])
+    client.post("/activate/profile/", PROFILE)
+    events = model("core.AuditEvent").objects.filter(action="user.updated", object_id=str(user.pk))
+    assert events.count() == 1
+    event = events.get()
+    assert event.actor_id == user.pk and event.ip == "198.51.100.101"
+    assert event.before == {"phone": "+7 900 000-00-07", "contacts": []}
+    assert event.after == {"phone": PROFILE["phone"], "contacts": ["telegram: @newcomer"]}
+    client.post("/activate/profile/", PROFILE)
+    assert events.count() == 1, "повтор того же профиля — не изменение"

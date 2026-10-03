@@ -62,13 +62,14 @@ services:
     env_file: .env
     environment:
       DATABASE_MIGRATE_URL: ""   # владелец схемы портала не нужен: миграции — служба migrate
+      DATABASE_POOL: "1"         # пул соединений psycopg (ASGI), см. config/settings.py
       # внутренняя сеть compose (там стоит наш nginx) в списке всегда
       TRUSTED_PROXIES: "${TRUSTED_PROXIES:-},${CRM_SUBNET:-172.31.77.0/24}"
     command: >-
       gunicorn config.asgi:application --bind 0.0.0.0:8000
       --worker-class uvicorn_worker.UvicornWorker
       --workers ${WEB_WORKERS:-4} --timeout 60 --graceful-timeout 30
-      --keep-alive 30 --error-logfile -
+      --keep-alive 30 --error-logfile - --no-control-socket
     volumes:
       - media:/app/media
       - protected:/app/protected

@@ -99,6 +99,12 @@ TEMPLATES = [
 # создаёт crm_owner, а запросы идут под crm_app (backend/tests/conftest.py).
 
 DATABASES = {"default": env.db("DATABASE_URL")}
+# Пул соединений psycopg (Django 5.1+): под ASGI постоянные соединения Django
+# советует выключить и брать пул драйвера, иначе каждый запрос открывает новое
+# соединение (fork процесса PostgreSQL и проверка пароля SCRAM). Включается
+# только у web (DATABASE_POOL=1 в compose); CONN_MAX_AGE остаётся 0.
+if env.bool("DATABASE_POOL", default=False):
+    DATABASES["default"].setdefault("OPTIONS", {})["pool"] = True
 if env("DATABASE_MIGRATE_URL", default=""):
     DATABASES["migrate"] = env.db("DATABASE_MIGRATE_URL")
 

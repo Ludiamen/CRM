@@ -44,11 +44,12 @@ RUN DJANGO_SECRET_KEY=collectstatic-only \
 USER portal
 EXPOSE 8000
 ENTRYPOINT ["/app/entrypoint.sh"]
-# web: ASGI-сервер gunicorn с классом из пакета uvicorn-worker
+# web: ASGI-сервер gunicorn с классом из пакета uvicorn-worker; управляющий сокет gunicornc
+# (gunicorn 25.1+, по умолчанию $HOME/.gunicorn) не нужен — выключен
 CMD ["gunicorn", "config.asgi:application", "--bind", "0.0.0.0:8000", \
      "--worker-class", "uvicorn_worker.UvicornWorker", \
      "--workers", "4", "--timeout", "60", "--graceful-timeout", "30", \
-     "--keep-alive", "30", "--error-logfile", "-"]
+     "--keep-alive", "30", "--error-logfile", "-", "--no-control-socket"]
 
 
 FROM nginx:1.27-alpine AS nginx

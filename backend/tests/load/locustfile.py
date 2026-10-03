@@ -1,12 +1,16 @@
 """Нагрузочный прогон NFR-002 (T-117, запускается на Этапе 4, T-304): 100 пользователей на
-списке сотрудников, журнале и истории входов; p95 не больше 500 мс.
+списке сотрудников, журнале и истории входов; p95 каждой из четырёх страниц не больше 500 мс.
 
-Запуск против стенда (https://127.0.0.1:8031):
-    LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 10 -t 2m \
-        --host https://127.0.0.1:8031
+Модель нагрузки (решение владельца 2026-10-03, PLAN-001 версия 4): 100 вошедших сотрудников,
+вход по одному в секунду, пауза между действиями 5–15 с, замер после того, как вошли все
+(`--reset-stats`). Запуск против стенда (https://127.0.0.1:8031):
+    LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+        --reset-stats --host https://127.0.0.1:8031
 
-`creds.csv` — строки `почта,пароль,ключ_TOTP_hex` администраторов стенда (файл вне git, секреты — только ***
-в документах). Код TOTP считается из ключа так же, как у приложения-генератора.
+Замер ёмкости (не критерий): `LOAD_WAIT=1,3` и `-r 10` — около 50 запросов в секунду и 100 входов
+за 10 с. `creds.csv` — строки `почта,пароль,ключ_TOTP_hex` администраторов стенда (файл вне git,
+секреты — только *** в документах), готовит их tests/load/prepare_users.py. Код TOTP считается из
+ключа так же, как у приложения-генератора. Пауза — LOAD_WAIT="мин,макс" в секундах.
 """
 import csv
 import itertools
@@ -41,7 +45,7 @@ def _totp(key_hex: str) -> str:
 class StaffAuditHistoryUser(HttpUser):
     """Вошедший администратор, который листает список сотрудников, журнал и историю входов."""
 
-    wait_time = between(1, 3)
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
 
     def on_start(self):
         self.client.verify = False
@@ -74,10 +78,20 @@ class StaffAuditHistoryUser(HttpUser):
         self.client.get("/me/security/history/", name="/me/security/history/")
 
 
+PAGES = ("/staff/", "/staff/ (HTMX)", "/audit/", "/me/security/history/")
+
+
 @events.quitting.add_listener
 def _check_p95(environment, **_kwargs):
-    total = environment.stats.total
-    p95 = total.get_response_time_percentile(0.95)
-    if total.num_failures or (p95 is not None and p95 > P95_LIMIT_MS):
-        print(f"NFR-002 не выполнено: p95={p95} мс (предел {P95_LIMIT_MS}), ошибок {total.num_failures}", file=sys.stderr)
+    """NFR-002: p95 каждой страницы среза (вход в требование не входит) и ни одной ошибки."""
+    stats = environment.stats
+    over = {}
+    for name in PAGES:
+        entry = stats.entries.get((name, "GET"))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > P95_LIMIT_MS:
+            over[name] = p95
+    if stats.total.num_failures or over:
+        print(f"NFR-002 не выполнено: p95 выше {P95_LIMIT_MS} мс или нет замера {over}, "
+              f"ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1

@@ -168,6 +168,22 @@ def test_web_runs_uvicorn_worker_class_from_uvicorn_worker_package():
     assert re.search(r"config\.asgi(:application)?", text)
 
 
+
+def test_web_gunicorn_control_socket_disabled():
+    """Этап 4: управляющий сокет gunicorn 25.1+ (gunicornc) не нужен и не должен создаваться — флаг в обоих местах запуска."""
+    for text in (compose_services()["web"], deploy_text("Dockerfile")):
+        assert "--no-control-socket" in text
+
+
+def test_database_pool_only_for_web():
+    """NFR-002 (PLAN-001 версия 4): пул соединений psycopg включён у web (ASGI); у worker и scheduler его нет."""
+    services = compose_services()
+    assert re.search(r'DATABASE_POOL:\s*"?1"?', services["web"])
+    for name in ("worker", "scheduler", "migrate"):
+        assert "DATABASE_POOL" not in services[name], name
+    settings_text = (BACKEND_DIR / "config" / "settings.py").read_text(encoding="utf-8")
+    assert re.search(r'env\.bool\("DATABASE_POOL"', settings_text) and '["pool"] = True' in settings_text
+
 def test_cron_registers_history_and_expired_links_and_sessions_cleanup():
     """FR-039, FR-011: config/cron.py регистрирует ночные задания: история входов, просроченные ссылки, просроченные сессии."""
     source = uncommented((BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8"))

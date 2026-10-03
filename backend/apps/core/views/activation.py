@@ -90,7 +90,7 @@ def _profile(request, user, link):
         phone, contacts = request.POST.get("phone", ""), request.POST.get("contacts", "")
         errors = profile_errors(phone, contacts)
         if not errors:
-            accounts.set_profile_in_activation(user, phone=phone, contacts=contacts)
+            accounts.set_profile_in_activation(user, phone=phone, contacts=contacts, ip=request.client_ip)
             request.session[PROFILE_DONE] = True
             return _redirect(_step_url("password"))
     return render_page(request, "activation/profile.html", {"user_obj": user, "errors": errors, "step": 1})

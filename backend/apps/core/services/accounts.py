@@ -210,10 +210,9 @@ def reset_second_factor(user: User, *, actor, ip=None) -> None:
         mail.send("second_factor_reset", user.email, {"full_name": user.full_name}, related_user=user)
 
 
-def set_profile_in_activation(user: User, *, phone: str, contacts) -> None:
-    """Шаг «профиль» мастера активации: телефон и контакты."""
-    user.phone, user.contacts = (phone or "").strip(), parse_contacts(contacts)
-    user.save(update_fields=["phone", "contacts"])
+def set_profile_in_activation(user: User, *, phone: str, contacts, ip=None) -> None:
+    """Шаг «профиль» мастера активации: телефон и контакты; изменение — в журнал, как у профиля (FR-044)."""
+    update_own_contacts(user, phone=phone, contacts=contacts, ip=ip)
 
 
 def complete_activation(user: User, link=None, *, ip=None) -> None:
