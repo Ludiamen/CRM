@@ -13,6 +13,7 @@ import sys
 from datetime import datetime, timedelta, timezone as tz
 
 import pytest
+from django.db import connection
 from django.db.models.signals import pre_save
 
 from tests import factories, support
@@ -280,6 +281,86 @@ def test_audit_filters_by_period_user_action_object_with_presets_and_sort(clock)
     assert desc == sorted(desc, reverse=True)
     fragment = client.get("/audit/?preset=access", **HX).content.decode()
     assert "<html" not in fragment and event_ids(fragment)
+
+
+HX_RESULTS = {**HX, "HTTP_HX_TARGET": "audit-results"}
+
+
+def sql_of(client, path, **headers) -> list[str]:
+    """Тексты SQL, ушедшие в базу за один запрос страницы."""
+    seen = []
+
+    def spy(execute, sql, params, many, context):
+        seen.append(sql)
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(spy):
+        got = client.get(path, **headers)
+    assert got.status_code == 200, path
+    return seen
+
+
+def pager(html: str) -> str:
+    """Нижняя панель журнала: количество, номер страницы, «Назад» и «Вперёд»."""
+    return html.split('aria-label="Страницы журнала"', 1)[1].split("</nav>", 1)[0]
+
+
+def test_audit_counts_selection_only_on_request():
+    """FR-047, NFR-002 (UX-04, п. 6; PLAN-001 «Уточнения версии 4»): показ журнала не считает выборку —
+    внизу «Всего: показать количество»; ссылка с текущими условиями и `count=1` показывает точное число."""
+    from apps.core.services.audit import record
+
+    admin_user = support.make_admin()
+    client = support.logged_in(admin_user, ip="198.51.100.108")
+    for i in range(3):
+        record("role.updated", actor=admin_user, object_type="role", object_id=str(i))
+    for path, headers in (("/audit/", {}), ("/audit/?preset=access", {}), ("/audit/?preset=roles&sort=at", HX_RESULTS)):
+        counted = [sql for sql in sql_of(client, path, **headers) if "COUNT(" in sql.upper() and "core_auditevent" in sql]
+        assert not counted, f"{path}: журнал считает выборку на каждый показ: {counted}"
+    html = client.get("/audit/?preset=roles&sort=at").content.decode()
+    link = re.search(r'<a [^>]*href="([^"]*count=1[^"]*)"[^>]*>показать количество</a>', pager(html))
+    assert link, "внизу журнала нет ссылки «показать количество»"
+    href = link.group(1).replace("&amp;", "&")
+    assert "preset=roles" in href and "sort=at" in href, f"ссылка теряет условия выборки: {href}"
+    roles_total = model("core.AuditEvent").objects.filter(action__startswith="role.").count()
+    assert roles_total >= 3
+    for headers in ({}, HX_RESULTS):
+        shown = client.get(href, **headers).content.decode()
+        assert f"Всего: {roles_total}." in pager(shown) and "показать количество" not in shown
+    assert "<html" not in client.get(href, **HX_RESULTS).content.decode(), "по HTMX обновляется только таблица"
+
+
+def test_audit_pages_forward_and_back_without_total():
+    """FR-047 (PLAN-001 «Уточнения версии 4»): по 50 строк, «Страница N» без «из M»; «Вперёд» — пока за
+    страницей есть строки, «Назад» — со второй; страницы не пересекаются и вместе дают всю выборку;
+    номер за концом выборки и неверный номер — первая страница."""
+    from apps.core.services.audit import record
+
+    admin_user = support.make_admin()
+    client = support.logged_in(admin_user, ip="198.51.100.109")
+    for i in range(105):
+        record("probe.page", actor=admin_user, object_type="probe", object_id=str(i))
+    for i in range(50):
+        record("probe.exact", actor=admin_user, object_type="probe", object_id=str(i))
+
+    def page(action, number):
+        html = client.get(f"/audit/?action={action}&page={number}").content.decode()
+        return pager(html), event_ids(html)
+
+    (nav1, ids1), (nav2, ids2), (nav3, ids3) = (page("probe.page", n) for n in (1, 2, 3))
+    assert (len(ids1), len(ids2), len(ids3)) == (50, 50, 5)
+    every = set(model("core.AuditEvent").objects.filter(action="probe.page").values_list("pk", flat=True))
+    assert not ids1 & ids2 and not ids2 & ids3 and ids1 | ids2 | ids3 == every
+    for nav, number, back, forward in ((nav1, 1, False, True), (nav2, 2, True, True), (nav3, 3, True, False)):
+        assert f"Страница {number}." in nav and " из " not in nav, nav
+        assert (">Назад</a>" in nav, ">Вперёд</a>" in nav) == (back, forward), f"страница {number}: {nav}"
+    forward_href = re.search(r'href="([^"]+)"[^>]*>Вперёд</a>', nav1).group(1).replace("&amp;", "&")
+    assert "page=2" in forward_href and "action=probe.page" in forward_href
+    exact_nav, exact_ids = page("probe.exact", 1)
+    assert len(exact_ids) == 50 and ">Вперёд</a>" not in exact_nav, "ровно 50 строк — следующей страницы нет"
+    for wrong in ("99", "abc", "0", "-3", "1" + "0" * 30):
+        nav, ids = page("probe.page", wrong)
+        assert ids == ids1 and "Страница 1." in nav, f"page={wrong}"
 
 
 def test_audit_csv_export_applies_filter_and_escapes_formulas(clock):

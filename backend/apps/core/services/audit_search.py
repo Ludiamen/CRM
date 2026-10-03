@@ -1,7 +1,8 @@
 """Выборка журнала событий для `/audit/` и `/audit/export.csv` (T-248, FR-047, NFR-002).
 
 Только чтение: журнал пишет `audit.record`, здесь события лишь отбираются и выгружаются. Даты фильтра
-понимаются по московскому времени (текущий часовой пояс проекта). Ячейки CSV, начинающиеся с `=`, `+`,
+понимаются по московскому времени (текущий часовой пояс проекта). Страница выборку не считает: журнал
+хранится годами, а количество выводится только по запросу (`count`; UX-04, п. 6, PLAN-001 версия 4). Ячейки CSV, начинающиеся с `=`, `+`,
 `-`, `@` (и табуляции или возврата каретки), получают апостроф: таблица не должна исполнить их как формулу.
 """
 import csv
@@ -9,13 +10,13 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
-from django.core.paginator import Paginator
 from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.models import AuditEvent, User
 
 PAGE_SIZE = 50
+MAX_PAGE = 100_000  # дальше — первая страница: огромный номер переполнил бы OFFSET
 SORTS = {"at": ("at", "id"), "-at": ("-at", "-id"), "action": ("action", "id"), "-action": ("-action", "-id")}
 DEFAULT_SORT = "-at"
 
@@ -121,8 +122,46 @@ def queryset(filters: Filters):
     return qs.order_by(*SORTS[filters.sort])
 
 
-def page_of(filters: Filters, page=None):
-    return Paginator(queryset(filters), PAGE_SIZE).get_page(page)
+@dataclass(frozen=True)
+class Page:
+    """Страница выборки без общего числа строк: есть ли следующая — видно по лишней строке."""
+    rows: list
+    number: int
+    more: bool  # за страницей есть строки
+
+    def __iter__(self):
+        return iter(self.rows)
+
+    def __len__(self):
+        return len(self.rows)
+
+    def has_next(self) -> bool:
+        return self.more
+
+    def has_previous(self) -> bool:
+        return self.number > 1
+
+    def previous_page_number(self) -> int:
+        return self.number - 1
+
+    def next_page_number(self) -> int:
+        return self.number + 1
+
+
+def page_of(filters: Filters, page=None) -> Page:
+    """Строки страницы `page` (с 1); номер за концом выборки или неверный номер дают первую страницу."""
+    number = _int(page)
+    number = number if number and 0 < number <= MAX_PAGE else 1
+    qs = queryset(filters)
+    rows = list(qs[(number - 1) * PAGE_SIZE:number * PAGE_SIZE + 1])
+    if not rows and number > 1:
+        number, rows = 1, list(qs[:PAGE_SIZE + 1])
+    return Page(rows=rows[:PAGE_SIZE], number=number, more=len(rows) > PAGE_SIZE)
+
+
+def count(filters: Filters) -> int:
+    """Число событий выборки — только по запросу пользователя («показать количество»)."""
+    return queryset(filters).count()
 
 
 def actors():

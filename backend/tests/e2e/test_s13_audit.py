@@ -1,6 +1,7 @@
 """T-147: сценарий 13 — журнал событий (FR-044, FR-045, FR-046, FR-047, NFR-002)."""
 import csv
 import io
+import re
 import secrets
 import statistics
 import time
@@ -68,6 +69,13 @@ def test_s13_presets_filters_sort_and_csv_export(admin_page, employee, new_conte
         assert response.status == 200
         timings.append(time.monotonic() - t)
     assert sorted(timings)[int(len(timings) * 0.95) - 1] < 0.5, f"p95 журнала {statistics.quantiles(timings, n=20)[-1]:.2f} с"
+
+    # количество — по кнопке (UX-04, п. 6; PLAN-001 версия 4): щелчок обновляет только таблицу
+    pager = admin_page.locator('nav[aria-label="Страницы журнала"]')
+    expect(pager).not_to_contain_text(re.compile(r"Всего: \d"))
+    pager.get_by_role("link", name="показать количество").click()
+    expect(pager).to_contain_text(re.compile(r"Всего: \d+\."))
+    assert admin_page.evaluate("document.querySelector('#audit-filter').dataset.mark") == "kept"
 
     # сортировка по времени: по возрастанию и убыванию
     admin_page.goto("/audit/?sort=at")

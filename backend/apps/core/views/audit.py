@@ -3,6 +3,7 @@
 Только просмотр: ни изменения, ни удаления записей журнала нет (FR-045). Фильтры — период, действующее
 лицо, вид действия, объект; пресеты «Сегодня», «Вход и доступ», «Права и роли», «Настройки»; сортировка по
 заголовку. Запрос HTMX с целью `audit-results` обновляет только таблицу — форма фильтра остаётся на месте.
+Количество событий выборки считается только по ссылке «показать количество» (`count=1`; UX-04, п. 6).
 """
 import json
 from urllib.parse import urlencode
@@ -52,6 +53,8 @@ def audit_list(request):
                       "action": "↑" if sort == "action" else "↓" if sort == "-action" else ""},
         "prev_url": "/audit/" + _link(params, sort=shown_sort, page=page.previous_page_number()) if page.has_previous() else "",
         "next_url": "/audit/" + _link(params, sort=shown_sort, page=page.next_page_number()) if page.has_next() else "",
+        "total": audit_search.count(filters) if request.GET.get("count") == "1" else None,
+        "count_url": "/audit/" + _link(params, sort=shown_sort, page=page.number if page.has_previous() else "", count="1"),
         "export_query": _link(params, sort=shown_sort),
         "sync": json.dumps({"preset": filters.preset, "sort": sort}, ensure_ascii=False),
     }

@@ -38,7 +38,7 @@
     </table>
   </div>
   <nav class="grid-footer" aria-label="Страницы журнала">
-    <span class="text-muted small">Всего: {{ page.paginator.count }}. Страница {{ page.number }} из {{ page.paginator.num_pages }}.</span>
+    <span class="text-muted small">Всего: {% if total is None %}<a href="{{ count_url }}" hx-get="{{ count_url }}" hx-target="#audit-results" hx-swap="innerHTML">показать количество</a>{% else %}{{ total }}{% endif %}. Страница {{ page.number }}.</span>
     <span class="d-flex gap-2">
       {% if prev_url %}<a class="btn btn-outline-secondary btn-sm" href="{{ prev_url }}" hx-get="{{ prev_url }}" hx-target="#audit-results" hx-swap="innerHTML" hx-push-url="true">Назад</a>{% endif %}
       {% if next_url %}<a class="btn btn-outline-secondary btn-sm" href="{{ next_url }}" hx-get="{{ next_url }}" hx-target="#audit-results" hx-swap="innerHTML" hx-push-url="true">Вперёд</a>{% endif %}
