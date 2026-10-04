@@ -1,8 +1,8 @@
 ---
 id: REF-SRC
 вид: эталон
-статус: утверждён
-версия: 5
+статус: на-проверке
+версия: 6
 зависит_от: SDD-PROCESS
 подпись: Максим | 2026-09-30T08:43+03:00 | sha256:b072d1f3cc0d04b2ac82cfbd9e432e7d90f03ce01c0fbccab60e590c21ab79c5
 подпись: Максим | 2026-10-01T07:09+03:00 | sha256:a526613c9e64e899d71e00936f99a3f3fc00cc582a28931159030d0de08578d0
@@ -38,6 +38,9 @@ id: REF-SRC
   нет ни «лайков», ни упоминаний, ни форума, почты, типов отсутствий: из 51
   ссылки черновика на неё подтвердились около 15 (в основном про рабочие
   группы), остальные перепривязаны к дистрибутиву.
+- **SRC-362 добавлен 2026-10-04** при подготовке среза 002 (Opus): импорт
+  пользователей из CSV-файла в главном модуле проверка полноты не нашла. Опорные
+  фразы сверены с дистрибутивом дословно.
 - **SRC-104 — документация API для разработчика**, а не поведение для
   пользователя: как источник возможностей открытых линий не используется.
 - **Снимки SRC-538…704 — досъёмка пробелов REF-UX (2026-10-03).** Сняты
@@ -175,6 +178,7 @@ id: REF-SRC
 | SRC-359 | Генератор документов — шаблоны .docx/.xlsx с полями слияния (в т.ч. подпись/печать), привязка к разделам | documentgenerator/lang/ru/install/index.php ($MESS['DOCUMENTGENERATOR_MODULE_DESCRIPTION']); documentgenerator/install/components/bitrix/documentgenerator.placeholders/lang/ru/class.php ($MESS['DOCGEN_PLACEHOLDERS_TYPE_STAMP_TITLE']); documentgenerator/install/components/bitrix/documentgenerator.templates/lang/ru/class.php ($MESS['DOCGEN_TEMPLATE_LIST_PROVIDERS']) | коробка | 2026-09-30 | «Модуль для генерации документов» |
 | SRC-360 | Открытые линии: перенаправление диалога — оператор передаёт обращение другому сотруднику или в другую линию | imopenlines/lang/ru/lib/model/operatortransfer.php ($MESS['OPERATOR_TRANSFER_ENTITY_TRANSFER_USER_ID_FIELD'], $MESS['OPERATOR_TRANSFER_ENTITY_TRANSFER_LINE_ID_FIELD']); imopenlines/lang/ru/lib/queue/queue.php ($MESS['IMOL_QUEUE_SESSION_TRANSFER_OPERATOR_OFFLINE']) | коробка | 2026-09-30 | «ID пользователя для перенаправления» |
 | SRC-361 | Техподдержка: компоненты модуля — список обращений с фильтром, форма обращения, в которой ведётся дискуссия, мастер создания обращения | support/install/components/bitrix/support.ticket.list/lang/ru/.description.php ($MESS['SUP_LIST_DEFAULT_TEMPLATE_DESCRIPTION']); support/install/components/bitrix/support.ticket.edit/lang/ru/.description.php ($MESS['SUP_EDIT_DEFAULT_TEMPLATE_DESCRIPTION']); support/install/components/bitrix/support.wizard/lang/ru/.description.php ($MESS['SUP_SUPPORT_DESCRIPTION']) | коробка | 2026-10-03 | «Выводит фильтр и список обращений к техподдержке» |
+| SRC-362 | Главный модуль: импорт пользователей из CSV-файла — выбор разделителя полей, привязка к группам пользователей и к разделам информационного блока (блок выбирается администратором из списка всех блоков; что это именно блок структуры компании, экран не говорит, опция «Инфоблок структуры компании» лежит отдельно в intranet), оповещение пользователя письмом, если указан e-mail, пропуск пользователей с уже существующим логином; образец файла (скачивается по ссылке «Пример» на том же экране) — колонки фамилия, имя, отчество, должность, e-mail, пол, рабочий телефон, ICQ, логин и четыре колонки названий разделов (в образце: компания, офис, отдел, служба) | main/lang/ru/admin/user_import.php ($MESS["USER_IMPORT_FROM_CSV"], $MESS["USER_IMPORT_DELIMETER"], $MESS["USER_IMPORT_ATTTACH_GROUP"], $MESS["USER_IMPORT_ATTACH_TO_IBLOCK"], $MESS["USER_IMPORT_SEND_MAIL"], $MESS["USER_IMPORT_IGNORE_DUPLICATE"]); main/admin/sample.csv (строка заголовков: LAST_NAME;NAME;SECOND_NAME;WORK_POSITION;EMAIL;…;IBLOCK_SECTION_NAME_1…IBLOCK_SECTION_NAME_4); intranet/lang/ru/options.php ($MESS["INTR_OPTION_IBLOCK_STRUCTURE"] — «Инфоблок структуры компании») | коробка | 2026-10-04 | «Привязать пользователей к разделам информационного блока» |
 | SRC-276 | Мессенджер: пользователь сам выбирает каналы уведомлений | im/lang/ru/js_im.php (IM_SETTINGS_NC_1_NEW, IM_SETTINGS_NC_2, IM_SETTINGS_NC_4) | коробка | 2026-09-30 | «Получать стандартные уведомления на:» |
 
 ## Снимки экранов тестового портала
