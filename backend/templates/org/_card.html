@@ -1,0 +1,29 @@
+<section class="unit-card card card-body" data-unit-card data-unit-id="{{ unit.pk }}" data-kind="{{ unit.kind }}">
+  <header class="unit-card-head">
+    <h2 class="unit-card-title" data-unit-name>{{ unit.name }}</h2>
+    <span class="text-muted small">{{ unit.get_kind_display|capfirst }}</span>
+  </header>
+  <p class="unit-description" data-unit-description>{{ unit.description|default:"не заполнено" }}</p>
+  <p class="small mb-2">Подчиняется: <span data-unit-parent>{% if parent %}{{ parent.name }}{% else %}нет{% endif %}</span></p>
+  {% if roles %}<p class="small mb-2">Роли узла: {% for role in roles %}<span class="badge text-bg-light" data-unit-role>{{ role.name }}</span> {% endfor %}</p>{% endif %}
+  {% if can_manage %}
+  <div class="unit-actions">
+    <a class="btn btn-outline-primary btn-sm" data-action="unit-edit" href="/structure/{{ unit.pk }}/edit/" hx-get="/structure/{{ unit.pk }}/edit/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">Изменить</a>
+    {% if not unit.is_root %}<a class="btn btn-outline-danger btn-sm" data-action="unit-delete" href="/structure/{{ unit.pk }}/delete/" hx-get="/structure/{{ unit.pk }}/delete/" hx-target="#dialog-root" hx-swap="innerHTML">Удалить</a>{% endif %}
+    {% if total %}{% include "org/_members_add.html" %}{% endif %}
+  </div>
+  {% endif %}
+  <input class="form-control my-3" id="unit-search" name="q" type="search" value="{{ q }}" placeholder="Поиск по ФИО и должности" aria-label="Поиск участников" autocomplete="off" hx-get="/structure/{{ unit.pk }}/" hx-target="#unit-card" hx-trigger="input changed delay:300ms" hx-swap="innerHTML">
+  {% if not total %}
+  <div class="empty-state" data-empty-state="unit">
+    <p>В этом узле пока нет участников.</p>
+    {% if can_manage %}{% include "org/_members_add.html" %}{% endif %}
+  </div>
+  {% elif not found %}
+  <div class="empty-state" data-empty-state="search"><p>Никого не нашли по запросу «{{ q }}». Проверьте написание: поиск идёт по ФИО и должности.</p></div>
+  {% else %}
+  {% if heads %}<section data-section="heads"><h3 class="unit-section-title">Руководители</h3><ul class="member-list">{% for row in heads %}{% include "org/_member_row.html" %}{% endfor %}</ul></section>{% endif %}
+  {% if deputies %}<section data-section="deputies"><h3 class="unit-section-title">Заместители</h3><ul class="member-list">{% for row in deputies %}{% include "org/_member_row.html" %}{% endfor %}</ul></section>{% endif %}
+  {% if members %}<section data-section="members"><h3 class="unit-section-title">Участники</h3><ul class="member-list">{% for row in members %}{% include "org/_member_row.html" %}{% endfor %}</ul></section>{% endif %}
+  {% endif %}
+</section>

@@ -1,0 +1,8 @@
+<li class="member-row" data-member data-user-id="{{ row.user.pk }}" data-mark="{{ row.mark }}">
+  {% include "org/_photo.html" with photo_url=row.photo_url initials=row.initials %}
+  <span class="member-text">
+    <a class="member-name" data-member-name href="/staff/{{ row.user.pk }}/">{{ row.user.full_name }}</a>
+    {% if row.mark == "head" %}<span class="badge text-bg-primary" data-mark-label>Руководитель</span>{% elif row.mark == "deputy" %}<span class="badge text-bg-secondary" data-mark-label>Заместитель</span>{% endif %}
+    <span class="member-position" data-member-position>{{ row.user.position }}</span>
+  </span>
+</li>

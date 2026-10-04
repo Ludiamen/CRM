@@ -1,0 +1,16 @@
+<details class="members-add" data-action="members-add" id="members-add">
+  <summary class="btn btn-primary btn-sm">Добавить сотрудников</summary>
+  <form data-form="members-add" method="post" action="/structure/{{ unit.pk }}/members/">{% csrf_token %}
+    {% if unit.kind == "department" %}
+    <label class="form-label small mb-1" for="members-add-mode">Как добавить</label>
+    <select class="form-select mb-2" id="members-add-mode" name="mode">
+      <option value="transfer">Перевести: убрать из прежнего отдела</option>
+      <option value="concurrent">Добавить по совместительству</option>
+    </select>
+    {% endif %}
+    <label class="form-label small mb-1" for="members-add-q">Найти сотрудника</label>
+    <input class="form-control mb-2" id="members-add-q" name="q" type="search" autocomplete="off" hx-get="/structure/{{ unit.pk }}/candidates/" hx-trigger="input changed delay:300ms" hx-target="[data-candidates]" hx-swap="innerHTML">
+    <div class="candidates" data-candidates></div>
+    <button class="btn btn-primary btn-sm" type="submit">Добавить</button>
+  </form>
+</details>

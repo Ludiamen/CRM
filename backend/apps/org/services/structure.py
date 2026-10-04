@@ -142,7 +142,7 @@ def delete_unit(unit, *, actor, ip=None) -> None:
         if unit.is_root:
             raise OrgError("root_protected", "Корневой отдел нельзя удалить.")
         if unit.memberships.exists() or unit.children.exists():
-            raise OrgError("not_empty", "Удалить можно только пустой узел: без участников и вложенных узлов.")
+            raise OrgError("not_empty", "Узел не пуст: в нём есть участники или вложенные узлы.")  # дополнение 52
         roles = sorted(unit.unit_roles.values_list("role__name", flat=True))
         before = {"kind": unit.kind, "name": unit.name, "parent": unit.parent.name, "roles": roles}
         pk = unit.pk

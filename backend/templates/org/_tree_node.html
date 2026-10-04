@@ -1,0 +1,11 @@
+<li data-unit-id="{{ node.unit.pk }}" data-kind="{{ node.unit.kind }}" data-own="{% if node.own %}true{% else %}false{% endif %}"{% if node.own %} class="unit-own"{% endif %}>
+  {% if node.children %}
+  <details{% if node.open %} open{% endif %}>
+    <summary><span class="unit-toggle" data-unit-toggle><span class="visually-hidden unit-toggle-expand">Развернуть</span><span class="visually-hidden unit-toggle-collapse">Свернуть</span></span>
+      <a class="unit-link{% if node.unit.kind == 'team' %} unit-team{% endif %}" data-unit-link href="/structure/{{ node.unit.pk }}/" hx-get="/structure/{{ node.unit.pk }}/" hx-target="#unit-card" hx-push-url="true"{% if node.selected %} aria-current="true"{% endif %}>{{ node.unit.name }}</a></summary>
+    <ul>{% for node in node.children %}{% include "org/_tree_node.html" %}{% endfor %}</ul>
+  </details>
+  {% else %}
+  <a class="unit-link{% if node.unit.kind == 'team' %} unit-team{% endif %}" data-unit-link href="/structure/{{ node.unit.pk }}/" hx-get="/structure/{{ node.unit.pk }}/" hx-target="#unit-card" hx-push-url="true"{% if node.selected %} aria-current="true"{% endif %}>{{ node.unit.name }}</a>
+  {% endif %}
+</li>

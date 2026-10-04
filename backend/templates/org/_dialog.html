@@ -1,0 +1,18 @@
+<div class="dialog-backdrop">
+  <section class="dialog-panel" data-dialog="{{ dialog }}" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
+    <h2 id="dialog-title" class="dialog-title">{{ dialog_title }}</h2>
+    {% if dialog_error %}<div class="alert alert-danger" role="alert">{{ dialog_error }}</div>{% endif %}
+    <ul class="dialog-consequences">
+      {% for text in consequences %}<li data-consequence>{{ text }}</li>{% endfor %}
+    </ul>
+    <form method="post" action="{{ dialog_action }}" data-form="{{ dialog }}">
+      {% csrf_token %}
+      {% if dialog_confirm %}<input type="hidden" name="confirm" value="1">{% endif %}
+      {% if dialog == "dismiss" %}<input type="hidden" name="next" value="{{ dialog_next }}">{% endif %}
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn {% if dialog_danger %}btn-danger{% else %}btn-primary{% endif %}" type="submit">{{ dialog_submit }}</button>
+        <button class="btn btn-outline-secondary" type="button" data-dialog-cancel>Отмена</button>
+      </div>
+    </form>
+  </section>
+</div>

@@ -189,3 +189,46 @@ body { background: var(--portal-surface); color: var(--portal-text); }
   .history-table .h-device { grid-column: 1 / -1; grid-row: 2; }
   .history-table .h-ip { grid-column: 1 / -1; grid-row: 3; color: var(--portal-muted); font-size: 0.875rem; }
 }
+
+/* --- страница «Структура» (T-2230b): дерево слева, карточка узла справа; под 768 px — друг под другом --- */
+.structure-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (min-width: 768px) { .structure-layout { grid-template-columns: minmax(14rem, 1fr) minmax(0, 2fr); } }
+.unit-tree, .unit-tree ul { list-style: none; margin: 0; padding-left: 1.1rem; }
+.unit-tree { padding-left: 0; }
+.unit-tree li { margin: 0.1rem 0; }
+.unit-tree summary { display: flex; align-items: center; gap: 0.3rem; cursor: pointer; list-style: none; }
+.unit-tree summary::-webkit-details-marker { display: none; }
+.unit-toggle { display: inline-block; width: 1rem; flex: 0 0 1rem; text-align: center; color: var(--portal-muted); }
+.unit-toggle::before { content: "\25B8"; content: "\25B8" / ""; }
+.unit-tree details[open] > summary > .unit-toggle::before { content: "\25BE"; content: "\25BE" / ""; }
+/* скрытая подпись переключателя следует за состоянием <details> без скрипта (R-2230b-1) */
+.unit-tree details[open] > summary > .unit-toggle > .unit-toggle-expand,
+.unit-tree details:not([open]) > summary > .unit-toggle > .unit-toggle-collapse { display: none; }
+.unit-link { text-decoration: none; overflow-wrap: anywhere; }
+.unit-link[aria-current="true"] { font-weight: 700; text-decoration: underline; }
+.unit-team::after { content: " (команда)"; color: var(--portal-muted); font-size: 0.85em; }
+.unit-tree li.unit-own > a, .unit-tree li.unit-own > details > summary > a { background: rgba(13, 110, 253, 0.12); border-radius: 0.3rem; padding: 0 0.3rem; }
+.unit-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; }
+.unit-card-title { font-size: 1.3rem; margin: 0; overflow-wrap: anywhere; }
+.unit-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-start; }
+.unit-section-title { font-size: 1rem; margin: 1rem 0 0.4rem; }
+.member-list { list-style: none; margin: 0; padding: 0; }
+.member-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.4rem 0; border-bottom: 1px solid var(--portal-border); }
+.member-text { display: flex; flex-direction: column; min-width: 0; }
+.member-position { color: var(--portal-muted); font-size: 0.875rem; }
+.person-photo { flex: 0 0 2.5rem; width: 2.5rem; height: 2.5rem; border-radius: 50%; overflow: hidden; display: inline-flex; }
+.person-photo img { width: 100%; height: 100%; object-fit: cover; }
+.person-initials { width: 100%; height: 100%; display: inline-flex; align-items: center; justify-content: center; background: #dbe4f5; color: #28406b; font-weight: 600; font-size: 0.9rem; }
+.empty-state { border: 1px dashed var(--portal-border); border-radius: 0.6rem; padding: 0.9rem 1rem; color: var(--portal-muted); margin-top: 0.75rem; }
+.members-add form { margin-top: 0.5rem; min-width: min(20rem, 100%); }
+.dialog-root:empty { display: none; }
+
+/* --- формы узла и диалоги подтверждения (T-2231): диалог поверх страницы, на узком экране — во всю ширину --- */
+.dialog-root { position: fixed; inset: 0; z-index: 1060; }
+.dialog-backdrop { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(10, 20, 40, 0.45); overflow-y: auto; }
+.dialog-panel { background: #fff; border-radius: 0.6rem; padding: 1.25rem; width: min(32rem, 100%); max-height: 100%; overflow-y: auto; box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.3); }
+.dialog-panel:focus { outline: none; }
+.dialog-title { font-size: 1.15rem; margin: 0 0 0.75rem; overflow-wrap: anywhere; }
+.dialog-consequences { padding-left: 1.2rem; margin: 0 0 1rem; }
+.dialog-consequences li { margin-bottom: 0.35rem; }
+@media (max-width: 767.98px) { .dialog-backdrop { align-items: flex-end; padding: 0; } .dialog-panel { width: 100%; border-radius: 0.6rem 0.6rem 0 0; } }

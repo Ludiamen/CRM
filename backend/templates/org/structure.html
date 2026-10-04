@@ -1,0 +1,24 @@
+{% extends layout %}
+{% block title %}Структура{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Структура</h1>
+  {% if can_manage %}<a class="btn btn-primary" data-action="unit-new" href="/structure/new/?parent={{ unit.pk }}" hx-get="/structure/new/?parent={{ unit.pk }}" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">Создать</a>{% endif %}
+</div>
+<div class="structure-layout" data-structure-layout>
+  <nav class="structure-tree card card-body" aria-label="Дерево структуры">
+    <ul class="unit-tree" data-unit-tree>
+      {% for node in tree %}{% include "org/_tree_node.html" %}{% endfor %}
+    </ul>
+    {% if tree_only_root %}
+    <div class="empty-state" data-empty-state="tree">
+      <p>Структура пока состоит из одного корневого отдела. Создайте первые отделы и команды.</p>
+      {% if can_manage %}<a class="btn btn-outline-primary btn-sm" data-action="unit-new" href="/structure/new/?parent={{ unit.pk }}" hx-get="/structure/new/?parent={{ unit.pk }}" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">Создать</a>{% endif %}
+    </div>
+    {% endif %}
+  </nav>
+  <div id="unit-card" class="structure-card">{% include "org/_card.html" %}</div>
+</div>
+<div id="slider-root" class="slider-root">{% if slider_open %}{% include "org/_slider.html" %}{% endif %}</div>
+<div id="dialog-root" class="dialog-root">{% if dialog_open %}{% include "org/_dialog.html" %}{% endif %}</div>
+{% endblock %}

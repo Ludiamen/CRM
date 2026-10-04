@@ -398,8 +398,8 @@ def test_cannot_dismiss_self_or_last_admin():
     for user in (manager, sole):
         user.refresh_from_db()
         assert user.state == "active" and user.dismissed_at is None and user.dismissed_by is None
-    assert Audit.objects.filter(action__in=("user.dismissed", "membership.removed")).count() == 0
-    assert Audit.objects.count() == events_before
+    assert not Audit.objects.filter(action="user.dismissed", object_id__in=(manager.pk, sole.pk)).exists()
+    assert Audit.objects.count() == events_before, "отказ не пишет ни user.dismissed, ни membership.removed"
     second_admin = support.make_admin()
     done = client.post(dismiss_url(sole))
     assert done.status_code == 302

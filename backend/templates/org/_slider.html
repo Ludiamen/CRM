@@ -1,0 +1,43 @@
+<a class="slider-backdrop" href="{{ slider_close_url }}" aria-label="Закрыть панель" tabindex="-1"></a>
+<section class="slider-panel" role="dialog" aria-labelledby="slider-title" tabindex="-1">
+  <header class="slider-header">
+    <h2 id="slider-title">{{ slider_title }}</h2>
+    <a class="slider-close" data-slider-close href="{{ slider_close_url }}" aria-label="Закрыть">&times;</a>
+  </header>
+  <div class="slider-body">
+    {% with f=unit_form %}
+    <form method="post" action="{{ form_action }}" data-form="{{ form_name }}">
+      {% csrf_token %}
+      {% if f.error %}<div class="alert alert-danger" role="alert">{{ f.error }}</div>{% endif %}
+      {% if f.show_kind %}
+      <div class="mb-3">
+        <label class="form-label" for="id_kind">Вид</label>
+        <select class="form-select" id="id_kind" name="kind">
+          {% for value, title in f.kinds %}<option value="{{ value }}"{% if f.values.kind == value %} selected{% endif %}>{{ title }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="mb-3">
+        <label class="form-label" for="id_name">Название</label>
+        <input class="form-control" id="id_name" name="name" value="{{ f.values.name }}" required maxlength="150" autocomplete="off">
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="id_description">Описание <span class="text-muted">(по желанию)</span></label>
+        <textarea class="form-control" id="id_description" name="description" rows="3">{{ f.values.description }}</textarea>
+      </div>
+      {% if f.show_parent %}
+      <div class="mb-3">
+        <label class="form-label" for="id_parent">Подчиняется</label>
+        <select class="form-select" id="id_parent" name="parent">
+          {% for option in f.options %}<option value="{{ option.id }}"{% if f.values.parent == option.id|stringformat:"s" %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" type="submit">{% if f.unit %}Сохранить{% else %}Создать{% endif %}</button>
+        <a class="btn btn-outline-secondary" href="{{ slider_close_url }}">Отмена</a>
+      </div>
+    </form>
+    {% endwith %}
+  </div>
+</section>

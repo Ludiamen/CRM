@@ -559,8 +559,8 @@ def _slice_routes():
         ("get", "/calendar/upload/", ("calendar.manage",)), ("post", "/calendar/upload/", ("calendar.manage",)),
         ("get", "/calendar/upload/{upload_id}/", ("calendar.manage",)),
         ("post", "/calendar/upload/{upload_id}/", ("calendar.manage",)),
-        ("get", "/calendar/days/2027-03-01/", ("calendar.manage",)),
-        ("post", "/calendar/days/2027-03-01/", ("calendar.manage",)),
+        ("get", "/calendar/days/{day}/", ("calendar.manage",)),
+        ("post", "/calendar/days/{day}/", ("calendar.manage",)),
     ]
     return routes
 
@@ -585,7 +585,7 @@ def test_every_slice_view_requires_declared_permission_403():
     def path_of(template):
         user_id = dismissee.pk if "/dismiss/" in template else victim.pk
         return support_org.route_path(template.replace("{unit_id}", str(unit.pk)).replace(
-            "{import_id}", "999999").replace("{upload_id}", "999999"), user_id)
+            "{import_id}", "999999").replace("{upload_id}", "999999").replace("{day}", "2027-03-01"), user_id)
 
     def passed(response):
         return response.status_code != 403 and not (response.status_code == 302 and "/login/" in response["Location"])

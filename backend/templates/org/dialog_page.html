@@ -1,0 +1,7 @@
+{% extends layout %}
+{% block title %}{{ dialog_title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">{{ target.full_name }}</h1>
+<p><a href="{{ dialog_back_url }}">К карточке сотрудника</a></p>
+<div id="dialog-root" class="dialog-root">{% include "org/_dialog.html" %}</div>
+{% endblock %}

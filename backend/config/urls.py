@@ -3,6 +3,7 @@ from django.urls import include, path
 
 urlpatterns = [
     path("", include("apps.core.urls")),
+    path("", include("apps.org.urls")),
 ]
 
 handler403 = "apps.core.views.pages.forbidden"

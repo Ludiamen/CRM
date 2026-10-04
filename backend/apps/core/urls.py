@@ -1,7 +1,8 @@
 """Маршруты ядра: вход и доступ, профиль, активация, разделы администратора (срез 001)."""
 from django.urls import path, re_path
 
-from .views import activation, audit, auth, locks, me, pages, roles, settings, staff, staff_actions
+from .views import (activation, audit, auth, date_picker, locks, me, pages, photo, roles, settings, staff,
+                    staff_actions)
 
 urlpatterns = [
     path("", pages.home, name="home"),
@@ -20,6 +21,8 @@ urlpatterns = [
     path("activate/<str:step>/", activation.step, name="activate-step"),
     # профиль и «Безопасность»
     path("me/", me.profile, name="me"),
+    path("me/photo/", photo.me_photo, name="me-photo"),
+    path("me/photo/delete/", photo.me_photo_delete, name="me-photo-delete"),
     path("me/security/", me.security, name="me-security"),
     path("me/security/password/", me.password, name="me-password"),
     path("me/security/logout-everywhere/", me.logout_everywhere, name="me-logout-everywhere"),
@@ -42,7 +45,11 @@ urlpatterns = [
     path("staff/<int:user_id>/invite/", staff_actions.staff_invite, name="staff-invite"),
     path("staff/<int:user_id>/unlock/", staff_actions.staff_unlock, name="staff-unlock"),
     path("staff/<int:user_id>/reset-2fa/", staff_actions.staff_reset_2fa, name="staff-reset-2fa"),
+    path("staff/<int:user_id>/photo/delete/", photo.staff_photo_delete, name="staff-photo-delete"),
+    path("staff/<int:user_id>/photo/<uuid:photo_id>/<int:size>/", photo.staff_photo, name="staff-photo"),
     path("staff/<int:user_id>/logins/", staff.staff_logins, name="staff-logins"),
+    # поле даты (T-2230a)
+    path("ui/date-picker/", date_picker.date_picker, name="date-picker"),
     # роли (T-247)
     path("roles/", roles.role_list, name="roles"),
     path("roles/new/", roles.role_new, name="role-new"),
