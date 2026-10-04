@@ -7,7 +7,7 @@
 <div data-home-notices>
   {% for notice in notices %}
   <div class="alert alert-{{ notice.level|default:'warning' }}" role="status" data-notice="{{ notice.key }}"{% if notice.year %} data-year="{{ notice.year }}"{% endif %}>
-    {{ notice.text }}{% if notice.url %} <a href="{{ notice.url }}">Загрузить файл</a>{% endif %}
+    {{ notice.text }}{% if notice.url %} <a href="{{ notice.url }}">{{ notice.link|default:"Перейти" }}</a>{% endif %}
   </div>
   {% endfor %}
 </div>
