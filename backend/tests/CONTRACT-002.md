@@ -328,7 +328,7 @@ T-2140). В колонке «Тесты» стоят файлы или зада�
 | `photo.checked` | `user`, id; `actor=None` | `after`: `file_id`, `result` (`"clean"` или `"quarantine"`), `signature` (только при карантине) | то же |
 | `photo.deleted` | `user`, id | `before`: `files` — список `str(uuid)` удалённых файлов `photo` и `photo_pending` (без файла в карантине), без пустых значений; при отсутствии фото событие не пишется | test_photo::test_photo_delete_by_self_or_accounts_manage_quarantine_kept |
 | `staff_import.completed` | `staff_import`, `str(item.pk)` | `after`: `file_name`, `send_invites`, `created`, `skipped`, `errors`, `units_created`; содержимого файла нет | test_staff_import_run::test_import_completed_event_and_per_object_events_without_file_content |
-| `calendar.settings_changed` | `calendar`, `str(WorkCalendar.pk)` | `before`/`after`: `work_weekdays` (список), `day_start`, `day_end` (`"ЧЧ:ММ"`) | test_calendar::test_calendar_events_settings_year_loaded_day_changed |
+| `calendar.settings_changed` | `calendar`, `str(WorkCalendar.pk)` | `before`/`after`: `work_weekdays` (список целых 0…6; на странице журнала — «Пн, Вт, …», дополнение 62), `day_start`, `day_end` (`"ЧЧ:ММ"`) | test_calendar::test_calendar_events_settings_year_loaded_day_changed |
 | `calendar.year_loaded` | `calendar`, `str(year)` | `before`: `year`, `totals` (год не был загружен — `{"year": <год>, "totals": {}}`, дополнение 34); `after`: `year`, `totals`, `file_name` | то же |
 | `calendar.day_changed` | `calendar`, дата `ГГГГ-ММ-ДД` | `before`: `date`, `kind`; `after`: `date`, `kind` (`""` — обычный день; для дня без записи `before.kind == ""`, дополнение 28) | то же |
 
@@ -370,7 +370,7 @@ T-2140). В колонке «Тесты» стоят файлы или зада�
 |---|---|---|---|
 | `/staff/` | GET `q`, `state`, `role`, `unit`, `sort`, `page` | 200; `state` пустой — «В компании» (все, кроме `dismissed`); `state=dismissed` — «Уволены»; `state=no_unit` — не уволенные без членств; `state=all` — все; для `accounts.manage` ещё `invited`, `active`, `blocked` и `role` (id) — как в срезе 001; `unit` — id узла (члены узла и вложенных); `q` — вхождение в ФИО, должность, почту, телефон, внутренний телефон, место работы, название узла (без учёта регистра и «е/ё»). Значение `state` вне разрешённых смотрящему и неизвестное — как пустое; `role` без `accounts.manage` игнорируется | test_staff_search, test_permissions, test_org_permissions |
 | `/staff/<id>/` | GET | 200 по `staff.view` или `accounts.manage`, иначе 403; обе вкладки в одном ответе (решение 9; вкладка «Безопасность» делится на части `[data-security-part="account"]` — у `accounts.manage` — и `[data-security-part="logins"]` — у `accounts.view_logins`; части без права в ответе нет, `[data-field="state"]` лежит только в первой, дополнение 4); у смотрящего без `accounts.manage` и `accounts.view_logins` вкладки «Безопасность» и её данных в ответе нет; `/staff/<id>/logins/` и действия карточки среза 001 — 403 прежним правам; `/staff/<свой id>/` — по правилам смотрящего, как любая карточка (вкладки по правам, дата рождения — день и месяц); полная карточка с обеими вкладками и полной датой — только `/me/` | test_staff_card, test_org_permissions::test_colleague_sees_no_service_fields_security_tab_absent_and_403 |
-| `/staff/<id>/edit/` | POST `full_name`, `position`, `phone`, `email`, `contacts`, `internal_phone`, `workplace` | 302 на `/staff/<id>/`; присланное `birth_date` — 200 с `[role=alert]`, ничего не меняется; над уволенным — 200 с `[role=alert]` | test_staff_card, test_org_dismissal |
+| `/staff/<id>/edit/` | POST `full_name`, `position`, `phone`, `email`, `contacts`, `internal_phone`, `workplace` | 302 на `/staff/<id>/`; присланное `birth_date` (в том числе пустое) — 200 с `[role=alert]`, ничего не меняется (дополнение 61); над уволенным — 200 с `[role=alert]` | test_staff_card, test_org_dismissal |
 | `/staff/<id>/photo/<uuid>/<512\|96>/` | GET | см. 8.2 | test_photo |
 | `/staff/<id>/photo/delete/` | POST (без полей) | 302 на `/staff/<id>/`; только `accounts.manage`, иначе 403; фото нет — тоже 302, без события (дополнение 49) | test_photo |
 | `/me/` | GET; POST `phone`, `contacts`, `internal_phone`, `workplace`, `birth_date` (ДД.ММ.ГГГГ или ГГГГ-ММ-ДД; пустое — стереть) | свой профиль с обеими вкладками (вкладка «Безопасность» содержит тот же блок, что `/me/security/`: `data-backup-remaining` и т. д.; `/me/security/*` среза 001 не меняются); успех — 302 на `/me/`; неверная дата — 200 с `[role=alert]` | test_staff_card |
@@ -491,7 +491,7 @@ max-age=86400` (исключение из `no-store` — только этот �
 |---|---|---|
 | `[data-calendar-year][data-year][data-loaded="true\|false"]` | контейнер года на `/calendar/` | test_calendar::test_calendar_page_12_months_marks_not_only_color_legend_year_choice |
 | `[data-month="1"…"12"]` | двенадцать месяцев; сетка каждого месяца — как у поля даты (9.6, дополнение 23): `table`, `thead th` с текстами «Пн», «Вт», «Ср», «Чт», «Пт», «Сб», «Вс» по порядку, `tbody tr[data-week]` по 7 `td`, дни вне месяца — пустые `td` без кнопки; неделя с понедельника (дополнение 28) | то же |
-| `td[data-date="ГГГГ-ММ-ДД"][data-day-kind="work\|off\|holiday\|day_off\|workday\|short"]` | ячейка дня (буквы и подписи — решение Opus, G1); внутри `<span class="cal-letter">` (буква: `off` — «В», `holiday` — «П», `day_off` — «Н», `workday` — «Р», `short` — «С»; у `work` буквы нет) и `<span class="visually-hidden">` с подписью (`off` — «выходной», `holiday` — «праздник», `day_off` — «перенесённый выходной», `workday` — «перенесённый рабочий день», `short` — «сокращённый день»; у `work` подписи нет); класс `cal-<вид>` | то же, test_o13 |
+| `td[data-date="ГГГГ-ММ-ДД"][data-day-kind="work\|off\|holiday\|day_off\|workday\|short"]` | ячейка дня (буквы и подписи — решение Opus, G1); внутри `<span class="cal-letter">` (буква: `off` — «В», `holiday` — «П», `day_off` — «Н», `workday` — «Р», `short` — «С»; у `work` буквы нет) и `<span class="visually-hidden">` с подписью (`off` — «выходной», `holiday` — «праздник», `day_off` — «перенесённый выходной», `workday` — «перенесённый рабочий день», `short` — «сокращённый день»; у `work` подписи нет); класс `cal-<вид>`; у `td` дня вне месяца `data-date` нет (дополнение 60) | то же, test_o13 |
 | `[data-legend]` | легенда: по элементу `[data-legend-item="off\|holiday\|day_off\|workday\|short"]` с той же буквой и подписью, что в ячейке | то же |
 | выбор года | `select[name=year]` (форма GET на `/calendar/`) со всеми годами от текущего −1 до текущего +1 и всеми загруженными; каждый `option value="<год>"`; `year` вне 2000…2100 и нечисловой — текущий (решения Opus; граница именно для `/calendar/?year=`, у сетки поля даты — 1900…2100, дополнение 24) | то же |
 | `a[data-day-edit][href="/calendar/days/<дата>/"]` | у `calendar.manage` в загруженном году: ссылка в ячейке; в незагруженном и без права — нет | test_calendar::test_calendar_page_with_staff_view_or_calendar_manage_settings_and_day_edit_need_calendar_manage |
@@ -512,7 +512,7 @@ max-age=86400` (исключение из `no-store` — только этот �
 | `[data-datefield-grid][data-month="ГГГГ-ММ"]` | корень фрагмента сетки; заголовок дней «Пн…Вс» с понедельника; кнопки `[data-datefield-prev]`, `[data-datefield-next]` (`hx-get` на соседний месяц); `select[name=month]` (значения `1`…`12`) и `select[name=year]` — годы от 1900 до текущего +5, год показанной сетки всегда в списке; `table`: `thead th` «Пн»…«Вс» по порядку, `tbody tr[data-week]` по 7 `td`, дни вне месяца — пустые `td` без кнопки (например, 1 ноября 2026, воскресенье, — седьмая ячейка первой недели; дополнения 23, 24) | test_date_field::test_date_picker_grid_monday_first_with_day_marks |
 | день | `<button type="button" data-date="ГГГГ-ММ-ДД" data-day-kind="work\|off\|holiday\|day_off\|workday\|short">N</button>`; у `off`, `holiday`, `day_off`, `workday`, `short` — класс `date-day-<вид>` и `<span class="visually-hidden">` с подписью из 9.5; кнопка есть у каждого дня месяца и не `disabled` (выбрать можно любой, в том числе праздник) | test_date_field::test_any_day_selectable_including_holiday, test_date_picker_without_org_marks_saturday_and_sunday |
 | скрипт | `static/js/datefield.js` подключён тегом `<script src>` с `{% static %}` (внешний файл); в шаблонах и ответах нет `eval`, `new Function`, `onclick=` и подобных встроенных обработчиков; в `datefield.js` нет `eval(` | test_date_field::test_datefield_script_external_delegated_without_eval |
-| выбранный день и фокус | выбранный день — `aria-pressed="true"` у его кнопки; фокус — `:focus` на `button[data-date]`; стрелки влево/вправо — ±1 день, вверх/вниз — ±7 дней (переход через край месяца загружает соседний месяц); PageUp/PageDown — предыдущий/следующий месяц (тот же день или последний день месяца); Home/End — понедельник/воскресенье той же недели; Enter — пишет дату в поле в виде `ДД.ММ.ГГГГ` и закрывает сетку; Esc — закрывает сетку, фокус на кнопку «Выбрать дату» | test_date_field, T-2148 |
+| выбранный день и фокус | выбранный день — `aria-pressed="true"` у его кнопки; фокус — `:focus` на `button[data-date]`; стрелки влево/вправо — ±1 день, вверх/вниз — ±7 дней (переход через край месяца загружает соседний месяц); PageUp/PageDown — предыдущий/следующий месяц (тот же день или последний день месяца); Home/End — понедельник/воскресенье той же недели; Enter — пишет дату в поле в виде `ДД.ММ.ГГГГ` и закрывает сетку; Esc — закрывает сетку, фокус на кнопку «Выбрать дату»; щелчок по дню — как Enter; при открытии сетка показывает текущий месяц по Москве (дополнение 63), фокус — на выбранном дне, если он в этом месяце, иначе на сегодняшнем; смена `select[name=month]` или `select[name=year]` сразу запрашивает сетку (дополнение 59) | test_date_field, T-2148 |
 | контейнер сетки | `id="<id поля ввода>-picker"`; у кнопки открытия `hx-target="#<id поля ввода>-picker"` | test_date_field |
 | `type="date"` | ни в одном файле `templates/**/*.html` нет `type="date"`; у каждого `forms.DateField` портала виджет `PortalDateInput` (тест обходит все модули `apps/*/forms.py` и `apps/*/forms/*.py`) | test_date_field::test_no_native_date_inputs_in_templates, test_every_portal_datefield_uses_portal_widget |
 
@@ -914,3 +914,40 @@ PLAN-002), с адресом источника. Подписи нужны ка�
     строки (помощник `helpers_org.audit_sides`) и проверяет прежнее значение в «было», новое — в
     «стало». Затрагивает: helpers_org, test_o01_structure, test_o03_heads, test_o06_move_delete,
     test_o09_unit_roles, приёмку T-2147 (o12 «было/стало»).
+59. **Поведение сетки поля даты** (вопросы T-2148): смена `select[name=month]` или
+    `select[name=year]` сразу запрашивает сетку выбранного месяца (`hx-get` по событию `change`,
+    `month=ГГГГ-ММ` из обоих списков) и заменяет её — новый `[data-datefield-grid][data-month]`;
+    при открытии сетки фокус — на кнопке выбранного дня (`aria-pressed="true"`), иначе на
+    сегодняшнем дне, если он в показанном месяце, иначе на 1-м числе; щелчок по дню — как Enter:
+    пишет дату в поле в виде `ДД.ММ.ГГГГ` и закрывает сетку (контейнер снова `hidden`).
+    Затрагивает: test_o13_date_field, test_date_field (совместим: щелчок и фокус сервер не проверяет).
+60. **Пустые ячейки сетки** (страница календаря и поле даты): `td` дня вне месяца пустой — без
+    кнопки и без атрибута `data-date`; `data-date` есть только у дней месяца: на странице календаря —
+    у `td[data-date]` дня (§ 9.5), в сетке поля даты — у `button[data-date]` (§ 9.6; уточнено после
+    сверки VE-2a). Поэтому число `[data-date]` на странице календаря года — число дней года (365 или
+    366). Затрагивает:
+    test_o13_date_field, test_calendar, test_date_field.
+61. **`birth_date` в форме администратора:** поле `birth_date` в POST `/staff/<id>/edit/` в любом
+    виде, в том числе пустой строкой, — 200 с `[role=alert]` (`AccountError`), ничего не меняется
+    (дата рождения — только сам сотрудник на `/me/`, FR-134). Затрагивает: test_o10_card_photo,
+    test_staff_card.
+62. **Рабочая неделя в журнале** (находка VE-2b): событие хранит `work_weekdays` списком целых 0…6
+    (§ 6, test_org_audit), а страница журнала и CSV показывают его по-русски: `audit_labels` модуля
+    `org` даёт `values["work_weekdays"]` — `0`→«Пн», `1`→«Вт», `2`→«Ср», `3`→«Чт», `4`→«Пт», `5`→«Сб»,
+    `6`→«Вс»; ядро (`audit_labels.text`) для списка, у поля которого есть `values`, переводит каждый
+    элемент (ключ `values` — `str(элемента)`: в событии целые, ключи — строки) и соединяет через «, » (списки и сейчас выводятся через «, » без скобок, срез 001,
+    audit_labels.py:61–62). Пример «стало»: «Рабочие дни: Пн, Вт, Ср, Чт, Пт, Сб». Сброс стенда в
+    начале круга очищает журнал (`e2e_reset_stand` чистит таблицы `core_*` с обнулением счётчиков id),
+    поэтому внутри круга события одного кода и объекта умещаются на первой странице журнала.
+    Затрагивает: test_o12_week, test_org_audit (совместим: проверяет хранимые целые и наличие
+    `values` для своих полей), Этап 3 (audit_labels ядра и модуля org).
+63. **Месяц при открытии сетки** (находка VE-2a): кнопка «Выбрать дату» всегда несёт
+    `hx-get="/ui/date-picker/?month=<текущий месяц по Москве>"` — значение поля (ни при выводе
+    страницы, ни после выбора) в адрес не попадает: так уже требует test_date_field
+    (test_field_value_not_in_picker_request: в адресе нет года даты рождения), это защищает дату
+    рождения от журналов сервера. Повторное открытие после выбора снова показывает текущий месяц;
+    выбранный день отмечен `aria-pressed="true"`, только если он в показанном месяце; к нужному
+    месяцу пользователь переходит списками месяца и года или кнопками. Фокус при открытии — на
+    выбранном дне, если он в показанном месяце, иначе на сегодняшнем (уточняет дополнение 59).
+    «Сегодня» и «текущий год» в приёмке считать по Москве: `datetime.now(ZoneInfo("Europe/Moscow"))`.
+    Затрагивает: test_o13_date_field, test_date_field (совместим).
