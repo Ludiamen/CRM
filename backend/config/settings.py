@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     "django_otp",
     "django_rq",
     "apps.core",
+    "apps.org",
     "apps.integrations.mail",
 ]
 # Встроенной админки Django нет: администрирование — свой раздел с проверкой
