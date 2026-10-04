@@ -22,7 +22,7 @@ def test_s07_admin_resets_user_reconnects_second_factor_and_mail_sent(admin_page
     assert re.search(r"[А-Яа-я]", mail["Subject"] + mail["Text"])
 
     # п. 5: у самого администратора формы сброса нет
-    admin_page.goto("/staff/")
+    admin_page.goto(f"/staff/?q={stand_admin.email}")  # поиск по почте: список в круге длиннее одной страницы
     admin_page.locator(f'tr[data-user-email="{stand_admin.email}"] a[href^="/staff/"]').first.click()
     helpers.open_security_tab(admin_page)
     expect(admin_page.locator('form[action$="/reset-2fa/"]')).to_have_count(0)

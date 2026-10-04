@@ -29,7 +29,7 @@ def test_s02_admin_creates_employee_and_invitation_arrives(admin_page, mailpit, 
     mail_link = helpers.link_in(mail, "/activate/")
 
     # п. 1: в списке со статусом «приглашён»
-    admin_page.goto("/staff/")
+    admin_page.goto(f"/staff/?q={email}")  # поиск по почте: в круге до s02 приёмка среза 002 заводит много людей
     row = helpers.staff_row(admin_page, email)
     expect(row).to_have_count(1)
     assert row.get_attribute("data-state") == "invited"
@@ -51,7 +51,7 @@ def test_s02_admin_creates_employee_and_invitation_arrives(admin_page, mailpit, 
     form.locator("button[type=submit]").click()
     expect(admin_page.locator("[role=alert]").first).to_be_visible()
     assert "/staff/new/" in admin_page.url
-    admin_page.goto("/staff/")
+    admin_page.goto(f"/staff/?q={email}")
     expect(helpers.staff_row(admin_page, email)).to_have_count(1)
 
     # п. 4: в журнале — создание записи и отправка приглашения

@@ -69,7 +69,7 @@ def test_s12_create_role_assign_permission_effect_next_request(admin_page, emplo
 def test_s12_last_admin_protected_in_ui(admin_page, stand_admin):
     """Сценарий 12, п. 5 (FR-019): у единственного администратора нельзя снять роль «Администратор
     портала» и нельзя его заблокировать; роль остаётся, статус «активен»."""
-    admin_page.goto("/staff/")
+    admin_page.goto(f"/staff/?q={stand_admin.email}")  # поиск по почте: список в круге длиннее одной страницы
     admin_page.locator(f'tr[data-user-email="{stand_admin.email}"] a[href^="/staff/"]').first.click()
     admin_page.wait_for_url(re.compile(r"/staff/\d+/"))
     own_url = admin_page.url
@@ -88,5 +88,5 @@ def test_s12_last_admin_protected_in_ui(admin_page, stand_admin):
         block.locator("[name=reason]").fill("проверка")
         helpers.submit(block)
         expect(admin_page.locator("[role=alert]").first).to_be_visible()
-    admin_page.goto("/staff/")
+    admin_page.goto(f"/staff/?q={stand_admin.email}")
     assert helpers.staff_row(admin_page, stand_admin.email).get_attribute("data-state") == "active"
