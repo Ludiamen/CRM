@@ -242,3 +242,14 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .candidates { max-height: 14rem; overflow-y: auto; margin-bottom: 0.5rem; }
 .candidate { display: block; padding: 0.15rem 0 0.15rem 1.5rem; }
 @media (max-width: 767.98px) { .member-row { flex-wrap: wrap; } .member-menu { margin-left: 0; width: 100%; } }
+
+/* T-2233: список «Сотрудники» — фото 96 px в колонке и строка-блок на узкой ширине (UX-14, NFR-104) */
+.grid-table [data-cell="photo"] .person-photo { width: 2.5rem; height: 2.5rem; }
+@media (max-width: 767.98px) {
+  .grid-table { min-width: 0; }
+  .grid-table thead { display: none; }
+  .grid-table tbody tr { display: block; border-bottom: 1px solid var(--portal-border); padding: 0.5rem 0.25rem; }
+  .grid-table tbody td { display: block; border: 0; padding: 0.1rem 0.5rem; }
+  .grid-table tbody td[data-cell="photo"] { float: left; padding-right: 0.75rem; }
+  .grid-table tbody td[data-cell="name"] { font-weight: 600; }
+}

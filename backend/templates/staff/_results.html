@@ -1,7 +1,7 @@
 <div data-sync-form="staff-filter" data-sync="{{ sync }}">
-  <ul class="chip-row" aria-label="Быстрый выбор по состоянию">
+  <ul class="chip-row" aria-label="Быстрый выбор">
     {% for chip in chips %}
-    <li><a class="chip{% if chip.active %} active{% endif %}" href="{{ chip.url }}" hx-get="{{ chip.url }}" hx-target="#staff-results" hx-swap="innerHTML" hx-push-url="true"{% if chip.active %} aria-current="true"{% endif %}>{{ chip.title }}</a></li>
+    <li><a class="chip{% if chip.active %} active{% endif %}" data-preset="{{ chip.state }}" href="{{ chip.url }}" hx-get="{{ chip.url }}" hx-target="#staff-results" hx-swap="innerHTML" hx-push-url="true"{% if chip.active %} aria-current="true"{% endif %}>{{ chip.title }}</a></li>
     {% endfor %}
   </ul>
   {% if page %}
@@ -9,20 +9,21 @@
     <table class="table table-hover align-middle grid-table">
       <thead>
         <tr>
-          {% for column in columns %}
-          <th scope="col"><a class="sort-link" href="{{ column.url }}" hx-get="{{ column.url }}" hx-target="#staff-results" hx-swap="innerHTML" hx-push-url="true">{{ column.title }}{% if column.mark %} <span aria-hidden="true">{{ column.mark }}</span>{% endif %}</a></th>
+          {% for head in heads %}
+          <th scope="col">{% if head.url %}<a class="sort-link" href="{{ head.url }}" hx-get="{{ head.url }}" hx-target="#staff-results" hx-swap="innerHTML" hx-push-url="true">{{ head.title }}{% if head.mark %} <span aria-hidden="true">{{ head.mark }}</span>{% endif %}</a>{% else %}{{ head.title }}{% endif %}</th>
           {% endfor %}
-          <th scope="col">Роли</th>
         </tr>
       </thead>
       <tbody>
         {% for person in page %}
-        <tr data-user-id="{{ person.pk }}" data-user-email="{{ person.email }}" data-state="{{ person.state }}">
-          <td><a href="/staff/{{ person.pk }}/" hx-get="/staff/{{ person.pk }}/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">{{ person.full_name }}</a></td>
-          <td>{{ person.email }}</td>
-          <td>{{ person.position|default:"—" }}</td>
-          <td>{% if person.state == "active" %}<span class="badge text-bg-success">активен</span>{% elif person.state == "invited" %}<span class="badge text-bg-warning">приглашён</span>{% else %}<span class="badge text-bg-danger">заблокирован</span>{% endif %}</td>
-          <td>{% for item in person.roles.all %}<span class="badge text-bg-secondary me-1">{{ item.name }}</span>{% empty %}<span class="text-muted">нет</span>{% endfor %}</td>
+        <tr data-user-id="{{ person.pk }}" data-user-email="{{ person.email }}"{% if can_manage %} data-state="{{ person.state }}"{% elif person.state == "dismissed" %} data-dismissed="true"{% endif %}>
+          <td data-cell="photo">{% include "partials/_photo.html" with photo_url=person.photo_src initials=person.initials %}</td>
+          <td data-cell="name" class="row-name"><a href="/staff/{{ person.pk }}/" hx-get="/staff/{{ person.pk }}/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">{{ person.full_name }}</a></td>
+          <td data-cell="position">{{ person.position|default:"—" }}</td>
+          {% for head in heads %}{% if head.template %}<td data-cell="{{ head.key }}">{% include head.template %}</td>{% endif %}{% endfor %}
+          <td data-cell="internal-phone">{{ person.internal_phone|default:"—" }}</td>
+          <td data-cell="email">{{ person.email }}</td>
+          {% if can_manage %}<td data-cell="state">{% if person.state == "active" %}<span class="badge text-bg-success">активен</span>{% elif person.state == "invited" %}<span class="badge text-bg-warning">приглашён</span>{% elif person.state == "dismissed" %}<span class="badge text-bg-secondary">уволен</span>{% else %}<span class="badge text-bg-danger">заблокирован</span>{% endif %}</td>{% endif %}
         </tr>
         {% endfor %}
       </tbody>

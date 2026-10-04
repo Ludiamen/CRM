@@ -63,6 +63,11 @@ def photo_path(stored: StoredFile, size: int | None = None) -> pathlib.Path:
     raise ValueError("у чистого файла путь зависит от размера")
 
 
+def initials(full_name: str) -> str:
+    """Первые буквы первых двух слов имени в верхнем регистре; слово одно — одна буква (CONTRACT-002, § 9.4)."""
+    return "".join(word[0] for word in (full_name or "").split()[:2]).upper()
+
+
 def photo_url(user: User, size: int) -> str | None:
     """Адрес чистого `photo` сотрудника (номер файла в адресе меняется вместе с фото) или `None`."""
     if size not in SIZES:

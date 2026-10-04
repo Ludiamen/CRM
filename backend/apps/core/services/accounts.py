@@ -7,7 +7,7 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
-from django.db.models import Q, Value
+from django.db.models import Func, Q, Value
 from django.db.models.functions import Lower, Replace
 from django.utils import timezone
 
@@ -75,19 +75,43 @@ def pickable(query: str = ""):
     return qs.order_by("full_name", "pk")
 
 
-def list_staff(*, state: str | None = None, role_id=None, query: str | None = None, sort: str | None = None):
-    """Список для `/staff/`: фильтры по состоянию и роли, поиск по ФИО и почте, сортировка из белого списка."""
-    qs = User.objects.all().prefetch_related("roles")
-    if state in {s.value for s in UserState}:
-        qs = qs.filter(state=state)
+SEARCH_FIELDS = ("full_name", "position", "email", "phone", "internal_phone", "workplace")
+
+
+def fold(text: str) -> str:
+    """Строка поиска в виде, с которым сравнивает база: нижний регистр, «ё» -> «е»."""
+    return (text or "").strip().lower().replace("ё", "е")
+
+
+def directory_staff(*, apply_preset=None, role_id=None, query: str | None = None, extra_search=None, filters=(),
+                    sort: str | None = None):
+    """Список для `/staff/` среза 002 (FR-130, FR-131).
+
+    `apply_preset` — функция пресета (queryset -> queryset); `filters` — пары (функция, значение) расширений;
+    `extra_search` — условие `Q` расширения, которое соединяется ИЛИ с шестью полями ядра. Каждое поле сравнивается
+    как `translate(lower(поле), 'ё', 'е')` с приведённой строкой; значение передаётся параметром запроса.
+    """
+    qs = User.objects.select_related("photo")
+    if apply_preset is not None:
+        qs = apply_preset(qs)
     if role_id not in (None, ""):
         try:
             qs = qs.filter(roles__pk=int(role_id))
         except (TypeError, ValueError):
             qs = qs.none()
-    if query and query.strip():
-        needle = query.strip()
-        qs = qs.filter(Q(full_name__icontains=needle) | Q(email__icontains=needle))
+    for apply, value in filters:
+        qs = apply(qs, value)
+    needle = fold(query or "")
+    if needle:
+        names = {f"_s_{name}": Func(Lower(name), Value("ё"), Value("е"), function="translate")
+                 for name in SEARCH_FIELDS}
+        qs = qs.annotate(**names)
+        condition = Q()
+        for alias in names:
+            condition |= Q(**{f"{alias}__contains": needle})
+        if extra_search is not None:
+            condition |= extra_search(needle)
+        qs = qs.filter(condition)
     order = sort or "full_name"
     if order.lstrip("-") not in SORTABLE:
         order = "full_name"

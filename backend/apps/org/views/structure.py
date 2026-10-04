@@ -20,15 +20,10 @@ def _fold(text: str) -> str:
     return (text or "").casefold().replace("ё", "е")
 
 
-def _initials(full_name: str) -> str:
-    """Первые буквы первых двух слов имени в верхнем регистре (CONTRACT-002, § 9.4)."""
-    return "".join(word[0] for word in (full_name or "").split()[:2]).upper()
-
-
 def _member_row(membership) -> dict:
     user = membership.user
     return {
-        "user": user, "mark": membership.mark, "initials": _initials(user.full_name),
+        "user": user, "mark": membership.mark, "initials": files.initials(user.full_name),
         "photo_url": files.photo_url(user, 96),
     }
 

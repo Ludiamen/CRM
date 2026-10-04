@@ -3,37 +3,43 @@
 {% block content %}
 <div class="page-head">
   <h1 class="page-title">Сотрудники</h1>
-  <a class="btn btn-primary" href="/staff/new/">Добавить сотрудника</a>
+  <div class="d-flex flex-wrap gap-2">
+    {% for button in buttons %}<a class="btn btn-outline-secondary" data-action="{{ button.key }}" href="{{ button.url }}">{{ button.title }}</a>{% endfor %}
+    <a class="btn btn-primary" href="/staff/new/">Добавить сотрудника</a>
+  </div>
 </div>
 <form id="staff-filter" class="filter-bar card card-body mb-3" method="get" action="/staff/"
       hx-get="/staff/" hx-target="#staff-results" hx-swap="innerHTML" hx-push-url="true" hx-trigger="submit, change">
   <div class="row g-2 align-items-end">
     <div class="col-12 col-md-4">
-      <label class="form-label small mb-1" for="id_q">Поиск по ФИО и почте</label>
+      <label class="form-label small mb-1" for="id_q">Поиск по ФИО, должности, почте, телефону</label>
       <input class="form-control" id="id_q" name="q" type="search" value="{{ q }}" autocomplete="off">
     </div>
-    <div class="col-6 col-md-2">
-      <label class="form-label small mb-1" for="id_state">Состояние</label>
-      <select class="form-select" id="id_state" name="state">
-        <option value="">Любое</option>
-        <option value="active"{% if state == "active" %} selected{% endif %}>Активные</option>
-        <option value="invited"{% if state == "invited" %} selected{% endif %}>Приглашённые</option>
-        <option value="blocked"{% if state == "blocked" %} selected{% endif %}>Заблокированные</option>
+    {% for item in filters %}
+    <div class="col-6 col-md-3">
+      <label class="form-label small mb-1" for="id_{{ item.name }}">{{ item.label }}</label>
+      <select class="form-select" id="id_{{ item.name }}" name="{{ item.name }}">
+        <option value="">Все подразделения</option>
+        {% for value, title in item.choices %}<option value="{{ value }}"{% if item.value == value %} selected{% endif %}>{{ title }}</option>{% endfor %}
       </select>
     </div>
-    <div class="col-6 col-md-3">
+    {% endfor %}
+    {% if can_manage %}
+    <div class="col-6 col-md-2">
       <label class="form-label small mb-1" for="id_role">Роль</label>
       <select class="form-select" id="id_role" name="role">
         <option value="">Любая</option>
         {% for item in roles %}<option value="{{ item.pk }}"{% if role == item.pk|stringformat:"s" %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
       </select>
     </div>
+    {% endif %}
     <div class="col-12 col-md-3 d-flex gap-2 filter-actions">
       <button class="btn btn-primary flex-fill" type="submit">Найти</button>
       <a class="btn btn-outline-secondary" href="/staff/">Сбросить</a>
     </div>
   </div>
   <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="state" value="{{ state }}">
 </form>
 <div id="staff-results" class="staff-results">
   {% include "staff/_results.html" %}

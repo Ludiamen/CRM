@@ -16,11 +16,11 @@ def register_all() -> None:
 
     Регистрации добавляют задачи (функции точек — обычные функции модулей `apps.org…`):
     `home_notices` — T-2219; `role_sources` и `role_usage` — T-2213; `audit_labels` — T-2221;
-    `menu_items` — T-2230a (готово); `staff_directory` — T-2233; `card_sections` — T-2234;
+    `menu_items` — T-2230a (готово); `staff_directory` — T-2233 (готово); `card_sections` — T-2234;
     `day_marks` — T-2238; `stand_reset` — T-2242.
     """
     from apps.core import extensions
-    from apps.org import audit_labels
+    from apps.org import audit_labels, directory
     from apps.org.services import calendar, unit_roles
 
     extensions.register("home_notices", calendar.calendar_notices)
@@ -28,3 +28,4 @@ def register_all() -> None:
     extensions.register("role_usage", unit_roles.role_usage)
     extensions.register("audit_labels", audit_labels.audit_labels)
     extensions.register("menu_items", menu_items)
+    extensions.register("staff_directory", directory.staff_directory)

@@ -1,0 +1,2 @@
+{# Фото или заглушка с инициалами (CONTRACT-002, § 9.4); параметры: photo_url, initials. T-2235 доведёт заглушку «не прошло проверку» #}
+<span class="person-photo" data-photo>{% if photo_url %}<img data-photo-img src="{{ photo_url }}" alt="" width="40" height="40">{% else %}<span class="person-initials" data-photo-placeholder data-initials="{{ initials }}">{{ initials }}</span>{% endif %}</span>

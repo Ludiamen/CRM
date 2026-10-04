@@ -1,2 +1,2 @@
-{# Фото или заглушка с инициалами (CONTRACT-002, § 9.4); общая разметка — если T-2235 даст свою, заменить этот файл ею #}
-<span class="person-photo" data-photo>{% if photo_url %}<img data-photo-img src="{{ photo_url }}" alt="" width="40" height="40">{% else %}<span class="person-initials" data-photo-placeholder data-initials="{{ initials }}">{{ initials }}</span>{% endif %}</span>
+{# Фото или заглушка: разметка — в куске ядра, переменные те же (photo_url, initials) #}
+{% include "partials/_photo.html" %}
