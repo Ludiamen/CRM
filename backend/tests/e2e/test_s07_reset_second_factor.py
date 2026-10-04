@@ -16,6 +16,7 @@ def test_s07_admin_resets_user_reconnects_second_factor_and_mail_sent(admin_page
     old_secret, old_codes = acc.totp_secret, list(acc.backup_codes)
 
     admin_page.goto(f"/staff/{acc.id}/")
+    helpers.open_security_tab(admin_page)
     helpers.submit(admin_page.locator('form[action$="/reset-2fa/"]'))
     mail = helpers.wait_mail(mailpit, acc.email, "second_factor_reset", seen=seen, timeout=60)
     assert re.search(r"[А-Яа-я]", mail["Subject"] + mail["Text"])
@@ -23,6 +24,7 @@ def test_s07_admin_resets_user_reconnects_second_factor_and_mail_sent(admin_page
     # п. 5: у самого администратора формы сброса нет
     admin_page.goto("/staff/")
     admin_page.locator(f'tr[data-user-email="{stand_admin.email}"] a[href^="/staff/"]').first.click()
+    helpers.open_security_tab(admin_page)
     expect(admin_page.locator('form[action$="/reset-2fa/"]')).to_have_count(0)
 
     # п. 1-2: прежние коды и ключ не работают, вход по паролю — только на подключение фактора

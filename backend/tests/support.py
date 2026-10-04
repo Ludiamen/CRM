@@ -30,6 +30,8 @@ PERMISSIONS = (
     "accounts.manage", "accounts.reset_2fa", "accounts.view_logins",
     "roles.manage", "audit.view", "settings.portal", "settings.security",
 )
+# Три права среза 002 (FR-118); `PERMISSIONS` — семь прав среза 001 — не меняется.
+PERMISSIONS_002 = ("staff.view", "org.manage", "calendar.manage")
 ADMIN_ROLE, MANAGER_ROLE, STAFF_ROLE = "Администратор портала", "Руководитель", "Сотрудник ИТ"
 
 SECURITY_FIELDS = (

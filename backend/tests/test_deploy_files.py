@@ -192,3 +192,194 @@ def test_cron_registers_history_and_expired_links_and_sessions_cleanup():
         assert re.search(rf"register\(\s*{function}\b", source), f"{function} не зарегистрирована"
     assert "apps.core.services.retention" in source
     assert re.search(r"cron\s*=|interval\s*=", source)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Срез 002 (T-2117): служба ClamAV, worker с очередью files, nginx для фото, новые ночные задания.
+# Сценарии — NFR-105 (антивирус в основном наборе), FR-132 (фото сотрудников), FR-141, NFR-108 (границы входа).
+# Источник решений по образу — docs/reviews/TASKS-002.md, «Решения Opus по итогам T-2001» (п. 1–5);
+# контракт — tests/CONTRACT-002.md, § 1 и § 3.
+# ---------------------------------------------------------------------------------------------------------------------
+
+def _compose_block(name: str) -> str:
+    services = compose_services()
+    assert name in services, f"в docker-compose.yml нет службы {name}"
+    return services[name]
+
+
+def _compose_depends_on(block: str) -> dict[str, str]:
+    """Раздел depends_on блока службы: имя зависимости → её строки (без комментариев)."""
+    result, in_section, current = {}, False, None
+    for line in block.splitlines():
+        if re.match(r"^    depends_on:\s*$", line):
+            in_section = True
+        elif in_section and re.match(r"^    \S", line):
+            in_section = False
+        elif in_section and (m := re.match(r"^      ([A-Za-z0-9_-]+):\s*$", line)):
+            current = m.group(1)
+            result[current] = ""
+        elif in_section and current:
+            result[current] += line + "\n"
+    return result
+
+
+def _compose_one_line(block: str) -> str:
+    return re.sub(r"\s+", " ", block)
+
+
+def _cron_registrations() -> list[dict]:
+    """Вызовы `register(...)` в config/cron.py: функция, очередь, расписание, имя (разбор дерева, без запуска модуля)."""
+    import ast
+
+    tree = ast.parse((BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8"))
+    constants = {node.targets[0].id: node.value.value for node in ast.walk(tree)
+                 if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
+                 and isinstance(node.value, ast.Constant)}
+
+    def value(node):
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Name):
+            return constants.get(node.id)
+        return None
+
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "register":
+            first = node.args[0] if node.args else None
+            function = first.id if isinstance(first, ast.Name) else getattr(first, "attr", None)
+            keys = {kw.arg: value(kw.value) for kw in node.keywords}
+            found.append({"function": function, "queue": keys.get("queue_name"), "cron": keys.get("cron"),
+                          "name": keys.get("name")})
+    return found
+
+
+def test_clamav_service_pinned_internal_port_healthcheck_and_volume():
+    """NFR-105: служба clamav — в основном наборе, образ закреплён тегом 1.4.6, порт 3310 не публикуется наружу, том
+    clamav-db, проверка здоровья `clamdcheck.sh` с заданными сроками; ни web, ни worker не ждут её здоровья."""
+    block = _compose_block("clamav")
+    assert "profiles:" not in block, "clamav входит в основной набор, а не в профиль"
+    assert re.search(r"^    image:\s*[\"']?clamav/clamav:1\.4\.6[\"']?\s*$", block, re.M), "образ clamav/clamav:1.4.6 (тегом выпуска)"
+    assert not re.search(r"^    ports:", block, re.M), "порт 3310 доступен только внутри сети compose"
+    assert not re.search(r"\b3310:", block), "порт 3310 не публикуется на хост"
+    assert re.search(r"^    volumes:\s*\n(?:\s+-.*\n)*?\s+-\s*[\"']?clamav-db:/var/lib/clamav[\"']?\s*$", block, re.M), (
+        "том clamav-db — ровно на /var/lib/clamav, без :ro и подкаталога (дополнение 40)")
+    top = re.search(r"^volumes:\s*\n((?:[ ]+.*\n|\n)*)", uncommented(deploy_text("docker-compose.yml")) + "\n", re.M)
+    assert top and re.search(r"^  clamav-db:", top.group(1), re.M), "том clamav-db не объявлен в разделе volumes"
+    health = re.search(r"^    healthcheck:\s*\n((?:      .*\n)+)", block, re.M)
+    assert health, "проверка здоровья должна быть задана в compose явно"
+    text = health.group(1)
+    assert re.search(r"test:\s*\[\s*[\"']CMD[\"']\s*,\s*[\"']clamdcheck\.sh[\"']\s*\]", text)
+    for key, value in (("interval", "10s"), ("timeout", "5s"), ("retries", "6"), ("start_period", "120s")):
+        assert re.search(rf"^\s+{key}:\s*[\"']?{value}[\"']?\s*$", text, re.M), f"healthcheck.{key} должен быть {value}"
+    for name in ("web", "worker"):
+        assert "clamav" not in _compose_depends_on(_compose_block(name)), f"{name} не зависит от здоровья clamav"
+
+
+def test_freshclam_conf_mounted_with_default_mirror():
+    """NFR-105: deploy/clamav/freshclam.conf смонтирован в clamav только для чтения; в нём ровно пять действующих
+    строк файла образа 1.4.6 (зеркало database.clamav.net) и закомментированный пример PrivateMirror; переменных
+    FRESHCLAM_CONF_*, CLAMD_CONF_* и FRESHCLAM_CHECKS в compose нет (/init правит по ним файл командой sed -i)."""
+    block = _compose_block("clamav")
+    assert re.search(r"-\s*[\"']?\./clamav/freshclam\.conf:/etc/clamav/freshclam\.conf:ro[\"']?\s*$", block, re.M), (
+        "bind ./clamav/freshclam.conf → /etc/clamav/freshclam.conf с :ro")
+    lines = deploy_text("clamav/freshclam.conf").splitlines()
+    active = [re.sub(r"\s+", " ", line.strip()) for line in lines if line.strip() and not line.strip().startswith("#")]
+    assert active == [
+        "UpdateLogFile /var/log/clamav/freshclam.log",
+        "DatabaseOwner clamav",
+        "DatabaseMirror database.clamav.net",
+        "ScriptedUpdates yes",
+        "NotifyClamd /etc/clamav/clamd.conf",
+    ], f"действующие строки freshclam.conf: {active}"
+    assert any(re.match(r"^\s*#\s*PrivateMirror\s+\S+", line) for line in lines), "нет закомментированного примера PrivateMirror"
+    everything = uncommented(deploy_text("docker-compose.yml"))
+    assert not re.search(r"FRESHCLAM_CONF_|CLAMD_CONF_", everything)
+    assert "FRESHCLAM_CHECKS" not in everything, "частота обновления баз — как в образе"
+
+
+def test_worker_listens_files_before_mail_and_mounts_protected():
+    """FR-132, NFR-105: worker слушает очередь files раньше mail (проверка фото не ждёт писем), планировщик повторов
+    включён, том protected смонтирован на тот же путь, что у web."""
+    worker = _compose_block("worker")
+    command = _compose_one_line(worker)
+    assert re.search(r"command:\s*rq worker -c config\.rq_settings --with-scheduler files mail(?: |$)", command), (
+        "ожидается `rq worker -c config.rq_settings --with-scheduler files mail`")
+    web_mount = re.search(r"-\s*[\"']?(protected:\S+?)[\"']?\s*$", _compose_block("web"), re.M)
+    worker_mount = re.search(r"-\s*[\"']?(protected:\S+?)[\"']?\s*$", worker, re.M)
+    assert worker_mount, "у worker не смонтирован том protected"
+    assert web_mount and worker_mount.group(1) == web_mount.group(1) == "protected:/app/protected"
+    assert not worker_mount.group(1).endswith(":ro"), "worker пишет файлы (перекодированные фото)"
+
+
+def test_clamav_env_defaults_in_compose_commented_in_env_example():
+    """NFR-105: CLAMAV_HOST, CLAMAV_PORT, CLAMAV_TIMEOUT имеют в compose значения по умолчанию (clamav, 3310, 30) у web,
+    worker и test, а в deploy/.env.example перечислены только закомментированными строками."""
+    defaults = {"CLAMAV_HOST": "clamav", "CLAMAV_PORT": "3310", "CLAMAV_TIMEOUT": "30"}
+    for service in ("web", "worker", "test"):
+        block = _compose_block(service)
+        for name, default in defaults.items():
+            pattern = rf"^\s+{name}:\s*[\"']?(?:\$\{{{name}:-{default}\}}|{default})[\"']?\s*$"
+            assert re.search(pattern, block, re.M), f"{service}: {name} со значением по умолчанию {default}"
+    example = deploy_text(".env.example").splitlines()
+    for name, default in defaults.items():
+        assert any(re.fullmatch(rf"#\s*{name}={default}", line.strip()) for line in example), f"нет строки `# {name}={default}`"
+        assert not any(re.match(rf"\s*{name}\s*=", line) for line in example), f"{name} в .env.example не должна быть действующей"
+
+
+def test_test_service_waits_for_healthy_clamav():
+    """NFR-105: служба test зависит от clamav с условием service_healthy, без `required: false` (clamav входит в
+    основной набор, compose запускает её сам); зависимости среза 001 сохранены."""
+    depends = _compose_depends_on(_compose_block("test"))
+    assert "clamav" in depends, "у test нет зависимости от clamav"
+    assert re.search(r"^\s+condition:\s*service_healthy\s*$", depends["clamav"], re.M)
+    assert "required" not in depends["clamav"], "required: false у clamav не нужен"
+    for name in ("postgres", "valkey"):
+        assert re.search(r"condition:\s*service_healthy", depends.get(name, "")), name
+
+
+def test_nginx_body_size_6m_and_protected_location_internal_with_headers():
+    """FR-132, NFR-108: в nginx.conf и nginx.prod.conf лимит тела запроса 6m (фото до 5 МБ в форме), а /protected/ —
+    внутреннее расположение с alias на том, nosniff, типом image/jpeg и Cache-Control private, max-age=86400."""
+    for name in ("nginx.conf", "nginx.prod.conf"):
+        text = uncommented(deploy_text(name))
+        sizes = re.findall(r"client_max_body_size\s+([^;]+);", text)
+        assert sizes == ["6m"], f"{name}: client_max_body_size должен быть один и равен 6m, найдено {sizes}"
+        location = re.search(r"location\s+/protected/\s*\{(.*?)\n\s*\}", text, re.S)
+        assert location, f"{name}: нет location /protected/"
+        body = location.group(1)
+        assert re.search(r"^\s*internal\s*;", body, re.M), f"{name}: /protected/ должен быть internal"
+        assert re.search(r"alias\s+/srv/protected/\s*;", body)
+        assert re.search(r"add_header\s+X-Content-Type-Options\s+[\"']?nosniff[\"']?\s*(?:always\s*)?;", body)
+        assert re.search(r"add_header\s+Cache-Control\s+[\"']private,\s*max-age=86400[\"']\s*(?:always\s*)?;", body), (
+            f"{name}: Cache-Control private, max-age=86400")
+        assert re.search(
+            r"default_type\s+image/jpeg\s*;|types\s*\{[^}]*image/jpeg|add_header\s+Content-Type\s+[\"']?image/jpeg", body
+        ), f"{name}: тип image/jpeg (default_type, types или add_header Content-Type)"
+
+
+def test_cron_registers_preview_purge_quarantine_cleanup_and_scan_requeue():
+    """FR-132, FR-141, NFR-105: config/cron.py регистрирует purge_import_previews (03:40), purge_quarantine (03:50),
+    requeue_pending_scans (каждый час) в очереди mail, ничего не дублируя; три задания среза 001 остались."""
+    registrations = _cron_registrations()
+    by_name = {}
+    for item in registrations:
+        assert item["name"] not in by_name, f"задание {item['name']} зарегистрировано дважды"
+        by_name[item["name"]] = item
+    assert {k: (v["function"], v["cron"]) for k, v in by_name.items() if k in (
+        "purge_login_history", "purge_expired_links", "purge_expired_sessions")} == {
+        "purge_login_history": ("purge_login_history", "10 3 * * *"),
+        "purge_expired_links": ("purge_expired_links", "20 3 * * *"),
+        "purge_expired_sessions": ("purge_expired_sessions", "30 3 * * *"),
+    }, "задания среза 001 изменены"
+    expected = {
+        "purge_import_previews": ("purge_previews", "40 3 * * *"),
+        "purge_quarantine": ("purge_quarantine", "50 3 * * *"),
+        "requeue_pending_scans": ("requeue_pending_scans", "0 * * * *"),
+    }
+    for name, (function, cron) in expected.items():
+        assert name in by_name, f"{name} не зарегистрировано"
+        assert (by_name[name]["function"], by_name[name]["cron"], by_name[name]["queue"]) == (function, cron, "mail"), by_name[name]
+    assert len(registrations) == 6, f"ожидалось шесть заданий, найдено {len(registrations)}"
+    source = uncommented((BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8"))
+    assert "apps.org.tasks" in source and "apps.core.tasks" in source

@@ -72,18 +72,24 @@ def test_vendor_assets_present_with_licenses():
 def test_env_example_has_only_placeholders():
     """FR-055: в .env.example только заглушки; все переменные плана и настроек описаны."""
     lines = repo_file("deploy", ".env.example").read_text(encoding="utf-8").splitlines()
-    values = {}
+    values, commented = {}, set()
     for line in lines:
         if line.strip() and not line.lstrip().startswith("#") and "=" in line:
             key, _, value = line.partition("=")
             values[key.strip()] = value.strip()
+        else:
+            # решение Opus A1 (T-2119, п. 10): имя описано и строкой `# ИМЯ=значение`
+            found = re.match(r"^#\s*([A-Z][A-Z0-9_]*)=", line.strip())
+            if found:
+                commented.add(found.group(1))
     assert PLAN_ENV_NAMES <= set(values), f"не описаны: {sorted(PLAN_ENV_NAMES - set(values))}"
     for name in SECRET_ENV_NAMES:
         assert values[name] in ("", "***"), f"{name}: в примере должна быть заглушка ***"
     for name in ("DATABASE_URL", "DATABASE_MIGRATE_URL"):
         assert re.search(r"://[^:@/]+:\*\*\*@", values[name]), f"{name}: пароль в адресе должен быть ***"
     read = set(re.findall(r'env(?:\.\w+)?\(\s*"([A-Z_]+)"', (BACKEND_DIR / "config/settings.py").read_text(encoding="utf-8")))
-    assert read <= set(values), f"settings.py читает, а .env.example не описывает: {sorted(read - set(values))}"
+    described = set(values) | commented
+    assert read <= described, f"settings.py читает, а .env.example не описывает: {sorted(read - described)}"
     assert not (BACKEND_DIR.parent / "deploy" / ".env.example").stat().st_mode & 0o111
 
 
@@ -204,3 +210,78 @@ def test_no_literal_passwords_in_tests():
         for number in _literal_hits(path.read_text(encoding="utf-8")):
             offenders.append(f"{path.relative_to(BACKEND_DIR)}:{number}")
     assert not offenders, offenders
+
+
+# ---- Срез 002 (T-2118): каркас и компоненты ----
+
+SLICE_002_TREE = (
+    # (путь от backend/, файл или каталог) — ровно блок плана PLAN-002 «Где живёт код»
+    ("apps/org/__init__.py", "file"), ("apps/org/apps.py", "file"), ("apps/org/models.py", "file"),
+    ("apps/org/extensions.py", "file"), ("apps/org/audit_labels.py", "file"), ("apps/org/urls.py", "file"),
+    ("apps/org/views", "dir"), ("apps/org/migrations", "dir"), ("apps/org/services", "dir"),
+    ("apps/org/services/structure.py", "file"), ("apps/org/services/membership.py", "file"),
+    ("apps/org/services/people.py", "file"), ("apps/org/services/unit_roles.py", "file"),
+    ("apps/org/services/calendar.py", "file"), ("apps/org/services/calendar_file.py", "file"),
+    ("apps/org/services/staff_import.py", "file"),
+    ("apps/integrations/clamav/__init__.py", "file"), ("apps/integrations/clamav/client.py", "file"),
+    ("apps/integrations/clamav/services.py", "file"), ("apps/core/extensions.py", "file"),
+    ("templates/org", "dir"), ("templates/calendar", "dir"), ("templates/widgets", "dir"),
+    ("templates/widgets/date_field.html", "file"), ("static/js/datefield.js", "file"),
+    ("tests/fixtures/calendar", "dir"), ("tests/e2e", "dir"),
+)
+
+
+def test_slice_002_layout_matches_plan():
+    """NFR-108 (опора): дерево PLAN-002 «Где живёт код» есть; apps.org подключено, clamav — пакет без моделей."""
+    for rel, kind in SLICE_002_TREE:
+        path = BACKEND_DIR / rel
+        assert path.is_file() if kind == "file" else path.is_dir(), f"по плану должен быть backend/{rel} ({kind})"
+    assert "apps.org" in settings.INSTALLED_APPS
+    assert not any(a.startswith("apps.integrations.clamav") for a in settings.INSTALLED_APPS), \
+        "адаптер clamd не приложение Django: в INSTALLED_APPS не входит"
+    from django.apps import apps
+
+    assert apps.get_app_config("org").name == "apps.org"
+    for name in ("apps.org.services.structure", "apps.org.services.membership", "apps.org.services.people",
+                 "apps.org.services.unit_roles", "apps.org.services.calendar", "apps.org.services.calendar_file",
+                 "apps.org.services.staff_import", "apps.org.extensions", "apps.org.audit_labels", "apps.org.urls",
+                 "apps.org.views", "apps.integrations.clamav.client", "apps.integrations.clamav.services",
+                 "apps.core.extensions"):
+        importlib.import_module(name)
+    assert not [m for m in apps.get_models() if m.__module__.startswith("apps.integrations.clamav")]
+
+
+def test_requirements_include_slice_002_packages():
+    """NFR-108: openpyxl 3.1.x, et-xmlfile 2.x и defusedxml 0.7.x закреплены `==` в requirements.txt и установлены."""
+    lines = {}
+    for line in (BACKEND_DIR / "requirements.txt").read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        match = re.match(r"^([A-Za-z0-9_.\-]+)==(\d+(?:\.\d+)*)$", line)
+        if match:
+            lines[match.group(1).lower().replace("_", "-")] = match.group(2)
+    for name, prefix, classifier in (
+            ("openpyxl", "3.1.", "License :: OSI Approved :: MIT License"),
+            ("et-xmlfile", "2.", "License :: OSI Approved :: MIT License"),
+            ("defusedxml", "0.7.", "License :: OSI Approved :: Python Software Foundation License")):
+        assert name in lines, f"{name} не закреплён == в requirements.txt"
+        assert lines[name].startswith(prefix), f"{name}=={lines[name]}: по плану {prefix}x"
+        assert metadata.version(name) == lines[name], f"{name}: установлена не закреплённая версия"
+        meta = metadata.metadata(name)
+        classifiers = [c for c in meta.get_all("Classifier", []) if c.startswith("License")]
+        # лицензия плана (MIT, MIT, PSF-2.0) — точное совпадение классификатора пакета, не подстрока
+        assert classifier in classifiers, f"{name}: классификатор лицензии {classifiers}, по плану {classifier!r}"
+    assert "clamd" not in lines, "пакет clamd с PyPI не берём: клиент свой (план)"
+
+
+def test_openpyxl_uses_defusedxml():
+    """NFR-108: openpyxl подхватил defusedxml (openpyxl.xml.DEFUSEDXML истинно) и отвергает XML-бомбу."""
+    import defusedxml
+    import openpyxl.xml
+    from openpyxl.xml.functions import fromstring
+
+    assert defusedxml.__version__.startswith("0.7.")
+    assert openpyxl.xml.DEFUSEDXML is True
+    bomb = ('<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY a "aaaaaaaaaa">'
+            '<!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">]><lolz>&b;&b;&b;</lolz>')
+    with pytest.raises(defusedxml.DefusedXmlException):
+        fromstring(bomb)

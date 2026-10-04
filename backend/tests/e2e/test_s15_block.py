@@ -23,6 +23,7 @@ def test_s15_block_closes_sessions_and_kills_links_unblock_restores(admin_page, 
     reason = "проверка блокировки " + factories.new_email("why").split("@")[0]
     for target in (acc, invited):
         admin_page.goto(f"/staff/{target.id}/")
+        helpers.open_security_tab(admin_page)
         form = admin_page.locator('form[action$="/block/"]')
         form.locator("[name=reason]").fill(reason)
         helpers.submit(form)
@@ -53,6 +54,7 @@ def test_s15_block_closes_sessions_and_kills_links_unblock_restores(admin_page, 
 
     # п. 4: разблокировка — вход прежним паролем и вторым фактором
     admin_page.goto(f"/staff/{acc.id}/")
+    helpers.open_security_tab(admin_page)
     helpers.submit(admin_page.locator('form[action$="/unblock/"]'))
     helpers.sign_in(new_context().new_page(), acc)
 

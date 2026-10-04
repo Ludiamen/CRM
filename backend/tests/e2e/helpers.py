@@ -183,6 +183,13 @@ def status_text(page) -> str:
     return " ".join(page.locator("[role=status]").all_inner_texts()).strip()
 
 
+def open_security_tab(page) -> None:
+    """Карточка сотрудника открывается на вкладке «Профиль»: переключает на «Безопасность» (§ 9.3 контракта,
+    FR-119, FR-135) перед работой с приглашением, блокировкой, сбросом второго фактора и входами."""
+    page.locator('[data-tab-button="security"]').click()
+    expect(page.locator('[data-tab-panel="security"]')).to_be_visible()
+
+
 def no_horizontal_scroll(page) -> bool:
     return page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth")
 

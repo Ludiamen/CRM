@@ -34,11 +34,11 @@ T-2140). В колонке «Тесты» стоят файлы или зада�
 
 | Что | Требование | Тесты |
 |---|---|---|
-| Служба `clamav` | в `deploy/docker-compose.yml` в основном наборе (без профиля); у `test` в `depends_on`: `clamav` с `condition: service_healthy`, без `required: false` (решение 3); образ `clamav/clamav:1.4.6`; порт 3310 только внутри сети; том `clamav-db`; проверка здоровья `["CMD", "clamdcheck.sh"]`, `interval: 10s`, `timeout: 5s`, `retries: 6`, `start_period: 120s` (источник — docs/reviews/TASKS-002.md, «Решения Opus по итогам T-2001», п. 1, 3, 4) | test_deploy_files::test_clamav_service_pinned_internal_port_healthcheck_and_volume, test_test_service_waits_for_healthy_clamav; test_clamav_live |
+| Служба `clamav` | в `deploy/docker-compose.yml` в основном наборе (без профиля); у `test` в `depends_on`: `clamav` с `condition: service_healthy`, без `required: false` (решение 3); образ `clamav/clamav:1.4.6`; порт 3310 только внутри сети; том `clamav-db` смонтирован на `/var/lib/clamav` (каталог баз образа, дополнение 40); проверка здоровья `["CMD", "clamdcheck.sh"]`, `interval: 10s`, `timeout: 5s`, `retries: 6`, `start_period: 120s` (источник — docs/reviews/TASKS-002.md, «Решения Opus по итогам T-2001», п. 1, 3, 4) | test_deploy_files::test_clamav_service_pinned_internal_port_healthcheck_and_volume, test_test_service_waits_for_healthy_clamav; test_clamav_live |
 | `CLAMAV_HOST`, `CLAMAV_PORT`, `CLAMAV_TIMEOUT` | значения по умолчанию: `clamav`, `3310`, `30` (секунд); задаются в `environment` служб `web`, `worker`, `test` в compose; в `deploy/.env.example` перечислены закомментированными (`# CLAMAV_HOST=clamav`, `# CLAMAV_PORT=3310`, `# CLAMAV_TIMEOUT=30`; тест среза 001 `test_env_example_has_only_placeholders` принимает такие строки (правка T-2119, п. 10 — решение Opus): имена, которые читает `settings.py`, считаются описанными и в виде закомментированной строки `# ИМЯ=значение`, а `PLAN_ENV_NAMES` и `SECRET_ENV_NAMES` по-прежнему должны стоять незакомментированными; правку теста делает исполнитель T-2119); `config/settings.py` читает их в `settings.CLAMAV_HOST` (str), `settings.CLAMAV_PORT` (int), `settings.CLAMAV_TIMEOUT` (int) при запуске; адаптер читает `settings` при каждом вызове, а не при импорте | test_deploy_files::test_clamav_env_defaults_in_compose_commented_in_env_example; test_clamav_adapter::test_host_port_timeout_from_environment_with_defaults |
 | `deploy/clamav/freshclam.conf` | файл смонтирован bind-ом только для чтения (`:ro`) на `/etc/clamav/freshclam.conf` в контейнер `clamav`; в нём ровно пять действующих строк файла образа 1.4.6 (решение 4 по T-2001, docs/reviews/TASKS-002.md, «Решения Opus по итогам T-2001»): `UpdateLogFile /var/log/clamav/freshclam.log`, `DatabaseOwner clamav`, `DatabaseMirror database.clamav.net`, `ScriptedUpdates yes`, `NotifyClamd /etc/clamav/clamd.conf`; ниже — закомментированный пример `PrivateMirror`; переменных `FRESHCLAM_CONF_*` и `CLAMD_CONF_*` в compose нет | test_deploy_files::test_freshclam_conf_mounted_with_default_mirror |
 | worker | команда содержит `files mail` в таком порядке после `--with-scheduler`; смонтирован том `protected` на тот же путь, что у `web` (`/app/protected`) | test_deploy_files::test_worker_listens_files_before_mail_and_mounts_protected |
-| nginx | в `nginx.conf` и `nginx.prod.conf`: `client_max_body_size 6m;`; `location /protected/` с `internal;`, `alias /srv/protected/;` и заголовками `X-Content-Type-Options "nosniff"`, `Cache-Control "private, max-age=86400"`, тип `image/jpeg` | test_deploy_files::test_nginx_body_size_6m_and_protected_location_internal_with_headers |
+| nginx | в `nginx.conf` и `nginx.prod.conf`: `client_max_body_size 6m;`; `location /protected/` с `internal;`, `alias /srv/protected/;` и заголовками `X-Content-Type-Options "nosniff"`, `Cache-Control "private, max-age=86400"` (с `always` или без), тип `image/jpeg` — любым способом: `default_type`, `types` или `add_header Content-Type` (дополнение 41) | test_deploy_files::test_nginx_body_size_6m_and_protected_location_internal_with_headers |
 | cron | `config/cron.py` регистрирует три новых задания, очередь `mail`: `purge_import_previews` (`40 3 * * *`), `purge_quarantine` (`50 3 * * *`), `requeue_pending_scans` (`0 * * * *`); имя задания — `name=` в `register`; функции — раздел 3 | test_deploy_files::test_cron_registers_preview_purge_quarantine_cleanup_and_scan_requeue |
 | Что монтирует `test` | как в срезе 001: `../backend` в `/app/backend`, `../deploy` в `/app/deploy:ro`. Репозиторий целиком не монтируется: тестам развёртывания нужны только `deploy/` и `backend/` (`repo_file("deploy", ...)`, `repo_file("backend", ...)`) | test_deploy_files, test_stack |
 | Фикстуры календаря | `backend/tests/fixtures/calendar/`: `cal2024.csv`, `cal2025.csv`, `cal2026.csv`, `cal2027.csv` (по одному году, настоящие), `years_2024_2027.csv` (все четыре года в одном файле), `bad_totals_2026.csv` (итоги не сходятся), `cp1251_2026.csv` (не UTF-8), `extra_column_2026.csv` (19 колонок), `missing_column_2026.csv` (17 колонок); описание и итоги — `SOURCE.md` там же. Помощник `support_org.calendar_fixture(name) -> bytes` читает файл по имени | test_calendar_file |
@@ -280,9 +280,9 @@ T-2140). В колонке «Тесты» стоят файлы или зада�
 
 | Имя | Подпись и поведение | Тесты |
 |---|---|---|
-| `POINTS` | кортеж из девяти имён: `menu_items`, `role_sources`, `role_usage`, `audit_labels`, `staff_directory`, `card_sections`, `day_marks`, `home_notices`, `stand_reset` | test_extensions::test_org_registers_all_nine_extension_points |
+| `POINTS` | кортеж из девяти имён: `menu_items`, `role_sources`, `role_usage`, `audit_labels`, `staff_directory`, `card_sections`, `day_marks`, `home_notices`, `stand_reset`; `org` регистрирует во всех девяти точках обычные функции модулей `apps.org…` (`func.__module__` начинается с `apps.org`, дополнение 39) | test_extensions::test_org_registers_all_nine_extension_points |
 | `register` | `register(point: str, func) -> None`; неизвестная точка — `ValueError`; та же функция второй раз — игнорируется (повторный `ready()`) | test_extensions |
-| `registered` | `registered(point: str) -> list`: копия списка функций | test_extensions, test_org_permissions |
+| `registered` | `registered(point: str) -> list`: копия списка функций; неизвестная точка — `ValueError`, как у `register` (дополнение 38) | test_extensions, test_org_permissions |
 | `clear` | `clear() -> None`: очищает все девять реестров | test_extensions |
 | `empty` | `empty()` — контекстный менеджер: запоминает все реестры, очищает их на время блока, возвращает прежние; фикстура `no_extensions` в `tests/conftest.py` (pytest находит фикстуры только там; пишет T-2100b) оборачивает им тело теста | test_extensions::test_core_without_registered_extensions_behaves_as_slice_001 |
 | `menu_items` | `func() -> list[dict]` (описание пунктов для ядра): ключи `permissions` (кортеж кодов, достаточно любого), `url`, `title`, `icon` (путь шаблона значка `icons/<имя>.html`), `order` (целое); ядро описывает свои пункты так же; `permissions.menu_for(user)` отдаёт доступные пункты без ключа `permissions` — ровно `url`, `title`, `icon`, `order` (§ 11, A8; дополнение 33) | test_org_permissions |
@@ -297,7 +297,7 @@ T-2140). В колонке «Тесты» стоят файлы или зада�
 
 Сброс реестров для T-2116: `with extensions.empty():` (или фикстура `no_extensions`); внутри
 проверяются: `menu_for(user)` даёт только пункты ядра, `permissions_of(user)` не видит ролей узлов,
-`/staff/` показывает пресеты среза 001 с `state=` пустым (все записи, как в срезе 001, потому что
+`/staff/` показывает пресеты ядра — у администратора ровно `a[data-preset]` со значениями `""`, `dismissed`, `all`, `invited`, `active`, `blocked`, без `no_unit` (дополнение 48) — с `state=` пустым (все записи, как в срезе 001, потому что
 уволенных нет), карточка без разделов `org`. Импорт: `test_core_does_not_import_org` ищет в файлах
 `apps/core/**/*.py` текст `apps.org` и `from apps import org`.
 
@@ -357,11 +357,10 @@ T-2140). В колонке «Тесты» стоят файлы или зада�
 ## 8. Маршруты и поля форм
 
 Общие правила (как в срезе 001): все формы — POST с CSRF; без входа — 302 на `/login/`; нет права —
-403 (до проверки существования объекта); неизвестный объект или неверный формат адреса — 404.
+403 (до проверки существования объекта); неизвестный объект или неверный формат адреса — 404. Страницы 403 и 404 — без подробностей: в теле нет `Traceback`, `DoesNotExist`, `matching query`, имён таблиц, SQL, слова `CSRF` и кодов прав (дополнение 42).
 Запрос HTMX (`HX`) получает фрагмент без `<html>`, обычный — полную страницу. Отказ службы
 (`OrgError`, `AccountError`, `RoleError`, `PhotoError`) на POST — ответ 200 с тем же шаблоном и
-`[role=alert]` с текстом, база не меняется; успех — 302 на страницу, указанную в таблице. Успешное
-сообщение показывается в `[role=status]` страницы, на которую ведёт 302. Статус отказа — 200, как
+`[role=alert]` с текстом, база не меняется; успех — 302 на страницу, указанную в таблице. Успешное сообщение показывается в `[role=status]` страницы, на которую ведёт 302; у форм среза оно есть после каждого успешного POST, текст непустой (дополнение 51). Статус отказа — 200, как
 в срезе 001 (CONTRACT.md:77–78); прямой POST на удаление или перенос корня — 200 с `[role=alert]`
 (`root_protected`); присланное `birth_date` в форме администратора — 200 (`AccountError`).
 
@@ -373,10 +372,10 @@ T-2140). В колонке «Тесты» стоят файлы или зада�
 | `/staff/<id>/` | GET | 200 по `staff.view` или `accounts.manage`, иначе 403; обе вкладки в одном ответе (решение 9; вкладка «Безопасность» делится на части `[data-security-part="account"]` — у `accounts.manage` — и `[data-security-part="logins"]` — у `accounts.view_logins`; части без права в ответе нет, `[data-field="state"]` лежит только в первой, дополнение 4); у смотрящего без `accounts.manage` и `accounts.view_logins` вкладки «Безопасность» и её данных в ответе нет; `/staff/<id>/logins/` и действия карточки среза 001 — 403 прежним правам; `/staff/<свой id>/` — по правилам смотрящего, как любая карточка (вкладки по правам, дата рождения — день и месяц); полная карточка с обеими вкладками и полной датой — только `/me/` | test_staff_card, test_org_permissions::test_colleague_sees_no_service_fields_security_tab_absent_and_403 |
 | `/staff/<id>/edit/` | POST `full_name`, `position`, `phone`, `email`, `contacts`, `internal_phone`, `workplace` | 302 на `/staff/<id>/`; присланное `birth_date` — 200 с `[role=alert]`, ничего не меняется; над уволенным — 200 с `[role=alert]` | test_staff_card, test_org_dismissal |
 | `/staff/<id>/photo/<uuid>/<512\|96>/` | GET | см. 8.2 | test_photo |
-| `/staff/<id>/photo/delete/` | POST (без полей) | 302 на `/staff/<id>/`; только `accounts.manage`, иначе 403 | test_photo |
+| `/staff/<id>/photo/delete/` | POST (без полей) | 302 на `/staff/<id>/`; только `accounts.manage`, иначе 403; фото нет — тоже 302, без события (дополнение 49) | test_photo |
 | `/me/` | GET; POST `phone`, `contacts`, `internal_phone`, `workplace`, `birth_date` (ДД.ММ.ГГГГ или ГГГГ-ММ-ДД; пустое — стереть) | свой профиль с обеими вкладками (вкладка «Безопасность» содержит тот же блок, что `/me/security/`: `data-backup-remaining` и т. д.; `/me/security/*` среза 001 не меняются); успех — 302 на `/me/`; неверная дата — 200 с `[role=alert]` | test_staff_card |
 | `/me/photo/` | POST multipart, поле файла `photo` | успех — 302 на `/me/`; отказ — 200 с `[role=alert]`, `StoredFile` не создан; прежнее чистое фото остаётся | test_photo |
-| `/me/photo/delete/` | POST | 302 на `/me/` | test_photo |
+| `/me/photo/delete/` | POST | 302 на `/me/`; фото нет — тоже 302, ничего не меняется, события нет (дополнение 49) | test_photo |
 | `/ui/date-picker/` | GET `month=ГГГГ-ММ` | 200 фрагмент (всегда без `<html>`, даже без `HX`), любому вошедшему, право не нужно; без входа 302; `month` пустой или неверный (в том числе год вне 1900…2100) — текущий месяц по Москве (дополнение 24); фрагмент — раздел 9.6 | test_date_field |
 
 ### 8.2 Выдача фото
@@ -429,7 +428,7 @@ max-age=86400` (исключение из `no-store` — только этот �
 
 | Зацепка | Что | Тесты |
 |---|---|---|
-| `[data-unit-tree]` | корневой `<ul>` дерева; узел — `<li data-unit-id="<id>" data-kind="department\|team" data-own="true\|false">`; раскрытие — `<details>` внутри `li` | test_org_structure::test_structure_page_tree_details_and_card_with_own_url_and_fragment, test_org_structure::test_own_units_highlighted_and_search_in_unit_case_and_yo_insensitive |
+| `[data-unit-tree]` | корневой `<ul>` дерева; узел — `<li data-unit-id="<id>" data-kind="department\|team" data-own="true\|false">`; раскрытие — `<details>` внутри `li` (у узла с вложенными: `<details>` → `<summary>` с переключателем `[data-unit-toggle]` и ссылкой `a[data-unit-link]`, затем `<ul>` вложенных; у узла без вложенных `<details>` нет; дополнение 53); `/structure/` отдаёт в разметке всё дерево (все узлы, без догрузки; план: дерево читается одним запросом, дополнение 44) | test_org_structure::test_structure_page_tree_details_and_card_with_own_url_and_fragment, test_org_structure::test_own_units_highlighted_and_search_in_unit_case_and_yo_insensitive |
 | свой узел | `data-own="true"` и класс `unit-own`; у остальных `data-own="false"` | то же |
 | `<details open>` | у корня и у всех предков выбранного узла; у остальных — закрыт | test_org_structure |
 | `a[data-unit-link]` | ссылка узла: `href="/structure/<id>/"`, `hx-get` на тот же адрес, цель `#unit-card`, `hx-push-url="true"` | test_org_pages::test_htmx_request_gets_fragment_plain_request_full_page |
@@ -441,7 +440,7 @@ max-age=86400` (исключение из `no-store` — только этот �
 | `[data-mark-label]` | в строке участника с отметкой: текст «Руководитель» или «Заместитель» (дословно); без отметки элемента нет | test_org_membership, test_org_heads |
 | `input[name=q]` в карточке | поиск участников: `hx-get` на `/structure/<id>/`, `hx-trigger="input changed delay:300ms"`, цель `#unit-card` | test_org_structure |
 | `[data-empty-state="tree\|unit\|search"]` | пустые состояния с непустым пояснением (FR-109): `tree` — в дереве только корень; `unit` — у выбранного узла нет ни одного участника (вложенные узлы могут быть); `search` — задан `q`, совпадений нет; у `tree` и `unit` для `org.manage` внутри своего `[data-empty-state]` кнопка действия (`[data-action="unit-new"]`, `[data-action="members-add"]`; дополнения 5, 30) | test_org_structure::test_empty_tree_unit_and_search_explained |
-| действия (только `org.manage`; при отсутствии права элементов нет в ответе) | `[data-action="unit-new"]`, `[data-action="unit-edit"]`, `[data-action="unit-delete"]` (у корня нет), `[data-action="members-add"]` (у отдела внутри формы `select[name=mode]` с `option` `transfer` и `concurrent`), `[data-action="marks-heads"]`, `[data-action="marks-deputies"]`; `[data-action="unit-roles"]` — по праву `roles.manage`; `members-add`, `marks-heads`, `marks-deputies`, `unit-roles` — каждое `<details data-action="…">` с формой внутри (9.8) | test_org_structure::test_view_needs_staff_view_changes_need_org_manage, test_org_membership |
+| действия (только `org.manage`; при отсутствии права элементов нет в ответе; место — дополнение 50: «Создать» `unit-new` — в шапке страницы вне `[data-unit-tree]` и `[data-unit-card]`, действия выбранного узла — внутри `[data-unit-card]`) | `[data-action="unit-new"]`, `[data-action="unit-edit"]`, `[data-action="unit-delete"]` (у корня нет), `[data-action="members-add"]` (у отдела внутри формы `select[name=mode]` с `option` `transfer` и `concurrent`), `[data-action="marks-heads"]`, `[data-action="marks-deputies"]`; `[data-action="unit-roles"]` — по праву `roles.manage`; `members-add`, `marks-heads`, `marks-deputies`, `unit-roles` — каждое `<details data-action="…">` с формой внутри (9.8) | test_org_structure::test_view_needs_staff_view_changes_need_org_manage, test_org_membership |
 | перетаскивания нет | в разметке дерева нет `draggable`, `data-drag*`, и нет маршрута `/structure/<id>/move/` | test_org_structure::test_no_drag_and_drop_route_move_only_by_parent_field |
 
 ### 9.2 Меню «…» участника
@@ -531,7 +530,7 @@ max-age=86400` (исключение из `no-store` — только этот �
 
 ### 9.8 Формы и диалоги
 
-- формы `unit-new`, `unit-edit` открываются в `#slider-root` страницы `/structure/` (`hx-get` на
+- формы `unit-new`, `unit-edit` (поля — дополнение 45: `select[name=kind]` только в `unit-new`, `[name=name]`, `[name=description]`, `select[name=parent]` со всеми узлами дерева по `path`) открываются в `#slider-root` страницы `/structure/` (`hx-get` на
   GET-маршрут; обычный GET — полная страница с формой), как формы карточки среза 001
   (templates/staff/list.html:41, _slider.html);
 - диалоги подтверждения `unit-delete`, `dismiss`, `rehire` открываются в `#dialog-root` — новый
@@ -539,14 +538,15 @@ max-age=86400` (исключение из `no-store` — только этот �
   слайдером), рядом с `#slider-root`; диалог —
   `[data-dialog="unit-delete|dismiss|rehire"][role="dialog"][aria-modal="true"]`; «Отмена» —
   `button[data-dialog-cancel]` закрывает диалог внешним скриптом, запросов не шлёт;
-- формы в карточке узла (без отдельного GET): `members-add`, `marks-heads`, `marks-deputies`,
-  `unit-roles` — каждая внутри `<details data-action="…">`, сама форма
+- формы в карточке узла (без отдельного GET; обычный POST без `hx-post`, успех — 302 и страница целиком, дополнение 54): `members-add`, `marks-heads`, `marks-deputies`,
+  `unit-roles` — каждая внутри `<details data-action="…">` (в `marks-*` — флажок `input[type=checkbox][name=users][value="<id>"]` на каждого участника узла, в `unit-roles` — `input[type=checkbox][name=roles][value="<id>"]` на каждую роль портала, отмечен текущий набор; дополнение 46), сама форма
   `form[data-form="<то же имя>"]` с `button[type=submit]`; в `members-add` — поле `input[name=q]`
   с `hx-get` на `/structure/<id>/candidates/` и целью `[data-candidates]`; кандидат —
   `label[data-candidate][data-user-id]` с `input[type=checkbox][name=users][value="<id>"]`; подсказок не больше 20 — первые 20 из `accounts.pickable(q)` по `full_name`, затем `id` (дополнение 2); у
   отдела — `select[name=mode]`; формы `marks-heads` и `marks-deputies` шлют `part=heads` и `part=deputies` скрытым полем `input[type=hidden][name=part]` внутри своей `form[data-form=…]` (8.3, дополнение 3);
 - формы меню «…»: `form[data-form="member-transfer"]` (`select[name=target]`),
   `form[data-form="member-remove"]`;
+- в диалоге `unit-delete` форма несёт `input[type=hidden][name=confirm][value="1"]` (дополнение 47);
 - у остальных форм — `form[data-form="unit-new|unit-edit|unit-delete|dismiss|rehire|
   calendar-settings|calendar-upload|calendar-day"]`;
 - `next` в форме увольнения — скрытое `input[name=next]` с путём страницы, откуда открыт диалог.
@@ -591,6 +591,7 @@ PLAN-002), с адресом источника. Подписи нужны ка�
 | «Роли узла» | подпись действия `unit-roles` | SPEC-002, сценарий 9 | test_org_permissions |
 | «Создать», «Добавить сотрудников», «Подчиняется», «Удалить», «Руководители», «Заместители» | подписи действий и поля узла | SPEC-002, сценарии 1–3 | test_org_structure, test_org_membership |
 | «Подтвердите удаление» | `[role=alert]` при POST удаления узла без `confirm=1` (узел не удаляется, событий нет) | решение Opus (дополнение 21; в спеке и плане подписи нет) | test_org_structure |
+| «Узел не пуст: в нём есть участники или вложенные узлы.» | `[role=alert]` при удалении узла с участниками или вложенными (`not_empty`); тест ищет «не пуст» | решение Opus (дополнение 52; спека, сценарий 6 п. 3: «называет причину») | test_o06_move_delete |
 | «Уволить», «Вернуть на работу» | подписи действий | SPEC-002, сценарии 7, 8 | test_org_dismissal |
 | «Профиль», «Безопасность» | подписи вкладок | SPEC-002, сценарий 10, п. 9 | test_staff_card |
 | «Не загружен производственный календарь на <год> год.», «Загрузить файл» | напоминание о календаре (9.5) | решение Opus по T-2100a | test_calendar, test_org_pages |
@@ -813,3 +814,82 @@ PLAN-002), с адресом источника. Подписи нужны ка�
 37. **`unit.roles_changed` при первом назначении:** `before == {"roles": []}` — ключ `roles` с
     обеих сторон (§ 6). Правило § 6 «пустая сторона — `{}`» — только для сторон, у которых в
     таблице § 6 нет ключей. Затрагивает: test_org_audit.
+38. **`extensions.registered` с неизвестной точкой** — `ValueError`, как у `register` (вопрос
+    T-2116). Затрагивает: test_extensions.
+39. **Функции точек `org`:** во всех девяти точках `org` регистрирует обычные функции модулей
+    `apps.org…` (`func.__module__` начинается с `apps.org`), без `lambda` из чужих модулей и
+    `functools.partial`. Затрагивает: test_extensions.
+40. **Том баз ClamAV** `clamav-db` монтируется в контейнер `clamav` на `/var/lib/clamav`: это
+    каталог баз образа `clamav/clamav:1.4.6` (там `main.cvd`, `daily.cvd`, `bytecode.cvd`;
+    `DatabaseDirectory` в конфигах образа не переопределён — проверено Opus по образу
+    2026-10-04). Затрагивает: test_deploy_files.
+41. **nginx `/protected/`:** тип `image/jpeg` задаётся любым способом (`default_type`, `types`,
+    `add_header Content-Type`); `nosniff` и `Cache-Control "private, max-age=86400"` — с
+    `always` или без (фото отдаётся с 200, на ответ это не влияет). Тест не требует одной
+    формы. Затрагивает: test_deploy_files.
+42. **Страницы 403 и 404 без подробностей** (FR-123, как в срезе 001: `errors/403.html`,
+    `errors/404.html`, отказ CSRF — тот же 403): в теле нет `Traceback`, `DoesNotExist`,
+    `matching query`, имён таблиц (`org_unit` и др.), SQL, слова `CSRF` и кодов прав.
+    Затрагивает: test_org_pages.
+43. **Число запросов страниц среза (NFR-101, NFR-102):** тест сравнивает число запросов на малых
+    и больших данных — оно одинаково; абсолютного предела нет (в плане среза 002 его нет; предел
+    25 из теста среза 001 сюда не переносится). «До 200 узлов» — вместе с корнем.
+    Затрагивает: test_capacity.
+44. **`/structure/` отдаёт всё дерево в разметке:** все узлы во вложенных `<ul>`/`<li
+    data-unit-id>` с `<details>`, без догрузки по запросу (план: «дерево страницы читается одним
+    запросом и собирается в памяти», узлов не больше 200). Затрагивает: test_capacity,
+    test_org_structure.
+45. **Поля форм `unit-new` и `unit-edit`** (вопрос T-2140): `select[name=kind]` с вариантами
+    `department` и `team` — только в `unit-new`; `[name=name]`; `[name=description]` (поле или
+    многострочное поле — любое); `select[name=parent]` («Подчиняется») — **все** узлы дерева по
+    `path` (значение — id), в том числе команды и, в `unit-edit`, сам узел и его потомки: отказы
+    по видам (FR-102, сценарий 1 п. 3) и по циклу (FR-106, сценарий 6 п. 2) даёт сервер — 200 с
+    `[role=alert]`, ничего не меняется. У корня в `unit-edit` поля `parent` нет (§ 8.3).
+    Затрагивает: helpers_org (T-2140), test_o01_structure, test_o06_move_delete, приёмку
+    T-2141…T-2150.
+46. **Формы `marks-heads`, `marks-deputies`, `unit-roles`** (вопрос T-2140): в `marks-*` —
+    флажок `input[type=checkbox][name=users][value="<id>"]` на каждого участника узла, в
+    `unit-roles` — `input[type=checkbox][name=roles][value="<id>"]` на каждую роль портала, в том
+    числе «Администратор портала» (отказ по FR-121 даёт сервер — 200 с `[role=alert]`); отмечен
+    текущий набор, отправка заменяет набор целиком. Затрагивает: helpers_org, T-2141, T-2145.
+47. **Диалог `unit-delete`** (вопрос T-2140): форма `form[data-form="unit-delete"]` несёт
+    `input[type=hidden][name=confirm][value="1"]` и `button[type=submit]`; успех — 302 по § 8.3,
+    отказ (узел не пуст) — 200 с `[role=alert]` и причиной. Затрагивает: helpers_org,
+    test_o06_move_delete, test_org_structure.
+48. **Пресеты ядра без расширений** (находка R-4a): пресеты «В компании» (`""`), «Уволены»
+    (`dismissed`), «Все» (`all`) и у `accounts.manage` — «Приглашены», «Активные», «Заблокированные»
+    принадлежат ядру (plan.md:356–363); `org` через `staff_directory` добавляет только «Без
+    подразделения» (`no_unit`), фильтр `select[name=unit]`, колонку «Подразделение», поиск по
+    названию узла и кнопку «Загрузить из таблицы» (plan.md:122). Внутри `extensions.empty()` у
+    администратора на `/staff/` ровно `a[data-preset]` со значениями `""`, `dismissed`, `all`,
+    `invited`, `active`, `blocked`. Затрагивает: test_extensions.
+49. **Удаление фото, когда фото нет** (`/me/photo/delete/`, `/staff/<id>/photo/delete/`): 302, как
+    обычно, ничего не меняется, событие `photo.deleted` не пишется (§ 6). Затрагивает: test_photo,
+    test_org_pages.
+50. **Место кнопок раздела «Структура»** (вопрос RE-0): «Создать» `[data-action="unit-new"]` — в
+    шапке страницы `/structure/` вне `[data-unit-tree]` и `[data-unit-card]` (ещё одна — внутри
+    `[data-empty-state="tree"]`, дополнения 5, 30; приёмка берёт кнопку шапки — первую в порядке
+    документа); действия выбранного узла `[data-action="unit-edit"]`, `[data-action="unit-delete"]`
+    и `<details data-action="members-add|marks-heads|marks-deputies|unit-roles">` — внутри
+    `[data-unit-card]`. Затрагивает: helpers_org, test_o01_structure, test_o06_move_delete, приёмку
+    T-2141…T-2150.
+51. **Сообщение об успехе:** после каждого успешного POST форм среза (структура, участники,
+    отметки, роли узла, увольнение и возврат, календарь, загрузки, фото) страница, на которую ведёт
+    302, показывает `[role=status]` с непустым текстом (текст пишет Этап 3; тесты ищут слова
+    только из § 10). Приёмка всё равно ждёт сам ответ POST (переход), а не появление сообщения.
+    Затрагивает: helpers_org, приёмку T-2140…T-2150.
+52. **Текст отказа `not_empty`** при удалении узла: «Узел не пуст: в нём есть участники или
+    вложенные узлы.» (решение Opus; спека, сценарий 6 п. 3 — «называет причину»); тест ищет «не
+    пуст». Фильтр журнала `object_id` — точное равенство (срез 001, audit_search.py:115), поэтому
+    `len(rows) == 1` по `object_id` верно. Затрагивает: test_o06_move_delete, helpers_org.
+53. **Разметка узла дерева** (находка VE-0): у узла с вложенными — `<li data-unit-id>` →
+    `<details>` (`open` — по § 9.1) → `<summary>` с переключателем `[data-unit-toggle]` (значок,
+    `aria-label` «Развернуть»/«Свернуть» или скрытый текст) и ссылкой `a[data-unit-link]`, затем
+    `<ul>` вложенных; щелчок по `[data-unit-toggle]` раскрывает или сворачивает узел, щелчок по
+    ссылке открывает карточку (HTMX) и `<details>` не переключает. У узла без вложенных `<details>`
+    нет: `<li data-unit-id>` со ссылкой. Затрагивает: helpers_org (`select_unit`), test_org_structure
+    (совместим: проверяет `<details>` только у узлов с вложенными).
+54. **Формы карточки узла** (`members-add`, `marks-heads`, `marks-deputies`, `unit-roles`) и меню «…»
+    (`member-transfer`, `member-remove`) — обычный POST без `hx-post`: успех — 302 и страница
+    целиком, отказ — 200 с `[role=alert]` (§ 8). Подсказки кандидатов (`hx-get` поля `q`) — HTMX, как
+    в § 9.8. Затрагивает: helpers_org (ожидание перехода после отправки), приёмку T-2141…T-2150.

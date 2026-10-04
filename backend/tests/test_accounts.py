@@ -65,9 +65,9 @@ def test_email_unique_case_insensitive_and_is_login():
 
 
 def test_user_states_invited_active_blocked_only():
-    """FR-003: у записи три состояния; «уволен» принадлежит срезу 002."""
+    """FR-003, FR-124: у записи четыре состояния, в том числе «уволен»."""
     User = model("core.User")
-    assert {value for value, _ in User._meta.get_field("state").choices} == {"invited", "active", "blocked"}
+    assert {value for value, _ in User._meta.get_field("state").choices} == {"invited", "active", "blocked", "dismissed"}
     admin, role = support.make_admin(), support.role_by_name(support.STAFF_ROLE)
     client = support.logged_in(admin)
     data = staff_form(role)
@@ -167,7 +167,8 @@ def test_no_delete_user_route_or_service():
     assert model("core.User").objects.filter(pk=target.pk).exists()
     routes = [route for route, _ in support.all_routes()]
     assert routes, "в URLconf нет маршрутов"
-    assert not [r for r in routes if re.search(r"delete|remove|destroy", r) and r.startswith("staff/")]
+    assert not [r for r in routes if re.search(r"delete|remove|destroy", r) and r.startswith("staff/")
+                and "/photo/" not in r]
     assert not [n for n in dir(accounts) if re.match(r"(delete|remove|destroy)_user", n)]
 
 

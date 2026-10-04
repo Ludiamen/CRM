@@ -15,23 +15,24 @@ SECTION_LINKS = {
 
 
 def test_seven_permissions_created_by_migration():
-    """FR-014: семь прав среза создаёт миграция данных, у каждого есть русское название."""
-    rows = list(model("core.Permission").objects.values_list("code", "title"))
+    """FR-014, FR-118: семь прав среза 001 созданы миграцией данных с русскими названиями (полный набор из десяти прав — T-2104)."""
+    rows = list(model("core.Permission").objects.filter(code__in=PERMISSIONS).values_list("code", "title"))
     assert sorted(code for code, _ in rows) == sorted(PERMISSIONS)
     assert all(re.search("[а-яА-Я]", title) for _, title in rows)
 
 
 def test_three_builtin_roles_with_initial_permissions():
-    """FR-015, FR-020: три начальные роли; у администратора все права, у остальных — только свои данные (прав нет)."""
+    """FR-015, FR-020, FR-118: три начальные роли; у администратора все десять прав, у «Руководителя» и «Сотрудника ИТ» ровно `staff.view`."""
     Role = model("core.Role")
     builtin = {r.name: r for r in Role.objects.filter(is_builtin=True)}
     assert set(builtin) == {support.ADMIN_ROLE, support.MANAGER_ROLE, support.STAFF_ROLE}
-    assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(PERMISSIONS)
-    assert not builtin[support.MANAGER_ROLE].permissions.exists()
-    assert not builtin[support.STAFF_ROLE].permissions.exists()
+    assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(PERMISSIONS + support.PERMISSIONS_002)
+    assert set(builtin[support.MANAGER_ROLE].permissions.values_list("code", flat=True)) == {"staff.view"}
+    assert set(builtin[support.STAFF_ROLE].permissions.values_list("code", flat=True)) == {"staff.view"}
     employee = support.logged_in(support.make_employee(roles=[builtin[support.STAFF_ROLE]]))
     assert employee.get("/me/").status_code == 200 and employee.get("/me/security/").status_code == 200
-    assert employee.get("/staff/").status_code == 403
+    assert employee.get("/staff/").status_code == 200, "сотрудник со `staff.view` открывает список"
+    assert employee.get("/staff/new/").status_code == 403, "создание записи — только `accounts.manage`"
 
 
 def test_custom_role_create_edit_delete_when_unassigned():
@@ -128,9 +129,11 @@ def test_every_protected_view_requires_permission_403():
         assert got.status_code != 403 and not (got.status_code == 302 and "/login/" in got["Location"]), (
             f"{label}: с правом {permission} получили {got.status_code}")
     # таблица обязана покрывать все маршруты разделов, а неизвестных разделов быть не должно
-    known = ("login/", "logout/", "password/", "activate/", "me/", "staff/", "roles/", "audit/", "settings/",
-             "health/", "media/", "static/", "")
-    paths = [path for _, path, _ in table]
+    from tests.support_org import SLICE_002_STAFF_ROUTES, route_path
+
+    known = ("login/", "logout/", "password/", "activate/", "me/", "staff/", "structure/", "calendar/", "ui/",
+             "roles/", "audit/", "settings/", "health/", "media/", "static/", "")
+    paths = [path for _, path, _ in table] + [route_path(t, 1) for _, t, _ in SLICE_002_STAFF_ROUTES]
     for route, _ in support.all_routes():
         assert route.startswith(known), f"маршрут {route!r} не относится ни к одному разделу плана"
         if route.startswith(("staff/", "roles/", "audit/", "settings/")):
@@ -144,7 +147,12 @@ def test_menu_hides_sections_without_permission():
         html = support.logged_in(user).get("/me/").content.decode()
         return {perm for perm, link in SECTION_LINKS.items() if f'href="{link}"' in html}
 
-    assert menu(support.make_employee(roles=[support.role_by_name(support.STAFF_ROLE)])) == set()
+    staff_html = support.logged_in(support.make_employee(roles=[support.role_by_name(support.STAFF_ROLE)])).get(
+        "/me/").content.decode()
+    for link in ("/staff/", "/structure/", "/calendar/"):
+        assert f'href="{link}"' in staff_html, f"у «Сотрудника ИТ» в меню должен быть {link}"
+    assert not [link for link in SECTION_LINKS.values() if link != "/staff/" and f'href="{link}"' in staff_html], (
+        "разделов администрирования у «Сотрудника ИТ» в меню нет")
     assert menu(support.make_admin()) == set(SECTION_LINKS)
     for permission, link in SECTION_LINKS.items():
         user = make_with_permissions(permission)
@@ -153,7 +161,7 @@ def test_menu_hides_sections_without_permission():
     assert all(plain.get(link).status_code == 403 for link in SECTION_LINKS.values())
 
 
-def test_permission_cache_dropped_on_role_change_effect_next_request():
+def test_permission_cache_dropped_on_role_change_effect_next_request(django_capture_on_commit_callbacks):
     """FR-015, FR-017 (сценарий 12.2): объединение прав кэшируется в Valkey (perms:<id>); изменение роли сбрасывает кэш держателей."""
     role = factories.make_role(name="Меняемая", permissions=("audit.view",))
     holders = [support.make_employee(roles=[role]) for _ in range(2)]
@@ -161,13 +169,15 @@ def test_permission_cache_dropped_on_role_change_effect_next_request():
     assert all(c.get("/audit/").status_code == 200 for c in clients)
     assert all(support.valkey_key(f"perms:{h.pk}") for h in holders), "объединение прав не закэшировано"
     admin = support.logged_in(support.make_admin())
-    admin.post(f"/roles/{role.pk}/", {"name": "Меняемая", "permissions": ["roles.manage"]})
+    with django_capture_on_commit_callbacks(execute=True):
+        admin.post(f"/roles/{role.pk}/", {"name": "Меняемая", "permissions": ["roles.manage"]})
     assert not any(support.valkey_key(f"perms:{h.pk}") for h in holders), "кэш держателей роли не сброшен"
     for client in clients:
         assert client.get("/audit/").status_code == 403 and client.get("/roles/").status_code == 200
     extra = factories.make_role(name="Добавочная", permissions=("settings.security",))
     assert clients[0].get("/settings/security/").status_code == 403
-    admin.post(f"/staff/{holders[0].pk}/roles/", {"roles": [role.pk, extra.pk]})
+    with django_capture_on_commit_callbacks(execute=True):
+        admin.post(f"/staff/{holders[0].pk}/roles/", {"roles": [role.pk, extra.pk]})
     assert clients[0].get("/settings/security/").status_code == 200, "назначение роли действует со следующего запроса"
     assert clients[1].get("/settings/security/").status_code == 403
 

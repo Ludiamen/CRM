@@ -17,7 +17,7 @@ from tests.e2e import helpers
 def test_s02_admin_creates_employee_and_invitation_arrives(admin_page, mailpit, employee, new_context):
     """Сценарий 2, п. 1, 2, 4, 5: запись в списке со статусом «приглашён», письмо за минуту;
     повторная почта отклонена; в журнале создание и приглашение; рядовой сотрудник форму не открывает
-    и раздела в меню не видит."""
+    и кнопки создания не видит (раздел «Сотрудники» в меню у него есть)."""
     email = factories.new_email("emp")
     seen = helpers.mail_ids(mailpit, email)
     started = time.monotonic()
@@ -36,6 +36,7 @@ def test_s02_admin_creates_employee_and_invitation_arrives(admin_page, mailpit, 
 
     # карточка показывает ту же ссылку и состояние письма
     admin_page.goto(f"/staff/{user_id}/")
+    helpers.open_security_tab(admin_page)
     card_link = admin_page.locator("[data-invitation-link]").first.inner_text().strip()
     assert helpers.code_of(card_link) == helpers.code_of(mail_link), "ссылка в карточке не та, что в письме"
     expect(admin_page.locator("[data-mail-status]").first).to_be_visible()
@@ -57,13 +58,17 @@ def test_s02_admin_creates_employee_and_invitation_arrives(admin_page, mailpit, 
     actions = helpers.audit_actions(admin_page)
     assert "user.created" in actions and "invitation.sent" in actions
 
-    # п. 5: сотрудник без права управления учётными записями
+    # п. 5: сотрудник без права управления учётными записями: «Сотрудники» в меню есть (FR-118),
+    # кнопки создания нет, а форма создания закрыта
     plain = employee()
     page = plain.page
     response = page.goto("/staff/new/")
     assert response is not None and response.status == 403
     page.goto("/me/")
-    expect(page.locator('#main-menu a[href="/staff/"]')).to_have_count(0)
+    expect(page.locator('#main-menu a[href="/staff/"]')).to_have_count(1)
+    response = page.goto("/staff/")
+    assert response is not None and response.status == 200, "список сотрудников должен открыться (не 403/500)"
+    expect(page.locator('a[href="/staff/new/"]')).to_have_count(0)
 
 
 def test_s02_resend_invitation_old_link_dead_and_form_ux11(admin_page, mailpit, new_context):
@@ -85,6 +90,7 @@ def test_s02_resend_invitation_old_link_dead_and_form_ux11(admin_page, mailpit, 
     seen = helpers.mail_ids(mailpit, email)
 
     admin_page.goto(f"/staff/{user_id}/")
+    helpers.open_security_tab(admin_page)
     helpers.submit(admin_page.locator('form[action$="/invite/"]'))
     second = helpers.wait_mail(mailpit, email, "invitation", seen=seen)
     second_link = helpers.link_in(second, "/activate/")

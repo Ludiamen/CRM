@@ -5,7 +5,9 @@
 вход по одному в секунду, пауза между действиями 5–15 с, замер после того, как вошли все
 (`--reset-stats`). Запуск против стенда (https://127.0.0.1:8031):
     LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
-        --reset-stats --host https://127.0.0.1:8031
+        --reset-stats --host https://127.0.0.1:8031 StaffAuditHistoryUser
+Имя класса в конце команды обязательно: без него locust запускает все классы файла и делит `-u` между ними.
+Прогон среза 002 — тот же файл с классом `OrgUser` (команда — в его докстринге).
 
 Замер ёмкости (не критерий): `LOAD_WAIT=1,3` и `-r 10` — около 50 запросов в секунду и 100 входов
 за 10 с. `creds.csv` — строки `почта,пароль,ключ_TOTP_hex` администраторов стенда (файл вне git,
@@ -15,6 +17,8 @@
 import csv
 import itertools
 import os
+import random
+import re
 import sys
 import threading
 
@@ -84,6 +88,8 @@ PAGES = ("/staff/", "/staff/ (HTMX)", "/audit/", "/me/security/history/")
 @events.quitting.add_listener
 def _check_p95(environment, **_kwargs):
     """NFR-002: p95 каждой страницы среза (вход в требование не входит) и ни одной ошибки."""
+    if StaffAuditHistoryUser not in environment.user_classes:
+        return
     stats = environment.stats
     over = {}
     for name in PAGES:
@@ -93,5 +99,76 @@ def _check_p95(environment, **_kwargs):
             over[name] = p95
     if stats.total.num_failures or over:
         print(f"NFR-002 не выполнено: p95 выше {P95_LIMIT_MS} мс или нет замера {over}, "
+              f"ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1
+
+
+class OrgUser(HttpUser):
+    """Срез 002 (T-2120, NFR-102): вошедший сотрудник листает структуру, карточку узла, список с поиском,
+    карточку сотрудника, календарь и сетку поля даты. Модель нагрузки та же (PLAN-001 версия 4); данные —
+    `prepare_users.py`, затем `prepare_org.py` (200 узлов, членства 100 сотрудников) и журнал в 300 тыс.
+    событий (`fill_audit.py`). Запуск только этого класса (Этап 4, T-2242):
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+            --reset-stats --host https://127.0.0.1:8031 OrgUser
+    (имя класса — в конце команды: без него locust запускает все классы файла и делит `-u` между ними)
+    Поиск в списке — строка LOAD_ORG_QUERY (по умолчанию «Нагрузка», как ФИО записей prepare_users.py).
+    Адреса узлов и сотрудников берутся со страниц при входе, поэтому скрипт не знает номеров заранее."""
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        self.query = os.environ.get("LOAD_ORG_QUERY", "Нагрузка")
+        tree = self.client.get("/structure/", name="setup /structure/").text
+        self.unit_ids = sorted(set(re.findall(r'<li\b[^>]*\bdata-unit-id="(\d+)"', tree))) or ["1"]
+        listing = self.client.get("/staff/?state=all", name="setup /staff/").text
+        self.user_ids = sorted(set(re.findall(r'href="/staff/(\d+)/"', listing))) or ["1"]
+
+    @task(3)
+    def structure(self):
+        self.client.get("/structure/", name="/structure/")
+
+    @task(3)
+    def unit_card(self):
+        self.client.get(f"/structure/{random.choice(self.unit_ids)}/", headers={"HX-Request": "true"},
+                        name="/structure/<id>/ (HTMX)")
+
+    @task(3)
+    def staff_search(self):
+        self.client.get(f"/staff/?q={self.query}&unit={random.choice(self.unit_ids)}", name="/staff/?q&unit")
+
+    @task(2)
+    def staff_card(self):
+        self.client.get(f"/staff/{random.choice(self.user_ids)}/", name="/staff/<id>/")
+
+    @task(1)
+    def calendar(self):
+        self.client.get("/calendar/", name="/calendar/")
+
+    @task(1)
+    def date_picker(self):
+        self.client.get("/ui/date-picker/?month=2026-10", headers={"HX-Request": "true"}, name="/ui/date-picker/")
+
+
+ORG_PAGES = ("/structure/", "/structure/<id>/ (HTMX)", "/staff/?q&unit", "/staff/<id>/", "/calendar/", "/ui/date-picker/")
+
+
+@events.quitting.add_listener
+def _check_org_p95(environment, **_kwargs):
+    """NFR-102 для страниц среза 002: p95 каждой не больше 500 мс, ни одной ошибки и все страницы замерены."""
+    if OrgUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    for name in ORG_PAGES:
+        entry = stats.entries.get((name, "GET"))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > P95_LIMIT_MS:
+            over[name] = p95
+    if stats.total.num_failures or over:
+        print(f"NFR-102 (срез 002) не выполнено: p95 выше {P95_LIMIT_MS} мс или нет замера {over}, "
               f"ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1

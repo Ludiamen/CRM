@@ -82,6 +82,7 @@ def test_s12_last_admin_protected_in_ui(admin_page, stand_admin):
     admin_page.goto(own_url)
     expect(admin_page.locator('form[action$="/roles/"]').get_by_label(helpers.ADMIN_ROLE, exact=True)).to_be_checked()
 
+    helpers.open_security_tab(admin_page)  # форма блокировки лежит на вкладке «Безопасность»
     block = admin_page.locator('form[action$="/block/"]')
     if block.count():  # форма блокировки может быть скрыта у себя — тогда отказ уже в интерфейсе
         block.locator("[name=reason]").fill("проверка")
