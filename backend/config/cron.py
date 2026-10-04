@@ -16,6 +16,8 @@ from rq.cron import register  # noqa: E402
 
 from apps.core.services.retention import (  # noqa: E402
     purge_expired_links, purge_expired_sessions, purge_login_history)
+from apps.core.tasks import purge_quarantine, requeue_pending_scans  # noqa: E402
+from apps.org.tasks import purge_previews  # noqa: E402
 
 QUEUE = "mail"
 
@@ -23,3 +25,10 @@ QUEUE = "mail"
 register(purge_login_history, queue_name=QUEUE, cron="10 3 * * *", name="purge_login_history")
 register(purge_expired_links, queue_name=QUEUE, cron="20 3 * * *", name="purge_expired_links")
 register(purge_expired_sessions, queue_name=QUEUE, cron="30 3 * * *", name="purge_expired_sessions")
+
+# Путь фото (T-2216): часовой подбор ожидающих проверки и ночная очистка карантина
+register(requeue_pending_scans, queue_name=QUEUE, cron="0 * * * *", name="requeue_pending_scans")
+register(purge_quarantine, queue_name=QUEUE, cron="50 3 * * *", name="purge_quarantine")
+
+# Загрузки среза 002 (T-2218): неподтверждённые предпросмотры сотрудников и календаря старше суток
+register(purge_previews, queue_name=QUEUE, cron="40 3 * * *", name="purge_import_previews")

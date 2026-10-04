@@ -35,7 +35,7 @@
       <label class="form-label small mb-1" for="id_object_type">Вид объекта</label>
       <select class="form-select" id="id_object_type" name="object_type">
         <option value="">Любой</option>
-        {% for code, label in object_types %}<option value="{{ code }}"{% if filters.object_type == code %} selected{% endif %}>{{ label|capfirst }}</option>{% endfor %}
+        {% for code, label in object_types %}<option value="{{ code }}"{% if filters.object_type == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
         {% if filters.object_type and filters.object_type not in object_type_codes %}<option value="{{ filters.object_type }}" selected hidden>{{ filters.object_type }}</option>{% endif %}
       </select>
     </div>

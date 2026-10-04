@@ -122,6 +122,7 @@ CACHES = {
 }
 RQ_QUEUES = {
     "mail": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
+    "files": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
 }
 
 # --- Сессии в базе (закрывать по одной), пароли argon2 -----------------------
@@ -174,6 +175,8 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR.parent / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR.parent / "media"
+# Том `protected`: входящие, чистые фото и карантин; наружу отдаёт только nginx по X-Accel-Redirect
+PROTECTED_ROOT = BASE_DIR.parent / "protected"
 
 # --- Исходящая почта (Mailpit на стенде, SMTP общества на установке) ----------
 
@@ -189,3 +192,9 @@ if _защита_smtp not in ("starttls", "ssl", "none"):
 EMAIL_USE_TLS = _защита_smtp == "starttls"
 EMAIL_USE_SSL = _защита_smtp == "ssl"
 EMAIL_TIMEOUT = 30
+
+# --- Антивирус ClamAV (адаптер apps/integrations/clamav) -----------------------
+
+CLAMAV_HOST = env("CLAMAV_HOST", default="clamav")
+CLAMAV_PORT = env.int("CLAMAV_PORT", default=3310)
+CLAMAV_TIMEOUT = env.int("CLAMAV_TIMEOUT", default=30)

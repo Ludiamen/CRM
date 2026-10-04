@@ -13,6 +13,7 @@ from apps.core.models import Permission, Role, User, UserState
 from . import audit
 
 ADMIN_ROLE_NAME = "Администратор портала"
+STAFF_ROLE_NAME = "Сотрудник ИТ"
 MAX_NAME_LENGTH = 100
 
 
@@ -24,6 +25,14 @@ def admin_role() -> Role | None:
     return Role.objects.filter(is_builtin=True, name=ADMIN_ROLE_NAME).first()
 
 
+def staff_role() -> Role:
+    """Начальная роль «Сотрудник ИТ»: её получает вернувшийся на работу (FR-128)."""
+    role = Role.objects.filter(is_builtin=True, name=STAFF_ROLE_NAME).first()
+    if role is None:
+        raise RoleError(f"Нет начальной роли «{STAFF_ROLE_NAME}»: примените миграции.")
+    return role
+
+
 def permission_codes(role: Role) -> list[str]:
     return sorted(role.permissions.values_list("code", flat=True))
 
@@ -33,11 +42,18 @@ def is_active_admin(user) -> bool:
 
 
 def guard_last_admin(user, *, action: str) -> None:
-    """Бросает RoleError, если `user` — последний активный администратор."""
+    """Бросает RoleError, если `user` — последний активный администратор.
+
+    Строки действующих администраторов берутся под `FOR UPDATE` в порядке `pk`: два администратора,
+    одновременно увольняющие или блокирующие друг друга, выстраиваются в очередь и не оставят портал
+    без администратора.
+    """
     if not is_active_admin(user):
         return
-    others = User.objects.filter(state=UserState.ACTIVE, roles__is_builtin=True, roles__name=ADMIN_ROLE_NAME).exclude(pk=user.pk)
-    if not others.exists():
+    with transaction.atomic():
+        admins = User.objects.filter(state=UserState.ACTIVE, roles__is_builtin=True, roles__name=ADMIN_ROLE_NAME)
+        locked = list(admins.order_by("pk").select_for_update(of=("self",)).values_list("pk", flat=True))
+    if not [pk for pk in locked if pk != user.pk]:
         raise RoleError(f"Это последний администратор портала: {action} нельзя.")
 
 
@@ -101,6 +117,8 @@ def delete_role(role: Role, *, actor, ip=None) -> None:
 
 def set_user_roles(user: User, roles, *, actor, ip=None) -> None:
     """Заменяет роли сотрудника; снять роль администратора с последнего администратора нельзя."""
+    if user.state == UserState.DISMISSED:
+        raise RoleError("Запись уволена: роли не меняются.")
     new_ids = {role.pk if isinstance(role, Role) else int(role) for role in roles}
     new_roles = list(Role.objects.filter(pk__in=new_ids))
     if len(new_roles) != len(new_ids):

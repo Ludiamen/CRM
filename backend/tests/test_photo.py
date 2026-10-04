@@ -434,8 +434,11 @@ def test_hourly_job_requeues_pending_scans_without_job(protected_root, django_ca
     young = waiting(timezone.now() - timedelta(minutes=10))
     done = make_clean_photo(support.make_employee(), protected_root)
     stored_model().objects.filter(pk=done.pk).update(created_at=old_ago)
-    queue.enqueue(SCAN, str(queued.id))
-    queue.enqueue_in(timedelta(hours=1), SCAN, str(scheduled.id))
+    # django-rq 4 ставит задание на фиксации транзакции (COMMIT_MODE по умолчанию — on_db_commit), а тест идёт в
+    # транзакции без фиксации: подготовка очереди — тоже внутри захвата колбэков (правка Этапа 3, решение Opus)
+    with django_capture_on_commit_callbacks(execute=True):
+        queue.enqueue(SCAN, str(queued.id))
+        queue.enqueue_in(timedelta(hours=1), SCAN, str(scheduled.id))
     assert len(support_org.files_jobs()) == 1
 
     with django_capture_on_commit_callbacks(execute=True):

@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from apps.core.models import AuditEvent, User
 from apps.core.services import audit_labels
+from apps.core.widgets import parse_date
 
 PAGE_SIZE = 50
 MAX_PAGE = 100_000  # дальше — первая страница: огромный номер переполнил бы OFFSET
@@ -36,7 +37,7 @@ PRESET_PREFIXES = {
 CSV_HEADER = ("Номер", "Время (Москва)", "Кто", "Событие", "Код события", "Вид объекта", "Номер объекта", "Было", "Стало", "Адрес")
 FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
 
-ACTION_TITLES = dict([
+_ACTION_TITLES = dict([
     ("login.success", "Вход выполнен"), ("login.failed", "Неудачная попытка входа"), ("logout", "Выход"),
     ("account.locked", "Запись заблокирована после неудач"), ("account.unlocked", "Блокировка входа записи снята"),
     ("ip.locked", "Адрес заблокирован"), ("ip.unlocked", "Блокировка адреса снята"),
@@ -53,6 +54,7 @@ ACTION_TITLES = dict([
     ("security_settings.updated", "Настройки безопасности изменены"),
     ("portal_settings.updated", "Настройки портала изменены"), ("mail.status_changed", "Состояние письма изменилось"),
 ])
+ACTION_TITLES = audit_labels.Layered("actions", _ACTION_TITLES)  # названия кодов: ядра и из точки `audit_labels`
 
 
 @dataclass(frozen=True)
@@ -68,10 +70,8 @@ class Filters:
 
 
 def _date(value) -> date | None:
-    try:
-        return date.fromisoformat((value or "").strip())
-    except ValueError:
-        return None
+    """Дата фильтра: ДД.ММ.ГГГГ или ГГГГ-ММ-ДД; неверная — `None` (игнорируется)."""
+    return parse_date(value or "")
 
 
 def _int(value) -> int | None:
@@ -181,7 +181,8 @@ def _safe(value) -> str:
 def actor_text(event) -> str:
     if event.actor_id is None:
         return "система"
-    return f"{event.actor.full_name} <{event.actor.email}>"
+    dismissed = " (уволен)" if event.actor.state == "dismissed" else ""
+    return f"{event.actor.full_name}{dismissed} <{event.actor.email}>"
 
 
 def write_csv(stream, filters: Filters) -> None:

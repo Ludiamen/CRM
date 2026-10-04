@@ -1,4 +1,5 @@
 {% if can_manage %}<p><a href="/staff/{{ target.pk }}/" hx-get="/staff/{{ target.pk }}/">&larr; Карточка сотрудника</a></p>{% endif %}
+<p class="fw-semibold" data-person-name>{{ target.full_name }}{% if target.state == "dismissed" %} (уволен){% endif %}</p>
 <section class="slider-section">
   <h3>Известные устройства</h3>
   {% if devices %}

@@ -7,16 +7,17 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Q, Value
+from django.db.models.functions import Lower, Replace
 from django.utils import timezone
 
-from apps.core.models import BackupCodeDevice, EncryptedTOTPDevice, Role, User, UserState
+from apps.core.models import BackupCodeDevice, EncryptedTOTPDevice, KnownDevice, Role, User, UserState
 from apps.integrations.mail import services as mail
 
 from . import audit, backup_codes, links, lockout, roles, sessions, totp
 
 SORTABLE = {"full_name", "email", "position", "state", "created_at", "activated_at"}
-PROFILE_FIELDS = ("full_name", "position", "phone", "email", "contacts")
+PROFILE_FIELDS = ("full_name", "position", "phone", "email", "contacts", "internal_phone", "workplace")
 
 
 class AccountError(Exception):
@@ -51,6 +52,29 @@ def _snapshot(user: User) -> dict:
             "contacts": list(user.contacts or [])}
 
 
+def _card_snapshot(user: User) -> dict:
+    return {**_snapshot(user), "internal_phone": user.internal_phone, "workplace": user.workplace}
+
+
+def _refuse_dismissed(user: User) -> None:
+    if user.state == UserState.DISMISSED:
+        raise AccountError("Запись уволена: её данные только для чтения. Можно вернуть сотрудника на работу.")
+
+
+def pickable(query: str = ""):
+    """Записи для выбора людей: приглашённые, активные, заблокированные; уволенных нет (FR-127)."""
+    qs = User.objects.exclude(state=UserState.DISMISSED)
+    needle = (query or "").strip()
+    if needle:
+        needle = needle.replace("ё", "е").replace("Ё", "Е")
+        qs = qs.annotate(
+            _n=Replace(Replace(Lower("full_name"), Value("ё"), Value("е")), Value("Ё"), Value("е")),
+            _p=Replace(Lower("position"), Value("ё"), Value("е")),
+            _e=Replace(Lower("email"), Value("ё"), Value("е")),
+        ).filter(Q(_n__contains=needle.lower()) | Q(_p__contains=needle.lower()) | Q(_e__contains=needle.lower()))
+    return qs.order_by("full_name", "pk")
+
+
 def list_staff(*, state: str | None = None, role_id=None, query: str | None = None, sort: str | None = None):
     """Список для `/staff/`: фильтры по состоянию и роли, поиск по ФИО и почте, сортировка из белого списка."""
     qs = User.objects.all().prefetch_related("roles")
@@ -71,7 +95,7 @@ def list_staff(*, state: str | None = None, role_id=None, query: str | None = No
 
 
 def create_user(*, email: str, full_name: str, position: str, phone: str = "", contacts=None, role_ids=(),
-                actor, ip=None, invite: bool = True) -> User:
+                internal_phone: str = "", workplace: str = "", actor, ip=None, invite: bool = True) -> User:
     """Заводит приглашённую запись; ссылка активации на 72 часа и письмо (FR-001, FR-008)."""
     email = _clean_email(email)
     full_name, position = (full_name or "").strip(), (position or "").strip()
@@ -85,7 +109,8 @@ def create_user(*, email: str, full_name: str, position: str, phone: str = "", c
     try:
         with transaction.atomic():
             user = User(email=email, full_name=full_name, position=position, phone=(phone or "").strip(),
-                        contacts=parse_contacts(contacts), state=UserState.INVITED)
+                        contacts=parse_contacts(contacts), state=UserState.INVITED,
+                        internal_phone=(internal_phone or "").strip(), workplace=(workplace or "").strip())
             user.set_unusable_password()
             user.save()
             user.roles.set(selected)
@@ -119,7 +144,13 @@ def create_first_admin(email: str, full_name: str = "") -> tuple[User, str]:
 
 
 def update_profile(user: User, *, actor, ip=None, **fields) -> User:
-    """Правка профиля администратором: ФИО, должность, телефон, почта, контакты (FR-005)."""
+    """Правка профиля администратором: ФИО, должность, телефоны, место работы, почта, контакты (FR-005, FR-133).
+
+    Дату рождения меняет только сам сотрудник (FR-134); над уволенной записью — отказ (FR-127).
+    """
+    _refuse_dismissed(user)
+    if "birth_date" in fields:
+        raise AccountError("Дату рождения меняет только сам сотрудник.")
     unknown = set(fields) - set(PROFILE_FIELDS)
     if unknown:
         raise AccountError("Это поле профиля менять нельзя: " + ", ".join(sorted(unknown)) + ".")
@@ -134,11 +165,11 @@ def update_profile(user: User, *, actor, ip=None, **fields) -> User:
     if not new.get("full_name", user.full_name) or not new.get("position", user.position):
         raise AccountError("ФИО и должность не могут быть пустыми.")
     with transaction.atomic():
-        before_all = _snapshot(user)
+        before_all = _card_snapshot(user)
         for name, value in new.items():
             setattr(user, name, value)
         user.save()
-        after_all = _snapshot(user)
+        after_all = _card_snapshot(user)
         changed = [name for name in new if before_all[name] != after_all[name]]
         if changed:
             audit.record("user.updated", actor=actor, object_type="user", object_id=user.pk,
@@ -146,27 +177,95 @@ def update_profile(user: User, *, actor, ip=None, **fields) -> User:
     return user
 
 
-def update_own_contacts(user: User, *, phone: str, contacts, ip=None) -> User:
-    """Сотрудник правит только свой телефон и контакты (FR-006)."""
+def update_own_profile(user: User, *, phone: str, contacts, internal_phone: str, workplace: str, birth_date,
+                       ip=None) -> User:
+    """Сотрудник правит свои поля: телефон, контакты, внутренний телефон, место работы, дату рождения (FR-006, FR-133, FR-134).
+
+    Событие `user.updated` — только при изменении. `phone` и `contacts` пишутся оба, если изменилось хоть одно;
+    `internal_phone` и `workplace` — только изменённые; дата рождения — только в `after` словом «изменено» или
+    «очищено», без значения (FR-151).
+    """
+    new = {"phone": (phone or "").strip(), "contacts": parse_contacts(contacts),
+           "internal_phone": (internal_phone or "").strip(), "workplace": (workplace or "").strip()}
     with transaction.atomic():
-        before = {"phone": user.phone, "contacts": list(user.contacts or [])}
-        user.phone, user.contacts = (phone or "").strip(), parse_contacts(contacts)
-        user.save(update_fields=["phone", "contacts"])
-        after = {"phone": user.phone, "contacts": user.contacts}
-        if before != after:
+        old = {"phone": user.phone, "contacts": list(user.contacts or []),
+               "internal_phone": user.internal_phone, "workplace": user.workplace}
+        old_birth = user.birth_date
+        for name, value in new.items():
+            setattr(user, name, value)
+        user.birth_date = birth_date
+        user.save(update_fields=[*new, "birth_date"])
+        before, after = {}, {}
+        if (old["phone"], old["contacts"]) != (new["phone"], new["contacts"]):
+            for name in ("phone", "contacts"):
+                before[name], after[name] = old[name], new[name]
+        for name in ("internal_phone", "workplace"):
+            if old[name] != new[name]:
+                before[name], after[name] = old[name], new[name]
+        if old_birth != birth_date:
+            after["birth_date"] = "изменено" if birth_date is not None else "очищено"
+        if after:
             audit.record("user.updated", actor=user, object_type="user", object_id=user.pk, before=before, after=after, ip=ip)
     return user
 
 
+def update_own_contacts(user: User, *, phone: str, contacts, ip=None) -> User:
+    """Сотрудник правит только свой телефон и контакты (FR-006); остальные поля остаются как есть."""
+    return update_own_profile(user, phone=phone, contacts=contacts, internal_phone=user.internal_phone,
+                              workplace=user.workplace, birth_date=user.birth_date, ip=ip)
+
+
+def dismiss(user: User, *, actor, ip=None) -> None:
+    """Увольнение (FR-124…126): состояние «уволен», ссылки гаснут, сессии закрываются, личные роли снимаются.
+
+    Письма нет. Членства снимает `org.services.people.dismiss`, не ядро.
+    """
+    if actor is not None and actor.pk == user.pk:
+        raise AccountError("Себя уволить нельзя.")
+    if user.state == UserState.DISMISSED:
+        raise AccountError("Запись уже уволена.")
+    with transaction.atomic():
+        roles.guard_last_admin(user, action="уволить его")  # RoleError — вызывающий показывает текст
+        previous_roles = sorted(user.roles.values_list("name", flat=True))
+        previous = user.state
+        user.state, user.dismissed_at, user.dismissed_by = UserState.DISMISSED, timezone.now(), actor
+        user.blocked_from, user.blocked_reason = "", ""
+        user.save(update_fields=["state", "dismissed_at", "dismissed_by", "blocked_from", "blocked_reason"])
+        links.revoke(user)
+        sessions.close_all(user)
+        user.roles.clear()
+        audit.record("user.dismissed", actor=actor, object_type="user", object_id=user.pk,
+                     before={"state": previous, "roles": previous_roles}, after={"state": UserState.DISMISSED}, ip=ip)
+
+
+def rehire(user: User, *, actor, ip=None) -> None:
+    """Возврат на работу (FR-128): «приглашён», непригодный пароль, второй фактор и устройства удалены, роль «Сотрудник ИТ»."""
+    if user.state != UserState.DISMISSED:
+        raise AccountError("Вернуть на работу можно только уволенную запись.")
+    staff = roles.staff_role()
+    with transaction.atomic():
+        user.state, user.dismissed_at, user.dismissed_by = UserState.INVITED, None, None
+        user.set_unusable_password()
+        user.save(update_fields=["state", "dismissed_at", "dismissed_by", "password"])
+        EncryptedTOTPDevice.objects.filter(user=user).delete()
+        BackupCodeDevice.objects.filter(user=user).delete()  # коды удаляются каскадом
+        KnownDevice.objects.filter(user=user).delete()
+        user.roles.set([staff])
+        audit.record("user.rehired", actor=actor, object_type="user", object_id=user.pk,
+                     before={"state": UserState.DISMISSED}, after={"state": UserState.INVITED, "roles": [staff.name]}, ip=ip)
+        links.send_invitation(user, created_by=actor, ip=ip)
+
+
 def block(user: User, reason: str, *, actor, ip=None) -> None:
     """Блокировка: сессии закрываются сразу, ссылки гаснут (FR-005, FR-011, FR-019)."""
+    _refuse_dismissed(user)
     if user.state == UserState.BLOCKED:
         return
     if actor is not None and actor.pk == user.pk:
         raise AccountError("Свою запись заблокировать нельзя.")
-    roles.guard_last_admin(user, action="заблокировать его")  # RoleError — вызывающий показывает текст
     reason = (reason or "").strip()
     with transaction.atomic():
+        roles.guard_last_admin(user, action="заблокировать его")  # RoleError — вызывающий показывает текст
         previous = user.state
         user.blocked_from, user.state, user.blocked_reason = previous, UserState.BLOCKED, reason
         user.save(update_fields=["blocked_from", "state", "blocked_reason"])
@@ -198,6 +297,7 @@ def resend_invitation(user: User, *, actor, ip=None):
 
 def reset_second_factor(user: User, *, actor, ip=None) -> None:
     """Сброс второго фактора (FR-024): ключ и резервные коды гаснут, сессии закрываются, сотруднику — письмо."""
+    _refuse_dismissed(user)
     if actor is not None and actor.pk == user.pk:
         raise AccountError("Свой второй фактор сбросить нельзя: это делает другой администратор.")
     with transaction.atomic():

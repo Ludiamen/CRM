@@ -260,7 +260,8 @@ def check_values(ctx):
     assert profile.before.keys() == {"phone", "contacts", "internal_phone", "workplace"}
     assert profile.after.keys() == {"phone", "contacts", "internal_phone", "workplace", "birth_date"}
     assert profile.after["internal_phone"] == "204" and profile.after["workplace"] == "Кабинет 7"
-    assert profile.after["contacts"] == "@ivanov" and profile.after["birth_date"] == "изменено"
+    # контакты в событии — список, как в срезе 001 (test_activation.py:168; правка Этапа 3, решение Opus)
+    assert profile.after["contacts"] == ["@ivanov"] and profile.after["birth_date"] == "изменено"
 
     up1, = named["upload1"]
     up2, = named["upload2"]
@@ -283,7 +284,7 @@ def check_values(ctx):
     assert settings.after == {"work_weekdays": [0, 1, 2, 3, 4, 5], "day_start": "08:00", "day_end": "20:00"}
     year, = named["year"]
     assert year.after["year"] == 2026 and year.after["file_name"] == "cal2026.csv"
-    assert year.before == {}  # год раньше не был загружен (§ 6)
+    assert year.before == {"year": 2026, "totals": {}}  # год раньше не был загружен (дополнение 34; правка Этапа 3)
     assert set(year.after["totals"]) == set(TOTALS_KEYS)
     for key in TOTALS_KEYS:
         value = year.after["totals"][key]

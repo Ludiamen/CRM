@@ -108,7 +108,7 @@ def check_password(email: str, password: str, *, ip: str, user_agent: str = "") 
         _dummy_check(password)
         _refuse(user, ip, user_agent, LoginResult.IP_LOCKED)
         return PasswordStep(False, reason=REASON_IP_LOCKED)
-    if lockout.is_account_locked(key) or (user is not None and user.state == UserState.BLOCKED):
+    if lockout.is_account_locked(key) or (user is not None and user.state in (UserState.BLOCKED, UserState.DISMISSED)):
         _dummy_check(password)
         _refuse(user, ip, user_agent, LoginResult.LOCKED)
         return PasswordStep(False, reason=REASON_LOCKED)
@@ -131,7 +131,7 @@ def check_code(user, *, code: str = "", backup_code: str = "", ip: str, user_age
     if lockout.is_ip_locked(ip):
         _refuse(user, ip, user_agent, LoginResult.IP_LOCKED)
         return CodeStep(False, reason=REASON_IP_LOCKED)
-    if lockout.is_account_locked(key) or user.state == UserState.BLOCKED:
+    if lockout.is_account_locked(key) or user.state in (UserState.BLOCKED, UserState.DISMISSED):
         _refuse(user, ip, user_agent, LoginResult.LOCKED)
         return CodeStep(False, reason=REASON_LOCKED)
 
