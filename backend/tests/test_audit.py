@@ -364,21 +364,25 @@ def test_audit_pages_forward_and_back_without_total():
 
 
 def test_audit_csv_export_applies_filter_and_escapes_formulas(clock):
-    """FR-047 (сценарий 13.6): выгрузка CSV — текущая выборка; ячейки на `=`, `+`, `-`, `@` получают апостроф."""
+    """FR-047 (сценарий 13.6): выгрузка CSV — текущая выборка; ячейки на `=`, `+`, `-`, `@`, табуляция, возврат каретки получают апостроф."""
     from apps.core.services.audit import record
 
     admin_user = support.make_admin(full_name="=HYPERLINK(1)")
     client = support.logged_in(admin_user, ip="198.51.100.104")
     record("probe.formula", actor=admin_user, object_type="+SUM", object_id="=1+1", before={"a": "-2"}, after={"b": "@x"})
+    tab_actor = support.make_admin(full_name="\tТабов")
+    record("probe.formula", actor=tab_actor, object_type="\tВид", object_id="\rНомер", before={"a": "\t1"}, after={"b": "\r2"})
     record("probe.other", object_type="plain", object_id="2")
     done = client.get("/audit/export.csv?action=probe.formula")
     assert done.status_code == 200 and done["Content-Type"].startswith("text/csv")
     assert "attachment" in done.get("Content-Disposition", "")
     rows = list(csv.reader(io.StringIO(done.content.decode("utf-8-sig"))))
-    assert len(rows) == 2, "заголовок и одна строка выборки"
+    assert len(rows) == 3, "заголовок и две строки выборки"
     cells = [c for row in rows[1:] for c in row]
     assert "'=1+1" in cells and "'+SUM" in cells
+    assert "'\tВид" in cells and "'\rНомер" in cells and any(c.startswith("'\tТабов") for c in cells), cells
     assert not [c for c in cells if c.startswith(("=", "+", "-", "@"))], cells
+    assert not [c for c in cells if c.startswith(("\t", "\r"))], cells
     everything = list(csv.reader(io.StringIO(client.get("/audit/export.csv").content.decode("utf-8-sig"))))
     assert len(everything) > 2
 
@@ -473,3 +477,46 @@ def test_audit_changed_fields_only_for_settings_events():
     assert len(side_pairs(event, "before")) == 1 and side_pairs(event, "after")[0][1] == "14"
     same = model("core.AuditEvent")(action="portal_settings.updated", before={"name": "A"}, after={"name": "A"})
     assert len(side_pairs(same, "after")) == 1, "ничего не изменилось — как сейчас"
+
+
+def test_audit_csv_is_russian_like_the_page_with_event_code_column(clock):
+    """FR-047, NFR-010, PLAN-001 версия 4 «Выгрузка журнала — как экран»: CSV по-русски, плюс колонка «Код события»."""
+    from apps.core.services import audit_search
+    from apps.core.services.audit import record
+
+    admin_user = support.make_admin()
+    client = support.logged_in(admin_user, ip="198.51.100.105")
+    clock.set(datetime(2026, 9, 1, 9, 5, 7, tzinfo=tz.utc))
+    record("security_settings.updated", actor=admin_user, object_type="security_settings", object_id="1",
+           before={"password_min_length": 12, "idle_timeout_minutes": 60},
+           after={"password_min_length": 14, "idle_timeout_minutes": 60})
+    record("login.failed", object_type="user", object_id="9", before={}, after={"result": "bad_password"})
+    record("role.created", actor=admin_user, object_type="role", object_id="7",
+           after={"name": "Проверяющий", "permissions": ["audit.view"]})
+    perm_title = model("core.Permission").objects.get(code="audit.view").title
+
+    rows = list(csv.reader(io.StringIO(client.get("/audit/export.csv?sort=at").content.decode("utf-8-sig"))))
+    assert rows[0] == ["Номер", "Время (Москва)", "Кто", "Событие", "Код события", "Вид объекта", "Номер объекта",
+                       "Было", "Стало", "Адрес"]
+    by_code = {row[4]: row for row in rows[1:]}
+
+    def has_no_ascii_key(cell, keys):
+        return not any(re.search(rf"\b{key}\b", cell) for key in keys)
+
+    settings_row = by_code["security_settings.updated"]
+    assert settings_row[3] == audit_search.ACTION_TITLES["security_settings.updated"]
+    assert settings_row[5] == "настройки безопасности" and settings_row[6] == "1"
+    assert settings_row[1] == "2026-09-01 12:05:07", "время по Москве, ГГГГ-ММ-ДД ЧЧ:ММ:СС"
+    assert settings_row[7].endswith(": 12") and settings_row[8].endswith(": 14"), (settings_row[7], settings_row[8])
+    assert "; " not in settings_row[8], "изменилось одно поле — одна пара"
+    assert has_no_ascii_key(settings_row[7] + settings_row[8], ("password_min_length", "idle_timeout_minutes"))
+    assert "{" not in settings_row[7] + settings_row[8]
+
+    failed = by_code["login.failed"]
+    assert failed[3] == audit_search.ACTION_TITLES["login.failed"] and failed[5] == "сотрудник" and failed[6] == "9"
+    assert failed[8] == "итог: неверный пароль" and failed[7] == ""
+
+    role = by_code["role.created"]
+    assert role[5] == "роль" and role[6] == "7"
+    assert role[8] == f"название: Проверяющий; права: {perm_title}", role[8]
+    assert has_no_ascii_key(role[8], ("name", "permissions", "audit.view"))

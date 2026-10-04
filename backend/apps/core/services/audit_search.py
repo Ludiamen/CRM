@@ -6,7 +6,6 @@
 `-`, `@` (и табуляции или возврата каретки), получают апостроф: таблица не должна исполнить их как формулу.
 """
 import csv
-import json
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
@@ -14,6 +13,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.models import AuditEvent, User
+from apps.core.services import audit_labels
 
 PAGE_SIZE = 50
 MAX_PAGE = 100_000  # дальше — первая страница: огромный номер переполнил бы OFFSET
@@ -33,7 +33,7 @@ PRESET_PREFIXES = {
     "roles": ("role.",),
     "settings": ("security_settings.", "portal_settings."),
 }
-CSV_HEADER = ("Номер", "Время (Москва)", "Кто", "Событие", "Вид объекта", "Номер объекта", "Было", "Стало", "Адрес")
+CSV_HEADER = ("Номер", "Время (Москва)", "Кто", "Событие", "Код события", "Вид объекта", "Номер объекта", "Было", "Стало", "Адрес")
 FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
 
 ACTION_TITLES = dict([
@@ -178,10 +178,6 @@ def _safe(value) -> str:
     return "'" + text if text.startswith(FORMULA_START) else text
 
 
-def _json(value) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True) if value else ""
-
-
 def actor_text(event) -> str:
     if event.actor_id is None:
         return "система"
@@ -194,5 +190,6 @@ def write_csv(stream, filters: Filters) -> None:
     writer.writerow(CSV_HEADER)
     for event in queryset(filters).iterator(chunk_size=2000):
         writer.writerow([_safe(cell) for cell in (
-            event.pk, timezone.localtime(event.at).strftime("%Y-%m-%d %H:%M:%S"), actor_text(event), event.action,
-            event.object_type, event.object_id, _json(event.before), _json(event.after), event.ip)])
+            event.pk, timezone.localtime(event.at).strftime("%Y-%m-%d %H:%M:%S"), actor_text(event), ACTION_TITLES.get(event.action, event.action),
+            event.action, audit_labels.object_title(event.object_type) if event.object_type else "", event.object_id,
+            audit_labels.side_text(event, "before"), audit_labels.side_text(event, "after"), event.ip)])

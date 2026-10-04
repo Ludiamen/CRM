@@ -2,8 +2,8 @@
 id: REV-TASKS-001
 вид: отчёт
 статус: черновик
-версия: 1
-проверяет: TASKS-001 sha256:6d73012b0ce3326ec53f065895682dd16381c5b22b1f996eb583fcb1a7fa5a7e
+версия: 2
+проверяет: TASKS-001 sha256:f7f9df9ac7e35418f477f28c87831e5922bd7cf9a7d75c972c17729e67a9e9ce
 исполнитель: opus
 ---
 
@@ -379,8 +379,9 @@ OK
   (docs.djangoproject.com/en/5.2/ref/databases/). Решение владельца
   2026-10-03 — включить: `psycopg-pool`, только у web (PLAN-001 версия 4).
   Ёмкость выросла с 22 до 29 (с всплеском входов) и около 42 запросов/с
-  (после него), медиана под нагрузкой — с 2,5 с до 0,7 с.
-- **Всплеск входов.** POST `/login/` под нагрузкой — медиана 9–11 с: argon2
+  (после него; файл этого прогона не сохранён — см. T-306, «Числа без
+  сохранённых файлов»), медиана под нагрузкой — с 2,5 с до 0,7 с.
+- **Всплеск входов.** POST `/login/` под нагрузкой — медиана 9–12 с: argon2
   занимает процессор, а под ASGI синхронный код каждого рабочего gunicorn
   исполняется в одном потоке, и страницы этого рабочего ждут. Вход в NFR-002
   не входит, но 100 входов за 10 с задают «утренний приход за 10 секунд».
@@ -504,7 +505,7 @@ CSV не менялись (`services/audit_search.py`: `Page`, `page_of`, `count
 | 3 | 10,1 | 67 / 64 / 86 / 56 | 198 | 0 | 0 |
 
 В каждом прогоне 100 сессий жили одновременно и работали без ошибок
-(NFR-001). Загрузка процессора в среднем: web 32–39 %, PostgreSQL 4–5 % (до
+(NFR-001). Загрузка процессора в среднем: web 32–40 %, PostgreSQL 4–5 % (до
 правки — 35–50 %). Разброс между прогонами остаётся двукратным, но худший
 прогон даёт 210 мс при пороге 500.
 
@@ -621,7 +622,7 @@ Europe/Moscow. Страницы входа, активации, «Безопас
 элементах браузера (поле даты «mm/dd/yyyy» в Firefox следует локали самого Firefox, «Browse…»,
 стрелки числовых полей).
 
-#### Решения по спорным пунктам
+#### Решения по спорным пунктам (принимал Opus)
 - 6.4 «портал после входа напоминает выпустить новый набор» — не выполнялось: напоминания не было нигде
   (s06-4-after-last-code). Правка F1.
 - 5.1 «устройство появляется в списке его устройств как новое» — выполнено: новое устройство появляется
@@ -663,7 +664,7 @@ Europe/Moscow. Страницы входа, активации, «Безопас
 |---|---|---|---|
 | F1 (сц. 6.4) | после входа последним резервным кодом напоминания нет | `login_code`: при входе резервным кодом и 0 оставшихся — сообщение со ссылкой на «Безопасность»; `flash` получил необязательную ссылку | test_login: test_last_backup_code_login_reminds_to_issue_new_set, test_not_last_backup_code_login_has_no_reminder |
 | F2 (FR-009, NFR-010) | в карточке сырой текст ошибки SMTP («gaierror: [Errno -3] …») | русская строка по состоянию письма; текст ошибки остаётся в базе | test_pages_stage3b: test_invitation_card_shows_plain_russian_mail_state_not_raw_error |
-| F3 (NFR-010) | в журнале английские ключи и значения («via: activation», «result: bad_code»), ISO-время UTC, «user № 1», коды прав, в записях о настройках все поля подряд, перенос посреди слова | русские названия ключей и значений, время ДД.ММ.ГГГГ ЧЧ:ММ по Москве, вид объекта по-русски и выпадающим списком (значения параметра прежние), права названиями, в «Было/Стало» только изменённые поля; названия прав читаются из базы один раз на процесс | test_audit: test_audit_every_written_key_has_russian_label и ещё четыре |
+| F3 (NFR-010) | в журнале английские ключи и значения («via: activation», «result: bad_code»), ISO-время UTC, «user № 1», коды прав, в записях о настройках все поля подряд, перенос посреди слова | русские названия ключей и значений, время по Москве (в колонке «Время» ДД.ММ.ГГГГ ЧЧ:ММ:СС, внутри «Было/Стало» ДД.ММ.ГГГГ ЧЧ:ММ), вид объекта по-русски и выпадающим списком (значения параметра прежние), права названиями, в «Было/Стало» только изменённые поля; названия прав читаются из базы один раз на процесс | test_audit: test_audit_every_written_key_has_russian_label и ещё четыре |
 | F4 (NFR-009) | история входов на 360 px: «Результат» обрезан | на ширине < 576 px запись — блок: «Когда — Результат», ниже устройство и адрес | проверка глазами (Chrome, Firefox) |
 | F5 (сц. 10.3, 11.3, 16.1) | подтверждения действий в панели «Безопасность» не видно или нет | сообщение внутри панели: выход со всех устройств, закрытие сессии, «Забыть», смена пароля | test_pages_stage3b: test_panel_action_result_shown_inside_panel (4 действия × с HTMX и без) |
 | F6 | «Сбросить» в фильтре сотрудников выходит за рамку на 1280 px | колонки фильтра перераспределены, кнопки фильтров сотрудников и журнала не переносятся | проверка глазами (1280 и 360, Chrome, Firefox) |
@@ -682,7 +683,7 @@ Europe/Moscow. Страницы входа, активации, «Безопас
 | 6.4 | F1 | как в спеке | как в спеке | d06-4-last-code-reminder, d06-4-after-link, d06-4-not-last-no-reminder |
 | 10.3, 11.3, 16.1 | F5 | как в спеке | как в спеке | d10-3-after-logout-all, d11-3-after-close, d11-3-after-forget, d16-1-after-password |
 | 11.1 | F4 | как в спеке | как в спеке | d11-1-history |
-| 13 | F3 | как в спеке | как в спеке | d13-1-audit-top, d13-2-settings-rows, d13-3-roles-rows, d13-4-filter-before, d13-4-filter-role, d13-5-object-column |
+| 13 | F3 | как в спеке (общий вид до правки `.obj-ref` — частично: перенос посреди слова в «Объекте», на d13-1 и d13-2 он ещё виден; после правки — d13-5) | как в спеке (то же) | d13-1-audit-top, d13-2-settings-rows, d13-3-roles-rows, d13-4-filter-before, d13-4-filter-role, d13-5-object-column |
 | фильтры | F6 | как в спеке | как в спеке | d15-6-staff-filter-1280/360, d15-6-audit-filter-1280/360 |
 
 Партия D нашла ещё один перенос посреди слова — в колонке «Объект» журнала («настройк/и»):
@@ -715,3 +716,209 @@ Europe/Moscow. Страницы входа, активации, «Безопас
   версия 2; `sdd.py на-проверку` плана и задач.
 - Для T-308 (владелец) стенд нужно сбросить заново: на нём записи партии D и прогона сценария 13.
 
+## Ход выполнения: этап 4, T-306 (прохождение требований) — Opus 2026-10-04
+
+### Независимая проверка
+Отчёт этапа 4, PLAN-001 версии 4, правки журнала, `tasks.md` и таблицу покрытия проверили шесть
+свежих проверяющих (crm-reviewer, Sonnet) по общему шаблону (`crm-work/stage4/t306/template.md`,
+параметры партий — `batches.md`). Файлы проекта партии не правили, находки писали в
+`crm-work/stage4/t306/out/R1.md…R6.md`. R1–R5 шли параллельно; R6 проверила то, что изменилось
+после них: правки Opus и код выгрузки. Правки вносил Opus скриптом пар «было/стало» (каждая пара —
+ровно одно совпадение в своём файле). Решение по каждой находке с доводом —
+`crm-work/stage4/t306/opus-decisions.md`.
+
+| Партия | Что проверено | Утверждений | Неверно или устарело | Не доказано | Правок | Находок |
+|---|---|---|---|---|---|---|
+| R1 | PLAN-001 версии 4 против кода, конфигов и тестов | 25 | 0 | 2 — подтвердил Opus по исходникам gunicorn и rq | 0 | 4 |
+| R2 | журнал: количество по кнопке и F3 против плана, `CONTRACT.md` и тестов | 22 | 1 — время в колонке с секундами | 1 | 3 | 5 |
+| R3 | `tasks.md` против «Уточнений версий 3 и 4» плана | 24 | 11 — устаревшие имена, файлы, службы | 1 | 14 | 4 |
+| R4 | этот отчёт, проходы 1–2, против логов и замеров | 29 | 0 (1 неточно) | 6 | 1 | 5 |
+| R5 | этот отчёт, проход 3, и таблица покрытия | 33 | 0 | 1 | 0 | 6 |
+| R6 | правки после R1–R5 и код выгрузки | 24 | 0 | 2 | 0 | 4 |
+
+Блокирующих находок нет. Что сделано по находкам:
+- **Выгрузка журнала — как экран** (решение владельца 2026-10-04, находка R2: экран после F3 по-русски,
+  а в CSV коды событий и JSON с английскими ключами). Событие, вид объекта, поля и значения
+  «Было/Стало» в файле — по-русски, как в таблице; добавлена колонка «Код события». Сначала тест
+  `test_audit_csv_is_russian_like_the_page_with_event_code_column` — красный (1 упал, 17 прошли), затем
+  код — 18 прошли (`crm-work/stage4/t306/csv-red.txt`, `csv-green.txt`). Словари названий вынесены
+  из фильтров шаблонов в `apps/core/services/audit_labels.py`: страница и выгрузка берут их из
+  одного места. Тест защиты от формул усилен ячейками с табуляцией и возвратом каретки (R6).
+- **PLAN-001 версии 4** дополнен пунктами «Журнал по-русски», «Выгрузка журнала — как экран»,
+  «Сообщения и вёрстка по проходу в браузере» (решения F1–F6 прохода 3 раньше жили только в этом
+  отчёте); уточнено, что параметры фильтра не меняются, а вид объекта стал выпадающим списком;
+  оценка «около 400 событий в день» помечена как оценка Opus; сказано, что решения без пометки
+  «решение владельца» принимал Opus.
+- **`tasks.md`**: 14 устаревших формулировок исправлены (имя теста в T-241, `nginx.conf` в T-264,
+  верхняя панель в T-114 и T-240, `send` в T-230, служба `migrate` в T-260 и T-262, адрес проверки
+  здоровья, `real_ip_recursive`, `psycopg-pool`, `DJANGO_SECRET_KEY` и др.); T-304 ссылается на модель
+  нагрузки, T-110 поясняет порог адреса при значениях по умолчанию, T-248 — выгрузку по-русски и её
+  тест; T-016 отмечена: подпись владельца 2026-10-01 стоит в шапке. Задачи — версия 2, «черновик».
+- **`backend/tests/CONTRACT.md`**: параметры `page` и `count`, выпадающий список вида объекта, формат
+  времени в таблице, колонки выгрузки.
+- **Этот отчёт**: время в журнале (с секундами), загрузка web 32–40 %, медиана входа 9–12 с,
+  «Решения по спорным пунктам (принимал Opus)», строка 13 повтора (кадры до и после правки
+  `.obj-ref`; кадр d13-5 Opus смотрел сам).
+- Подтвердил Opus по исходникам в образе (R1 «не доказано»): управляющий сокет gunicorn появился в
+  25.1.0 (`gunicorn/config.py`, `ControlSocket`, `versionadded:: 25.1.0`); `rq worker` (rq 2.12)
+  исполняет задание в процессе, порождённом `os.fork()` (`rq/worker/worker_classes.py:63`).
+- Отклонено: FR-043 «держит один тест» (R5) — FR-043 в спеке требует только не собирать геопозицию;
+  персональные данные в журнале и письмах — инвариант «пдн-152фз», его держат
+  `test_audit_never_contains_passwords_keys_codes_link_codes` и `test_no_passwords_or_codes_in_any_letter`
+  (проверен в T-305).
+- Оставлено как есть (довод — в `opus-decisions.md`): ссылка «показать количество» не меняет адрес;
+  порядок строк этапа 4 в задачах; код права, которого нет в базе, запрашивается заново (права в
+  срезе не удаляются); имя теста `…_only_for_settings_events` уже его поведения.
+
+### Числа без сохранённых файлов
+Проверяющий R4 не нашёл файлов к части чисел проходов 1 и 2: они взяты из вывода консоли в ходе
+работы, а сам вывод не сохранён (рабочий каталог той сессии удалён). Это:
+- логи тестов прохода 1: 217 → 237 тестов, 250 из 250 (3 мин 40 с), 252 из 253 (6 мин 56 с),
+  приёмка 71 и 35 пропущено (28 мин 23 с);
+- разбор журналов доступа nginx: 4401 запрос (проход 1) и 4227 запросов, самые долгие 1,2 и 1,1 с
+  (проход 2);
+- профиль журнала (проход 2): 10 запросов SQL за 7 мс, шаблон 20 и 7 мс, медиана запроса 58 → 114 мс
+  на 300 тыс. событий и 33 мс после правки, подсчёт выборки 55 мс, страница 0,4 мс;
+- загрузка процессора: PostgreSQL 82 % и системное время 35 % (в сохранённых выборках `docker stats`
+  — наибольшее 78,7 %), «35–50 % до правки» прохода 2; «около 42 запросов/с» прохода 1.
+Выводы проходов держатся на сохранённых файлах: замеры нагрузки — `crm-work/stage4/load/*_stats.csv`
+(все таблицы p95 сошлись у R4 во всех ячейках), логи — `crm-work/stage4/p2-logs/`, `p3-logs/`,
+`t306/logs/`.
+
+### Прогоны после правок T-306
+Логи — `crm-work/stage4/t306/logs/` (пересборка образа, затем тесты; скрипт `run.sh`):
+- T-300, тесты сервера: **272 из 272** (3 мин 13 с, после усиления теста защиты от формул; сразу после пересборки, до него —
+  272 из 272 за 3 мин 29 с).
+- T-302, приёмка Playwright: **106 из 106** в Chromium, Firefox и Edge (35 мин 32 с) — на образе с
+  выгрузкой по-русски (усиление теста код приложения не меняло); сценарий 13 (выгрузка выборки) прошёл во всех трёх браузерах.
+- Ворота и проверки: `sdd.py проверить` — документов 49, ошибок 0, одно предупреждение (`основан_на` задач —
+  обновится после подписи плана); тесты `tools` — 129, OK; реестр источников — находок нет; сканер
+  секретов по дереву — 734 файла, из них 301 текстовый, находок 0; конституция по коду — 264 файла
+  (`backend` 251, `deploy` 13), нарушений 0.
+
+### Требования → тесты → результат → реализация
+Таблицу строит скрипт `crm-work/stage4/coverage.py` по логам `crm-work/stage4/t306/logs/`. «Тесты
+сервера» — тесты, названные в задачах этапа 2 и отмеченные кодом требования в описании теста, с
+числом и файлами; «Приёмка Playwright» — сценарии `tests/e2e`; «Результат» — все названные тесты
+есть в логе прогона пройденными (сервер — поимённо, `-rA`; приёмка — 106 из 106 без падений по
+собранному списку); «Реализация» — задачи этапа 3 с этим требованием и их файлы. Для NFR-001 и
+NFR-002 «зелёные» — тесты сервера и класс нагрузки locust; сами замеры p95 — проход 2 (T-304, три
+прогона по модели нагрузки владельца). Ручной проход в Яндекс.Браузере и Edge (T-308, NFR-009) в
+таблицу не входит.
+
+| Требование | Тесты сервера | Приёмка Playwright | Результат | Реализация (задачи этапа 3) |
+|---|---|---|---|---|
+| FR-001 | 2: accounts | 2: s01, s02 | зелёные | T-200, T-221, T-245: core/models/accounts.py, core/services/accounts.py, core/views/staff_actions.py, templates/staff/* |
+| FR-002 | 1: accounts | 1: s02 | зелёные | T-200, T-221: core/models/accounts.py, core/services/accounts.py |
+| FR-003 | 2: accounts | 1: s01 | зелёные | T-200, T-221: core/models/accounts.py, core/services/accounts.py |
+| FR-004 | 3: accounts, shell | 1: s02 | зелёные | T-244: core/views/staff.py, templates/staff/* |
+| FR-005 | 2: accounts | 1: s15 | зелёные | T-219, T-221, T-245: core/services/sessions.py, core/services/accounts.py, core/views/staff_actions.py, templates/staff/* |
+| FR-006 | 1: accounts | 0: — | зелёные | T-200, T-221, T-243: core/models/accounts.py, core/services/accounts.py, core/views/me.py, templates/me/* |
+| FR-007 | 1: accounts | 0: — | зелёные | T-221: core/services/accounts.py |
+| FR-008 | 3: accounts, links, mail_live | 3: s01, s02, success | зелёные | T-202, T-213, T-221, T-242, T-245: core/models/security.py, core/services/links.py, core/services/accounts.py, core/views/activation.py и ещё 3 |
+| FR-009 | 3: field_keys, links, pages_stage3b | 2: s02, success | зелёные | T-213, T-245, T-224: core/services/links.py, core/views/staff_actions.py, templates/staff/*, core/management/commands/rotate_field_keys.py |
+| FR-010 | 1: links | 1: s02 | зелёные | T-213, T-221, T-245: core/services/links.py, core/services/accounts.py, core/views/staff_actions.py, templates/staff/* |
+| FR-011 | 4: activation, deploy_files, links | 3: s03, s08, s15 | зелёные | T-202, T-213, T-232, T-242: core/models/security.py, core/services/links.py, config/cron.py, core/views/activation.py и ещё 1 |
+| FR-012 | 5: links, pages_stage3b, security_headers | 3: cross, s03, s08 | зелёные | T-213, T-241, T-242, T-251: core/services/links.py, core/views/auth.py, templates/auth/*, static/js/exchange.js и ещё 3 |
+| FR-013 | 4: activation, pages_stage3b | 3: s01, s03, success | зелёные | T-242: core/views/activation.py, templates/activation/* |
+| FR-014 | 1: permissions | 1: s12 | зелёные | T-200, T-217: core/models/accounts.py, core/services/permissions.py |
+| FR-015 | 3: permissions | 1: s12 | зелёные | T-200, T-218, T-247: core/models/accounts.py, core/services/roles.py, core/views/roles.py, templates/roles/* |
+| FR-016 | 2: permissions | 1: s12 | зелёные | T-200, T-218, T-247: core/models/accounts.py, core/services/roles.py, core/views/roles.py, templates/roles/* |
+| FR-017 | 3: permissions | 1: s12 | зелёные | T-200, T-217, T-218, T-247: core/models/accounts.py, core/services/permissions.py, core/services/roles.py, core/views/roles.py и ещё 1 |
+| FR-018 | 6: audit, pages_stage3b, permissions, shell, stack | 1: s12 | зелёные | T-217, T-240, T-247, T-250: core/services/permissions.py, templates/base.html, static/theme/*, core/views/roles.py и ещё 3 |
+| FR-019 | 1: permissions | 2: s12, s15 | зелёные | T-218, T-221, T-247: core/services/roles.py, core/services/accounts.py, core/views/roles.py, templates/roles/* |
+| FR-020 | 1: permissions | 1: s12 | зелёные | T-200, T-218, T-247: core/models/accounts.py, core/services/roles.py, core/views/roles.py, templates/roles/* |
+| FR-021 | 7: activation, field_keys, login, totp | 4: s03, s04, s07, success | зелёные | T-202, T-214, T-219, T-220, T-241, T-242, T-224: core/models/security.py, core/services/totp.py, core/services/sessions.py, core/services/login.py и ещё 6 |
+| FR-022 | 3: pages_stage3b, totp | 2: s03, s06 | зелёные | T-202, T-211, T-215, T-242: core/models/security.py, core/services/crypto.py, core/services/backup_codes.py, core/views/activation.py и ещё 1 |
+| FR-023 | 1: totp | 0: — | зелёные | T-215, T-243: core/services/backup_codes.py, core/views/me.py, templates/me/* |
+| FR-024 | 3: activation, totp | 1: s07 | зелёные | T-221, T-245: core/services/accounts.py, core/views/staff_actions.py, templates/staff/* |
+| FR-025 | 2: totp | 3: s03, s06, s09 | зелёные | T-212, T-214, T-215, T-220, T-241: core/services/lockout.py, core/services/totp.py, core/services/backup_codes.py, core/services/login.py и ещё 3 |
+| FR-026 | 2: activation, passwords | 3: s03, s16, s17 | зелёные | T-201, T-216, T-242: core/models/settings.py, core/services/passwords.py, core/views/activation.py, templates/activation/* |
+| FR-027 | 4: lockout, passwords | 1: s17 | зелёные | T-201, T-216, T-223, T-249: core/models/settings.py, core/services/passwords.py, core/services/portal_settings.py, core/views/settings.py и ещё 1 |
+| FR-028 | 2: passwords | 2: s10, s17 | зелёные | T-203, T-219: core/models/audit.py, migrations/…_audit_privileges.py, core/services/sessions.py |
+| FR-029 | 1: passwords | 1: s16 | зелёные | T-203, T-216, T-219, T-243: core/models/audit.py, migrations/…_audit_privileges.py, core/services/passwords.py, core/services/sessions.py и ещё 2 |
+| FR-030 | 1: passwords | 1: s10 | зелёные | T-203, T-219, T-243: core/models/audit.py, migrations/…_audit_privileges.py, core/services/sessions.py, core/views/me.py и ещё 1 |
+| FR-031 | 3: links | 2: s18 | зелёные | T-213, T-241: core/services/links.py, core/views/auth.py, templates/auth/*, static/js/exchange.js |
+| FR-032 | 3: links | 2: cross, s18 | зелёные | T-213, T-241: core/services/links.py, core/views/auth.py, templates/auth/*, static/js/exchange.js |
+| FR-033 | 1: links | 1: s18 | зелёные | T-213, T-216, T-241: core/services/links.py, core/services/passwords.py, core/views/auth.py, templates/auth/* и ещё 1 |
+| FR-034 | 3: links, login | 2: s04, s08 | зелёные | T-220, T-241: core/services/login.py, core/views/auth.py, templates/auth/*, static/js/exchange.js |
+| FR-035 | 4: lockout, login | 1: s09 | зелёные | T-212, T-220: core/services/lockout.py, core/services/login.py |
+| FR-036 | 7: lockout | 2: s09 | зелёные | T-201, T-212, T-249: core/models/settings.py, core/services/lockout.py, core/views/settings.py, templates/settings/* |
+| FR-037 | 1: lockout | 1: s09 | зелёные | T-212: core/services/lockout.py |
+| FR-038 | 1: lockout | 1: s09 | зелёные | T-212, T-245, T-246: core/services/lockout.py, core/views/staff_actions.py, templates/staff/*, core/views/locks.py и ещё 1 |
+| FR-039 | 5: deploy_files, devices, login | 3: s04, s06, s11 | зелёные | T-201, T-203, T-220, T-222, T-232, T-243, T-249: core/models/settings.py, core/models/audit.py, migrations/…_audit_privileges.py, core/services/login.py и ещё 6 |
+| FR-040 | 3: devices | 2: s05, s11 | зелёные | T-202, T-203, T-220, T-222, T-243: core/models/security.py, core/models/audit.py, migrations/…_audit_privileges.py, core/services/login.py и ещё 3 |
+| FR-041 | 2: devices | 1: s05 | зелёные | T-220, T-222: core/services/login.py, core/services/devices.py |
+| FR-042 | 1: devices | 1: s11 | зелёные | T-222, T-244, T-245: core/services/devices.py, core/views/staff.py, templates/staff/*, core/views/staff_actions.py |
+| FR-043 | 1: login | 0: — | зелёные | T-220, T-222: core/services/login.py, core/services/devices.py |
+| FR-044 | 9: accounts, activation, audit, db_roles, lockout, mail, portal_settings | 3: s01, s09, s13 | зелёные | T-203, T-210, T-218, T-221, T-223, T-230, T-246: core/models/audit.py, migrations/…_audit_privileges.py, core/services/audit.py, core/services/roles.py и ещё 5 |
+| FR-045 | 6: audit, db_roles | 1: s13 | зелёные | T-203, T-210: core/models/audit.py, migrations/…_audit_privileges.py, core/services/audit.py |
+| FR-046 | 3: audit, field_keys, security_headers | 1: s13 | зелёные | T-210: core/services/audit.py |
+| FR-047 | 6: audit | 1: s13 | зелёные | T-248: core/views/audit.py, templates/audit/* |
+| FR-048 | 3: portal_settings, shell | 1: s14 | зелёные | T-201, T-223, T-240, T-249: core/models/settings.py, core/services/portal_settings.py, templates/base.html, static/theme/* и ещё 2 |
+| FR-049 | 6: pages_stage3b, portal_settings | 1: s14 | зелёные | T-201, T-223, T-249: core/models/settings.py, core/services/portal_settings.py, core/views/settings.py, templates/settings/* |
+| FR-050 | 5: pages_stage3b, permissions, shell | 0: — | зелёные | T-240: templates/base.html, static/theme/* |
+| FR-051 | 2: shell | 1: s11 | зелёные | T-243: core/views/me.py, templates/me/* |
+| FR-052 | 3: mail, mail_live | 5: s02, s05, s07, s16, s18 | зелёные | T-204, T-230, T-231: integrations/mail/models.py, integrations/mail/services.py, integrations/mail/templates/mail/*.txt |
+| FR-053 | 10: deploy_files, mail, mail_live, mail_pipeline | 0: — | зелёные | T-204, T-230, T-249, T-262: integrations/mail/models.py, integrations/mail/services.py, core/views/settings.py, templates/settings/* и ещё 1 |
+| FR-054 | 4: mail | 0: — | зелёные | T-204, T-231: integrations/mail/models.py, integrations/mail/templates/mail/*.txt |
+| FR-055 | 4: config, mail, stack | 0: — | зелёные | T-230, T-260: integrations/mail/services.py, deploy/Dockerfile, deploy/entrypoint.sh |
+| NFR-001 | 2: capacity, deploy_files | 0: — | зелёные | T-260, T-262: deploy/Dockerfile, deploy/entrypoint.sh, deploy/docker-compose.yml |
+| NFR-002 | 4: audit, capacity, deploy_files, locustfile | 0: — | зелёные | T-203, T-244, T-248: core/models/audit.py, migrations/…_audit_privileges.py, core/views/staff.py, templates/staff/* и ещё 2 |
+| NFR-003 | 6: deploy_files, mail, mail_live, mail_pipeline | 1: success | зелёные | T-230, T-262: integrations/mail/services.py, deploy/docker-compose.yml |
+| NFR-004 | 4: activation, pages_stage3b, totp | 1: s03 | зелёные | T-214, T-219, T-220, T-242: core/services/totp.py, core/services/sessions.py, core/services/login.py, core/views/activation.py и ещё 1 |
+| NFR-005 | 1: passwords | 0: — | зелёные | T-201, T-216, T-219: core/models/settings.py, core/services/passwords.py, core/services/sessions.py |
+| NFR-006 | 6: deploy_files, lockout | 1: s09 | зелёные | T-212, T-220, T-261: core/services/lockout.py, core/services/login.py, deploy/nginx.conf |
+| NFR-007 | 18: config, deploy_files, devices, lockout, pages_stage3b, portal_settings, security_headers, shell, stack | 4: cross, s10 | зелёные | T-240, T-241, T-242, T-250, T-251, T-261, T-264: templates/base.html, static/theme/*, core/views/auth.py, templates/auth/* и ещё 8 |
+| NFR-008 | 6: audit, db_roles, stack | 0: — | зелёные | T-203: core/models/audit.py, migrations/…_audit_privileges.py |
+| NFR-009 | 2: shell, stack | 3: cross, s01 | зелёные | T-240, T-241, T-242, T-243, T-244, T-245, T-247, T-248, T-249: templates/base.html, static/theme/*, core/views/auth.py, templates/auth/* и ещё 14 |
+| NFR-010 | 6: audit, config, mail, pages_stage3b, portal_settings, security_headers | 1: cross | зелёные | T-231, T-240: integrations/mail/templates/mail/*.txt, templates/base.html, static/theme/* |
+| NFR-011 | 11: config, deploy_files, field_keys, passwords, stack, totp | 0: — | зелёные | T-200, T-202, T-211, T-214, T-215, T-216, T-224: core/models/accounts.py, core/models/security.py, core/services/crypto.py, core/services/totp.py и ещё 3 |
+
+### Итог T-306
+- Каждое из FR-001…055 и NFR-001…011 закрыто тестом, тест зелёный, реализация названа. T-306
+  выполнено.
+- PLAN-001 версии 4 и TASKS-001 версии 2 переводятся «на проверку» со свежими отчётами REV-PLAN-001 и
+  REV-TASKS-001. Порядок подписи: сначала план, затем Opus обновляет `основан_на` задач, затем
+  задачи.
+- Осталось владельцу: подписи; T-307 (приёмка среза по этому отчёту); T-308 (ручной проход в
+  Яндекс.Браузере и Edge — стенд перед ним сбросить: на нём данные последнего теста приёмки).
+
+## Проверка версии 2 (T-306)
+
+Проверял Sonnet (партия R7, итоговая), 2026-10-04. Вердикт в начале файла относится к версии 1; ниже —
+вердикт для версии 2.
+
+### Что проверялось и итог по частям
+- **R3** — `tasks.md` против «Уточнений версий 3 и 4» плана (`crm-work/stage4/t306/out/R3.md`): 24
+  пункта, 11 устаревших формулировок и 1 недоказанная, 14 мелких правок приняты (имена теста и файлов,
+  службы `migrate`, адрес проверки здоровья и др.), 4 находки — решены Opus (T-304, T-110, T-016
+  исправлены; порядок строк этапа 4 оставлен).
+- **R4** — этот отчёт, проходы 1–2 (`out/R4.md`): 29 утверждений, неверных нет, 1 неточность исправлена
+  (web 32–40 %), 6 не доказаны, число файлов нет — перечислены в разделе «Числа без сохранённых файлов».
+  Выводы держатся на сохранённых замерах.
+- **R5** — этот отчёт, проход 3 и таблица покрытия (`out/R5.md`): 33 утверждения, неверных нет, 3
+  неточных формулировки исправлены Opus (заголовок «принимал Opus», строка 13 повтора, пометка про
+  NFR-002); отклонена только находка про FR-043.
+- **R6** — правки после R1–R5 и код выгрузки (`out/R6.md`): 24 утверждения, неверных нет; висячая
+  ссылка на раздел «Числа без сохранённых файлов» закрыта, тест выгрузки назван в T-248, тест защиты от
+  формул усилен.
+- **R7 (я)** — раздел T-306: сверены с `out/R1.md…R6.md` таблица партий (все 6 строк сходятся), список
+  сделанного с `git diff HEAD` и `opus-decisions.md`, числа без сохранённых файлов (все есть в тексте
+  выше, R4 их назвал; уточнение: «114 мс», «55 мс», «0,4 мс» R4 назвал одной строкой «55 / 114 / 33 мс»),
+  прогоны с `logs/status`, `t300-final.log` (272 PASSED), `t300-before-tabcr.log`, `t302-e2e.log`
+  (106 passed), `csv-red.txt` (1 упал, 17 прошли), `csv-green.txt` (18 прошли). Ворота запущены
+  заново: `проверить` — документов 49, ошибок 0, предупреждений 1; тесты `tools` — 129, OK; реестр
+  источников — находок нет; сканер — 734/301/0; конституция — 264 файла, 0 нарушений. Таблица
+  «Требования → тесты → результат → реализация» совпадает с `logs/t306-table.md` построчно (66 из 66);
+  выборочно: FR-047 (6 тестов с кодом в описании, в т. ч. новый тест выгрузки) и NFR-010 (новый тест
+  выгрузки в `test_audit.py:483`) — верно; FR-009, FR-021, NFR-009 — тесты названы в коде, пройдены в
+  `t300-final.log`.
+
+Ошибок в разделе T-306 не найдено, правок проверяющего в нём нет. Мелкое замечание: строка «Итог:»
+файла `out/R3.md` говорит о 9 правках, а в самом файле их 14 (П-1…П-14); в таблице партий верно 14.
+
+### Вердикт для версии 2
+**Годен к подписи** после подписи плана версии 4. Блокирующих находок нет. Порядок: подпись плана,
+затем Opus обновляет `основан_на` задач (предупреждение «основа изменилась» уйдёт), затем подпись
+задач. Остаётся владельцу: T-307, T-308.
