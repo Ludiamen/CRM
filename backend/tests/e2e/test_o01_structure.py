@@ -62,9 +62,11 @@ def test_o01_root_department_and_new_department_and_team(admin_page):
     expect(page.locator("[data-unit-tree] a[data-unit-link]", has_text=team_name)).to_have_count(1)
 
     # п. 1 (журнал) и FR-150: создание узла записано «было / стало» по-русски, с названием узла
-    rows = helpers_org.audit_rows(page, "unit.created", net_id)
-    assert len(rows) == 1, rows
-    assert net_name in rows[0] and "стало" in rows[0].lower(), rows[0]
+    sides = helpers_org.audit_sides(page, "unit.created", net_id)
+    assert len(sides) == 1, sides
+    was, became = sides[0]
+    assert was.strip("— ") == "", was  # создание: «было» пусто
+    assert net_name in became and ROOT_NAME in became, became  # «стало»: название узла и вышестоящий
 
 
 def test_o01_root_cannot_be_deleted_or_moved(admin_page):

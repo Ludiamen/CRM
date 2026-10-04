@@ -362,6 +362,18 @@ def audit_rows(admin_page, action: str, object_id=None) -> list:
     return [r.inner_text() for r in admin_page.locator(f'tr[data-event-id][data-action="{action}"]').all()]
 
 
+def audit_sides(admin_page, action: str, object_id=None) -> list:
+    """Пары («было», «стало») строк журнала с теми же фильтрами, что `audit_rows`; новые события сверху. Слова
+    «Было» и «Стало» стоят только в шапке таблицы: значения — текст 5-й и 6-й ячеек `td` строки
+    `tr[data-event-id]` (столбцы журнала среза 001: время, кто, событие, объект, было, стало, адрес;
+    templates/audit/_results.html; CONTRACT-002, доп. 58). Пустая сторона — «—»."""
+    query = f"action={action}" + (f"&object_id={object_id}" if object_id is not None else "")
+    admin_page.goto(f"/audit/?{query}")
+    rows = admin_page.locator(f'tr[data-event-id][data-action="{action}"]').all()
+    return [(row.locator("td").nth(4).inner_text().strip(), row.locator("td").nth(5).inner_text().strip())
+            for row in rows]
+
+
 # --- Файлы и фото ----------------------------------------------------------------------------------
 
 def upload_file(form, file, *, field: str = "file", name: str = "upload.bin", mime: str = "application/octet-stream",

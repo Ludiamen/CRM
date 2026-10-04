@@ -92,9 +92,11 @@ def test_o06_move_subtree_with_members_and_heads(admin_page, employee):
     assert head_support.full_name.split()[0] in _head_text(page, plain.id)
 
     # п. 4: журнал — «было / стало» с прежним и новым вышестоящим узлом
-    rows = helpers_org.audit_rows(page, "unit.moved", net_id)
-    assert len(rows) == 1, rows
-    assert old_parent_name in rows[0] and support_name in rows[0] and "стало" in rows[0].lower(), rows[0]
+    sides = helpers_org.audit_sides(page, "unit.moved", net_id)
+    assert len(sides) == 1, sides
+    was, became = sides[0]
+    assert old_parent_name in was and support_name not in was, was
+    assert support_name in became and old_parent_name not in became, became
 
 
 def test_o06_cycle_refused_delete_only_empty_after_confirmation(admin_page, employee):
