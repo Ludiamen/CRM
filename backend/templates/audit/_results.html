@@ -28,9 +28,9 @@
           <td class="text-nowrap">{{ event.at|date:"d.m.Y H:i:s" }}</td>
           <td>{% if event.actor %}{{ event.actor.full_name }}<div class="small text-muted text-break">{{ event.actor.email }}</div>{% else %}<span class="text-muted">система</span>{% endif %}</td>
           <td>{{ event.action|action_title }}<div class="small text-muted">{{ event.action }}</div></td>
-          <td>{% if event.object_type %}{{ event.object_type }}{% if event.object_id %} № <span class="text-break">{{ event.object_id }}</span>{% endif %}{% else %}—{% endif %}</td>
-          <td>{% for label, value in event.before|pairs %}<div class="small text-break"><span class="text-muted">{{ label }}:</span> {{ value }}</div>{% empty %}<span class="text-muted">—</span>{% endfor %}</td>
-          <td>{% for label, value in event.after|pairs %}<div class="small text-break"><span class="text-muted">{{ label }}:</span> {{ value }}</div>{% empty %}<span class="text-muted">—</span>{% endfor %}</td>
+          <td>{% if event.object_type %}<span class="obj-ref">{{ event.object_type|object_label:event.object_id }}</span>{% else %}—{% endif %}</td>
+          <td>{% for label, value in event|side_pairs:"before" %}<div class="small diff-line"><span class="text-muted">{{ label }}:</span> {{ value }}</div>{% empty %}<span class="text-muted">—</span>{% endfor %}</td>
+          <td>{% for label, value in event|side_pairs:"after" %}<div class="small diff-line"><span class="text-muted">{{ label }}:</span> {{ value }}</div>{% empty %}<span class="text-muted">—</span>{% endfor %}</td>
           <td class="text-nowrap">{{ event.ip|default:"—" }}</td>
         </tr>
         {% endfor %}

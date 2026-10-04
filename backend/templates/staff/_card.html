@@ -28,7 +28,7 @@
   {% endif %}
   {% if invitation.mail %}
   <p class="small mt-2 mb-2">Письмо: <span class="badge text-bg-light border" data-mail-status="{{ invitation.mail.status }}">{{ invitation.mail.title }}</span>
-    {% if invitation.mail.error %}<span class="d-block text-muted text-break mt-1">{{ invitation.mail.error }}</span>{% endif %}</p>
+    {% if invitation.mail.note %}<span class="d-block text-muted mt-1">{{ invitation.mail.note }}</span>{% endif %}</p>
   {% endif %}
   <form method="post" action="/staff/{{ target.pk }}/invite/" class="mt-2">
     {% csrf_token %}

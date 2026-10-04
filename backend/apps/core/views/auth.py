@@ -11,7 +11,7 @@ from django.http import HttpResponseRedirect
 from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.core.models import User
-from apps.core.services import devices, links, login, passwords, sessions
+from apps.core.services import backup_codes, devices, links, login, passwords, sessions
 
 from .common import flash, render_page, safe_next, user_agent
 
@@ -26,6 +26,8 @@ CODE_URL = "/login/code/"
 TOTP_URL = "/me/security/totp/"
 PASSWORD_URL = "/me/security/password/"
 
+LAST_CODE_REMINDER = ("Вы вошли по последнему резервному коду. Выпустите новый набор в разделе «Безопасность» — "
+                      "без кодов при потере телефона войти не получится.")
 LOGIN_FAILED = "Не удалось войти: проверьте почту и пароль и попробуйте ещё раз."
 CODE_FAILED = "Код не подошёл. Проверьте код в приложении или введите резервный код и попробуйте ещё раз."
 RESET_DEAD = ("Ссылка недействительна: срок её действия истёк (ссылка просрочена), она уже использована "
@@ -107,6 +109,8 @@ def login_code(request):
             done = login.complete(request, user, ip=request.client_ip, user_agent=user_agent(request),
                                   device_key=request.COOKIES.get(devices.COOKIE_NAME), via=step.via)
             _forget_pending(request.session)
+            if step.via == "backup" and backup_codes.remaining(user) == 0:  # сц. 6 п. 4: напомнить о новом наборе
+                flash(request, LAST_CODE_REMINDER, link=("/me/security/", "Открыть «Безопасность»"))
             if passwords.must_change(user):  # срок пароля вышел: сначала новый пароль (FR-027)
                 target = PASSWORD_URL
             response = _redirect(target)

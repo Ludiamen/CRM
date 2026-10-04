@@ -12,7 +12,7 @@
       <label class="form-label small mb-1" for="id_q">Поиск по ФИО и почте</label>
       <input class="form-control" id="id_q" name="q" type="search" value="{{ q }}" autocomplete="off">
     </div>
-    <div class="col-6 col-md-3">
+    <div class="col-6 col-md-2">
       <label class="form-label small mb-1" for="id_state">Состояние</label>
       <select class="form-select" id="id_state" name="state">
         <option value="">Любое</option>
@@ -28,7 +28,7 @@
         {% for item in roles %}<option value="{{ item.pk }}"{% if role == item.pk|stringformat:"s" %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
       </select>
     </div>
-    <div class="col-12 col-md-2 d-flex gap-2">
+    <div class="col-12 col-md-3 d-flex gap-2 filter-actions">
       <button class="btn btn-primary flex-fill" type="submit">Найти</button>
       <a class="btn btn-outline-secondary" href="/staff/">Сбросить</a>
     </div>

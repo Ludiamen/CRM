@@ -392,3 +392,84 @@ def test_audit_view_needs_audit_view_permission():
     assert reader.get("/audit/").status_code == 200 and reader.get("/audit/export.csv").status_code == 200
     anonymous = support.make_client(ip="198.51.100.107").get("/audit/")
     assert anonymous.status_code == 302 and "/login/" in anonymous["Location"]
+
+
+# --- T-301 F3: журнал по-русски ---------------------------------------------------------------
+
+def _written_keys() -> set[str]:
+    """Все ключи «было/стало», которые пишет код среза: разбор вызовов `audit.record` в исходниках."""
+    import re
+    from pathlib import Path
+
+    from apps.core.services import security_settings
+
+    root = Path(__file__).resolve().parent.parent / "apps"
+    keys = {"email", "full_name", "position", "phone", "contacts"}  # accounts._snapshot
+    keys |= set(security_settings.BOUNDS)
+    for path in root.rglob("*.py"):
+        if "migrations" in path.parts or path.name == "audit.py":
+            continue
+        text = path.read_text(encoding="utf-8")
+        for block in re.findall(r"audit\.record\((.*?)\n\s*\n|audit\.record\((.*?)\)\n", text, flags=re.S):
+            for part in re.findall(r"(?:before|after)=\{(.*?)\}", "".join(block), flags=re.S):
+                keys |= set(re.findall(r'"(\w+)":', part))
+    return keys
+
+
+def test_audit_every_written_key_has_russian_label():
+    from apps.core.templatetags.portal import pairs
+
+    keys = _written_keys()
+    assert {"via", "count", "confirmed", "remaining", "result", "step", "attempts", "minutes", "closed", "changed",
+            "expires_at", "status", "permissions"} <= keys, keys
+    for key in sorted(keys):
+        label, _ = pairs({key: 1})[0]
+        assert label != key and not label.isascii(), f"ключ {key} не переведён"
+
+
+def test_audit_value_codes_are_russian():
+    from apps.core.templatetags.portal import pairs
+
+    def shown(key, value):
+        return pairs({key: value})[0][1]
+
+    for key, values in {
+        "via": ["activation", "password", "backup", "totp", "reset"],
+        "result": ["success", "bad_password", "bad_code", "locked", "ip_locked", "backup_code"],
+        "step": ["password", "code", "totp_setup", "change_password"],
+        "status": ["queued", "sent", "failed"],
+    }.items():
+        for value in values:
+            assert not shown(key, value).isascii() and shown(key, value) != value, (key, value)
+
+
+def test_audit_datetime_shown_in_moscow_time_and_permissions_by_title():
+    from apps.core.templatetags.portal import pairs
+
+    assert pairs({"expires_at": "2026-10-06T20:09:45.369087+00:00"})[0][1] == "06.10.2026 23:09"
+    perm = model("core.Permission").objects.get(code="audit.view")
+    assert pairs({"permissions": ["audit.view"]})[0][1] == perm.title
+
+
+def test_audit_object_kind_in_russian_and_filter_is_dropdown_with_old_param_values():
+    from apps.core.templatetags.portal import object_label
+
+    assert object_label("user", 1) == "сотрудник № 1" and object_label("link", 3) == "ссылка № 3"
+    assert object_label("mail", 2) == "письмо № 2" and object_label("role", 5) == "роль № 5"
+    admin = support.logged_in(support.make_admin(), ip="198.51.100.201")
+    page = admin.get("/audit/?object_type=user").content.decode()
+    assert '<select class="form-select" id="id_object_type"' in page and 'value="user" selected' in page
+    assert "сотрудник" in page and "user, role" not in page
+    assert admin.get("/audit/?object_type=user").status_code == 200
+
+
+def test_audit_changed_fields_only_for_settings_events():
+    from apps.core.templatetags.portal import side_pairs
+
+    event = model("core.AuditEvent")(action="security_settings.updated",
+                                     before={"password_min_length": 12, "idle_timeout_minutes": 60},
+                                     after={"password_min_length": 14, "idle_timeout_minutes": 60})
+    assert [label for label, _ in side_pairs(event, "before")] == [label for label, _ in side_pairs(event, "after")]
+    assert len(side_pairs(event, "before")) == 1 and side_pairs(event, "after")[0][1] == "14"
+    same = model("core.AuditEvent")(action="portal_settings.updated", before={"name": "A"}, after={"name": "A"})
+    assert len(side_pairs(same, "after")) == 1, "ничего не изменилось — как сейчас"

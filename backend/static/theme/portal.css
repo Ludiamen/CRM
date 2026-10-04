@@ -173,3 +173,19 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .form-card { max-width: 640px; }
 .invite-link { word-break: break-all; padding: 0.5rem 0.75rem; background: #eef2fa; border-radius: 0.4rem; font-size: 0.85rem; margin-bottom: 0.5rem; user-select: all; }
 .logo-preview { object-fit: contain; border: 1px solid var(--portal-border); border-radius: 0.5rem; background: #fff; }
+
+/* --- правки по проходу T-301 --- */
+.filter-bar .filter-actions .btn { white-space: nowrap; }
+.filter-bar .filter-actions .btn-primary { min-width: 0; }
+.diff-line { overflow-wrap: break-word; }
+.obj-ref { overflow-wrap: break-word; }  /* anywhere сужает колонку до буквы и рвёт слова */
+@media (max-width: 575.98px) {
+  .history-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .history-table, .history-table tbody { display: block; }
+  .history-table tr { display: grid; grid-template-columns: 1fr auto; gap: 0.1rem 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--portal-border); }
+  .history-table td { display: block; border: 0; padding: 0; background: transparent; }
+  .history-table .h-when { grid-column: 1; grid-row: 1; font-weight: 600; }
+  .history-table .h-result { grid-column: 2; grid-row: 1; text-align: right; }
+  .history-table .h-device { grid-column: 1 / -1; grid-row: 2; }
+  .history-table .h-ip { grid-column: 1 / -1; grid-row: 3; color: var(--portal-muted); font-size: 0.875rem; }
+}

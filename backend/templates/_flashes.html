@@ -1,2 +1,2 @@
-{% for flash in flashes %}<div class="alert alert-{{ flash.level }}" role="{{ flash.role }}">{{ flash.text }}</div>
+{% for flash in flashes %}<div class="alert alert-{{ flash.level }}" role="{{ flash.role }}">{{ flash.text }}{% if flash.link %} <a class="alert-link" href="{{ flash.link.0 }}">{{ flash.link.1 }}</a>{% endif %}</div>
 {% endfor %}

@@ -25,6 +25,10 @@ PAGE_SIZE = 25
 HISTORY_PAGE_SIZE = 50
 SORT_COLUMNS = (("full_name", "ФИО"), ("email", "Почта"), ("position", "Должность"), ("state", "Состояние"))
 STATE_CHIPS = (("", "Все"), ("active", "Активные"), ("invited", "Приглашённые"), ("blocked", "Заблокированные"))
+MAIL_NOTES = {
+    "queued": "Последняя попытка не удалась: почтовый сервер недоступен. Портал повторит отправку сам.",
+    "failed": "Письмо не доставлено. Проверьте адрес и отправьте приглашение заново.",
+}
 MAIL_TITLES = {"queued": "в очереди на отправку", "sent": "отправлено", "failed": "не доставлено"}
 ROLE_FIELD = "staff-results"
 
@@ -103,7 +107,7 @@ def _invitation(request, target) -> dict:
     message = mail.last_message(target, "invitation")
     if message is not None:
         info["mail"] = {"status": message.status, "title": MAIL_TITLES.get(message.status, message.status),
-                        "error": message.last_error}
+                        "note": MAIL_NOTES.get(message.status, "") if message.last_error else ""}
     return info
 
 

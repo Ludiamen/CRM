@@ -121,3 +121,62 @@ def test_csrf_rejects_null_origin_and_accepts_normal_form():
     assert client.post("/activate/exchange/", {"code": code}).status_code == 403, "без токена CSRF — отказ"
     done = client.post("/activate/exchange/", data)
     assert done.status_code == 302 and done["Location"].endswith("/activate/profile/")
+
+
+def _invited_card(status, error):
+    admin = support.logged_in(support.make_admin(), ip="198.51.100.181")
+    target = support.make_employee(state="invited", totp=False)
+    model("mail.MailMessage").objects.create(to=target.email, template="invitation", status=status, attempts=2,
+                                              last_error=error, related_user=target)
+    return admin.get(f"/staff/{target.pk}/").content.decode()
+
+
+def test_invitation_card_shows_plain_russian_mail_state_not_raw_error():
+    """FR-009, NFR-010: в карточке приглашённого нет сырого текста ошибки почтового сервера."""
+    raw = "gaierror: [Errno -3] Temporary failure in name resolution"
+    queued = _invited_card("queued", raw)
+    assert "gaierror" not in queued and "Errno" not in queued and "name resolution" not in queued
+    assert "Последняя попытка не удалась: почтовый сервер недоступен" in queued
+    failed = _invited_card("failed", raw)
+    assert "gaierror" not in failed and "Письмо не доставлено. Проверьте адрес" in failed
+
+
+PANEL_ACTIONS = ("logout_everywhere", "close", "forget", "password")
+
+
+def _panel_case(action):
+    """Пользователь, его клиент (Firefox) и запрос действия; у «устройств» есть второе устройство (Chrome)."""
+    import secrets
+
+    user = support.make_employee()
+    first = support.make_client(ip="198.51.100.191")
+    support.login(first, user)
+    second = support.make_client(ip="198.51.100.192", ua=support.CHROME_UA)
+    support.login(second, user)
+    other = model("core.KnownDevice").objects.filter(user=user).order_by("-pk").first()
+    base = "/me/security/"
+    if action == "logout_everywhere":
+        return first, base + "logout-everywhere/", {}, "закрыто сессий — 1"
+    if action == "close":
+        return first, f"{base}devices/{other.pk}/close/", {}, "Сессия на устройстве"
+    if action == "forget":
+        return first, f"{base}devices/{other.pk}/forget/", {}, "убрано из списка"
+    new = secrets.token_urlsafe(18) + "aB1"
+    return first, base + "password/", {"current_password": user.test_password, "password1": new, "password2": new}, "Пароль изменён"
+
+
+@pytest.mark.parametrize("action", PANEL_ACTIONS)
+@pytest.mark.parametrize("htmx", [False, True])
+def test_panel_action_result_shown_inside_panel(action, htmx):
+    """Сц. 10 п. 3, сц. 11 п. 3: итог действия виден внутри панели над содержимым, с role=status."""
+    client, url, data, text = _panel_case(action)
+    extra = support.HX if htmx else {}
+    sent = client.post(url, data, **extra)
+    assert sent.status_code == 302, sent.status_code
+    page = client.get(sent["Location"], **extra).content.decode()
+    body = page.split('class="slider-body"', 1)
+    assert len(body) == 2, "панель не найдена"
+    inside = body[1]
+    assert re.search(r'role="status"[^>]*>[^<]*' + re.escape(text), inside), 'нет role=status с сообщением'
+    assert text in inside, f"сообщение «{text}» не внутри панели"
+    assert text not in body[0], "сообщение вне панели (под или над ней)"

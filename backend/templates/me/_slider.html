@@ -5,6 +5,7 @@
     <a class="slider-close" data-slider-close href="/me/" hx-get="/me/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true" aria-label="Закрыть">&times;</a>
   </header>
   <div class="slider-body" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">
+    {% include "_flashes.html" %}
     {% include slider_body %}
   </div>
 </section>

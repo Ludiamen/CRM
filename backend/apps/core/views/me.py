@@ -41,7 +41,7 @@ def _profile_context(user) -> dict:
 
 def _slider(request, body: str, title: str, context: dict | None = None, *, status: int = 200):
     """Страница слайдера: фрагмент для HTMX или полная страница с профилем под панелью."""
-    context = {**(context or {}), "slider_body": body, "slider_title": title}
+    context = {**(context or {}), "slider_body": body, "slider_title": title, "slider_flashes": True}
     if is_fragment(request):
         response = render(request, "me/slider_fragment.html", context, status=status)
         response["Vary"] = "HX-Request"
@@ -113,7 +113,7 @@ def password(request):
 @require_POST
 def logout_everywhere(request):
     closed = sessions.logout_everywhere(request, request.user, ip=request.client_ip)
-    flash(request, f"Вы вышли на других устройствах (закрыто сессий: {closed}). Эта сессия осталась." if closed
+    flash(request, f"Вы вышли на других устройствах: закрыто сессий — {closed}. Эта сессия осталась." if closed
           else "Других открытых сессий нет.")
     return _redirect(SECURITY_URL)
 
@@ -177,22 +177,29 @@ def devices_page(request):
     return _slider(request, "me/_devices.html", "Устройства", context)
 
 
-def _own_device_action(request, device_id: int, action):
+def _device_name(device) -> str:
+    return f"{device.browser or 'браузер не определён'}, {device.platform or 'платформа не определена'}"
+
+
+def _own_device_action(request, device_id: int, action, message: str):
+    device = next((row for row in devices.known_devices(request.user) if row.pk == device_id), None)
+    name = _device_name(device) if device else ""
     if not action(request.user, device_id):
         raise Http404
+    flash(request, message.format(name=name))
     return _redirect("/me/security/devices/")
 
 
 @login_required
 @require_POST
 def device_close(request, device_id: int):
-    return _own_device_action(request, device_id, devices.close_sessions)
+    return _own_device_action(request, device_id, devices.close_sessions, "Сессия на устройстве «{name}» закрыта.")
 
 
 @login_required
 @require_POST
 def device_forget(request, device_id: int):
-    return _own_device_action(request, device_id, devices.forget)
+    return _own_device_action(request, device_id, devices.forget, "Устройство «{name}» убрано из списка.")
 
 
 @login_required

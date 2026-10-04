@@ -14,6 +14,7 @@ from django.views.decorators.http import require_GET
 
 from apps.core.services import audit_search
 from apps.core.services.permissions import require_permission
+from apps.core.templatetags.portal import OBJECT_TYPES
 
 from .common import is_fragment, render_page
 
@@ -43,6 +44,7 @@ def audit_list(request):
     params_no_preset = {key: value for key, value in params.items() if key != "preset"}
     context = {
         "page": page, "filters": filters, "actors": audit_search.actors(), "actions": audit_search.known_actions(),
+        "object_types": sorted(OBJECT_TYPES.items(), key=lambda item: item[1]), "object_type_codes": list(OBJECT_TYPES),
         "presets": [{"code": code, "title": title, "active": filters.preset == code,
                      "url": "/audit/" + _link(params_no_preset, sort=shown_sort,
                                               preset="" if filters.preset == code else code)}

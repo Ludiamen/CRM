@@ -154,3 +154,34 @@ def test_success_resets_failure_counter():
     for _ in range(5):
         bad_login(user.email, "198.51.100.255")
     assert support.valkey_key(f"lock:acct:{user.pk}")
+
+
+def _login_with_backup(user, code, ip):
+    client = support.make_client(ip=ip)
+    support.post_password(client, user)
+    done = client.post("/login/code/", {"backup_code": code})
+    assert done.status_code == 302, done.status_code
+    return client.get(done["Location"]).content.decode()
+
+
+def test_last_backup_code_login_reminds_to_issue_new_set():
+    """Сценарий 6, п. 4: вход последним резервным кодом — после входа портал напоминает выпустить новый набор."""
+    from apps.core.services import backup_codes
+
+    user = support.make_employee()
+    codes = backup_codes.issue(user)
+    for code in codes[:9]:
+        assert backup_codes.verify(user, code)
+    page = _login_with_backup(user, codes[9], "198.51.100.171")
+    assert backup_codes.remaining(user) == 0
+    assert "по последнему резервному коду" in page and "/me/security/" in page and 'role="status"' in page
+
+
+def test_not_last_backup_code_login_has_no_reminder():
+    from apps.core.services import backup_codes
+
+    user = support.make_employee()
+    codes = backup_codes.issue(user)
+    page = _login_with_backup(user, codes[0], "198.51.100.172")
+    assert backup_codes.remaining(user) == 9
+    assert "по последнему резервному коду" not in page
