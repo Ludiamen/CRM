@@ -6,11 +6,16 @@
   <p class="unit-description" data-unit-description>{{ unit.description|default:"не заполнено" }}</p>
   <p class="small mb-2">Подчиняется: <span data-unit-parent>{% if parent %}{{ parent.name }}{% else %}нет{% endif %}</span></p>
   {% if roles %}<p class="small mb-2">Роли узла: {% for role in roles %}<span class="badge text-bg-light" data-unit-role>{{ role.name }}</span> {% endfor %}</p>{% endif %}
-  {% if can_manage %}
-  <div class="unit-actions">
+  {% if card_error %}<div class="alert alert-danger" role="alert">{{ card_error }}</div>{% endif %}
+  {% if can_manage or can_roles %}
+  <div class="unit-actions">{% if can_manage %}
     <a class="btn btn-outline-primary btn-sm" data-action="unit-edit" href="/structure/{{ unit.pk }}/edit/" hx-get="/structure/{{ unit.pk }}/edit/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">Изменить</a>
     {% if not unit.is_root %}<a class="btn btn-outline-danger btn-sm" data-action="unit-delete" href="/structure/{{ unit.pk }}/delete/" hx-get="/structure/{{ unit.pk }}/delete/" hx-target="#dialog-root" hx-swap="innerHTML">Удалить</a>{% endif %}
     {% if total %}{% include "org/_members_add.html" %}{% endif %}
+    {% include "org/_marks_form.html" with name="marks-heads" part="heads" title="Руководители" mark="head" %}
+    {% include "org/_marks_form.html" with name="marks-deputies" part="deputies" title="Заместители" mark="deputy" %}
+    {% endif %}
+    {% if can_roles %}{% include "org/_unit_roles_form.html" %}{% endif %}
   </div>
   {% endif %}
   <input class="form-control my-3" id="unit-search" name="q" type="search" value="{{ q }}" placeholder="Поиск по ФИО и должности" aria-label="Поиск участников" autocomplete="off" hx-get="/structure/{{ unit.pk }}/" hx-target="#unit-card" hx-trigger="input changed delay:300ms" hx-swap="innerHTML">

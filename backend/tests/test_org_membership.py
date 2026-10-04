@@ -117,6 +117,11 @@ def all_events() -> int:
     return model("core.AuditEvent").objects.count()
 
 
+def events_except_logins() -> int:
+    """События журнала без входов: `support.logged_in` сам пишет `login.success` (срез 001, login.py)."""
+    return model("core.AuditEvent").objects.exclude(action="login.success").count()
+
+
 def warm_permission_cache(user) -> None:
     from apps.core.services import permissions
 
@@ -252,7 +257,7 @@ def test_repeated_add_creates_no_second_membership_and_says_already_member(djang
     with django_capture_on_commit_callbacks(execute=True):
         membership.add_members(t["Сеть"], [user], mode=membership.CONCURRENT, actor=admin)
         membership.add_members(t["Дежурные"], [user], actor=admin)
-    events_before = all_events()
+    events_before = events_except_logins()
     for mode in (membership.CONCURRENT, membership.TRANSFER):
         with django_capture_on_commit_callbacks(execute=True):
             again = membership.add_members(t["Сеть"], [user], mode=mode, actor=admin)
@@ -262,13 +267,13 @@ def test_repeated_add_creates_no_second_membership_and_says_already_member(djang
     assert again.added == [] and again.already == [user]
     assert Membership.objects.filter(user=user, unit=t["Сеть"]).count() == 1
     assert unit_names(user) == ["Дежурные", "Сеть"], "режим «перевести» при повторе не снимает прочих членств"
-    assert all_events() == events_before, "повторное добавление ничего не пишет в журнал"
+    assert events_except_logins() == events_before, "повторное добавление ничего не пишет в журнал"
     # страница: 302 и сообщение «уже участник» в [role=status] следующей страницы
     client = support.logged_in(admin)
     done = client.post(f"/structure/{t['Сеть'].pk}/members/", {"users": [user.pk], "mode": "concurrent"})
     assert done.status_code == 302 and done["Location"].endswith(f"/structure/{t['Сеть'].pk}/")
     assert "уже участник" in status_text(client.get(done["Location"]))
-    assert Membership.objects.filter(user=user, unit=t["Сеть"]).count() == 1 and all_events() == events_before
+    assert Membership.objects.filter(user=user, unit=t["Сеть"]).count() == 1 and events_except_logins() == events_before
 
 
 def test_member_menu_transfer_same_kind_remove_and_dismiss_items(django_capture_on_commit_callbacks):
@@ -357,11 +362,11 @@ def test_transfer_from_one_of_two_departments_keeps_other(django_capture_on_comm
     assert events[2].before["units"] == by_path(t["Первый"], t["Второй"])
     assert events[2].after["units"] == by_path(t["Второй"], t["Третий"])
     # цель, где человек уже состоит: ничего не меняется, событий нет
-    before = all_events()
+    before = events_except_logins()
     with django_capture_on_commit_callbacks(execute=True):
         again = membership.transfer_member(user, t["Второй"], t["Третий"], actor=admin)
     assert again is False
-    assert unit_names(user) == ["Второй", "Третий"] and all_events() == before
+    assert unit_names(user) == ["Второй", "Третий"] and events_except_logins() == before
     # узел, где человека нет: not_member, ничего не меняется и не пишется
     from apps.org.services import OrgError
     stranger = person("Игорь Посторонний")
@@ -370,13 +375,13 @@ def test_transfer_from_one_of_two_departments_keeps_other(django_capture_on_comm
         with django_capture_on_commit_callbacks(execute=True), pytest.raises(OrgError) as absent:
             run()
         assert absent.value.code == "not_member"
-    assert unit_names(user) == ["Второй", "Третий"] and unit_names(stranger) == [] and all_events() == before
+    assert unit_names(user) == ["Второй", "Третий"] and unit_names(stranger) == [] and events_except_logins() == before
     # страница: 302 и «уже участник», членства прежние
     client = support.logged_in(admin)
     done = client.post(f"/structure/{t['Второй'].pk}/members/{user.pk}/transfer/", {"target": t["Третий"].pk})
     assert done.status_code == 302
     assert "уже участник" in status_text(client.get(done["Location"]))
-    assert unit_names(user) == ["Второй", "Третий"] and all_events() == before
+    assert unit_names(user) == ["Второй", "Третий"] and events_except_logins() == before
 
 
 def test_member_without_unit_allowed_found_by_preset(django_capture_on_commit_callbacks):
@@ -703,7 +708,7 @@ def test_membership_and_marks_need_org_manage(django_capture_on_commit_callbacks
     manager_user = manager()
     Membership = model("org.Membership")
     snapshot = sorted(Membership.objects.values_list("user_id", "unit_id", "mark"))
-    events_before = all_events()
+    events_before = events_except_logins()
     requests = [
         ("get", f"/structure/{unit.pk}/candidates/", {}),
         ("post", f"/structure/{unit.pk}/members/", {"users": [newcomer.pk], "mode": "concurrent"}),
@@ -732,7 +737,7 @@ def test_membership_and_marks_need_org_manage(django_capture_on_commit_callbacks
             assert not root.find_all(None, **hook), f"без права на странице есть {hook}"
         assert not root.find_all("select", name="mode")
     assert sorted(Membership.objects.values_list("user_id", "unit_id", "mark")) == snapshot
-    assert all_events() == events_before, "отказанные запросы ничего не пишут"
+    assert events_except_logins() == events_before, "отказанные запросы ничего не пишут"
     # с правом всё то же работает, а несуществующий узел — 404
     client = support.logged_in(manager_user)
     root = dom(card(client, unit))

@@ -1,0 +1,8 @@
+{% for user in candidates %}
+<label class="candidate form-check" data-candidate data-user-id="{{ user.pk }}">
+  <input class="form-check-input" type="checkbox" name="users" value="{{ user.pk }}">
+  <span class="form-check-label">{{ user.full_name }}{% if user.position %} <span class="text-muted small">{{ user.position }}</span>{% endif %}{% if user.pk in already %} <span class="text-muted small">(уже участник)</span>{% endif %}</span>
+</label>
+{% empty %}
+<p class="small text-muted mb-1">Никого не нашли. Проверьте написание: поиск идёт по ФИО, должности и почте.</p>
+{% endfor %}

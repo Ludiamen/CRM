@@ -5,4 +5,30 @@
     {% if row.mark == "head" %}<span class="badge text-bg-primary" data-mark-label>Руководитель</span>{% elif row.mark == "deputy" %}<span class="badge text-bg-secondary" data-mark-label>Заместитель</span>{% endif %}
     <span class="member-position" data-member-position>{{ row.user.position }}</span>
   </span>
+  {% if can_manage %}
+  <details class="member-menu" data-member-menu>
+    <summary class="btn btn-outline-secondary btn-sm" data-member-menu-button aria-label="Действия">…</summary>
+    <div class="member-menu-body">
+      <div class="member-menu-item" data-menu-item="transfer">
+        {% if transfer_targets %}
+        <form method="post" action="/structure/{{ unit.pk }}/members/{{ row.user.pk }}/transfer/" data-form="member-transfer">{% csrf_token %}
+          <label class="form-label small mb-1" for="transfer-{{ row.user.pk }}">{% if unit.kind == "department" %}Перевести в другой отдел{% else %}Перевести в другую команду{% endif %}</label>
+          <select class="form-select form-select-sm mb-1" id="transfer-{{ row.user.pk }}" name="target">
+            {% for target in transfer_targets %}<option value="{{ target.id }}">{{ target.label }}</option>{% endfor %}
+          </select>
+          <button class="btn btn-outline-primary btn-sm" type="submit">Перевести</button>
+        </form>
+        {% else %}<span class="small text-muted">{% if unit.kind == "department" %}Перевести в другой отдел{% else %}Перевести в другую команду{% endif %}: других узлов этого вида нет.</span>{% endif %}
+      </div>
+      <div class="member-menu-item" data-menu-item="remove">
+        <form method="post" action="/structure/{{ unit.pk }}/members/{{ row.user.pk }}/remove/" data-form="member-remove">{% csrf_token %}
+          <button class="btn btn-outline-danger btn-sm" type="submit">{% if unit.kind == "department" %}Удалить из отдела{% else %}Удалить из команды{% endif %}</button>
+        </form>
+      </div>
+      <div class="member-menu-item" data-menu-item="dismiss">
+        <a class="btn btn-outline-danger btn-sm" href="/structure/people/{{ row.user.pk }}/dismiss/" hx-get="/structure/people/{{ row.user.pk }}/dismiss/" hx-target="#dialog-root" hx-swap="innerHTML">Уволить</a>
+      </div>
+    </div>
+  </details>
+  {% endif %}
 </li>

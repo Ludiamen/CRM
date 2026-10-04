@@ -6,6 +6,7 @@
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET
 
+from apps.core.models import Role
 from apps.core.services import files
 from apps.core.services.permissions import has_permission, require_permission
 from apps.core.views.common import is_fragment, render_page
@@ -37,18 +38,30 @@ def _card_context(request, unit: Unit, q: str) -> dict:
     rows = [_member_row(m) for m in Membership.objects.filter(unit=unit).select_related("user", "user__photo")
             .order_by("user__full_name", "user_id")]
     total = len(rows)
+    everyone = rows
     needle = _fold(q.strip())
     if needle:
         rows = [r for r in rows if needle in _fold(r["user"].full_name) or needle in _fold(r["user"].position)]
     parent = None if unit.is_root else unit.parent
-    return {
-        "unit": unit, "parent": parent, "q": q, "roles": unit_roles.roles_of(unit),
+    can_manage = has_permission(request.user, "org.manage")
+    can_roles = has_permission(request.user, "roles.manage")
+    current_roles = unit_roles.roles_of(unit)
+    context = {
+        "unit": unit, "parent": parent, "q": q, "roles": current_roles,
         "heads": [r for r in rows if r["mark"] == "head"],
         "deputies": [r for r in rows if r["mark"] == "deputy"],
         "members": [r for r in rows if r["mark"] not in ("head", "deputy")],
-        "total": total, "found": len(rows), "can_manage": has_permission(request.user, "org.manage"),
-        "can_roles": has_permission(request.user, "roles.manage"),
+        "total": total, "found": len(rows), "can_manage": can_manage, "can_roles": can_roles,
     }
+    if can_manage:  # формы отметок и перенос: данные одним запросом на карточку, не на участника (T-2232)
+        context["everyone"] = everyone
+        context["transfer_targets"] = [
+            {"id": u.pk, "label": f"{'— ' * u.depth}{u.name}"}
+            for u in Unit.objects.filter(kind=unit.kind).exclude(pk=unit.pk).order_by("path")]
+    if can_roles:
+        chosen = {role.pk for role in current_roles}
+        context["role_choices"] = [{"role": role, "checked": role.pk in chosen} for role in Role.objects.order_by("name", "pk")]
+    return context
 
 
 def _tree(selected: Unit, own_ids: set) -> tuple[list, int]:

@@ -232,3 +232,13 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .dialog-consequences { padding-left: 1.2rem; margin: 0 0 1rem; }
 .dialog-consequences li { margin-bottom: 0.35rem; }
 @media (max-width: 767.98px) { .dialog-backdrop { align-items: flex-end; padding: 0; } .dialog-panel { width: 100%; border-radius: 0.6rem 0.6rem 0 0; } }
+
+/* --- участники, отметки и роли узла в карточке (T-2232) --- */
+.member-row .member-text { flex: 1 1 auto; }
+.member-menu { position: relative; margin-left: auto; }
+.member-menu > summary { list-style: none; cursor: pointer; }
+.member-menu > summary::-webkit-details-marker { display: none; }
+.member-menu-body { margin-top: 0.4rem; padding: 0.6rem; border: 1px solid var(--portal-border); border-radius: 0.5rem; background: #fff; display: flex; flex-direction: column; gap: 0.6rem; min-width: min(16rem, 100%); }
+.candidates { max-height: 14rem; overflow-y: auto; margin-bottom: 0.5rem; }
+.candidate { display: block; padding: 0.15rem 0 0.15rem 1.5rem; }
+@media (max-width: 767.98px) { .member-row { flex-wrap: wrap; } .member-menu { margin-left: 0; width: 100%; } }
