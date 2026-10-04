@@ -15,7 +15,7 @@ from django.views.decorators.http import require_GET
 
 from apps.core.models import Role, User, UserState
 from apps.core.services import accounts, devices, links, lockout, permissions
-from apps.core.services.permissions import require_permission
+from apps.core.services.permissions import require_any_permission, require_permission
 from apps.integrations.mail import services as mail
 
 from .common import is_fragment, render_page
@@ -69,7 +69,7 @@ def _list_context(params) -> dict:
     }
 
 
-@require_permission("accounts.manage")
+@require_any_permission("staff.view", "accounts.manage")
 @require_GET
 def staff_list(request):
     if is_fragment(request):
@@ -126,7 +126,7 @@ def card_context(request, target) -> dict:
     return context
 
 
-@require_permission("accounts.manage")
+@require_any_permission("staff.view", "accounts.manage")
 @require_GET
 def staff_card(request, user_id: int):
     target = get_object_or_404(User, pk=user_id)

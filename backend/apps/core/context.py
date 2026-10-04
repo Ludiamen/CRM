@@ -1,16 +1,7 @@
 """Контекст шаблонов оболочки (T-240): название и логотип портала, меню по правам, подсказки сессии."""
 from apps.core.services import permissions, portal_settings, sessions
 
-# Значок раздела по адресу (свои значки, templates/icons/)
-ICONS = {
-    "/": "icons/home.html",
-    "/staff/": "icons/people.html",
-    "/roles/": "icons/roles.html",
-    "/audit/": "icons/journal.html",
-    "/settings/portal/": "icons/gear.html",
-    "/settings/security/": "icons/shield.html",
-}
-DEFAULT_ICON = "icons/gear.html"
+HOME_ICON = "icons/home.html"
 
 
 def _active(item_url: str, path: str) -> bool:
@@ -30,9 +21,8 @@ def shell(request):
         context["flashes"] = request.session.pop("flashes")
     user = getattr(request, "user", None)
     if user is not None and user.is_authenticated and not sessions.is_limited(request):
-        items = [{"url": "/", "title": "Главная"}] + [
-            {"url": entry["url"], "title": entry["title"]} for entry in permissions.menu_for(user)]
-        context["menu"] = [
-            {**item, "icon": ICONS.get(item["url"], DEFAULT_ICON), "active": _active(item["url"], request.path)}
-            for item in items]
+        items = [{"url": "/", "title": "Главная", "icon": HOME_ICON}] + [
+            {"url": entry["url"], "title": entry["title"], "icon": entry["icon"]}
+            for entry in permissions.menu_for(user)]
+        context["menu"] = [{**item, "active": _active(item["url"], request.path)} for item in items]
     return context

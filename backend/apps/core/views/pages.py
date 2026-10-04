@@ -7,6 +7,8 @@ from django.http import Http404, HttpResponse
 from django.views.decorators.http import require_GET
 from django.views.static import serve
 
+from apps.core import extensions
+
 from .common import render_page
 
 # Из /media/ отдаётся только то, что принимает форма логотипа (PNG и JPEG, FR-049)
@@ -16,7 +18,10 @@ MEDIA_SUFFIXES = {".png", ".jpg", ".jpeg"}
 @login_required
 @require_GET
 def home(request):
-    return render_page(request, "home.html")
+    notices = []
+    for func in extensions.registered("home_notices"):
+        notices.extend(func(request.user))
+    return render_page(request, "home.html", {"notices": notices})
 
 
 @require_GET

@@ -7,6 +7,7 @@
 """
 from django.db import transaction
 
+from apps.core import extensions
 from apps.core.models import Permission, Role, User, UserState
 
 from . import audit
@@ -87,6 +88,10 @@ def delete_role(role: Role, *, actor, ip=None) -> None:
         raise RoleError("Начальную роль удалить нельзя.")
     if role.users.exists():
         raise RoleError("Роль назначена сотрудникам: сначала снимите её.")
+    for func in extensions.registered("role_usage"):
+        reason = func(role)
+        if reason:
+            raise RoleError(reason)
     with transaction.atomic():
         before = {"name": role.name, "permissions": permission_codes(role)}
         pk = role.pk

@@ -18,7 +18,7 @@ FIELD_LABELS = dict([
     ("remaining", "осталось кодов"), ("result", "итог"), ("step", "шаг"), ("attempts", "попыток отправки"),
     ("minutes", "на сколько минут"), ("closed", "закрыто сессий"), ("changed", "изменено"),
 ])
-STATE_TITLES = {"invited": "приглашён", "active": "активен", "blocked": "заблокирован"}
+STATE_TITLES = {"invited": "приглашён", "active": "активен", "blocked": "заблокирован", "dismissed": "уволен"}
 # Пары кортежами, как в FIELD_LABELS: запись «"bad_password": "…"» сканер секретов принял бы за пароль литералом.
 VALUE_TITLES = {
     "via": dict([

@@ -292,7 +292,7 @@ T-2140). В колонке «Тесты» стоят файлы или зада�
 | `staff_directory` | `func(viewer) -> StaffDirectory`; `StaffDirectory` — `dataclass` из `apps.core.extensions` с полями `presets: list[Preset]`, `filters: list[Filter]`, `search: Callable[[str], Q] \| None`, `columns: list[Column]`, `buttons: list[Button]`. `Preset(key: str, title: str, apply: Callable[[QuerySet], QuerySet], order: int)`; `Filter(name: str, label: str, choices: Callable[[], list[tuple[str, str]]], apply: Callable[[QuerySet, str], QuerySet])`; `Column(key: str, title: str, template: str, order: int)`; `Button(title: str, url: str, permissions_all: tuple[str, ...], key: str)`; `search(text)` возвращает `Q`, который ядро добавляет через ИЛИ к условиям своих полей | test_staff_search |
 | `card_sections` | `func(viewer, person) -> list[CardSection]`; `CardSection(key: str, tab: str, order: int, template: str, context: dict)`, `tab` — `"profile"` или `"security"`; пустой список — раздела нет | test_staff_card, test_org_heads |
 | `day_marks` | `func(year: int, month: int) -> dict[datetime.date, str]`: значения — результат `day_kind` (раздел 4.5); ядро берёт дни, отсутствующие в словаре, обычными; без зарегистрированных функций выходными считаются суббота и воскресенье (`"off"`) | test_date_field |
-| `home_notices` | `func(viewer) -> list[dict]`: ключи `key` (строка, например `calendar-year`), `year` (целое или `None`), `text`, `url`, `level` (`"warning"`) | test_calendar::test_reminder_*, test_org_pages |
+| `home_notices` | `func(viewer) -> list[dict]`: ключи `key` (строка, например `calendar-year`), `year` (целое или `None`), `text`, `url`, `level` (`"warning"`) и необязательный `link` — подпись ссылки на `url` (у напоминания календаря «Загрузить файл»); без `link` ядро подписывает ссылку «Перейти» (дополнение 64) | test_calendar::test_reminder_*, test_org_pages |
 | `stand_reset` | `func() -> None`: удаляет данные модуля до исходных; вызывается командой `e2e_reset_stand` | test_extensions |
 
 Сброс реестров для T-2116: `with extensions.empty():` (или фикстура `no_extensions`); внутри
@@ -951,3 +951,11 @@ PLAN-002), с адресом источника. Подписи нужны ка�
     выбранном дне, если он в показанном месяце, иначе на сегодняшнем (уточняет дополнение 59).
     «Сегодня» и «текущий год» в приёмке считать по Москве: `datetime.now(ZoneInfo("Europe/Moscow"))`.
     Затрагивает: test_o13_date_field, test_date_field (совместим).
+64. **Подпись ссылки уведомления на главной** (находка Opus при проверке T-2201): текст
+    интерфейса `org` не зашивается в шаблон ядра. У уведомления точки `home_notices` есть
+    необязательный ключ `link` — подпись ссылки на `url`; ядро выводит `link`, а без него —
+    «Перейти». `org` для напоминания календаря отдаёт `link="Загрузить файл"` (§ 9.5, строка
+    `[data-notice="calendar-year"]`). Тесты читают уведомление по ключам, а не сравнением
+    словаря целиком, поэтому новый ключ их не ломает. Затрагивает: § 5 (`home_notices`),
+    T-2201 (главная), T-2219 (напоминание), test_calendar::test_reminder_* и test_org_pages
+    (совместимы).

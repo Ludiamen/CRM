@@ -14,6 +14,7 @@ class UserState(models.TextChoices):
     INVITED = "invited", "приглашён"
     ACTIVE = "active", "активен"
     BLOCKED = "blocked", "заблокирован"
+    DISMISSED = "dismissed", "уволен"
 
 
 class UserManager(BaseUserManager):
@@ -37,6 +38,16 @@ class User(AbstractBaseUser):
     created_at = models.DateTimeField(default=now)
     activated_at = models.DateTimeField(null=True, blank=True)
     roles = models.ManyToManyField("core.Role", related_name="users", blank=True)
+    dismissed_at = models.DateTimeField("уволен", null=True, blank=True)
+    dismissed_by = models.ForeignKey("core.User", on_delete=models.PROTECT, null=True, blank=True,
+                                     related_name="dismissed_users")
+    internal_phone = models.CharField("внутренний телефон", max_length=32, blank=True)
+    workplace = models.CharField("рабочее место", max_length=255, blank=True)
+    birth_date = models.DateField("дата рождения", null=True, blank=True)
+    # photo — действующее чистое фото; photo_pending — последняя загрузка, пока её проверяют или она в карантине
+    photo = models.ForeignKey("core.StoredFile", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    photo_pending = models.ForeignKey("core.StoredFile", on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name="+")
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["full_name"]
@@ -55,8 +66,8 @@ class User(AbstractBaseUser):
 
     @property
     def is_active(self):
-        """Заблокированная запись не проходит проверку сессии Django."""
-        return self.state != UserState.BLOCKED
+        """Заблокированная и уволенная записи не проходят проверку сессии Django."""
+        return self.state not in (UserState.BLOCKED, UserState.DISMISSED)
 
 
 class Permission(models.Model):

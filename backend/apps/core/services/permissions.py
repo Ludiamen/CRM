@@ -9,20 +9,27 @@ from functools import wraps
 from django.contrib.auth.views import redirect_to_login
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
 
+from apps.core import extensions
 from apps.core.models import Permission, Role, User
 
 CACHE_SECONDS = 12 * 3600
 
-# Разделы меню и право, которое их открывает (FR-018, FR-050)
-MENU = (
-    ("accounts.manage", "/staff/", "Сотрудники"),
-    ("roles.manage", "/roles/", "Роли и права"),
-    ("audit.view", "/audit/", "Журнал событий"),
-    ("settings.portal", "/settings/portal/", "Настройки портала"),
-    ("settings.security", "/settings/security/", "Безопасность и политика"),
+# Пункты меню ядра (FR-018, FR-050): достаточно любого из прав в `permissions`
+CORE_MENU = (
+    {"permissions": ("staff.view", "accounts.manage"), "url": "/staff/", "title": "Сотрудники",
+     "icon": "icons/people.html", "order": 10},
+    {"permissions": ("roles.manage",), "url": "/roles/", "title": "Роли и права",
+     "icon": "icons/roles.html", "order": 40},
+    {"permissions": ("audit.view",), "url": "/audit/", "title": "Журнал событий",
+     "icon": "icons/journal.html", "order": 50},
+    {"permissions": ("settings.portal",), "url": "/settings/portal/", "title": "Настройки портала",
+     "icon": "icons/gear.html", "order": 60},
+    {"permissions": ("settings.security",), "url": "/settings/security/", "title": "Безопасность и политика",
+     "icon": "icons/shield.html", "order": 70},
 )
 
 
@@ -30,16 +37,40 @@ def _key(user_id) -> str:
     return f"perms:{user_id}"
 
 
+def _role_ids(user) -> set[int]:
+    ids = set(user.roles.values_list("pk", flat=True))
+    for func in extensions.registered("role_sources"):
+        ids.update(role.pk for role, _label in func(user))
+    return ids
+
+
 def permissions_of(user) -> frozenset[str]:
-    """Коды прав записи: объединение прав всех её ролей."""
+    """Коды прав записи: права личных ролей и ролей из точки `role_sources`."""
     if not getattr(user, "is_authenticated", False):
         return frozenset()
     cached = cache.get(_key(user.pk))
     if cached is not None:
         return frozenset(cached)
-    codes = frozenset(Permission.objects.filter(roles__users=user).values_list("code", flat=True).distinct())
+    codes = frozenset(Permission.objects.filter(roles__in=_role_ids(user)).values_list("code", flat=True).distinct())
     cache.set(_key(user.pk), sorted(codes), CACHE_SECONDS)
     return codes
+
+
+def roles_by_source(user) -> list[tuple[str, list]]:
+    """Роли записи по источникам: «лично», затем по группе на источник из `role_sources`."""
+    groups = []
+    personal = list(user.roles.order_by("name"))
+    if personal:
+        groups.append(("лично", personal))
+    by_label: dict[str, list] = {}
+    for func in extensions.registered("role_sources"):
+        for role, label in func(user):
+            bucket = by_label.setdefault(label, [])
+            if role not in bucket:
+                bucket.append(role)
+    for label in sorted(by_label):
+        groups.append((label, sorted(by_label[label], key=lambda r: r.name)))
+    return groups
 
 
 def has_permission(user, code: str) -> bool:
@@ -47,13 +78,30 @@ def has_permission(user, code: str) -> bool:
 
 
 def forget_users(user_ids) -> None:
-    cache.delete_many([_key(pk) for pk in user_ids])
+    """Сбрасывает ключи прав держателей после фиксации (вне транзакции — сразу)."""
+    keys = [_key(pk) for pk in user_ids]
+    transaction.on_commit(lambda: cache.delete_many(keys))
+
+
+def forget_all() -> None:
+    """Сбрасывает ключи прав всех записей после фиксации."""
+    keys = [_key(pk) for pk in User.objects.values_list("pk", flat=True)]
+    transaction.on_commit(lambda: cache.delete_many(keys))
+
+
+def has_any_permission(user, codes) -> bool:
+    return bool(permissions_of(user).intersection(codes))
 
 
 def menu_for(user) -> list[dict]:
-    """Пункты левого меню, доступные по правам."""
+    """Пункты левого меню, доступные по правам: пункты ядра и точки `menu_items`."""
     granted = permissions_of(user)
-    return [{"permission": code, "url": url, "title": title} for code, url, title in MENU if code in granted]
+    described = list(CORE_MENU)
+    for func in extensions.registered("menu_items"):
+        described.extend(func())
+    items = [item for item in described if granted.intersection(item["permissions"])]
+    items.sort(key=lambda item: (item["order"], item["title"]))
+    return [{"url": i["url"], "title": i["title"], "icon": i["icon"], "order": i["order"]} for i in items]
 
 
 def require_permission(code: str):
@@ -68,6 +116,33 @@ def require_permission(code: str):
             return view(request, *args, **kwargs)
         return wrapper
     return decorator
+
+
+def require_any_permission(*codes: str):
+    """Как `require_permission`, но достаточно любого из прав."""
+    def decorator(view):
+        @wraps(view)
+        def wrapper(request, *args, **kwargs):
+            if not request.user.is_authenticated:
+                return redirect_to_login(request.get_full_path())
+            if not has_any_permission(request.user, codes):
+                raise PermissionDenied
+            return view(request, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+class AnyPermissionRequiredMixin:
+    """Миксин представления-класса: `required_permissions = ("<код>", ...)`, достаточно любого."""
+
+    required_permissions: tuple[str, ...] = ()
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path())
+        if not has_any_permission(request.user, self.required_permissions):
+            raise PermissionDenied
+        return super().dispatch(request, *args, **kwargs)
 
 
 class PermissionRequiredMixin:
@@ -98,9 +173,6 @@ def _user_roles_changed(sender, instance, action, reverse, pk_set, **kwargs):
 def _role_permissions_changed(sender, instance, action, reverse, pk_set, **kwargs):
     if not action.startswith(("post_", "pre_clear")):
         return
-    if reverse:  # изменили permission.roles
-        roles = Role.objects.filter(pk__in=list(instance.roles.values_list("pk", flat=True)) + list(pk_set or []))
-    else:
-        roles = Role.objects.filter(pk=instance.pk)
-    forget_users(list(User.objects.filter(roles__in=roles).values_list("pk", flat=True)))
+    # держателей через узлы ядро не видит, поэтому сбрасываются ключи всех записей
+    forget_all()
 
