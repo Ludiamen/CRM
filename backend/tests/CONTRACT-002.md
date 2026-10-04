@@ -348,7 +348,7 @@ T-2140). В колонке «Тесты» стоят файлы или зада�
 
 | Имя | Что | Тесты |
 |---|---|---|
-| `perms:<id>` | как в срезе 001, проверка по окончанию имени; удаление идёт после фиксации: проверка — внутри `django_capture_on_commit_callbacks(execute=True)`; ключи сбрасываются при добавлении, переводе, удалении, увольнении (ключ человека); при переносе и удалении узла, смене ролей узла (ключи участников поддерева); при смене прав роли (ключи всех записей) | test_org_permissions::test_permission_keys_dropped_on_commit_for_membership_move_delete_and_unit_roles, test_role_permission_change_drops_all_permission_keys; test_permissions (T-2119, п. 7) |
+| `perms:<id>` | как в срезе 001, проверка по окончанию имени; удаление идёт после фиксации: проверка — внутри `django_capture_on_commit_callbacks(execute=True)`; ключи сбрасываются при добавлении, переводе, удалении, увольнении (ключ человека); при переносе узла и смене ролей узла (ключи участников поддерева; удаляется только пустой узел — сбрасывать нечего); при смене прав роли (ключи всех записей) | test_org_permissions::test_permission_keys_dropped_on_commit_for_membership_move_delete_and_unit_roles, test_role_permission_change_drops_all_permission_keys; test_permissions (T-2119, п. 7) |
 | ключ номера версии календаря | имя оканчивается на `calendar:version` (значение — целое ≥ 0; отсутствующий ключ читается как 0; каждое изменение — `INCR` на фиксации, первое даёт 1) | test_calendar::test_month_marks_cached_by_calendar_version_bumped_by_settings_day_edit_and_file_apply |
 | ключ кэша отметок месяца | имя оканчивается на `calendar:marks:<version>:<ГГГГ-ММ>`, например `calendar:marks:3:2027-03`; хранится результат `month_marks`; после смены версии старый ключ не читается | то же, test_date_field |
 | очередь `files` | `django_rq.get_queue("files")`; задание `apps.core.tasks.scan_file`, аргумент `str(stored.id)` (раздел 3); тест находит задание так: `[j for j in queue.jobs if j.func_name == "apps.core.tasks.scan_file" and j.args == (str(stored.id),)]`; помощник `support_org.files_jobs()` возвращает `list(queue.jobs)`; повтор после `ScanUnavailable` ждёт в `queue.scheduled_job_registry` | test_photo |
@@ -654,3 +654,132 @@ PLAN-002), с адресом источника. Подписи нужны ка�
     `support_org.SELF` («сам»); путь строит `route_path`, сверку с `support.all_routes()` —
     `route_regex`. Маршруты `/me/…` — отдельно, `support_org.SLICE_002_ME_ROUTES`.
     `make_member(..., created_by=None)` — по умолчанию `created_by` сам участник.
+
+## Дополнения Opus по вопросам исполнителей Этапа 2 (2026-10-04)
+
+Уточнения по ответам исполнителей и проверке тестов. Решения Opus; тесты и код берут их
+наравне с разделами 1–10.
+
+1. **Порядок «по `path`»** — байтовый порядок строк (как `sorted()` в Python). Поле
+   `Unit.path` объявляется с `db_collation="C"`, поэтому `order_by("path")` в базе даёт тот
+   же порядок; индекс `text_pattern_ops` остаётся (план). Тесты сравнивают с `sorted()`.
+   Затрагивает: test_org_membership, test_org_heads, test_org_dismissal.
+2. **Подсказки кандидатов** (`/structure/<id>/candidates/`) — первые 20 из
+   `accounts.pickable(q)` по `full_name`, затем `id`; подходящих больше — ровно 20.
+   Затрагивает: test_org_membership.
+3. **Форма отметок** — скрытое поле `input[type=hidden][name=part]` (`heads` или
+   `deputies`) внутри `form[data-form="marks-heads"]` и `form[data-form="marks-deputies"]`.
+   Затрагивает: test_org_membership.
+4. **Части вкладки «Безопасность»** карточки сотрудника — внутри
+   `[data-tab-panel="security"]`: `[data-security-part="account"]` (состояние
+   `[data-field="state"]`, приглашение, блокировка и разблокировка, сброс второго фактора —
+   у `accounts.manage`) и `[data-security-part="logins"]` (устройства и история входов,
+   ссылка на `/staff/<id>/logins/` — у `accounts.view_logins`); части без права в ответе нет.
+   `[data-field="state"]` лежит только в `[data-security-part="account"]`.
+   Затрагивает: test_org_permissions, test_staff_card.
+5. **Пустые состояния FR-109:** `[data-empty-state="tree"]` — в дереве только корень;
+   `[data-empty-state="unit"]` — у выбранного узла нет ни одного участника (вложенные узлы
+   могут быть); `[data-empty-state="search"]` — задан `q`, совпадений нет. Текст пояснения
+   непустой; у `tree` и `unit` для `org.manage` — кнопка действия (`unit-new`,
+   `members-add`).
+   Затрагивает: test_org_structure.
+6. **Переименование** узла с изменением только регистра или «ё/е» допустимо: узел не
+   конфликтует сам с собой по `name_key`.
+   Затрагивает: test_org_structure.
+7. **Числа в `before`/`after`** журнала (`unit_id`, `parent_id`, `size`, итоги загрузок и
+   календаря) — целые JSON, не строки; `object_id` — строка, как в срезе 001.
+   Затрагивает: test_org_structure, test_org_membership, test_photo, test_staff_import_run,
+   test_calendar*.
+8. **Формулы XLSX** (`data_only=True`, план): ячейка с формулой без сохранённого значения —
+   пустая строка; с сохранённым значением — это значение текстом; текст формулы не читается.
+   Затрагивает: test_staff_import_file.
+9. **Даты и числа из XLSX:** дата или дата-время — `ДД.ММ.ГГГГ` (время отбрасывается); целое число
+   — без «.0» и экспоненты (`89001234567`); дробное — `str()` без экспоненты.
+   Затрагивает: test_staff_import_file.
+10. **Заголовки** сравниваются после удаления всех пробельных знаков (и внутри слова), в нижнем
+    регистре, «ё» как «е»: «Место  работы», «местоработы» и «МЕСТО РАБОТЫ» совпадают.
+    `not_loaded` — названия лишних колонок как в файле, в порядке файла.
+    Затрагивает: test_staff_import_file.
+11. **Определение формата и коды:** архив ZIP с `[Content_Types].xml` и `xl/workbook.xml` — XLSX;
+    архив ZIP без них — `bad_format`; не ZIP, не строгое UTF-8 или с нулевым байтом — `not_utf8`;
+    UTF-8 без обязательных колонок — `missing_columns`. Порядок: размер (`too_big`) → формат → для
+    XLSX оглавление (`zip_bomb`) → разбор (`xml_bomb`) → колонки → число строк (`too_many_rows`).
+    Затрагивает: test_staff_import_file.
+12. **Пометка «(уволен)» в истории входов:** на `/staff/<id>/logins/` заголовок с именем —
+    `[data-person-name]`, у уволенного текст `"<full_name> (уволен)"`; в журнале — через
+    `audit_search.actor_text` (B11). Затрагивает: test_org_dismissal.
+13. **Поле `units` у уволенного** выводится: `data-empty="true"`, текст «не заполнено» (Q11).
+    Затрагивает: test_org_dismissal, test_staff_card.
+14. **Действия карточки над уволенным** (`/staff/<id>/edit/`, `block/`, `unblock/`, `roles/`,
+    `reset-2fa/`, `invite/`, отметки и членство в `org`) — POST даёт 200 с `[role=alert]`, ничего
+    не меняется (общее правило § 8 для отказа службы); `unblock` — тоже 200 без изменений (A11:
+    служба тихо ничего не делает). Затрагивает: test_org_dismissal.
+15. **Пресеты коллеги:** «В компании», «Уволены», «Без подразделения», «Все» доступны всем со
+    `staff.view`; `state=all` у коллеги — все записи, включая уволенных; служебные пресеты и
+    фильтр роли — только `accounts.manage`. Затрагивает: test_staff_search, test_org_dismissal.
+16. **Замок корня в тесте** узнаётся по SQL с `FOR UPDATE`, таблицей `"org_unit"` и условием
+    `WHERE "org_unit"."is_root"` (не просто словом `is_root`, которое есть в списке колонок
+    любого запроса к узлам). Затрагивает: test_org_structure, test_org_membership.
+17. **Удаление узла и ключи прав:** удаляется только пустой узел, участников у него нет —
+    сбрасывать нечего; тесты сброс при удалении не проверяют (§ 7 выровнен с § 4.1).
+    Затрагивает: test_org_permissions.
+18. **Порядок в проверках тестов:** списки, которые контракт упорядочивает «по `path`»,
+    тесты сравнивают с `sorted()` по `path` узлов, а не с порядком создания (id узлов могут
+    пересечь границу разрядов 9→10). Затрагивает: test_org_membership, test_org_heads,
+    test_org_dismissal.
+19. **`scan_file` без строки `StoredFile`** (файл удалён новой загрузкой или удалением фото, а
+    задание осталось в очереди) — задание завершается без изменений, без событий и без
+    исключения. Затрагивает: test_photo.
+20. **Подпись поля карточки** — элемент `[data-field-label="<имя>"]` рядом со своим
+    `[data-field="<имя>"]`, текст — подпись по-русски («Подразделение», «Руководитель»,
+    «Подчинённые», «Внутренний телефон», «Место работы», «Дата рождения» и т. д.).
+    Затрагивает: test_org_heads, test_staff_card.
+21. **POST удаления узла без `confirm=1`** (`/structure/<id>/delete/`) — 200 с `[role=alert]`
+    («Подтвердите удаление»), узел не удаляется, событий нет. Затрагивает: test_org_structure.
+22. **Строка списка у коллеги** (смотрящий без `accounts.manage`): атрибута `data-state` нет
+    (служебные состояния скрыты, FR-119); у строки уволенного — `data-dismissed="true"`. У
+    обладателя `accounts.manage` — `data-state`, как в срезе 001 (`dismissed` тоже).
+    Затрагивает: test_staff_search, test_org_dismissal.
+23. **Устройство сетки поля даты:** `[data-datefield-grid]` содержит `table`; заголовок —
+    `thead th` с текстами «Пн», «Вт», «Ср», «Чт», «Пт», «Сб», «Вс» по порядку; недели —
+    `tbody tr[data-week]`, в каждой ровно 7 `td`; дни вне месяца — пустые `td` без кнопки.
+    Например, 1 ноября 2026 (воскресенье) — седьмая ячейка первой недели.
+    Затрагивает: test_date_field.
+24. **Исправление C3 для сетки поля даты** (ошибка Opus: поле даты служит и дате рождения):
+    `month` у `/ui/date-picker/` принимается с годом **1900…2100**; вне этого — текущий месяц.
+    `select[name=year]` сетки — годы от 1900 до текущего +5 (год сетки всегда в списке).
+    Для `/calendar/?year=` граница прежняя: 2000…2100. Затрагивает: test_date_field.
+25. **Чтение ответа clamd** — `sock.recv(...)` до завершающего `\0` или закрытия соединения
+    (без `makefile`); отправка — `sendall`. Затрагивает: test_clamav_adapter.
+26. **Файл календаря:** пустой файл — `bad_format`; файл в строгом UTF-8 без заголовков формата
+    (например, 1 048 576 байт «x») — `bad_format`. `calendar_file.apply` пишет в новые
+    `SpecialDay` `origin="file"`, `changed_by` — загрузивший (`actor`), `changed_at` — момент
+    применения. Предпросмотр (`make_preview`) событий журнала не пишет и номер версии
+    календаря не меняет. Затрагивает: test_calendar_file.
+27. **Загрузка сотрудников, уточнения:** у строки `created` (и `will_create`) `reason == ""`;
+    длина ФИО проверяется по собранному `full_name` («Фамилия Имя Отчество» через один пробел,
+    без пустого отчества) — больше 255 знаков — `too_long`; остальные поля — по длинам полей
+    `User` (должность и место работы 255, телефон 64, внутренний телефон 32), почта — до 254.
+    Членство из загрузки — `membership.added` с `mode=""` и `mark` (`"head"` при «да»).
+    Затрагивает: test_staff_import_run.
+28. **Календарь, уточнения:** вторую строку `WorkCalendar` не даёт ограничение базы —
+    `IntegrityError`; в `calendar.day_changed` для дня без записи `before.kind == ""`; сетка
+    каждого месяца на `/calendar/` — как у поля даты (п. 23): `table`, `thead th` «Пн»…«Вс»,
+    `tbody tr[data-week]` по 7 `td`, дни вне месяца — пустые `td`; `input[name=day_start]` и
+    `day_end` — значение `ЧЧ:ММ`. Затрагивает: test_calendar.
+29. **Журнал и загрузки, уточнения:** `staff_import.confirm` выполняет годные строки и при
+    наличии строк `error` (они остаются ошибками; SPEC-002, сценарий 5, п. 5). Вложенные
+    словари в `before`/`after` (`totals` календаря, итоги загрузки) на странице журнала и в
+    CSV показываются по-русски: `audit_labels` модуля `org` даёт названия и вложенных ключей
+    (`holidays_on_weekdays` и др.), значение выводится как «название: число; …», латинских
+    ключей в тексте нет (FR-150). Затрагивает: test_org_audit, test_staff_import_run.
+30. **Уточнения по правкам тестов:** кнопки действий пустых состояний (`[data-action="unit-new"]`,
+    `[data-action="members-add"]`, п. 5) лежат внутри своего `[data-empty-state]`; подписи
+    полей (п. 20): `position` — «Должность», `state` — «Состояние», `email` — «Почта», `phone`
+    — «Телефон». Затрагивает: test_org_structure, test_staff_card.
+31. **Решения Opus правщикам, записанные в контракт:** `staff_import` вызывает службы ядра через
+    модуль (`from apps.core.services import accounts` → `accounts.create_user(...)`), а не импортом
+    имени — тест подменяет `apps.core.services.accounts.create_user`; `calendar.year_loaded` при
+    первой загрузке года — `before == {}`; стёртый или несуществующий предпросмотр
+    (`/structure/import/<id>/`, `/calendar/upload/<id>/`) — 404. Затрагивает:
+    test_staff_import_run, test_calendar_file.
