@@ -412,7 +412,8 @@ def test_apply_replaces_year_keeps_other_years(django_capture_on_commit_callback
     assert len(special_days(2025)) == 19 and set(k for _, k, o in special_days(2025)) <= KINDS
     assert {o for _, _, o in special_days(2025)} == {"file"}
     first_load = year_events()[-1]
-    assert first_load.object_id == "2025" and first_load.before == {} and first_load.after["totals"] == REAL[2025]
+    assert first_load.object_id == "2025" and first_load.after["totals"] == REAL[2025]
+    assert first_load.before == {"year": 2025, "totals": {}}, "дополнение 34"
     assert support.valkey_int("calendar:version") == version + 2
     with django_capture_on_commit_callbacks(execute=True):
         repeat = client.post(sent["Location"], {"confirm": "1"})

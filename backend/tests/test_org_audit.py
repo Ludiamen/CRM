@@ -24,6 +24,8 @@ pytestmark = pytest.mark.django_db(databases=["default", "migrate"])
 IP = "198.51.100.77"
 BIRTH = date(1987, 3, 21)
 BIRTH_TEXTS = ("1987-03-21", "21.03.1987")
+# «21.03» ловит частичный вывод даты; «1987» и «03-21» не ищем: могут встретиться в uuid и номерах
+BIRTH_PARTS = ("21.03",)
 DAY = date(2026, 7, 15)
 
 # Все коды § 6 контракта и вид объекта каждого.
@@ -69,7 +71,7 @@ KEYS = {
     "photo.deleted": ({"files"}, None),
     "staff_import.completed": (None, {"file_name", "send_invites", "created", "skipped", "errors", "units_created"}),
     "calendar.settings_changed": ({"work_weekdays", "day_start", "day_end"}, {"work_weekdays", "day_start", "day_end"}),
-    "calendar.year_loaded": (None, {"year", "totals", "file_name"}),
+    "calendar.year_loaded": ({"year", "totals"}, {"year", "totals", "file_name"}),  # before — дополнение 34
     "calendar.day_changed": ({"date", "kind"}, {"date", "kind"}),
 }
 OPTIONAL_KEYS = {("photo.checked", "after"): {"signature"}}
@@ -225,7 +227,7 @@ def check_values(ctx):
     assert marks.before == {"heads": [], "deputies": []}
     assert marks.after == {"heads": [user.full_name], "deputies": []}
     roles, = named["roles"]
-    assert roles.before.get("roles", []) == [] and roles.after == {"roles": [ctx.role.name]}  # пустая сторона — § 6
+    assert roles.before == {"roles": []} and roles.after == {"roles": [ctx.role.name]}  # дополнение 37
 
     # Порядок людей внутри одного вызова контракт не задаёт — сопоставление по object_id.
     assert sorted(e.object_id for e in named["concurrent"]) == sorted([str(user.pk), str(other.pk)])
@@ -400,7 +402,7 @@ def test_birth_date_value_absent_in_all_events(protected_root, monkeypatch):
     texts = [event_text(e) for e in Event.objects.all()]
     assert len(texts) >= len(SLICE_CODES)
     for text in texts:
-        for needle in BIRTH_TEXTS:
+        for needle in BIRTH_TEXTS + BIRTH_PARTS:
             assert needle not in text, (needle, text)
 
 
