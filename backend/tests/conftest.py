@@ -74,3 +74,24 @@ def clock():
 @pytest.fixture
 def totp():
     return factories.totp_code
+
+
+@pytest.fixture
+def protected_root(settings, tmp_path):
+    """Каталог тома `protected` во временной папке теста (CONTRACT-002 § 1): `settings.PROTECTED_ROOT`."""
+    settings.PROTECTED_ROOT = tmp_path
+    return tmp_path
+
+
+@pytest.fixture
+def no_extensions():
+    """Тело теста идёт внутри `apps.core.extensions.empty()` (CONTRACT-002 § 5).
+
+    Пока `extensions.empty` нет, фикстура падает понятной ошибкой при использовании, а не при сборе."""
+    try:
+        from apps.core import extensions
+        empty = extensions.empty
+    except (ImportError, AttributeError):
+        pytest.fail("нет apps.core.extensions.empty(): фикстура no_extensions ждёт код среза 002 (CONTRACT-002 § 5)")
+    with empty():
+        yield
