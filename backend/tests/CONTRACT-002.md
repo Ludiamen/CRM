@@ -985,3 +985,28 @@ PLAN-002), с адресом источника. Подписи нужны ка�
     месяц по Москве, доп. 24). Кнопки «предыдущий/следующий месяц» и кнопка открытия шлют `month=ГГГГ-ММ`; на
     1900-01 и 2100-12 кнопка выхода за границу недоступна (R-2238-1). Правлено дополнение 59. Затрагивает:
     test_date_field, test_o13_date_field (совместимы: смотрят `[data-month]` новой сетки).
+69. **Журнал: создание записи и снятие фото в карантине** (T-2305, находки Н-I2-1 и Н-I2-2; решение Opus 2026-10-05).
+    (а) `user.created` из `accounts.create_user` пишет в «стало» и `internal_phone`, `workplace` (снимок
+    `_card_snapshot`): загрузка сотрудников задаёт эти поля, а событие создания их не называло. Событие первого
+    администратора (`create_first_admin`) не меняется. (б) `files.delete_photo`, снимающий ссылку на файл в карантине
+    (`photo_pending` в состоянии «карантин»), пишет `photo.deleted` и тогда, когда удалять нечего: `before` —
+    `{"files": [<удалённые>]}`, как в § 6, и список может быть пустым (снята только ссылка на файл в карантине; сам
+    файл остаётся до ночной очистки). Нового ключа нет: набор ключей `photo.deleted` закреплён таблицей
+    test_org_audit (`KEYS`, `{"files"}`). Без фото — по-прежнему тихо, без события. Затрагивает: новые тесты
+    test_photo.py::test_photo_delete_quarantine_only_written_to_audit и
+    test_staff_import_run.py::test_created_event_includes_internal_phone_and_workplace; прежние тесты не меняются
+    (test_photo_delete_by_self_or_accounts_manage_quarantine_kept и
+    test_org_audit::test_every_slice_action_writes_event_with_russian_label совместимы: смешанный случай даёт тот же
+    `files`, ключи — `{"files"}`).
+70. **Новые тесты по проверке T-2306 и проходу T-2301** (решение Opus 2026-10-05; существующие тесты не меняются).
+    (а) FR-101: прямой запрос создания узла с видом не из `department`/`team` (например `kind=box`) отклоняется
+    формой страницы сообщением «Выберите вид узла: отдел или команда.» (views/structure_forms.py проверяет вид до
+    службы), узел не создан, события нет; вызов службы `structure.create_unit(kind="box", …)` — `OrgError` с текстом
+    «Неизвестный вид узла…» — test_org_structure.py::test_unknown_kind_refused_even_direct.
+    (б) FR-136: страница `/structure/import/` у владельца обоих прав содержит ссылки на образцы
+    `a[data-sample="csv"][href="/structure/import/sample.csv"]` и `a[data-sample="xlsx"][href="/structure/import/sample.xlsx"]`,
+    и по каждой ссылке скачивается образец (200, вложение) — test_staff_import_file.py::test_import_page_links_both_samples.
+    (в) Журнал (ядро, находка Ф1 прохода T-2301): при фильтре `?action=<известный код>` в списке «Что сделано»
+    выбран вариант с русским названием, и варианта, который показывает сам код, нет; для кода, которого нет среди
+    `known_actions()`, по-прежнему добавляется скрытый выбранный вариант с кодом — test_audit.py::test_action_filter_shows_title_for_known_code.
+    Тесты (а) и (б) подтверждают уже реализованное поведение — красного прогона у них нет; (в) до правки красный.

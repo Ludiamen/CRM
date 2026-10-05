@@ -642,3 +642,22 @@ def test_preview_1000_rows_under_10_seconds_csv_and_xlsx():
         assert item.file_format == fmt and len(item.rows) == 1000
         assert item.summary["created"] == 1000 and item.summary["units_created"] == 50
         assert len(item.summary["new_units"]) == 50
+
+
+def test_created_event_includes_internal_phone_and_workplace():
+    """Доп. 69 (а): `user.created` называет `internal_phone` и `workplace` (загрузка и создание без них)."""
+    from apps.core.services import accounts
+
+    actor, root = admin(), root_name()
+    email = factories.new_email("evt")
+    item = preview([row(email=email, internal_phone="201", workplace="Кабинет 7", unit_path=root)], actor)
+    confirm(item, actor)
+    user = model("core.User").objects.get(email=email)
+    [event] = events("user.created", object_id=user.pk)
+    assert event.after["internal_phone"] == "201" and event.after["workplace"] == "Кабинет 7"
+
+    plain = accounts.create_user(email=factories.new_email("plain"), full_name="Без Полей", position="Инженер",
+                                 role_ids=[support.role_by_name(support.STAFF_ROLE).pk], actor=actor, invite=False)
+    [event] = events("user.created", object_id=plain.pk)
+    assert "internal_phone" in event.after and "workplace" in event.after
+    assert event.after["internal_phone"] == "" and event.after["workplace"] == ""

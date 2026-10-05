@@ -28,7 +28,7 @@
       <select class="form-select" id="id_action" name="action">
         <option value="">Любое действие</option>
         {% for code, label in actions %}<option value="{{ code }}"{% if filters.action == code %} selected{% endif %}>{{ label }}</option>{% endfor %}
-        {% if filters.action %}<option value="{{ filters.action }}" selected hidden>{{ filters.action }}</option>{% endif %}
+        {% if filters.action and filters.action not in action_codes %}<option value="{{ filters.action }}" selected hidden>{{ filters.action }}</option>{% endif %}
       </select>
     </div>
     <div class="col-6 col-md-2">

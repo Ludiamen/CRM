@@ -520,3 +520,25 @@ def test_audit_csv_is_russian_like_the_page_with_event_code_column(clock):
     assert role[5] == "роль" and role[6] == "7"
     assert role[8] == f"название: Проверяющий; права: {perm_title}", role[8]
     assert has_no_ascii_key(role[8], ("name", "permissions", "audit.view"))
+
+
+def test_action_filter_shows_title_for_known_code():
+    """Журнал (доп. 70 в): известный код в фильтре показан русским названием, скрытого варианта с кодом нет."""
+    from apps.core.services import audit_search
+
+    admin = support.logged_in(support.make_admin(), ip="198.51.100.202")
+
+    def options(code: str) -> list[tuple[str, str, bool]]:
+        """Варианты списка «Что сделано»: (значение, видимый текст, выбран)."""
+        html = admin.get("/audit/?action=" + code).content.decode()
+        select = re.search(r'<select[^>]*name="action"[^>]*>(.*?)</select>', html, re.S).group(1)
+        return [("value" in attrs and re.search(r'value="([^"]*)"', attrs).group(1), text.strip(), " selected" in attrs)
+                for attrs, text in re.findall(r"<option([^>]*)>(.*?)</option>", select, re.S)]
+
+    for code in ("user.created", "unit.created"):
+        title = audit_search.ACTION_TITLES[code]
+        chosen = [item for item in options(code) if item[2]]
+        assert [(v, t) for v, t, _ in chosen] == [(code, title)], f"{code}: выбран один вариант с названием"
+        assert not [1 for _, text, _ in options(code) if text == code], f"{code}: варианта с кодом нет"
+    unknown = [item for item in options("no.such.code") if item[2]]
+    assert [(v, t) for v, t, _ in unknown] == [("no.such.code", "no.such.code")]

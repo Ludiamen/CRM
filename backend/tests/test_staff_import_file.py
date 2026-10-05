@@ -496,3 +496,16 @@ def test_file_not_stored():
         assert marker not in f"{event.before}{event.after}", "содержимое файла не попадает в журнал"
     # то же после просмотра предпросмотра
     assert marker not in client.get(response["Location"]).content.decode()
+
+
+def test_import_page_links_both_samples():
+    """FR-136 (доп. 70 б): страница загрузки даёт ссылки на оба образца, и по каждой скачивается вложение."""
+    client = support.logged_in(importer())
+    response = client.get("/structure/import/")
+    assert response.status_code == 200
+    parsed = page(response.content.decode())
+    links = {a.get("data-sample"): a.get("href") for t, a in parsed.tags if t == "a" and a.get("data-sample")}
+    assert links == {"csv": "/structure/import/sample.csv", "xlsx": "/structure/import/sample.xlsx"}
+    for href in links.values():
+        sample = client.get(href)
+        assert sample.status_code == 200 and sample["Content-Disposition"].startswith("attachment"), href

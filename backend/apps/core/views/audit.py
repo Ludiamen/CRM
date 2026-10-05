@@ -44,6 +44,7 @@ def audit_list(request):
     params_no_preset = {key: value for key, value in params.items() if key != "preset"}
     context = {
         "page": page, "filters": filters, "actors": audit_search.actors(), "actions": audit_search.known_actions(),
+        "action_codes": [code for code, _ in audit_search.known_actions()],
         "object_types": sorted(audit_labels.OBJECT_TYPES.items(), key=lambda item: item[1]), "object_type_codes": list(audit_labels.OBJECT_TYPES),
         "presets": [{"code": code, "title": title, "active": filters.preset == code,
                      "url": "/audit/" + _link(params_no_preset, sort=shown_sort,

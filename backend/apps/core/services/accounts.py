@@ -139,7 +139,7 @@ def create_user(*, email: str, full_name: str, position: str, phone: str = "", c
             user.save()
             user.roles.set(selected)
             audit.record("user.created", actor=actor, object_type="user", object_id=user.pk,
-                         after={**_snapshot(user), "state": user.state, "roles": sorted(r.name for r in selected)}, ip=ip)
+                         after={**_card_snapshot(user), "state": user.state, "roles": sorted(r.name for r in selected)}, ip=ip)
             if invite:
                 links.send_invitation(user, created_by=actor, ip=ip)
     except IntegrityError:

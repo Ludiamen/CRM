@@ -726,3 +726,19 @@ def test_unit_events_created_updated_moved_deleted_before_after():
     assert (deleted.object_type, deleted.object_id, deleted.actor_id) == ("unit", str(unit.pk), actor.pk)
     assert {k: deleted.before[k] for k in ("kind", "name", "parent", "roles")} == {
         "kind": "department", "name": "Сеть2", "parent": "Поддержка", "roles": ["Роль узла"]}
+
+
+def test_unknown_kind_refused_even_direct():
+    """FR-101 (доп. 70 а): вид не из «отдел/команда» отклоняется и прямым запросом, и службой; узла и события нет."""
+    root = structure().root()
+    manager = support.make_with_permissions(*MANAGE)
+    units_before = model("org.Unit").objects.count()
+    response = support.logged_in(manager).post(
+        "/structure/new/", {"kind": "box", "name": "Ящик", "description": "", "parent": root.pk})
+    assert response.status_code == 200
+    assert "Выберите вид узла: отдел или команда." in response.content.decode()
+    assert model("org.Unit").objects.count() == units_before and not model("org.Unit").objects.filter(name="Ящик").exists()
+    assert events("unit.created") == []
+    error = expect_code("kind_rules", structure().create_unit, kind="box", name="Ящик", parent=root, actor=manager)
+    assert "Неизвестный вид узла" in str(error)
+    assert model("org.Unit").objects.count() == units_before and events("unit.created") == []

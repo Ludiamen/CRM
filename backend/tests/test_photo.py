@@ -671,6 +671,40 @@ def test_photo_delete_by_self_or_accounts_manage_quarantine_kept(protected_root)
     assert support.make_client().post("/me/photo/delete/")["Location"].startswith("/login/")
 
 
+def test_photo_delete_quarantine_only_written_to_audit(protected_root):
+    """Доп. 69 (б): снятие ссылки на файл в карантине пишет `photo.deleted` с пустым `files`."""
+    # только карантин: сам сотрудник
+    owner = support.make_employee()
+    held = make_waiting(owner, protected_root, "quarantine")
+    assert support.logged_in(owner).post("/me/photo/delete/").status_code == 302
+    assert fresh(owner).photo_pending_id is None
+    assert [s.id for s in stored_files(owner)] == [held.id]
+    assert paths(protected_root, held)["quarantine"].exists()
+    [event] = events("photo.deleted", owner)
+    assert event.actor_id == owner.pk
+    assert event.before == {"files": []}
+
+    # только карантин: accounts.manage
+    target = support.make_employee()
+    held2 = make_waiting(target, protected_root, "quarantine")
+    admin = support.make_admin()
+    assert support.logged_in(admin).post(f"/staff/{target.pk}/photo/delete/").status_code == 302
+    assert fresh(target).photo_pending_id is None
+    assert paths(protected_root, held2)["quarantine"].exists()
+    [event] = events("photo.deleted", target)
+    assert event.actor_id == admin.pk
+    assert event.before == {"files": []}
+
+    # смешанный случай: чистое фото и карантин
+    mixed = support.make_employee()
+    clean = make_clean_photo(mixed, protected_root)
+    held3 = make_waiting(mixed, protected_root, "quarantine")
+    assert support.logged_in(mixed).post("/me/photo/delete/").status_code == 302
+    [event] = events("photo.deleted", mixed)
+    assert event.before == {"files": [str(clean.id)]} and "quarantine" not in event.before
+    assert paths(protected_root, held3)["quarantine"].exists()
+
+
 # --- 14. заглушка ------------------------------------------------------------------------------
 
 def test_initials_placeholder_until_clean_in_card_list_and_structure(protected_root):

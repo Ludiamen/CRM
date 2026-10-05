@@ -221,7 +221,10 @@ def finish_quarantine(stored: StoredFile, owner: User, signature: str) -> None:
 # --- удаление ----------------------------------------------------------------------------------
 
 def delete_photo(user: User, *, actor, ip=None) -> None:
-    """Удаляет `photo` и `photo_pending` с файлами, кроме файла в карантине; без фото — тихо ничего."""
+    """Удаляет `photo` и `photo_pending` с файлами, кроме файла в карантине; без фото — тихо ничего.
+
+    Событие пишется, если снята хоть одна ссылка; `files` — только удалённые файлы (может быть пустым).
+    """
     with transaction.atomic():
         owner = User.objects.select_for_update().get(pk=user.pk)
         rows = [row for row in (owner.photo, owner.photo_pending) if row is not None]
@@ -234,7 +237,6 @@ def delete_photo(user: User, *, actor, ip=None) -> None:
         ids = [str(row.pk) for row in removable]
         for row in removable:
             row.delete()
-        if ids:
-            audit.record("photo.deleted", actor=actor, object_type="user", object_id=user.pk,
-                         before={"files": ids}, ip=ip)
+        audit.record("photo.deleted", actor=actor, object_type="user", object_id=user.pk,
+                     before={"files": ids}, ip=ip)
     remove_paths(paths)
