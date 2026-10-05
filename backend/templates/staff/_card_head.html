@@ -1,4 +1,4 @@
-{# Шапка карточки: фото, ФИО, пометки; параметры: target, is_self, dismissed, photo_url, initials #}
+{# Шапка карточки: фото, ФИО, пометки, статус проверки своего фото, удаление фото (T-2235); параметры: target, is_self, dismissed, can_manage, photo_url, initials #}
 <div class="card-head d-flex align-items-center gap-3 mb-3">
   {% include "partials/_photo.html" %}
   <div>
@@ -7,5 +7,16 @@
       {% if dismissed %}<span class="badge text-bg-secondary" data-dismissed-badge>уволен</span>{% endif %}
       {% if is_self %}<span class="badge text-bg-primary">это вы</span>{% endif %}
     </div>
+    {% if is_self and target.photo_pending %}
+      {% if target.photo_pending.status == "pending" %}<p class="photo-status small text-muted mb-0 mt-1" data-photo-status="pending">Фото проверяется</p>
+      {% elif target.photo_pending.status == "quarantine" %}<p class="photo-status photo-status-failed small mb-0 mt-1" data-photo-status="failed">Фото не прошло проверку</p>{% endif %}
+    {% endif %}
+    {% if target.photo_id or target.photo_pending_id %}
+      {% if is_self and not can_manage %}
+      <form method="post" action="/me/photo/delete/" class="mt-1">{% csrf_token %}<button class="btn btn-link btn-sm p-0" type="submit" data-action="photo-delete">Удалить фото</button></form>
+      {% elif can_manage %}
+      <form method="post" action="/staff/{{ target.pk }}/photo/delete/" class="mt-1">{% csrf_token %}<button class="btn btn-link btn-sm p-0" type="submit" data-action="photo-delete">Удалить фото</button></form>
+      {% endif %}
+    {% endif %}
   </div>
 </div>

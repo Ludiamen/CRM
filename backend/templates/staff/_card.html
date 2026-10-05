@@ -1,5 +1,5 @@
-{% include "staff/_card_head.html" %}
 <div data-card data-user-id="{{ target.pk }}">
+{% include "staff/_card_head.html" %}
   <div class="card-tabs" role="tablist">
     <button type="button" role="tab" class="card-tab" data-tab-button="profile" aria-selected="true">Профиль</button>
     {% if show_security %}<button type="button" role="tab" class="card-tab" data-tab-button="security" aria-selected="false">Безопасность</button>{% endif %}

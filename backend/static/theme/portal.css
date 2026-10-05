@@ -263,3 +263,8 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .card-tab[aria-selected="true"] { border-bottom-color: #28406b; font-weight: 600; }
 .card-tab:focus-visible { outline: 2px solid #28406b; outline-offset: -2px; }
 @media (max-width: 767.98px) { .card-tabs { overflow-x: auto; } .card-tab { flex: 1 1 auto; white-space: nowrap; } }
+
+/* T-2235: фото сотрудника — статусы проверки, форма загрузки; круглая рамка только через CSS (радиус 50%) */
+.person-photo { border: 1px solid var(--portal-border); background: #fff; }
+.card-head .photo-status-failed { color: #a02334; }
+.photo-upload .photo-upload-input { max-width: 22rem; }

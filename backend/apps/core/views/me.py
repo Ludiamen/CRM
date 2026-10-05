@@ -70,7 +70,7 @@ def _security_context(user) -> dict:
             "password_changed_at": passwords.changed_at(user)}
 
 
-def _profile_context(user) -> dict:
+def profile_context(user) -> dict:
     """Свой профиль: обе вкладки всегда (FR-135), полная дата рождения, разделы `org` по точке `card_sections`."""
     return {"roles": list(user.roles.order_by("name").values_list("name", flat=True)),
             "target": user, "is_self": True, "dismissed": False,
@@ -85,7 +85,7 @@ def _slider(request, body: str, title: str, context: dict | None = None, *, stat
         response = render(request, "me/slider_fragment.html", context, status=status)
         response["Vary"] = "HX-Request"
         return response
-    return render_page(request, "me/profile.html", {**_profile_context(request.user), **context}, status=status)
+    return render_page(request, "me/profile.html", {**profile_context(request.user), **context}, status=status)
 
 
 @login_required
@@ -118,11 +118,11 @@ def profile(request):
             return _redirect("/me/")
         user.phone, user.contacts = phone, accounts.parse_contacts(contacts)
         user.internal_phone, user.workplace = internal_phone, workplace
-        context = {**_profile_context(user), "errors": errors}
+        context = {**profile_context(user), "errors": errors}
         if birth_raw is not None:
             context["birth_text"] = birth_raw
         return render_page(request, "me/profile.html", context)
-    return render_page(request, "me/profile.html", _profile_context(user))
+    return render_page(request, "me/profile.html", profile_context(user))
 
 
 @login_required

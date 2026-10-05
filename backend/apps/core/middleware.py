@@ -1,4 +1,5 @@
 """Промежуточное ПО ядра (T-219): адрес клиента, сессия, бездействие, ограниченная сессия."""
+import re
 from urllib.parse import urlencode
 
 from django.http import HttpResponse, HttpResponseRedirect
@@ -14,6 +15,9 @@ LIMITED_ALLOWED = (TOTP_URL, "/me/security/backup-codes/", "/logout/")
 # Истёкший срок пароля: только смена пароля и выход
 EXPIRED_ALLOWED = (PASSWORD_URL, "/logout/")
 PUBLIC_PREFIXES = ("/static/", "/media/", "/health/")
+# Выдача фото сотрудника — единственная страница среза 002, которую браузеру разрешено держать в кэше (решение 5):
+# сопоставление точное по образцу маршрута, а не по префиксу `/staff/`
+PHOTO_PATH = re.compile(r"/staff/\d+/photo/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:512|96)/")
 
 
 class ClientIPMiddleware:
@@ -32,6 +36,8 @@ class ResponseHeadersMiddleware:
 
     - `Cache-Control: no-store` на всём, кроме статики, логотипа и проверки здоровья: защищённые
       страницы и страницы ввода секретов не должны оставаться в кэше («Назад» после выхода, сценарий 10);
+      исключение — успешная выдача фото `/staff/<id>/photo/<uuid>/<512|96>/` (`private, max-age=86400` ставит
+      представление; отказы по этому адресу остаются с `no-store`);
     Политика реферера везде одна — `same-origin` (SecurityMiddleware): код ссылки живёт только во
     фрагменте адреса, а фрагмент браузер в Referer не передаёт никогда, поэтому отдельная политика
     `no-referrer` для страниц ссылок не нужна — а с ней браузер слал бы `Origin: null`, и проверка
@@ -45,8 +51,11 @@ class ResponseHeadersMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         path = request.path
-        if not path.startswith(PUBLIC_PREFIXES):
-            response["Cache-Control"] = "no-store"
+        if path.startswith(PUBLIC_PREFIXES):
+            return response
+        if response.status_code == 200 and PHOTO_PATH.fullmatch(path):
+            return response
+        response["Cache-Control"] = "no-store"
         return response
 
 

@@ -4,8 +4,16 @@
 <h1 class="page-title">Мой профиль</h1>
 {% if errors %}<div class="alert alert-danger" role="alert"><ul class="mb-0">{% for message in errors %}<li>{{ message }}</li>{% endfor %}</ul></div>{% endif %}
 <section class="card"><div class="card-body">
-{% include "staff/_card_head.html" %}
 <div data-card data-user-id="{{ target.pk }}">
+{% include "staff/_card_head.html" %}
+<form class="photo-upload mb-3" method="post" action="/me/photo/" enctype="multipart/form-data">
+  {% csrf_token %}
+  <label class="form-label small mb-1" for="id_photo">Фото (PNG или JPEG, до 5 МБ)</label>
+  <div class="d-flex flex-wrap gap-2">
+    <input class="form-control form-control-sm photo-upload-input" id="id_photo" name="photo" type="file" accept="image/png,image/jpeg" required>
+    <button class="btn btn-outline-primary btn-sm" type="submit" data-action="photo-upload">Загрузить фото</button>
+  </div>
+</form>
   <div class="card-tabs" role="tablist">
     <button type="button" role="tab" class="card-tab" data-tab-button="profile" aria-selected="true">Профиль</button>
     <button type="button" role="tab" class="card-tab" data-tab-button="security" aria-selected="false">Безопасность</button>
