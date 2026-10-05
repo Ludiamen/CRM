@@ -65,6 +65,9 @@ services:
       DATABASE_POOL: "1"         # пул соединений psycopg (ASGI), см. config/settings.py
       # внутренняя сеть compose (там стоит наш nginx) в списке всегда
       TRUSTED_PROXIES: "${TRUSTED_PROXIES:-},${CRM_SUBNET:-172.31.77.0/24}"
+      CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
+      CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
+      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-30}"
     command: >-
       gunicorn config.asgi:application --bind 0.0.0.0:8000
       --worker-class uvicorn_worker.UvicornWorker
@@ -101,19 +104,46 @@ services:
       postgres:
         condition: service_healthy
 
-  # Рабочий процесс: очередь mail; --with-scheduler нужен для пауз между повторами писем.
+  # Рабочий процесс: очереди files (проверка фото на вирусы) и mail, в таком порядке —
+  # проверка фото не ждёт писем; --with-scheduler нужен для пауз между повторами писем
+  # и проверок. Том protected — тот же, что у web: worker пишет перекодированные фото.
+  # От здоровья clamav worker не зависит: недоступная проверка повторяется заданием.
   worker:
     image: crm-portal:local
     restart: unless-stopped
     env_file: .env
     environment:
       DATABASE_MIGRATE_URL: ""
-    command: rq worker -c config.rq_settings --with-scheduler mail
+      CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
+      CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
+      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-30}"
+    command: rq worker -c config.rq_settings --with-scheduler files mail
+    volumes:
+      - protected:/app/protected
     depends_on:
       web:
         condition: service_healthy   # схема базы уже мигрирована
       valkey:
         condition: service_healthy
+
+  # Антивирус ClamAV (clamd, порт 3310 только внутри сети compose, наружу не публикуется).
+  # Образ с базами сигнатур; том clamav-db хранит базы (Docker заполняет его из образа,
+  # только пока он пуст). freshclam.conf смонтирован только для чтения. Переменные
+  # FRESHCLAM_CONF_*, CLAMD_CONF_* и FRESHCLAM_CHECKS не задаются: /init образа работает
+  # под `set -eu` и правит по ним файлы командой `sed -i`, на файле только для чтения
+  # запуск упадёт; частота обновления баз — как в образе (при старте и раз в сутки).
+  clamav:
+    image: clamav/clamav:1.4.6
+    restart: unless-stopped
+    volumes:
+      - clamav-db:/var/lib/clamav
+      - ./clamav/freshclam.conf:/etc/clamav/freshclam.conf:ro
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 120s
 
   # Ночные задания: rq cron кладёт их в очередь, исполняет worker.
   scheduler:
@@ -168,6 +198,8 @@ services:
     environment:
       E2E_STAND: "1"
     command: sleep infinity
+    volumes:
+      - protected:/app/protected  # e2e_reset_stand стирает файлы фото (R-2242-2)
     depends_on:
       web:
         condition: service_healthy
@@ -199,9 +231,14 @@ services:
       mailpit:
         condition: service_healthy
         required: false   # профиль dev; нужен только тестам почты
+      clamav:
+        condition: service_healthy   # настоящий clamd для test_clamav_live и проверки фото
     env_file: .env
     environment:
       VALKEY_URL: redis://valkey:6379/15
+      CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
+      CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
+      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-30}"
       PIP_ROOT_USER_ACTION: ignore
       PIP_DEFAULT_TIMEOUT: "60"
       PIP_RETRIES: "10"
@@ -229,6 +266,7 @@ networks:
 volumes:
   postgres-data:
   valkey-data:
+  clamav-db:
   test-venv:
   media:
   protected:
