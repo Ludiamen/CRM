@@ -1,0 +1,5 @@
+{% for notice in notices %}
+<div class="alert alert-{{ notice.level|default:'warning' }}" role="status" data-notice="{{ notice.key }}" data-year="{{ notice.year }}">
+  {{ notice.text }} <a href="{{ notice.url }}">{{ notice.link }}</a>
+</div>
+{% endfor %}

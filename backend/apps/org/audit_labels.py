@@ -35,7 +35,7 @@ FIELDS = dict([
 OBJECT_TYPES = dict([("unit", "узел"), ("staff_import", "загрузка"), ("calendar", "календарь")])
 VALUES = {
     "kind": dict([
-        ("department", "отдел"), ("team", "команда"), ("holiday", "праздник"), ("day_off", "перенесённый выходной"),
+        ("", "обычный день"), ("department", "отдел"), ("team", "команда"), ("holiday", "праздник"), ("day_off", "перенесённый выходной"),
         ("workday", "перенесённый рабочий день"), ("short", "сокращённый день"),
     ]),
     "mode": dict([("transfer", "перевод"), ("concurrent", "совместительство")]),

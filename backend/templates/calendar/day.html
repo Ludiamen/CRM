@@ -1,0 +1,23 @@
+{% extends layout %}
+{% block title %}День {{ day_iso }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">День {{ day|date:"j E Y" }}</h1>
+  <a class="btn btn-outline-secondary" href="/calendar/?year={{ day.year }}">К календарю</a>
+</div>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<section class="card form-card cal-card">
+  <div class="card-body">
+    <form method="post" action="/calendar/days/{{ day_iso }}/" data-form="calendar-day">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label" for="id_kind">Вид дня</label>
+        <select class="form-select" id="id_kind" name="kind">
+          {% for value, label in kinds %}<option value="{{ value }}"{% if value == selected %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn btn-primary" type="submit">Сохранить</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

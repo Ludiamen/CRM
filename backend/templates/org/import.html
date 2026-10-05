@@ -1,0 +1,32 @@
+{% extends layout %}
+{% block title %}Загрузка сотрудников из таблицы{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Загрузка сотрудников из таблицы</h1>
+  <a class="btn btn-outline-secondary" href="/staff/">К списку сотрудников</a>
+</div>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<section class="card form-card import-card">
+  <div class="card-body">
+    <form method="post" action="/structure/import/" enctype="multipart/form-data" data-form="import-upload">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label" for="id_file">Файл таблицы (CSV или XLSX, до {{ max_mb }} МБ, не больше {{ max_rows }} строк)</label>
+        <input class="form-control" id="id_file" name="file" type="file" accept=".csv,.xlsx" required>
+        <div class="form-text">Сначала будет предпросмотр: ничего не создаётся, пока вы не подтвердите. Файл нигде не хранится.</div>
+      </div>
+      <button class="btn btn-primary" type="submit">Показать предпросмотр</button>
+    </form>
+  </div>
+</section>
+<section class="card import-help">
+  <div class="card-body">
+    <h2 class="h5">Образцы файла</h2>
+    <p><a href="/structure/import/sample.csv" data-sample="csv">Образец CSV</a> · <a href="/structure/import/sample.xlsx" data-sample="xlsx">Образец XLSX</a></p>
+    <h2 class="h5">Колонки</h2>
+    <p>Обязательные: {% for name in required %}<b>{{ name }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+    <p>Необязательные: {% for name in optional %}{{ name }}{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+    <p class="form-text">Подразделение — путь через « / », начиная с корневого отдела; недостающие отделы будут созданы. В колонке «Руководитель» — «да», «нет» или пусто. Остальные колонки не загружаются.</p>
+  </div>
+</section>
+{% endblock %}

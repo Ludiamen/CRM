@@ -143,7 +143,7 @@ def test_tree_page_with_200_units_query_count_constant():
     assert len(re.findall(r'<li\b[^>]*\bdata-unit-id="', html)) == 200, "в дереве должны быть все 200 узлов"
 
 
-def test_slice_pages_query_count_constant():
+def test_slice_pages_query_count_constant(django_capture_on_commit_callbacks):
     """NFR-102: число запросов у структуры, карточки узла, списка сотрудников (поиск, подразделение, фото), карточки
     сотрудника, календаря и сетки поля даты не зависит от числа людей, узлов, фото и особых дней."""
     viewer = staff_viewer()
@@ -199,6 +199,11 @@ def test_slice_pages_query_count_constant():
     branches = grow_units(dept, 60, prefix="Ветвь нагрузки") + grow_units(root, 40, prefix="Другая ветвь")
     add_people(3, 66, [card] + branches[:60], with_photo=True)
     add_special_days(2, 40)
+    # дни добавлены мимо служб: версию кэша отметок поднимаем, как делают службы (план, «Рабочий календарь»);
+    # служба поднимает её после фиксации, а транзакция теста не фиксируется (решение 11 задач)
+    from apps.org.services import calendar as calendar_service
+    with django_capture_on_commit_callbacks(execute=True):
+        calendar_service.bump_version()
     large = measure()
     assert large == small, f"число запросов растёт с выборкой: было {small}, стало {large}"
     assert model("core.StoredFile").objects.filter(status="clean").count() >= 30, "в большой выборке есть фото"

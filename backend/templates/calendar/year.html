@@ -1,0 +1,66 @@
+{% extends layout %}
+{% block title %}Календарь {{ year }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Производственный календарь</h1>
+  {% if can_manage %}<a class="btn btn-outline-secondary" href="/calendar/upload/" data-action="calendar-upload">Загрузить файл года</a>{% endif %}
+</div>
+{% include "calendar/_notices.html" %}
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<form class="cal-year-form" method="get" action="/calendar/">
+  <label class="form-label" for="id_year">Год</label>
+  <select class="form-select" id="id_year" name="year">
+    {% for y in years %}<option value="{{ y }}"{% if y == year %} selected{% endif %}>{{ y }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-outline-secondary" type="submit">Показать</button>
+</form>
+{% if not is_loaded %}<p class="text-muted">Календарь на {{ year }} год не загружен: отмечены только выходные дни недели.</p>{% endif %}
+<ul class="cal-legend" data-legend>
+  {% for item in legend %}
+  <li data-legend-item="{{ item.kind }}"><span class="cal-swatch cal-{{ item.kind }}"><span class="cal-letter">{{ item.letter }}</span></span> {{ item.label }}</li>
+  {% endfor %}
+</ul>
+<div class="cal-grid" data-calendar-year data-year="{{ year }}" data-loaded="{% if is_loaded %}true{% else %}false{% endif %}">
+  {% for month in months %}
+  <section class="cal-month" data-month="{{ month.number }}">
+    <h2 class="cal-month-title">{{ month.name }}</h2>
+    <table class="cal-table">
+      <thead><tr>{% for name in weekday_names %}<th scope="col">{{ name }}</th>{% endfor %}</tr></thead>
+      <tbody>
+        {% for week in month.weeks %}
+        <tr data-week>
+          {% for cell in week %}{% if cell %}<td data-date="{{ cell.date }}" data-day-kind="{{ cell.kind }}" class="cal-day cal-{{ cell.kind }}">{% if cell.edit %}<a href="/calendar/days/{{ cell.date }}/" data-day-edit>{{ cell.day }}{% if cell.letter %} <span class="cal-letter">{{ cell.letter }}</span><span class="visually-hidden">{{ cell.label }}</span>{% endif %}</a>{% else %}{{ cell.day }}{% if cell.letter %} <span class="cal-letter">{{ cell.letter }}</span><span class="visually-hidden">{{ cell.label }}</span>{% endif %}{% endif %}</td>{% else %}<td></td>{% endif %}{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endfor %}
+</div>
+{% if can_manage %}
+<section class="card form-card cal-settings">
+  <div class="card-body">
+    <h2 class="h5">Рабочая неделя и часы</h2>
+    <form method="post" action="/calendar/settings/">
+      {% csrf_token %}
+      <div class="mb-3">
+        {% for box in week_boxes %}
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="work_weekdays" value="{{ box.value }}" id="id_wd{{ box.value }}"{% if box.checked %} checked{% endif %}>
+          <label class="form-check-label" for="id_wd{{ box.value }}">{{ box.name }}</label>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="cal-hours mb-3">
+        <label class="form-label" for="id_day_start">Начало дня</label>
+        <input class="form-control" id="id_day_start" name="day_start" type="time" value="{{ day_start }}" required>
+        <label class="form-label" for="id_day_end">Конец дня</label>
+        <input class="form-control" id="id_day_end" name="day_end" type="time" value="{{ day_end }}" required>
+      </div>
+      <div class="form-text mb-3">Рабочий день не короче двух часов; нужен хотя бы один рабочий день недели.</div>
+      <button class="btn btn-primary" type="submit">Сохранить</button>
+    </form>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

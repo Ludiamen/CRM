@@ -1,0 +1,58 @@
+{% extends layout %}
+{% block title %}{% if done %}Итог загрузки сотрудников{% else %}Предпросмотр загрузки сотрудников{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">{% if done %}Итог загрузки сотрудников{% else %}Предпросмотр загрузки сотрудников{% endif %}</h1>
+  <a class="btn btn-outline-secondary" href="/structure/import/">Загрузить другой файл</a>
+</div>
+<p class="text-muted">Файл: {{ item.file_name }}</p>
+{% if done %}
+<div class="card import-summary" data-result-summary>
+  <div class="card-body">Создано {{ summary.created }}, пропущено {{ summary.skipped }}, с ошибками {{ summary.errors }}</div>
+</div>
+{% else %}
+<div data-import-preview>
+  <div class="card import-summary">
+    <div class="card-body">Будет создано {{ summary.created }}, пропущено {{ summary.skipped }}, с ошибками {{ summary.errors }}.</div>
+  </div>
+  {% if new_units %}
+  <section class="card import-block">
+    <div class="card-body">
+      <h2 class="h6">Будут созданы новые отделы</h2>
+      <ul data-import-new-units>{% for path in new_units %}<li>{{ path }}</li>{% endfor %}</ul>
+    </div>
+  </section>
+  {% endif %}
+  {% if not_loaded %}
+  <section class="card import-block">
+    <div class="card-body">
+      <h2 class="h6">Эти колонки не загружаются</h2>
+      <ul data-import-not-loaded>{% for name in not_loaded %}<li>{{ name }}</li>{% endfor %}</ul>
+    </div>
+  </section>
+  {% endif %}
+  <form method="post" action="/structure/import/{{ item.pk }}/" data-form="import-confirm" class="import-confirm">
+    {% csrf_token %}
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" name="send_invites" value="1" id="id_send_invites">
+      <label class="form-check-label" for="id_send_invites">Отправить приглашения сразу</label>
+    </div>
+    <button class="btn btn-primary" type="submit">Выполнить загрузку</button>
+  </form>
+</div>
+{% endif %}
+<div class="table-responsive">
+  <table class="table import-table">
+    <thead><tr><th>Строка</th><th>Почта</th><th>Итог</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+      <tr data-import-row data-row-number="{{ row.number }}" data-row-result="{{ row.result }}">
+        <td data-label="Строка">{{ row.number }}</td>
+        <td data-label="Почта">{{ row.email }}</td>
+        <td data-label="Итог"><span class="import-result">{{ row.label }}</span>{% if row.reason %}: <span data-row-reason>{{ row.reason }}</span>{% endif %}{% if row.hint_text %} <span class="import-hint" data-row-hint="{{ row.hint }}">({{ row.hint_text }})</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

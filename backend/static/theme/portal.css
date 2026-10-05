@@ -268,3 +268,63 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .person-photo { border: 1px solid var(--portal-border); background: #fff; }
 .card-head .photo-status-failed { color: #a02334; }
 .photo-upload .photo-upload-input { max-width: 22rem; }
+
+/* T-2236: загрузка сотрудников из таблицы — предпросмотр и итог; строка-блок на узкой ширине (UX-14, NFR-104) */
+.import-card, .import-help, .import-block, .import-summary { margin-bottom: 1rem; }
+.import-table td { overflow-wrap: anywhere; }
+.import-table tr[data-row-result="error"] .import-result { color: #a02334; font-weight: 600; }
+.import-table tr[data-row-result="skipped"] .import-result { color: #7a5b00; }
+.import-confirm { margin-bottom: 1rem; }
+@media (max-width: 767.98px) {
+  .import-table thead { display: none; }
+  .import-table tbody tr { display: block; border-bottom: 1px solid var(--portal-border); padding: 0.5rem 0.25rem; }
+  .import-table tbody td { display: block; border: 0; padding: 0.1rem 0.5rem; }
+  .import-table tbody td[data-label]::before { content: attr(data-label) ": "; color: #5b6472; }
+}
+
+/* T-2237: календарь — сетка 12 месяцев, легенда, отметки, форма недели; узкий экран (UX-14, NFR-104) */
+.cal-year-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+.cal-year-form .form-select { width: auto; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; list-style: none; padding: 0; margin: 0 0 1rem; }
+.cal-swatch { display: inline-block; min-width: 1.6rem; text-align: center; border-radius: 0.25rem; padding: 0 0.3rem; }
+.cal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.cal-month-title { font-size: 1rem; margin: 0 0 0.25rem; }
+.cal-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.cal-table th, .cal-table td { text-align: center; padding: 0.2rem 0; font-size: 0.85rem; border: 1px solid var(--portal-border); }
+.cal-table td a { display: block; color: inherit; text-decoration: none; }
+.cal-table td a:hover { text-decoration: underline; }
+.cal-letter { font-weight: 700; font-size: 0.75rem; }
+.cal-off { background: #eceff3; color: #5b6472; }
+.cal-holiday { background: #f8d7da; color: #842029; }
+.cal-day_off { background: #fff3cd; color: #664d03; }
+.cal-workday { background: #d1e7dd; color: #0f5132; }
+.cal-short { background: #cfe2ff; color: #084298; }
+.cal-hours { display: grid; grid-template-columns: auto 8rem; gap: 0.5rem 1rem; align-items: center; max-width: 24rem; }
+.cal-settings, .cal-card { margin-bottom: 1rem; }
+@media (max-width: 767.98px) {
+  .cal-grid { grid-template-columns: 1fr; }
+  .cal-hours { grid-template-columns: 1fr; }
+  .cal-table td, .cal-table th { padding: 0.45rem 0; }
+}
+
+/* T-2238: поле выбора даты — всплывающая сетка месяца, отметки дней, подсветка выбранного; узкий экран (FR-148, UX-14, NFR-104) */
+.datefield { position: relative; }
+.datefield-picker { position: absolute; z-index: 20; top: 100%; left: 0; margin-top: 0.25rem; padding: 0.5rem; min-width: 18rem; background: var(--bs-body-bg, #fff); border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 0.5rem; box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15); }
+.datefield-picker[hidden] { display: none; }
+.date-grid-head { display: grid; grid-template-columns: auto 1fr auto auto; gap: 0.25rem; margin-bottom: 0.5rem; }
+.date-grid-head [data-datefield-next] { grid-column: 4; }
+.date-grid-table { width: 100%; border-collapse: collapse; table-layout: fixed; text-align: center; }
+.date-grid-table th { padding: 0.25rem 0; font-size: 0.8rem; font-weight: 600; color: var(--bs-secondary-color, #6c757d); }
+.date-grid-table td { padding: 1px; }
+.date-day { width: 100%; min-height: 2.25rem; padding: 0.15rem; border: 1px solid transparent; border-radius: 0.375rem; background: transparent; color: inherit; }
+.date-day:hover { background: var(--bs-secondary-bg, #e9ecef); }
+.date-day:focus-visible { outline: 2px solid var(--bs-primary, #0d6efd); outline-offset: 1px; }
+.date-day-off, .date-day-day_off, .date-day-holiday { color: var(--bs-danger, #dc3545); }
+.date-day-holiday { font-weight: 600; }
+.date-day-workday { border-color: var(--bs-success, #198754); }
+.date-day-short { border-style: dashed; border-color: var(--bs-warning, #ffc107); }
+.date-day[aria-pressed="true"] { background: var(--bs-primary, #0d6efd); color: #fff; }
+@media (max-width: 767.98px) {
+  .datefield-picker { position: fixed; left: 0.5rem; right: 0.5rem; top: auto; bottom: 0.5rem; min-width: 0; }
+  .date-day { min-height: 2.75rem; }
+}

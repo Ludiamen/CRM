@@ -1,0 +1,32 @@
+{% extends layout %}
+{% block title %}Предпросмотр календаря на {{ item.year }} год{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Предпросмотр календаря на {{ item.year }} год</h1>
+  <a class="btn btn-outline-secondary" href="/calendar/upload/">Загрузить другой файл</a>
+</div>
+<p class="text-muted">Файл: {{ item.file_name }}</p>
+<section class="card cal-card" data-calendar-preview data-holidays="{{ totals.holidays_on_weekdays }}" data-day-offs="{{ totals.moved_days_off }}" data-workdays="{{ totals.moved_workdays }}" data-shorts="{{ totals.short_days }}" data-work-days="{{ totals.work_days }}">
+  <div class="card-body">
+    <ul class="cal-totals">
+      <li>Праздников в будние дни: {{ totals.holidays_on_weekdays }}</li>
+      <li>Перенесённых выходных: {{ totals.moved_days_off }}</li>
+      <li>Перенесённых рабочих дней: {{ totals.moved_workdays }}</li>
+      <li>Сокращённых дней: {{ totals.short_days }}</li>
+      <li>Рабочих дней в году: {{ totals.work_days }}</li>
+    </ul>
+  </div>
+</section>
+{% if applied %}
+<div class="alert alert-success" role="status">Этот файл уже применён. <a href="/calendar/?year={{ item.year }}">Открыть календарь {{ item.year }} года</a></div>
+{% else %}
+{% if warnings.year_loaded %}<div class="alert alert-warning" role="status">Календарь на {{ item.year }} год уже загружен: все его особые дни ({{ warnings.existing_days }}) будут заменены.</div>{% endif %}
+{% if warnings.manual_days %}<div class="alert alert-warning" role="status" data-manual-warning data-manual-days="{{ warnings.manual_days }}">Ручные правки дней этого года ({{ warnings.manual_days }}) будут потеряны.</div>{% endif %}
+{% if warnings.weekend_work %}<div class="alert alert-warning" role="status" data-weekend-holiday-warning>Суббота или воскресенье у вас рабочие: праздник, выпавший на выходной и показанный в файле обычным выходным, станет рабочим днём. После загрузки поправьте такие дни вручную.</div>{% endif %}
+<form method="post" action="/calendar/upload/{{ item.pk }}/" data-form="calendar-confirm">
+  {% csrf_token %}
+  <input type="hidden" name="confirm" value="1">
+  <button class="btn btn-primary" type="submit">Применить файл</button>
+</form>
+{% endif %}
+{% endblock %}

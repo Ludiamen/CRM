@@ -1,0 +1,35 @@
+{% extends layout %}
+{% block title %}Загрузка производственного календаря{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Загрузка производственного календаря</h1>
+  <a class="btn btn-outline-secondary" href="/calendar/">К календарю</a>
+</div>
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<section class="card form-card cal-card">
+  <div class="card-body">
+    <form method="post" action="/calendar/upload/" enctype="multipart/form-data" data-form="calendar-upload">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label" for="id_year">Год</label>
+        <input class="form-control" id="id_year" name="year" type="number" min="{{ min_year }}" max="{{ max_year }}" value="{{ default_year }}" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="id_file">Файл календаря (CSV, до {{ max_mb }} МБ)</label>
+        <input class="form-control" id="id_file" name="file" type="file" accept=".csv" required>
+        <div class="form-text">Сначала будет предпросмотр: календарь не меняется, пока вы не подтвердите.</div>
+      </div>
+      <button class="btn btn-primary" type="submit">Показать предпросмотр</button>
+    </form>
+  </div>
+</section>
+<section class="card cal-card" data-format-help>
+  <div class="card-body">
+    <h2 class="h5">Формат файла и где его взять</h2>
+    <p>Файл — таблица производственного календаря в формате открытых данных Минтруда: CSV в кодировке UTF-8, разделитель — запятая. В первой строке заголовки: «Год», двенадцать месяцев и итоговые колонки; в строке нужного года каждая ячейка месяца перечисляет его дни через запятую (в кавычках).</p>
+    <p>Пометки: число без знака — праздничный выходной в будний день, «+» — перенесённый выходной, «*» — сокращённый день. Субботы и воскресенья вне списка месяца считаются перенесёнными рабочими днями.</p>
+    <p>Итоги в файле проверяются: если они не сходятся с пересчётом, загрузка отклоняется.</p>
+    <p>Взять файл можно на портале открытых данных data.gov.ru — набор Минтруда «Производственный календарь» (идентификатор 7708660670-proizvcalendar, в одном файле все годы) — или на сайте xmlcalendar.ru: файл calendar.csv нужного года в том же формате. Итоги файла портал сверяет сам; после загрузки любой день можно поправить вручную.</p>
+  </div>
+</section>
+{% endblock %}

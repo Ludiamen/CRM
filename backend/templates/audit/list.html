@@ -10,11 +10,11 @@
   <div class="row g-2 align-items-end">
     <div class="col-6 col-md-2">
       <label class="form-label small mb-1" for="id_date_from">С даты</label>
-      <input class="form-control" id="id_date_from" name="date_from" type="date" value="{{ filters.date_from|date:'Y-m-d' }}">
+      {{ date_from_field }}
     </div>
     <div class="col-6 col-md-2">
       <label class="form-label small mb-1" for="id_date_to">По дату</label>
-      <input class="form-control" id="id_date_to" name="date_to" type="date" value="{{ filters.date_to|date:'Y-m-d' }}">
+      {{ date_to_field }}
     </div>
     <div class="col-12 col-md-3">
       <label class="form-label small mb-1" for="id_user">Кто</label>

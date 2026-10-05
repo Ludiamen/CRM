@@ -1,0 +1,7 @@
+<div class="datefield" data-datefield>
+  <div class="input-group">
+    <input type="text" name="{{ widget.name }}" value="{{ widget.value|default_if_none:'' }}" data-datefield-input inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10"{% for key, val in widget.attrs.items %} {{ key }}="{{ val }}"{% endfor %}>
+    <button type="button" class="btn btn-outline-secondary" data-datefield-open aria-expanded="false" aria-controls="{{ widget.field_id }}-picker" hx-get="/ui/date-picker/?month={{ widget.picker_month }}" hx-target="#{{ widget.field_id }}-picker" hx-swap="innerHTML">Выбрать дату</button>
+  </div>
+  <div id="{{ widget.field_id }}-picker" class="datefield-picker" data-datefield-picker hidden></div>
+</div>

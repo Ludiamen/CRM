@@ -15,7 +15,7 @@ from apps.core import extensions
 from apps.core.models import UserSession
 from apps.core.services import accounts, backup_codes, devices, files, lockout, login, passwords, sessions, totp
 
-from apps.core.widgets import parse_date
+from apps.core.widgets import PortalDateInput, parse_date
 
 from .activation import profile_errors
 from .auth import set_device_cookie
@@ -70,11 +70,17 @@ def _security_context(user) -> dict:
             "password_changed_at": passwords.changed_at(user)}
 
 
+def _birth_field(text: str) -> str:
+    """Поле даты рождения — виджет портала (FR-148); текст показывается как есть (и неверный ввод после ошибки)."""
+    return PortalDateInput().render("birth_date", text, attrs={"id": "id_birth_date", "autocomplete": "bday"})
+
+
 def profile_context(user) -> dict:
     """Свой профиль: обе вкладки всегда (FR-135), полная дата рождения, разделы `org` по точке `card_sections`."""
     return {"roles": list(user.roles.order_by("name").values_list("name", flat=True)),
             "target": user, "is_self": True, "dismissed": False,
             "birth_text": user.birth_date.strftime("%d.%m.%Y") if user.birth_date else "",
+            "birth_field": _birth_field(user.birth_date.strftime("%d.%m.%Y") if user.birth_date else ""),
             "sections": card_sections(user, user), **card_head(user), **_security_context(user)}
 
 
@@ -121,6 +127,7 @@ def profile(request):
         context = {**profile_context(user), "errors": errors}
         if birth_raw is not None:
             context["birth_text"] = birth_raw
+            context["birth_field"] = _birth_field(birth_raw)
         return render_page(request, "me/profile.html", context)
     return render_page(request, "me/profile.html", profile_context(user))
 

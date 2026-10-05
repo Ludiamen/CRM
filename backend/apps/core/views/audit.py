@@ -14,6 +14,7 @@ from django.views.decorators.http import require_GET
 
 from apps.core.services import audit_labels, audit_search
 from apps.core.services.permissions import require_permission
+from apps.core.widgets import PortalDateInput
 
 from .common import is_fragment, render_page
 
@@ -57,6 +58,8 @@ def audit_list(request):
         "total": audit_search.count(filters) if request.GET.get("count") == "1" else None,
         "count_url": "/audit/" + _link(params, sort=shown_sort, page=page.number if page.has_previous() else "", count="1"),
         "export_query": _link(params, sort=shown_sort),
+        "date_from_field": PortalDateInput().render("date_from", filters.date_from, attrs={"id": "id_date_from"}),
+        "date_to_field": PortalDateInput().render("date_to", filters.date_to, attrs={"id": "id_date_to"}),
         "sync": json.dumps({"preset": filters.preset, "sort": sort}, ensure_ascii=False),
     }
     if is_fragment(request) and request.headers.get("HX-Target") == RESULTS_ID:

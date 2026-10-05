@@ -1,0 +1,19 @@
+<div class="date-grid" data-datefield-grid data-month="{{ month_key }}" data-today="{{ today }}">
+  <div class="date-grid-head">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-datefield-prev{% if prev_month %} hx-get="/ui/date-picker/?month={{ prev_month }}" hx-target="closest [data-datefield-picker]" hx-swap="innerHTML"{% else %} disabled{% endif %} aria-label="Предыдущий месяц">&lsaquo;</button>
+    <select class="form-select form-select-sm" data-datefield-month name="month" aria-label="Месяц" hx-get="/ui/date-picker/" hx-trigger="change" hx-include="closest [data-datefield-grid]" hx-target="closest [data-datefield-picker]" hx-swap="innerHTML">
+      {% for number, title in months %}<option value="{{ number }}"{% if number == month %} selected{% endif %}>{{ title }}</option>{% endfor %}
+    </select>
+    <select class="form-select form-select-sm" data-datefield-year name="year" aria-label="Год" hx-get="/ui/date-picker/" hx-trigger="change" hx-include="closest [data-datefield-grid]" hx-target="closest [data-datefield-picker]" hx-swap="innerHTML">
+      {% for number in years %}<option value="{{ number }}"{% if number == year %} selected{% endif %}>{{ number }}</option>{% endfor %}
+    </select>
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-datefield-next{% if next_month %} hx-get="/ui/date-picker/?month={{ next_month }}" hx-target="closest [data-datefield-picker]" hx-swap="innerHTML"{% else %} disabled{% endif %} aria-label="Следующий месяц">&rsaquo;</button>
+  </div>
+  <table class="date-grid-table">
+    <thead><tr><th scope="col">Пн</th><th scope="col">Вт</th><th scope="col">Ср</th><th scope="col">Чт</th><th scope="col">Пт</th><th scope="col">Сб</th><th scope="col">Вс</th></tr></thead>
+    <tbody>
+      {% for week in weeks %}<tr data-week>{% for day in week %}<td>{% if day %}<button type="button" class="date-day{% if day.kind != 'work' %} date-day-{{ day.kind }}{% endif %}" data-date="{{ day.iso }}" data-day-kind="{{ day.kind }}" aria-pressed="false">{{ day.number }}{% if day.label %} <span class="visually-hidden">{{ day.label }}</span>{% endif %}</button>{% endif %}</td>{% endfor %}</tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
