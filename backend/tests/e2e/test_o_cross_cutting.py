@@ -230,3 +230,76 @@ def test_slice_pages_russian_and_moscow_time_in_browser(browser, browser_context
     finally:
         context.close()
 
+
+
+def test_o_narrow_360_remaining_slice_pages(browser, browser_context_args, admin_page, employee):
+    """NFR-104 (доп. 71 е): на ширине 360 px нет горизонтальной прокрутки у остальных страниц среза — каждого
+    маршрута `apps/org/urls.py`, который отвечает на GET, кроме образцов `sample.*` и уже обойдённых в
+    `test_slice_pages_no_horizontal_scroll_at_360px`; плюс `/staff/new/`. Фрагменты HTMX
+    открываются без `HX-Request` — полной страницей (FR-108).
+
+    Пропущены маршруты только для POST (на GET отвечают 405, смотреть нечего; их результат виден на странице узла):
+    `/structure/<id>/members/`, `/structure/<id>/members/<id>/transfer/`, `/structure/<id>/members/<id>/remove/`,
+    `/structure/<id>/marks/`, `/structure/<id>/roles/` (`require_POST`), `/calendar/settings/` (`require_POST`) и
+    `/staff/<id>/edit/` (`require_POST`, `staff_actions.py`: форма правки показана в карточке сотрудника, уже обойдённой)."""
+    suffix = secrets.token_hex(3)
+    person = employee(full_name=f"Узкий{suffix} Сотрудник")
+    gone = employee(full_name=f"Бывший{suffix} Сотрудник")
+    long_name = (unique_name("Узел") + " Подразделение с очень длинным названием для проверки переноса слов "
+                 "на узком экране телефона")[:140]
+    unit_id = create_unit(admin_page, long_name, kind="department")
+    add_members(admin_page, unit_id, [person.id], q=f"Узкий{suffix}", mode="concurrent")
+
+    # уволенный сотрудник: через диалог карточки (интерфейс), как в test_o07_dismiss.py
+    admin_page.goto(f"/staff/{gone.id}/")
+    admin_page.locator('[data-action="dismiss"]').first.click()
+    dialog = admin_page.locator('#dialog-root [data-dialog="dismiss"]')
+    expect(dialog).to_be_visible()
+    helpers.submit(dialog.locator('form[data-form="dismiss"]'))
+    expect(admin_page.locator("[data-dismissed-badge]").first).to_be_visible()
+
+    narrow = browser.new_context(**browser_context_args, viewport={"width": 360, "height": 740},
+                                 storage_state=admin_page.context.storage_state())
+    try:
+        page = narrow.new_page()
+
+        # загрузка сотрудников: предпросмотр, затем подтверждение (итог) — как в test_o05_import.py
+        page.goto("/structure/import/")
+        form = page.locator('form[data-form="import-upload"]')
+        expect(form).to_be_visible()
+        upload_file(form, _staff_csv(), name="staff.csv", mime="text/csv")
+        page.wait_for_url(re.compile(r"/structure/import/\d+/"))
+        import_path = page.url.split("://", 1)[-1].split("/", 1)[1]
+        import_path = "/" + import_path
+        confirm = page.locator('form[data-form="import-confirm"]')
+        expect(confirm).to_be_visible()
+        with page.expect_response(lambda r: r.request.method == "POST" and "/structure/import/" in r.url):
+            confirm.locator("button[type=submit]").click()
+        expect(page.locator("[data-result-summary]")).to_be_visible()
+
+        # загрузка календаря: предпросмотр без подтверждения (календарь стенда не меняется)
+        page.goto("/calendar/upload/")
+        cal_form = page.locator('form[data-form="calendar-upload"]')
+        cal_form.locator("input[name=year]").fill("2026")
+        upload_file(cal_form, calendar_fixture("cal2026.csv"), name="cal2026.csv", mime="text/csv")
+        page.wait_for_url(re.compile(r"/calendar/upload/\d+/"))
+        calendar_preview_path = "/" + page.url.split("://", 1)[-1].split("/", 1)[1]
+
+        paths = [
+            f"/structure/{unit_id}/delete/",
+            f"/structure/{unit_id}/candidates/?q=Узкий{suffix}",
+            f"/structure/people/{person.id}/dismiss/",   # неуволенный: диалог увольнения
+            f"/structure/people/{person.id}/rehire/",    # неуволенный: отказ «Сотрудник не уволен»
+            f"/structure/people/{gone.id}/dismiss/",     # уволенный: отказ «Сотрудник уже уволен»
+            f"/structure/people/{gone.id}/rehire/",      # уволенный: диалог возврата
+            import_path,                                 # итог загрузки сотрудников
+            calendar_preview_path,                       # предпросмотр загрузки календаря
+            "/calendar/days/2026-01-12/",
+            "/staff/new/",
+        ]
+        for path in paths:
+            page.goto(path)
+            expect(page.locator("main, body").first).to_be_visible()
+            assert helpers.no_horizontal_scroll(page), f"{path}: горизонтальная прокрутка"
+    finally:
+        narrow.close()

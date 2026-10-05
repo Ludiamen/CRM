@@ -788,3 +788,42 @@ def test_membership_events_with_mode_reason_and_mark(django_capture_on_commit_ca
     marks = Event.objects.get(action="unit.marks_changed", object_id=str(t["Сеть"].pk))
     assert marks.object_type == "unit" and marks.actor_id == admin.pk
     assert marks.before["heads"] == [] and marks.after["heads"] == ["Анна Первая"]
+
+
+def test_flash_after_add_transfer_says_moved_concurrent_and_team_say_added(django_capture_on_commit_callbacks):
+    """Доп. 71 (а), Ф4: режим «перевести» — «Переведено: », совместительство и команда — «Добавлено: »."""
+    t = org.make_tree({"Сеть": {"team:Дежурные": {}}, "Отдел Б": {}, "Поддержка": {}})
+    admin = manager()
+    first, second, third = person("Анна Первая"), person("Борис Второй"), person("Виктор Третий")
+    org.make_member(first, t["Отдел Б"])
+    org.make_member(second, t["Отдел Б"])
+    client = support.logged_in(admin)
+    url = f"/structure/{t['Поддержка'].pk}/members/"
+    with django_capture_on_commit_callbacks(execute=True):
+        done = client.post(url, {"users": [first.pk, second.pk], "mode": "transfer"})
+    text = status_text(client.get(done["Location"]))
+    assert text.startswith("переведено: ") and "анна первая, борис второй" in text and "добавлено" not in text
+    with django_capture_on_commit_callbacks(execute=True):
+        done = client.post(f"/structure/{t['Сеть'].pk}/members/", {"users": [third.pk], "mode": "concurrent"})
+    assert status_text(client.get(done["Location"])).startswith("добавлено: виктор третий")
+    with django_capture_on_commit_callbacks(execute=True):
+        done = client.post(f"/structure/{t['Дежурные'].pk}/members/", {"users": [first.pk]})
+    assert status_text(client.get(done["Location"])).startswith("добавлено: анна первая")
+
+
+def test_already_member_messages_are_info_kind_not_success(django_capture_on_commit_callbacks):
+    """Доп. 71 (б), Ф5: «уже участник» — вид «сведения» (alert-info, role=status), не успех."""
+    t = org.make_tree({"Сеть": {}, "Отдел Б": {}})
+    admin, user = manager(), person("Анна Первая")
+    org.make_member(user, t["Сеть"])
+    client = support.logged_in(admin)
+    done = client.post(f"/structure/{t['Сеть'].pk}/members/", {"users": [user.pk], "mode": "concurrent"})
+    html = client.get(done["Location"]).content.decode()
+    infos = dom(html).find_all(None, role="status")
+    assert any("уже участник" in el.text().lower() and "alert-info" in el.attrs.get("class", "") for el in infos)
+    assert not any("alert-success" in el.attrs.get("class", "") and "уже участник" in el.text().lower() for el in infos)
+    # перевод в узел, где сотрудник уже участник
+    done = client.post(f"/structure/{t['Сеть'].pk}/members/{user.pk}/transfer/", {"target": t["Сеть"].pk})
+    html = client.get(done["Location"]).content.decode()
+    assert any("уже участник" in el.text().lower() and "alert-info" in el.attrs.get("class", "")
+               for el in dom(html).find_all(None, role="status"))

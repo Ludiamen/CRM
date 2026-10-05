@@ -31,10 +31,11 @@ def render_page(request, template: str, context: dict | None = None, *, status: 
     return response
 
 
-def flash(request, text: str, *, error: bool = False, link: tuple[str, str] | None = None) -> None:
-    """Разовое сообщение для следующей страницы: `[role=status]` или `[role=alert]`."""
+def flash(request, text: str, *, error: bool = False, info: bool = False,
+          link: tuple[str, str] | None = None) -> None:
+    """Разовое сообщение для следующей страницы: успех и сведения — `[role=status]`, ошибка — `[role=alert]`."""
     items = request.session.get(FLASH_KEY, [])
-    items.append({"text": text, "level": "danger" if error else "success", "role": "alert" if error else "status",
+    items.append({"text": text, "level": "danger" if error else ("info" if info else "success"), "role": "alert" if error else "status",
                   "link": list(link) if link else None})
     request.session[FLASH_KEY] = items
 

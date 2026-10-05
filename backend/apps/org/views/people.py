@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_http_methods
 
-from apps.core.models import User
+from apps.core.models import User, UserState
 from apps.core.services import accounts, roles
 from apps.core.services.permissions import require_permission
 from apps.core.views.common import flash, is_fragment, render_page
@@ -53,10 +53,10 @@ def _opened_from(request) -> str:
     return ""
 
 
-def _dialog_context(target: User, *, rehire: bool, next_url: str, error: str = "") -> dict:
+def _dialog_context(target: User, *, rehire: bool, next_url: str, error: str = "", blocked: bool = False) -> dict:
     name = "rehire" if rehire else "dismiss"
     return {
-        "dialog": name, "dialog_error": error, "dialog_next": next_url, "target": target,
+        "dialog_blocked": blocked, "dialog": name, "dialog_error": error, "dialog_next": next_url, "target": target,
         "dialog_title": f"Вернуть на работу: {target.full_name}?" if rehire else f"Уволить: {target.full_name}?",
         "dialog_action": f"/structure/people/{target.pk}/{name}/", "dialog_danger": not rehire,
         "dialog_submit": "Вернуть на работу" if rehire else "Уволить",
@@ -80,6 +80,9 @@ def dismiss(request, user_id: int):
     """`/structure/people/<user_id>/dismiss/` — диалог и увольнение; `next` — куда вернуться."""
     target = get_object_or_404(User, pk=user_id)
     if request.method == "GET":
+        if target.state == UserState.DISMISSED:
+            return _respond(request, _dialog_context(target, rehire=False, next_url="", blocked=True,
+                                                     error="Сотрудник уже уволен: увольнять нечего."))
         return _respond(request, _dialog_context(target, rehire=False, next_url=_opened_from(request)))
     next_url = _safe_next(request, request.POST.get("next", ""))
     try:
@@ -96,6 +99,9 @@ def rehire(request, user_id: int):
     """`/structure/people/<user_id>/rehire/` — диалог и возврат на работу."""
     target = get_object_or_404(User, pk=user_id)
     if request.method == "GET":
+        if target.state != UserState.DISMISSED:
+            return _respond(request, _dialog_context(target, rehire=True, next_url="", blocked=True,
+                                                     error="Сотрудник не уволен: возвращать на работу нечего."))
         return _respond(request, _dialog_context(target, rehire=True, next_url=""))
     try:
         people_service.rehire(target, actor=request.user, ip=request.client_ip)

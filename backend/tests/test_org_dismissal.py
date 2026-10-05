@@ -849,3 +849,24 @@ def test_dismiss_and_rehire_events(django_capture_on_commit_callbacks):
     assert rehired.before["state"] == "dismissed"
     assert rehired.after["state"] == "invited" and rehired.after["roles"] == ["Сотрудник ИТ"]
     assert Audit.objects.filter(action="membership.removed", object_id=str(user.pk)).count() == 2
+
+
+def test_dialog_get_in_wrong_state_shows_reason_and_no_action_button():
+    """Доп. 71 (д), Ф10: диалог возврата для неуволенного и увольнения для уволенного — 200, причина в [role=alert], без кнопки действия; POST отказывает."""
+    manager = org_manager()
+    active, _net, _desk, _role = worker_with_units()
+    gone = support.make_employee(email=factories.new_email("gone2"), state="dismissed", totp=False)
+    client = client_of(manager)
+    for url, user, word in ((rehire_url(active), active, "не уволен"), (dismiss_url(gone), gone, "уже уволен")):
+        response = client.get(url, **HX)
+        assert response.status_code == 200
+        html = page(response)
+        alerts = select(html, {"role": "alert"})
+        assert alerts and word in " ".join(a.text for a in alerts).lower(), url
+        assert not select(html, {"type": "submit"}, tag="button"), f"{url}: кнопка действия не нужна"
+        before = user.state
+        user.refresh_from_db()
+        assert user.state == before
+        assert client.post(url, **HX).status_code in (200, 400, 403, 409, 422)
+        user.refresh_from_db()
+        assert user.state == before

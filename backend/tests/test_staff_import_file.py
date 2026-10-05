@@ -509,3 +509,12 @@ def test_import_page_links_both_samples():
     for href in links.values():
         sample = client.get(href)
         assert sample.status_code == 200 and sample["Content-Disposition"].startswith("attachment"), href
+
+
+def test_missing_columns_refusal_names_accepted_formats():
+    """Доп. 71 (в), Ф8: отказ missing_columns подсказывает форматы: CSV (UTF-8) или XLSX по образцу."""
+    headers = ["Фамилия", "Имя"]
+    with pytest.raises(org_error()) as raised:
+        service().parse_file(support_org.staff_csv([["Иванов", "Иван"]], headers=headers))
+    assert raised.value.code == "missing_columns"
+    assert "Загрузите таблицу CSV (UTF-8) или XLSX по образцу." in str(raised.value)

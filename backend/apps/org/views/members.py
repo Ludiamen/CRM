@@ -78,9 +78,10 @@ def members_add(request, unit_id: int):
     except OrgError as error:
         return _refused(request, unit, error)
     if result.added:
-        flash(request, "Добавлено: " + ", ".join(u.full_name for u in result.added) + ".")
+        verb = "Переведено: " if mode == membership.TRANSFER else "Добавлено: "
+        flash(request, verb + ", ".join(u.full_name for u in result.added) + ".")
     if result.already:
-        flash(request, "Уже участник узла: " + ", ".join(u.full_name for u in result.already) + ". Ничего не изменено.")
+        flash(request, "Уже участник узла: " + ", ".join(u.full_name for u in result.already) + ". Ничего не изменено.", info=True)
     return _back(unit)
 
 
@@ -103,7 +104,7 @@ def member_transfer(request, unit_id: int, user_id: int):
     if done:
         flash(request, f"{user.full_name} переведён в «{target.name}».")
     else:
-        flash(request, f"{user.full_name} уже участник узла «{target.name}»: ничего не изменено.")
+        flash(request, f"{user.full_name} уже участник узла «{target.name}»: ничего не изменено.", info=True)
     return _back(unit)
 
 

@@ -271,7 +271,8 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 
 /* T-2236: загрузка сотрудников из таблицы — предпросмотр и итог; строка-блок на узкой ширине (UX-14, NFR-104) */
 .import-card, .import-help, .import-block, .import-summary { margin-bottom: 1rem; }
-.import-table td { overflow-wrap: anywhere; }
+.import-table td { overflow-wrap: break-word; }  /* anywhere сужает колонку до буквы (урок среза 001) */
+.import-table td[data-label="Почта"] { max-width: 18rem; }
 .import-table tr[data-row-result="error"] .import-result { color: #a02334; font-weight: 600; }
 .import-table tr[data-row-result="skipped"] .import-result { color: #7a5b00; }
 .import-confirm { margin-bottom: 1rem; }
@@ -328,3 +329,27 @@ body { background: var(--portal-surface); color: var(--portal-text); }
   .datefield-picker { position: fixed; left: 0.5rem; right: 0.5rem; top: auto; bottom: 0.5rem; min-width: 0; }
   .date-day { min-height: 2.75rem; }
 }
+
+/* Правки по проходу T-2301 (срез 002): Ф2 список «Сотрудники», Ф3 фильтр журнала, Ф6 метка роли, Ф7 дерево */
+.grid-table > :not(caption) > * > * { padding-left: 0.3rem; padding-right: 0.3rem; }
+.grid-table td[data-cell="state"] .badge { font-size: 0.72em; }
+.grid-table td[data-cell="email"], .grid-table td[data-cell="position"], .grid-table td[data-cell="name"] { overflow-wrap: break-word; }
+.grid-table td[data-cell="email"] { max-width: 15rem; }
+.grid-table td[data-cell="position"], .grid-table td[data-cell="name"] { max-width: 13rem; }
+.grid-table td[data-cell="state"] { white-space: nowrap; }
+@media (max-width: 767.98px) {
+  .grid-table tbody td[data-cell] { max-width: none; }
+}
+#audit-filter .row { align-items: flex-start; }
+.filter-bar .datefield .input-group { flex-wrap: wrap; gap: 0.25rem; }
+.filter-bar .datefield .input-group > .form-control { flex: 1 1 100%; width: 100%; border-radius: var(--bs-border-radius); }
+.filter-bar .datefield .input-group > .btn { margin-left: 0; border-radius: var(--bs-border-radius); white-space: nowrap; }
+.filter-bar .filter-actions { padding-top: 1.5rem; }
+@media (max-width: 767.98px) { .filter-bar .filter-actions { padding-top: 0; } }
+.member-row .member-text { flex-direction: row; flex-wrap: wrap; align-items: baseline; column-gap: 0.5rem; }
+.member-row .member-text .badge { flex: 0 0 auto; width: auto; }
+.member-row .member-text .member-position { flex: 1 1 100%; }
+.unit-tree li > a.unit-link { margin-left: 1.3rem; }
+.grid-table thead th { white-space: normal; }
+@media (min-width: 768px) { .grid-table thead th .sort-link { white-space: nowrap; } }
+@media (min-width: 768px) { #staff-filter label.form-label { display: flex; align-items: flex-end; min-height: 2.625rem; } }

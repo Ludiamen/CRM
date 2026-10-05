@@ -177,7 +177,7 @@ def parse_file(content: bytes) -> ParsedFile:
             not_loaded.append(title.strip())
     missing = [name for name in REQUIRED_COLUMNS if name not in columns]
     if missing:
-        raise OrgError("missing_columns", "В файле нет обязательных колонок: " + ", ".join(missing) + ".")
+        raise OrgError("missing_columns", "В файле нет обязательных колонок: " + ", ".join(missing) + ". Загрузите таблицу CSV (UTF-8) или XLSX по образцу.")
     data = table[1:]
     if len(data) > MAX_ROWS:
         raise OrgError("too_many_rows", "В файле больше 1000 строк: разделите его на части.")
@@ -309,7 +309,7 @@ def _check_rows(parsed_rows: list[dict], *, taken: dict, tree: dict):
         email = row["email"]
         if email in taken:
             if taken[email]:
-                _fail(row, "email_taken_dismissed", "Такая почта уже есть: уволен, верните его из карточки.",
+                _fail(row, "email_taken_dismissed", "Такая почта уже есть.",
                       "skipped", "dismissed")
             else:
                 _fail(row, "email_taken", "Такая почта уже есть в портале.", "skipped")

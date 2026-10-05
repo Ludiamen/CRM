@@ -661,3 +661,13 @@ def test_created_event_includes_internal_phone_and_workplace():
     [event] = events("user.created", object_id=plain.pk)
     assert "internal_phone" in event.after and "workplace" in event.after
     assert event.after["internal_phone"] == "" and event.after["workplace"] == ""
+
+
+def test_dismissed_email_hint_appears_exactly_once_in_row():
+    """Доп. 71 (г), Ф9: подсказка «уволен: верните его из карточки» в строке уволенного — ровно один раз."""
+    actor = admin()
+    dismissed = support.make_employee(email=factories.new_email("gone"), state="dismissed", totp=False)
+    item = preview([row(email=dismissed.email)], actor)
+    text = row_el(get_page(actor, item), 1).text().lower()
+    assert text.count("верните его из карточки") == 1, text
+    assert "такая почта уже есть" in text
