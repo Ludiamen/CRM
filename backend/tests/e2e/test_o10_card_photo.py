@@ -95,7 +95,8 @@ def test_o10_clean_photo_shown_within_one_minute_in_card_list_and_structure(admi
     own_photo = _own_card(own).locator("[data-photo]").first
     expect(own_photo.locator('[data-photo-placeholder][data-initials="ФП"]')).to_have_count(1)
     expect(own_photo.locator("img[data-photo-img]")).to_have_count(0)
-    for place in (list_photo(), structure_photo()):
+    for place_of in (list_photo, structure_photo):  # страница открывается перед проверкой своего места (T-2260)
+        place = place_of()
         expect(place.locator('[data-photo-placeholder][data-initials="ФП"]')).to_have_count(1)
         expect(place.locator("img[data-photo-img]")).to_have_count(0)
 

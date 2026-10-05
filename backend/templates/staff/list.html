@@ -5,7 +5,7 @@
   <h1 class="page-title">Сотрудники</h1>
   <div class="d-flex flex-wrap gap-2">
     {% for button in buttons %}<a class="btn btn-outline-secondary" data-action="{{ button.key }}" href="{{ button.url }}">{{ button.title }}</a>{% endfor %}
-    <a class="btn btn-primary" href="/staff/new/">Добавить сотрудника</a>
+    {% if can_manage %}<a class="btn btn-primary" href="/staff/new/">Добавить сотрудника</a>{% endif %}
   </div>
 </div>
 <form id="staff-filter" class="filter-bar card card-body mb-3" method="get" action="/staff/"

@@ -198,4 +198,5 @@ def calendar_day(request, day: str):
         calendar_service.set_day(moment, request.POST.get("kind", ""), actor=request.user, ip=request.client_ip)
     except OrgError as error:
         return _day_page(request, moment, error=str(error))
+    flash(request, f"День {moment:%d.%m.%Y} сохранён.")  # сообщение об успехе после POST формы (доп. 51)
     return HttpResponseRedirect(f"/calendar/?year={moment.year}")

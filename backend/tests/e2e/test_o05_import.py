@@ -479,7 +479,8 @@ def test_o05_journal_has_import_and_object_events(admin_page, stand_admin):
     numbers = sorted(int(n) for n in re.findall(r"[А-Яа-яЁё][^:;\n]*:\s*(\d+)(?=\s*(?:;|$))", after, re.M))
     assert numbers == [0, 0, 1, 2], f"итоги загрузки в «стало»: {after!r}"
     who = page.locator('tr[data-event-id][data-action="staff_import.completed"]').first.locator("td").nth(1)
-    expect(who).to_contain_text(stand_admin.full_name)
+    # имя первого администратора задаёт не тест, а create_first_admin — сверка по почте (T-2260, разрешение владельца)
+    expect(who).to_contain_text(stand_admin.email)
     # отдельные события: запись, отдел, членство
     for user_id in (head_id, member_id):
         assert len(audit_rows(page, "user.created", user_id)) == 1, f"user.created для {user_id}"

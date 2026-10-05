@@ -195,7 +195,8 @@ def test_o11_upload_year_preview_apply_and_other_years_kept(admin_page):
         sides = audit_sides(page, "calendar.year_loaded", "2027")
         assert len(sides) == loaded_2027_before + 1, sides
         before, after = sides[0]  # новое событие — сверху
-        assert "2027" in before and "2027" in after
+        # в «было» журнал выводит только изменившиеся поля, год не меняется (T-2260, разрешение владельца)
+        assert "2027" in after
         assert "cal2027.csv" in after
         assert before != after
         for text in (before, after):

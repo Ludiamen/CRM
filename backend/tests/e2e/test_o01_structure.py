@@ -127,6 +127,7 @@ def test_o01_employee_sees_tree_without_change_buttons_direct_requests_refused(a
     acc = employee(full_name=f"Сотр{token} Иван Иванович")
     page = acc.page
     unit_name = unique_name("Сеть")
+    open_structure(admin_page)  # корень берётся со страницы «Структура» (T-2260, разрешение владельца)
     unit_id = helpers_org.create_unit(admin_page, unit_name, kind="department", parent_id=root_id(admin_page))
     helpers_org.add_members(admin_page, unit_id, [acc.id], q=token, mode="concurrent")
 

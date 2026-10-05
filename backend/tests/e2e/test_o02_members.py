@@ -150,6 +150,7 @@ def test_o02_member_menu_and_dismiss_dialog_from_unit(admin_page, employee):
     dialog.locator("button[data-dialog-cancel]").click()
     expect(page.locator('[data-dialog="dismiss"]')).to_have_count(0)
     assert helpers_org.audit_rows(page, "user.dismissed", person.id) == []
+    open_structure(page, support_id)  # журнал увёл страницу: вернуться в карточку узла (T-2260, разрешение владельца)
     expect(member_row(page, person.id)).to_have_count(1)  # увольнения не было
 
     # п. 4: два отдела — «Перевести в другой отдел» первого в третий: уходит из первого, входит в третий,
@@ -201,6 +202,7 @@ def test_o02_no_menu_for_employee_dismissed_not_in_picker(admin_page, employee):
     open_structure(page, unit_id)
     expect(member_row(page, person.id).first).to_be_visible()  # запросы ничего не изменили
     assert helpers_org.audit_rows(page, "user.dismissed", person.id) == []
+    open_structure(page, unit_id)  # журнал увёл страницу: вернуться в карточку узла (T-2260, разрешение владельца)
 
     # увольняем третьего участника через меню «…» и диалог (сценарий 7)
     member_menu(page, fired.id).locator('[data-menu-item="dismiss"]').click()

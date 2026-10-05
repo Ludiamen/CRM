@@ -45,9 +45,15 @@ def import_start(request):
     return HttpResponseRedirect(f"/structure/import/{item.pk}/")
 
 
+def _lower_first(text: str) -> str:
+    """Причина идёт после подписи «пропущен: …», поэтому с маленькой буквы (§ 10 контракта)."""
+    return text[:1].lower() + text[1:]
+
+
 def _rows(item: StaffImport) -> list[dict]:
     """Строки для таблицы: подпись итога и подсказка готовятся здесь, чтобы шаблон не искал по словарям."""
-    return [{**row, "label": ROW_LABELS.get(row.get("result"), ""), "hint_text": HINT_TEXTS.get(row.get("hint", ""), "")}
+    return [{**row, "label": ROW_LABELS.get(row.get("result"), ""), "hint_text": HINT_TEXTS.get(row.get("hint", ""), ""),
+             "reason": _lower_first(row.get("reason", ""))}
             for row in item.rows]
 
 

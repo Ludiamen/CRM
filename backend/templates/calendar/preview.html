@@ -16,7 +16,6 @@
       <li>Рабочих дней в году: {{ totals.work_days }}</li>
     </ul>
   </div>
-</section>
 {% if applied %}
 <div class="alert alert-success" role="status">Этот файл уже применён. <a href="/calendar/?year={{ item.year }}">Открыть календарь {{ item.year }} года</a></div>
 {% else %}
@@ -29,4 +28,5 @@
   <button class="btn btn-primary" type="submit">Применить файл</button>
 </form>
 {% endif %}
+</section>
 {% endblock %}

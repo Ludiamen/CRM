@@ -212,7 +212,9 @@ def test_slice_pages_russian_and_moscow_time_in_browser(browser, browser_context
         assert [t.strip() for t in page.locator('[data-month="1"] thead th').all_inner_texts()] == \
             ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
         response = direct_get(page, "/structure/999999999/")
-        assert response.status == 404 and _cyrillic_share(response.text()) > 0.5, "страница 404 не по-русски"
+        # доля кириллицы — по тексту страницы без тегов, скриптов и стилей (T-2260, разрешение владельца)
+        visible = re.sub(r"<script.*?</script>|<style.*?</style>|<[^>]+>", " ", response.text(), flags=re.S)
+        assert response.status == 404 and _cyrillic_share(visible) > 0.5, "страница 404 не по-русски"
 
         # п. 2: время события журнала — по Москве
         unit_id = create_unit(page, unit_name, kind="department")
