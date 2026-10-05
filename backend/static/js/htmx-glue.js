@@ -93,4 +93,28 @@
       }
     });
   });
+
+  /* Вкладки карточки сотрудника (T-2234, CONTRACT-002 § 9.3): обе панели уже в ответе; скрипт только прячет
+     неактивную панель (атрибут hidden) и ставит aria-selected. */
+  document.addEventListener('click', function (event) {
+    var button = event.target.closest ? event.target.closest('[data-tab-button]') : null;
+    if (!button) {
+      return;
+    }
+    var card = button.closest('[data-card]');
+    if (!card) {
+      return;
+    }
+    var name = button.getAttribute('data-tab-button');
+    Array.prototype.forEach.call(card.querySelectorAll('[data-tab-button]'), function (item) {
+      item.setAttribute('aria-selected', item === button ? 'true' : 'false');
+    });
+    Array.prototype.forEach.call(card.querySelectorAll('[data-tab-panel]'), function (panel) {
+      if (panel.getAttribute('data-tab-panel') === name) {
+        panel.removeAttribute('hidden');
+      } else {
+        panel.setAttribute('hidden', '');
+      }
+    });
+  });
 })();

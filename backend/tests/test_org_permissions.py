@@ -224,9 +224,11 @@ def test_security_tab_parts_by_accounts_manage_and_view_logins():
                 (reset_action in all_forms) == (reset_action in account_forms),
                 bool(logins), logins_url in links, client.get(logins_url).status_code)
 
-    assert security(("accounts.manage",)) == (True, True, True, True, True, False, False, 403)
+    # сброс второго фактора — по праву своего маршрута `accounts.reset_2fa` (срез 001, test_totp; дополнение 66)
+    assert security(("accounts.manage",)) == (True, True, True, False, True, False, False, 403)
+    assert security(("accounts.manage", "accounts.reset_2fa")) == (True, True, True, True, True, False, False, 403)
     assert security(("staff.view", "accounts.view_logins")) == (False, False, False, False, True, True, True, 200)
-    assert security(("accounts.manage", "accounts.view_logins")) == (True, True, True, True, True, True, True, 200)
+    assert security(("accounts.manage", "accounts.view_logins")) == (True, True, True, False, True, True, True, 200)
 
     # приглашение — тоже часть «account»: у записи в состоянии `invited` есть форма `…/invite/` (дополнение 4)
     invited = support.make_employee(state="invited", totp=False)

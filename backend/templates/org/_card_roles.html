@@ -1,0 +1,11 @@
+{% if ctx.groups %}
+<section class="slider-section" data-section="roles-by-source">
+  <h3>Роли по источникам</h3>
+  {% for group in ctx.groups %}
+  <div class="mb-2" {% if group.personal %}data-roles-group="personal"{% else %}data-roles-group="unit" data-source-unit="{{ group.unit }}"{% endif %}>
+    <p class="small text-muted mb-1">{{ group.label }}</p>
+    {% for role in group.roles %}<span class="badge text-bg-secondary me-1" data-role-name>{{ role.name }}</span>{% endfor %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}

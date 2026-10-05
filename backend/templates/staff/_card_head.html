@@ -1,0 +1,11 @@
+{# Шапка карточки: фото, ФИО, пометки; параметры: target, is_self, dismissed, photo_url, initials #}
+<div class="card-head d-flex align-items-center gap-3 mb-3">
+  {% include "partials/_photo.html" %}
+  <div>
+    <p class="card-name mb-0" data-field="full_name" data-empty="false">{{ target.full_name }}</p>
+    <div class="d-flex flex-wrap gap-2 mt-1">
+      {% if dismissed %}<span class="badge text-bg-secondary" data-dismissed-badge>уволен</span>{% endif %}
+      {% if is_self %}<span class="badge text-bg-primary">это вы</span>{% endif %}
+    </div>
+  </div>
+</div>

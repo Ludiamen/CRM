@@ -1,0 +1,10 @@
+{# Поля карточки (общие для `/staff/<id>/` и `/me/`); параметры: target, birth_text #}
+<dl class="row mb-1 small">
+  {% include "staff/_field.html" with name="position" label="Должность" value=target.position %}
+  {% include "staff/_field.html" with name="email" label="Почта" value=target.email %}
+  {% include "staff/_field.html" with name="phone" label="Телефон" value=target.phone %}
+  {% include "staff/_field.html" with name="internal_phone" label="Внутренний телефон" value=target.internal_phone %}
+  {% include "staff/_field.html" with name="workplace" label="Место работы" value=target.workplace %}
+  {% include "staff/_field.html" with name="birth_date" label="Дата рождения" value=birth_text %}
+  <dt class="col-sm-4">Контакты</dt><dd class="col-sm-8">{% for line in target.contacts %}<div class="text-break">{{ line }}</div>{% empty %}не заполнено{% endfor %}</dd>
+</dl>

@@ -3,42 +3,60 @@
 {% block content %}
 <h1 class="page-title">Мой профиль</h1>
 {% if errors %}<div class="alert alert-danger" role="alert"><ul class="mb-0">{% for message in errors %}<li>{{ message }}</li>{% endfor %}</ul></div>{% endif %}
-<div class="row g-3">
-  <div class="col-lg-6">
-    <section class="card h-100">
-      <div class="card-body">
+<section class="card"><div class="card-body">
+{% include "staff/_card_head.html" %}
+<div data-card data-user-id="{{ target.pk }}">
+  <div class="card-tabs" role="tablist">
+    <button type="button" role="tab" class="card-tab" data-tab-button="profile" aria-selected="true">Профиль</button>
+    <button type="button" role="tab" class="card-tab" data-tab-button="security" aria-selected="false">Безопасность</button>
+  </div>
+  <div data-tab-panel="profile" role="tabpanel">
+    <div class="row g-3">
+      <div class="col-lg-6">
         <h2 class="h6 text-muted">Учётная запись</h2>
-        <dl class="row mb-0">
-          <dt class="col-sm-4">ФИО</dt><dd class="col-sm-8">{{ request.user.full_name }}</dd>
-          <dt class="col-sm-4">Почта</dt><dd class="col-sm-8">{{ request.user.email }}</dd>
-          <dt class="col-sm-4">Должность</dt><dd class="col-sm-8">{{ request.user.position|default:"не указана" }}</dd>
+        {% include "staff/_card_fields.html" %}
+        {% for section in sections.profile %}{% include section.template with ctx=section.context %}{% endfor %}
+        <dl class="row mb-0 small">
           <dt class="col-sm-4">Роли</dt><dd class="col-sm-8">{% for name in roles %}<span class="badge text-bg-secondary me-1">{{ name }}</span>{% empty %}нет{% endfor %}</dd>
         </dl>
         <p class="small text-muted mt-3 mb-0">ФИО, почту, должность и роли меняет администратор портала.</p>
       </div>
-    </section>
-  </div>
-  <div class="col-lg-6">
-    <section class="card h-100">
-      <div class="card-body">
-        <h2 class="h6 text-muted">Контакты</h2>
+      <div class="col-lg-6">
+        <h2 class="h6 text-muted">Мои данные</h2>
         <form method="post" action="/me/">
           {% csrf_token %}
           <div class="mb-3">
             <label class="form-label" for="id_phone">Телефон</label>
-            <input class="form-control" id="id_phone" name="phone" type="tel" autocomplete="tel" value="{{ request.user.phone }}">
+            <input class="form-control" id="id_phone" name="phone" type="tel" autocomplete="tel" value="{{ target.phone }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_internal_phone">Внутренний телефон</label>
+            <input class="form-control" id="id_internal_phone" name="internal_phone" type="text" maxlength="32" value="{{ target.internal_phone }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_workplace">Место работы</label>
+            <input class="form-control" id="id_workplace" name="workplace" type="text" maxlength="255" value="{{ target.workplace }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="id_birth_date">Дата рождения</label>
+            <input class="form-control" id="id_birth_date" name="birth_date" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" autocomplete="bday" value="{{ birth_text }}">
+            <div class="form-text">Коллеги увидят только день и месяц. Пустое поле стирает дату.</div>
           </div>
           <div class="mb-3">
             <label class="form-label" for="id_contacts">Другие контакты</label>
-            <textarea class="form-control" id="id_contacts" name="contacts" rows="3" placeholder="По одному на строку">{% for line in request.user.contacts %}{{ line }}
+            <textarea class="form-control" id="id_contacts" name="contacts" rows="3" placeholder="По одному на строку">{% for line in target.contacts %}{{ line }}
 {% endfor %}</textarea>
           </div>
           <button class="btn btn-primary" type="submit">Сохранить</button>
         </form>
       </div>
-    </section>
+    </div>
+  </div>
+  <div data-tab-panel="security" role="tabpanel" hidden hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">
+    {% if slider_body != "me/_security.html" %}{% include "me/_security.html" %}{% else %}<p class="small text-muted">Безопасность открыта в боковой панели.</p>{% endif %}
   </div>
 </div>
+</div></section>
 <p class="mt-3">
   <a class="btn btn-outline-primary" href="/me/security/" hx-get="/me/security/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">Безопасность</a>
 </p>

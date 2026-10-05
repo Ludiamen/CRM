@@ -325,7 +325,8 @@ def test_colleagues_see_day_and_month_year_only_self():
     """FR-134: коллега и администратор видят день и месяц рождения, но не год; полную дату видит
     только сам сотрудник в `/me/`; своя карточка `/staff/<свой id>/` — как у любой (день и месяц, решение 15)."""
     User = model("core.User")
-    marked = support.make_employee(full_name="Иванова Анна")
+    # своя карточка `/staff/<свой id>/` открывается по правам смотрящего (дополнение 67)
+    marked = support.make_with_permissions("staff.view", full_name="Иванова Анна")
     User.objects.filter(pk=marked.pk).update(birth_date=datetime.date(1953, 3, 5))
     january = support.make_employee(full_name="Петров Пётр")
     User.objects.filter(pk=january.pk).update(birth_date=datetime.date(1987, 1, 21))

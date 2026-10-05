@@ -484,6 +484,7 @@ def test_dismissed_card_read_only_except_rehire_and_photo_delete(django_capture_
     assert Audit.objects.count() == events_before, "отказы ничего не пишут в журнал"
     # через страницы
     client = client_of(manager)
+    events_before = Audit.objects.count()  # вход пишет login.success (срез 001)
     edit = client.post(f"/staff/{user.pk}/edit/", {
         "full_name": user.full_name, "position": "Новая должность", "phone": "", "email": user.email, "contacts": ""})
     assert edit.status_code == 200 and alert_text(edit)

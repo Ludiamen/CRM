@@ -21,7 +21,7 @@ from apps.core.services.permissions import require_any_permission, require_permi
 from apps.integrations.mail import services as mail
 
 from .common import is_fragment, render_page
-from .me import RESULT_TITLES
+from .me import RESULT_TITLES, card_head, card_sections, day_month
 
 PAGE_SIZE = 25
 HISTORY_PAGE_SIZE = 50
@@ -187,23 +187,36 @@ def _invitation(request, target) -> dict:
 
 
 def card_context(request, target) -> dict:
+    """Карточка чужой записи `/staff/<id>/`: вкладка «Безопасность» — только при `accounts.manage` или `accounts.view_logins` (FR-119)."""
     granted = permissions.permissions_of(request.user)
     is_self = target.pk == request.user.pk
+    can_manage = "accounts.manage" in granted
+    can_view_logins = "accounts.view_logins" in granted
+    dismissed = target.state == UserState.DISMISSED
+    sections = card_sections(request.user, target)
     context = {
-        "target": target, "is_self": is_self,
-        "all_roles": Role.objects.order_by("name"),
-        "target_role_ids": set(target.roles.values_list("pk", flat=True)),
-        "can_reset_2fa": "accounts.reset_2fa" in granted and not is_self,
-        "can_view_logins": "accounts.view_logins" in granted,
-        "login_locked": lockout.is_account_locked(str(target.pk)),
-        "invitation": _invitation(request, target) if target.state == UserState.INVITED else None,
+        "target": target, "is_self": is_self, "dismissed": dismissed,
+        "can_manage": can_manage, "can_view_logins": can_view_logins,
+        "show_security": can_manage or can_view_logins,
+        "birth_text": day_month(target.birth_date),
+        "sections": sections,
+        **card_head(target),
     }
+    if can_manage and not dismissed:
+        context.update({
+            "all_roles": Role.objects.order_by("name"),
+            "target_role_ids": set(target.roles.values_list("pk", flat=True)),
+            "can_reset_2fa": "accounts.reset_2fa" in granted and not is_self,
+            "login_locked": lockout.is_account_locked(str(target.pk)),
+            "invitation": _invitation(request, target) if target.state == UserState.INVITED else None,
+        })
     return context
 
 
 @require_any_permission("staff.view", "accounts.manage")
 @require_GET
 def staff_card(request, user_id: int):
+    """Карточка `/staff/<id>/`: по `staff.view` или `accounts.manage`; своя — по тем же правам (CONTRACT-002, доп. 67)."""
     target = get_object_or_404(User, pk=user_id)
     return slider_page(request, "staff/_card.html", target.full_name, card_context(request, target))
 

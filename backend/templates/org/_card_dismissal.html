@@ -1,0 +1,7 @@
+<div class="unit-actions mt-2">
+  {% if ctx.dismissed %}
+  <a class="btn btn-outline-primary btn-sm" data-action="rehire" href="/structure/people/{{ target.pk }}/rehire/" hx-get="/structure/people/{{ target.pk }}/rehire/" hx-target="#dialog-root" hx-swap="innerHTML" hx-push-url="false">Вернуть на работу</a>
+  {% else %}
+  <a class="btn btn-outline-danger btn-sm" data-action="dismiss" href="/structure/people/{{ target.pk }}/dismiss/" hx-get="/structure/people/{{ target.pk }}/dismiss/" hx-target="#dialog-root" hx-swap="innerHTML" hx-push-url="false">Уволить</a>
+  {% endif %}
+</div>

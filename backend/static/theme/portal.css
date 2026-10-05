@@ -253,3 +253,13 @@ body { background: var(--portal-surface); color: var(--portal-text); }
   .grid-table tbody td[data-cell="photo"] { float: left; padding-right: 0.75rem; }
   .grid-table tbody td[data-cell="name"] { font-weight: 600; }
 }
+
+/* T-2234: карточка сотрудника и «Мой профиль» — шапка с фото и вкладки «Профиль» / «Безопасность» (UX-09) */
+.card-head .person-photo { flex: 0 0 4rem; width: 4rem; height: 4rem; }
+.card-head .person-initials { font-size: 1.3rem; }
+.card-name { font-size: 1.15rem; font-weight: 600; overflow-wrap: anywhere; }
+.card-tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--portal-border); margin-bottom: 1rem; }
+.card-tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 0.5rem 1rem; color: inherit; cursor: pointer; }
+.card-tab[aria-selected="true"] { border-bottom-color: #28406b; font-weight: 600; }
+.card-tab:focus-visible { outline: 2px solid #28406b; outline-offset: -2px; }
+@media (max-width: 767.98px) { .card-tabs { overflow-x: auto; } .card-tab { flex: 1 1 auto; white-space: nowrap; } }

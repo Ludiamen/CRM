@@ -1,0 +1,2 @@
+{# Строка поля карточки (CONTRACT-002, § 9.3); параметры: name, label, value #}
+<dt class="col-sm-4" data-field-label="{{ name }}">{{ label }}</dt><dd class="col-sm-8 text-break" data-field="{{ name }}" data-empty="{% if value %}false{% else %}true{% endif %}">{{ value|default:"не заполнено" }}</dd>

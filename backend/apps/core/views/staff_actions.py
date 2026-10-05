@@ -8,11 +8,12 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_http_methods, require_POST
 
-from apps.core.models import Role, User
+from apps.core.models import Role, User, UserState
 from apps.core.services import accounts, roles
 from apps.core.services.permissions import require_permission
 
 from .common import flash, render_page
+from .staff import card_context, slider_page
 
 CARD = "/staff/{}/"
 RULE_ERRORS = (accounts.AccountError, roles.RoleError)
@@ -20,6 +21,20 @@ RULE_ERRORS = (accounts.AccountError, roles.RoleError)
 
 def _card(user_id) -> HttpResponseRedirect:
     return HttpResponseRedirect(CARD.format(user_id))
+
+
+DISMISSED_NOTE = "Запись уволена: её данные только для чтения. Можно вернуть сотрудника на работу."
+
+
+def _refused(request, target, message: str):
+    """Отказ над карточкой: 200 с той же карточкой и `[role=alert]`, ничего не меняется (CONTRACT-002, § 8, доп. 14)."""
+    flash(request, message, error=True)
+    return slider_page(request, "staff/_card.html", target.full_name, card_context(request, target))
+
+
+def _read_only(request, target):
+    """Над уволенной записью действия карточки отказывают (FR-127); для остальных — `None`."""
+    return _refused(request, target, DISMISSED_NOTE) if target.state == UserState.DISMISSED else None
 
 
 def _role_ids(values) -> list[int]:
@@ -57,10 +72,14 @@ def staff_new(request):
 @require_POST
 def staff_edit(request, user_id: int):
     target = get_object_or_404(User, pk=user_id)
-    fields = {name: request.POST[name] for name in accounts.PROFILE_FIELDS if name in request.POST}
+    if (refused := _read_only(request, target)) is not None:
+        return refused
+    fields = {name: request.POST[name] for name in (*accounts.PROFILE_FIELDS, "birth_date") if name in request.POST}
     try:
         accounts.update_profile(target, actor=request.user, ip=request.client_ip, **fields)
     except RULE_ERRORS as error:
+        if "birth_date" in fields:  # присланная дата рождения — отказ на месте (доп. 61); прочие — как в срезе 001
+            return _refused(request, target, str(error))
         flash(request, str(error), error=True)
     else:
         flash(request, "Профиль сохранён.")
@@ -71,6 +90,8 @@ def staff_edit(request, user_id: int):
 @require_POST
 def staff_roles(request, user_id: int):
     target = get_object_or_404(User, pk=user_id)
+    if (refused := _read_only(request, target)) is not None:
+        return refused
     try:
         roles.set_user_roles(target, _role_ids(request.POST.getlist("roles")), actor=request.user, ip=request.client_ip)
     except RULE_ERRORS as error:
@@ -84,6 +105,8 @@ def staff_roles(request, user_id: int):
 @require_POST
 def staff_block(request, user_id: int):
     target = get_object_or_404(User, pk=user_id)
+    if (refused := _read_only(request, target)) is not None:
+        return refused
     try:
         accounts.block(target, request.POST.get("reason", ""), actor=request.user, ip=request.client_ip)
     except RULE_ERRORS as error:
@@ -97,6 +120,8 @@ def staff_block(request, user_id: int):
 @require_POST
 def staff_unblock(request, user_id: int):
     target = get_object_or_404(User, pk=user_id)
+    if (refused := _read_only(request, target)) is not None:
+        return refused
     accounts.unblock(target, actor=request.user, ip=request.client_ip)
     flash(request, "Запись разблокирована.")
     return _card(user_id)
@@ -106,6 +131,8 @@ def staff_unblock(request, user_id: int):
 @require_POST
 def staff_invite(request, user_id: int):
     target = get_object_or_404(User, pk=user_id)
+    if (refused := _read_only(request, target)) is not None:
+        return refused
     try:
         accounts.resend_invitation(target, actor=request.user, ip=request.client_ip)
     except RULE_ERRORS as error:
@@ -130,6 +157,8 @@ def staff_unlock(request, user_id: int):
 @require_POST
 def staff_reset_2fa(request, user_id: int):
     target = get_object_or_404(User, pk=user_id)
+    if (refused := _read_only(request, target)) is not None:
+        return refused
     try:
         accounts.reset_second_factor(target, actor=request.user, ip=request.client_ip)
     except RULE_ERRORS as error:

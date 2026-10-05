@@ -1,19 +1,70 @@
-<section class="slider-section">
-  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-    {% if target.state == "active" %}<span class="badge text-bg-success">активен</span>{% elif target.state == "invited" %}<span class="badge text-bg-warning">приглашён, ещё не активирован</span>{% else %}<span class="badge text-bg-danger">заблокирован</span>{% endif %}
-    {% if is_self %}<span class="badge text-bg-primary">это вы</span>{% endif %}
+{% include "staff/_card_head.html" %}
+<div data-card data-user-id="{{ target.pk }}">
+  <div class="card-tabs" role="tablist">
+    <button type="button" role="tab" class="card-tab" data-tab-button="profile" aria-selected="true">Профиль</button>
+    {% if show_security %}<button type="button" role="tab" class="card-tab" data-tab-button="security" aria-selected="false">Безопасность</button>{% endif %}
   </div>
-  <dl class="row mb-0 small">
-    <dt class="col-sm-4">Почта</dt><dd class="col-sm-8 text-break">{{ target.email }}</dd>
-    <dt class="col-sm-4">Должность</dt><dd class="col-sm-8">{{ target.position|default:"не указана" }}</dd>
-    <dt class="col-sm-4">Телефон</dt><dd class="col-sm-8">{{ target.phone|default:"не указан" }}</dd>
-    <dt class="col-sm-4">Контакты</dt><dd class="col-sm-8">{% for line in target.contacts %}<div class="text-break">{{ line }}</div>{% empty %}не указаны{% endfor %}</dd>
-    <dt class="col-sm-4">Создана</dt><dd class="col-sm-8">{{ target.created_at|date:"d.m.Y H:i" }}</dd>
-    <dt class="col-sm-4">Активирована</dt><dd class="col-sm-8">{% if target.activated_at %}{{ target.activated_at|date:"d.m.Y H:i" }}{% else %}ещё нет{% endif %}</dd>
-    {% if target.state == "blocked" %}<dt class="col-sm-4">Причина блокировки</dt><dd class="col-sm-8 text-break">{{ target.blocked_reason|default:"не указана" }}</dd>{% endif %}
-  </dl>
+  <div data-tab-panel="profile" role="tabpanel">
+    <section class="slider-section">
+      {% include "staff/_card_fields.html" %}
+      {% for section in sections.profile %}{% include section.template with ctx=section.context %}{% endfor %}
+    </section>
+    {% if can_manage and not dismissed %}
+<section class="slider-section">
+  <h3>Изменить профиль</h3>
+  <form method="post" action="/staff/{{ target.pk }}/edit/">
+    {% csrf_token %}
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_full_name">ФИО</label>
+      <input class="form-control" id="id_edit_full_name" name="full_name" value="{{ target.full_name }}" required maxlength="255"></div>
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_position">Должность</label>
+      <input class="form-control" id="id_edit_position" name="position" value="{{ target.position }}" required maxlength="255"></div>
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_email">Почта</label>
+      <input class="form-control" id="id_edit_email" name="email" type="email" value="{{ target.email }}" required></div>
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_phone">Телефон</label>
+      <input class="form-control" id="id_edit_phone" name="phone" type="tel" value="{{ target.phone }}"></div>
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_internal_phone">Внутренний телефон</label>
+      <input class="form-control" id="id_edit_internal_phone" name="internal_phone" value="{{ target.internal_phone }}" maxlength="32"></div>
+    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_workplace">Место работы</label>
+      <input class="form-control" id="id_edit_workplace" name="workplace" value="{{ target.workplace }}" maxlength="255"></div>
+    <div class="mb-3"><label class="form-label small mb-1" for="id_edit_contacts">Другие контакты</label>
+      <textarea class="form-control" id="id_edit_contacts" name="contacts" rows="2" placeholder="По одному на строку">{% for line in target.contacts %}{{ line }}
+{% endfor %}</textarea></div>
+    <button class="btn btn-primary btn-sm" type="submit">Сохранить профиль</button>
+  </form>
 </section>
 
+<section class="slider-section">
+  <h3>Роли</h3>
+  <form method="post" action="/staff/{{ target.pk }}/roles/">
+    {% csrf_token %}
+    {% for item in all_roles %}
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" name="roles" value="{{ item.pk }}" id="id_card_role_{{ item.pk }}"{% if item.pk in target_role_ids %} checked{% endif %}>
+      <label class="form-check-label" for="id_card_role_{{ item.pk }}">{{ item.name }}</label>
+    </div>
+    {% endfor %}
+    <button class="btn btn-primary btn-sm mt-3" type="submit">Сохранить роли</button>
+  </form>
+</section>
+
+    {% endif %}
+  </div>
+  {% if show_security %}
+  <div data-tab-panel="security" role="tabpanel" hidden>
+    {% for section in sections.security %}{% include section.template with ctx=section.context %}{% endfor %}
+    {% if can_manage %}
+    <div data-security-part="account">
+      {% if dismissed %}
+      <p class="small text-muted">Запись уволена: её данные только для чтения. Можно вернуть сотрудника на работу.</p>
+      {% else %}
+      <section class="slider-section">
+        <dl class="row mb-0 small">
+          <dt class="col-sm-4" data-field-label="state">Состояние</dt><dd class="col-sm-8" data-field="state" data-empty="false">{% if target.state == "active" %}<span class="badge text-bg-success">активен</span>{% elif target.state == "invited" %}<span class="badge text-bg-warning">приглашён, ещё не активирован</span>{% else %}<span class="badge text-bg-danger">заблокирован</span>{% endif %}</dd>
+          <dt class="col-sm-4">Создана</dt><dd class="col-sm-8">{{ target.created_at|date:"d.m.Y H:i" }}</dd>
+          <dt class="col-sm-4">Активирована</dt><dd class="col-sm-8">{% if target.activated_at %}{{ target.activated_at|date:"d.m.Y H:i" }}{% else %}ещё нет{% endif %}</dd>
+          {% if target.state == "blocked" %}<dt class="col-sm-4">Причина блокировки</dt><dd class="col-sm-8 text-break">{{ target.blocked_reason|default:"не указана" }}</dd>{% endif %}
+        </dl>
+      </section>
 {% if target.state == "invited" %}
 <section class="slider-section">
   <h3>Приглашение</h3>
@@ -38,39 +89,6 @@
 {% endif %}
 
 <section class="slider-section">
-  <h3>Профиль</h3>
-  <form method="post" action="/staff/{{ target.pk }}/edit/">
-    {% csrf_token %}
-    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_full_name">ФИО</label>
-      <input class="form-control" id="id_edit_full_name" name="full_name" value="{{ target.full_name }}" required maxlength="255"></div>
-    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_position">Должность</label>
-      <input class="form-control" id="id_edit_position" name="position" value="{{ target.position }}" required maxlength="255"></div>
-    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_email">Почта</label>
-      <input class="form-control" id="id_edit_email" name="email" type="email" value="{{ target.email }}" required></div>
-    <div class="mb-2"><label class="form-label small mb-1" for="id_edit_phone">Телефон</label>
-      <input class="form-control" id="id_edit_phone" name="phone" type="tel" value="{{ target.phone }}"></div>
-    <div class="mb-3"><label class="form-label small mb-1" for="id_edit_contacts">Другие контакты</label>
-      <textarea class="form-control" id="id_edit_contacts" name="contacts" rows="2" placeholder="По одному на строку">{% for line in target.contacts %}{{ line }}
-{% endfor %}</textarea></div>
-    <button class="btn btn-primary btn-sm" type="submit">Сохранить профиль</button>
-  </form>
-</section>
-
-<section class="slider-section">
-  <h3>Роли</h3>
-  <form method="post" action="/staff/{{ target.pk }}/roles/">
-    {% csrf_token %}
-    {% for item in all_roles %}
-    <div class="form-check">
-      <input class="form-check-input" type="checkbox" name="roles" value="{{ item.pk }}" id="id_card_role_{{ item.pk }}"{% if item.pk in target_role_ids %} checked{% endif %}>
-      <label class="form-check-label" for="id_card_role_{{ item.pk }}">{{ item.name }}</label>
-    </div>
-    {% endfor %}
-    <button class="btn btn-primary btn-sm mt-3" type="submit">Сохранить роли</button>
-  </form>
-</section>
-
-<section class="slider-section">
   <h3>Вход и второй фактор</h3>
   {% if login_locked %}
   <p class="small text-muted">Вход этой записи временно заблокирован после неудачных попыток.</p>
@@ -78,9 +96,6 @@
     {% csrf_token %}
     <button class="btn btn-outline-primary btn-sm" type="submit">Снять блокировку входа</button>
   </form>
-  {% endif %}
-  {% if can_view_logins %}
-  <p class="mb-2"><a class="btn btn-outline-secondary btn-sm" href="/staff/{{ target.pk }}/logins/" hx-get="/staff/{{ target.pk }}/logins/">Устройства и история входов</a></p>
   {% endif %}
   {% if can_reset_2fa %}
   <form method="post" action="/staff/{{ target.pk }}/reset-2fa/">
@@ -118,3 +133,17 @@
   {% endif %}
 </section>
 {% endif %}
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if can_view_logins %}
+    <div data-security-part="logins">
+      <section class="slider-section">
+        <h3>Устройства и входы</h3>
+        <p class="mb-0"><a class="btn btn-outline-secondary btn-sm" href="/staff/{{ target.pk }}/logins/" hx-get="/staff/{{ target.pk }}/logins/">Устройства и история входов</a></p>
+      </section>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
