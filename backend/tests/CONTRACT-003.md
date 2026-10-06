@@ -2206,7 +2206,7 @@ GET (`mine`, `unassigned`, `my_queues`, `waiting`, `closed`, `all`) часть d
 
 ## 16. Дополнения Opus по вопросам исполнителей Этапа 2
 
-Ответы Opus на вопросы писателей тестов T-3101…T-3137. Каждый пункт называет, что меняется в разделах 1–15
+Ответы Opus на вопросы писателей тестов T-3101…T-3137 и приёмки T-3140…T-3152 (с дополнения 40). Каждый пункт называет, что меняется в разделах 1–15
 («Уточняет»), и тесты, которые он затрагивает («Затрагивает»). При расхождении с разделами 1–15 действует пункт этого
 раздела, в том числе над решениями раздела 15; из двух пунктов — с большим номером. Дополнение 1 — в разделе 3.4
 (помощник T-3100). Рабочие записи — вне репозитория (crm-work/slice003/stage2/tests/review/: вопросы — questions-*.md,
@@ -2562,3 +2562,148 @@ test_sd_assignment_2 (а — несуществующий номер в груп
 `job_timeout`, тест не проверяет (plan.md:227–228: «прежние задания … не меняются. У каждого задания явный
 `job_timeout`» — понимается как задания среза 003). Уточняет: § 1 (службы, nginx,
 cron). Затрагивает: test_sd_deploy, test_deploy_files.
+
+**Дополнение 40 (приёмка, T-3140, 2026-10-06). Обвязка приёмки `tests/e2e/helpers_sd.py`.** (а) Команды стенда.
+`poll_now() -> str`, `backdate(kind: str, ref, field: str, days: int) -> str` и `run_job(job: str) -> str` запускают
+`<префикс> e2e_poll_mailbox`, `<префикс> e2e_backdate <kind> <ref> <field> <days>` и `<префикс> e2e_run_job <job>` и
+возвращают последнюю непустую строку `stdout` (вывод — 8.2); код выхода не 0 — `AssertionError` с текстом `stderr`
+(паролей в нём нет, 8.1); тайм-аут запуска — 120 с. Префикс — переменная окружения `E2E_STAND_CMD`: строка до
+`manage.py` включительно, делится по пробелам (как `E2E_SHELL_CMD` у `helpers.stand_shell`); без неё — `docker compose
+-f <conftest.COMPOSE_FILE> --profile dev exec -T standtools python manage.py` (служба `standtools`: `E2E_STAND=1` есть
+только у неё, 8.1). Виды `backdate` — коды `ticket`, `mail`, `mailbox` (8.2), а не русские слова строки T-3140; `ref`
+у `mailbox` — `"-"`, у `ticket` — номер заявки, у `mail` — `Message-ID` с `<` `>`. (б) Письма в ящик стенда.
+`append_mail(raw: bytes, *, seen: bool = False) -> None` — `APPEND` в `INBOX` по строке «Вход в Dovecot у приёмки»
+раздела 1 (`E2E_IMAP_HOST` по умолчанию `127.0.0.1`, `E2E_IMAP_PORT` — `31143`, `E2E_IMAP_USER` — `tickets`, пароль —
+`os.environ["IMAP_PASSWORD"]`, читается при вызове, а не при импорте); `seen=True` кладёт письмо с флагом `\Seen`
+(FR-211: письмо «прочитано» другим клиентом). Каждый вызов — своё соединение (вход, `APPEND`, выход); ошибка —
+`AssertionError` без пароля, в том числе ответ `APPEND` не `OK` (`imaplib` на `NO` исключения не поднимает);
+`E2E_IMAP_PORT` приводится к `int`. Байты письма тест собирает `tests.support_servicedesk.build_mail(...)` (там же
+`MailPart` и образцы `sample(name)`): импорт `tests.support_servicedesk` в приёмке допустим — Django настраивает
+pytest-django (сборка письма с хоста проверена 2026-10-06), как `tests.support_org` в приёмке среза 002. У каждого
+письма свой `Message-ID` (`build_mail` порождает его сам). (в) Адреса. `MAILBOX` —
+`os.environ.get("SERVICEDESK_MAILBOX", "tickets@stand.test")`; `CORP_DOMAIN` — домен этого адреса: корпоративный домен
+приёмки — домен ящика, поэтому проверки «адрес ящика в копии — не участник» (FR-217) и «письмо с адреса ящика
+отклоняется» (FR-216) отличают правило ящика от правила домена; `FOREIGN_DOMAIN = "foreign.test"`;
+`requester_email(prefix: str = "req") -> str` — `f"{prefix}-{secrets.token_hex(4)}@{CORP_DOMAIN}"`. (г) Сброс стенда
+посреди круга. `reset_stand_and_relogin(browser, browser_context_args, stand_admin, admin_page=None) -> None`;
+аргументы — фикстуры теста из `tests/e2e/conftest.py`. Шаги: (1) выполнить `E2E_RESET_CMD` (команда `e2e_reset_stand`)
+так же, как фикстура `browser`; без переменной — `AssertionError` «нужен E2E_RESET_CMD», не пропуск; (2) завести
+администратора круга `helpers.bootstrap_admin(browser, browser_context_args, conftest.create_first_admin)`; (3)
+переписать все поля объекта `stand_admin` значениями нового (`dataclasses.fields(helpers.Account)`): фикстура
+`stand_admin` сессионная, pytest хранит её значение, поэтому объект остаётся тем же; затем
+`helpers.ADMINS[browser.e2e_project] = stand_admin` (`bootstrap_admin` записывает туда новый объект); (4) если
+передана `admin_page` — стереть куки её контекста, положить куки из `stand_admin.storage_state`
+(`context.add_cookies`), открыть `/` и убедиться, что страница не на `/login/` (без второго ввода кода TOTP). Тест,
+которому нужен чистый стенд, зовёт помощник первой строкой, до своих данных, и не полагается на порядок тестов в
+файле: всё, что заведено до вызова, стирается. (д) Порог формы. `reset_form_counters() -> None` стирает ключи
+`servicedesk:form:*` (7.4) через `helpers.stand_shell` так же, как `helpers.reset_counters`
+(`redis.Redis.from_url(settings.VALKEY_URL)`, `scan_iter(match="servicedesk:form:*")` и `delete`). Автоиспользуемая
+фикстура `fresh_form_counters` (имя — 7.4) пишется в `tests/e2e/conftest.py` после `fresh_counters` и по её образцу
+(T-3140 — единственный автор этой правки conftest): `helpers_sd` импортируется внутри фикстуры (на уровне модуля —
+круговой импорт conftest → helpers_sd → helpers → conftest); работает только для файлов `test_d*.py`
+(`request.node.path.name.startswith("test_d")`), у остальных — сразу `yield`; ошибки `subprocess.SubprocessError` и
+`OSError` печатаются, а не поднимаются. (е) Письма в Mailpit по номеру заявки. `ticket_letters(mailpit, number: int,
+*, template: str | None = None, to: str | None = None) -> list[dict]` — краткие записи писем, в `Subject` которых есть
+`[#<number>]` целиком (`[#1]` не находит `[#12]`), с шаблоном (`helpers.template_of`, заголовок `X-Portal-Template`,
+10.2), адресом в `To` (`to`) и адресом среди всех получателей — `To`, `Cc`, `Bcc` краткой записи (`recipient: str |
+None = None`), если они заданы; «адресу писем нет» проверяется по `recipient`, а не по `to`: участник попадает в `Cc`;
+`wait_letter(mailpit, number: int, template: str, *, to: str | None = None, timeout: float = 60.0) -> dict` — ждёт
+такое письмо и возвращает полное (`mailpit.message`); `letter_headers(mailpit, message_id: str) -> dict` — заголовки
+`/api/v1/message/<id>/headers` (ключи как в ответе Mailpit, значения — списки); `no_letter(mailpit, number: int,
+template: str, *, to=None, recipient=None, wait: float = 4.0) -> bool`. Фикстура `mailpit` очищает ящик перед каждым
+тестом. (ж) Таблицы. `make_table(rows: list[list[str]], fmt: str, delimiter: str = ";", *, bom: bool = False) ->
+bytes`: первая строка `rows` — заголовок; `fmt` — `"csv"` (UTF-8, `bom=True` — с BOM) или `"xlsx"` (openpyxl, первый
+лист). (з) Настройка через интерфейс. Помощники по маршрутам 12.6 и зацепкам 13.7 (имена — на усмотрение T-3140; их
+перечень получат T-3141…T-3152): прочитать и заменить список доменов (`/servicedesk/`, поле `domains`; замена
+возвращает прежний список, чтобы тест вернул его в `finally`); отметить узел очередью и назначить очередью по
+умолчанию (`/servicedesk/queues/`, `action` `mark` и `default`); «обеспечить готовность»: домен `CORP_DOMAIN` в списке
+и очередь по умолчанию есть — если её нет, завести под корнем узел с уникальным именем (`helpers_org.create_unit`),
+отметить и назначить; вернуть id и название очереди по умолчанию. Готовность проверяется по странице при каждом
+вызове: файлы круга сбрасывают стенд (8.3), а сброс в начале круга стирает настройки среза. (и) Номер заявки по
+уникальному слову темы — поиском списка `/tickets/?preset=all&q=<слово>` (12.2: без `preset` действует
+`listing.default_preset`, у администратора — `my_queues`, без закрытых; 13.2): помощник ждёт ровно одну строку и
+возвращает номер. Уточняет: шапка (строки 14–22; подпись `reset_stand_and_relogin()` шапки и 8.3 заменена подписью
+(г)), раздел 1 (строка «Вход в Dovecot у приёмки»), 7.4 (строка `servicedesk:form:<ip>`), 8.1 (строка «Запуск с
+хоста»), 8.2 (абзац после таблицы), 8.3 (абзац «Приёмка (T-3140)»). Затрагивает: T-3140 (`helpers_sd.py`,
+`tests/e2e/conftest.py`, `test_d01_mail.py`) и все файлы T-3141…T-3152.
+
+**Дополнение 41 (приёмка, T-3140, 2026-10-06). Поля, отказы, слово поиска.** (а) Метка поля
+`[data-field-label="<имя>"]` — отдельный элемент рядом с `[data-field="<имя>"]`, не внутри него (как `dt` и `dd` в
+шаблонах срезов 001–002: templates/staff/_field.html, templates/org/_card_head.html); текст `[data-field]` — только
+значение, у пустого — «не заполнено» (у ответственного «не назначен») с `data-empty="true"`. «Закрыл: Имя Фамилия»
+(дополнение 11, 14.2) — целиком значение поля `closed-by`: слова дополнения 11 (а) «показывает подпись
+`[data-field-label]` «Закрыл:»» читать так — «Закрыл:» входит в текст значения, а не в метку; так же поле
+`[data-field="default-queue"]` страницы `/servicedesk/` (13.7) — название очереди по умолчанию или «не задана» без
+метки. (б) Отказ формы приёмка узнаёт по `[data-error]` и `[role=alert][data-code]` (13.1: у каждого отказа сервиса
+есть `data-code`); предупреждения страниц (`[data-warning]`, в том числе `[data-warning="imap-security"]`, 13.7)
+отказом не считаются, их роль контракт не задаёт. (в) Уникальное слово темы, по которому тест ищет свою заявку в
+списке, — не из одних цифр: строку из цифр `search.parse` (6.21) считает номером заявки; слово —
+`f"t{secrets.token_hex(3)}"` (буква и шесть знаков); помощник поиска `helpers_sd` на слово из цифр поднимает
+`ValueError`. (г) Форма `form[data-form="ticket-fields"]` (13.3): «обычная кнопка отправки» — `button[type=submit]`
+без `name="save_to_record"`; приёмка нажимает её как `button[type=submit]:not([name="save_to_record"])`. (д)
+Критичность по умолчанию на странице `/servicedesk/` — выбранный пункт `select[name=default_priority]` (13.7), его
+текст — название критичности, как в поле `[data-field="priority"]` карточки. Уточняет: 13.1 (строки `[data-field]` и
+`[role=alert]`), 13.3 (поля, форма `ticket-fields`), 13.7, дополнение 11 (а). Затрагивает: `tests/e2e/helpers_sd.py`
+(`field_text`, `default_queue_name`, `set_domains`, `_queue_action`, поиск по слову темы), e2e/test_d01_mail и все
+файлы T-3141…T-3152; серверные тесты сверяют поля через «содержит» и не меняются.
+
+**Дополнение 42 (приёмка, волна e2e-1, 2026-10-06). Лента, подсказки, формы справочника и исполнителя, групповая
+панель.** (а) Автор у событий ленты: у любого события с актёром (`TicketEntry.author` = `actor`, 9.3: передача, смена
+ответственного, статуса, категории, очереди, полей, снятие участника, закрытие и открытие вручную и т. п.) в строке
+события есть `[data-author][data-author-kind="staff"]` с именем (14.5, строка `transferred`; test_sd_assignment:
+событие `transferred` с одним `[data-author]`); у события без актёра (система: автозакрытие, сверка ответственных,
+недоставка, карантин, открытие письмом) `[data-author]` нет. Слова 13.4 «в строке события нет `[data-author]`»
+относятся только к событиям системы. (б) Подсказки ответственного: `[data-candidates]` лежит внутри
+`form[data-form="ticket-assign"]`, поэтому выбранный `input[type=radio][name=assignee]` уходит с кнопкой этой формы; у
+`input[name=q]` — свои `hx-target="[data-candidates]"`, `hx-swap="innerHTML"` и `hx-trigger="input changed
+delay:300ms"` (как поиск участников среза 002: CONTRACT-002 § 9, templates/org/_members_add.html; без своего `hx-swap`
+поле унаследовало бы `outerHTML` формы карточки и заменило бы сам `[data-candidates]`); `POST …/assign/` без ключа
+`assignee` (форму отправили клавишей Enter в `q`, не выбрав человека) ответственного не меняет: 200 с
+`[role=alert][data-code="not_participant"]`; снимает ответственного только пустое значение `assignee` формы
+`ticket-unassign`; приёмка вводит текст `fill()` и ждёт `label[data-candidate]` через `expect`, без `networkidle`. (в)
+`[data-send-state]` — отдельный элемент внутри `li[data-kind="reply"]` (13.4); «элемент с `data-send-state`» в 12.4 и
+13.3 — этот `li`; приёмка ищет `li[data-entry-id="<id>"] [data-send-state="…"]`. (г) Форма значения справочника
+категорий `form[data-form="dictionary"]` (13.7): `input[name=name]`, `input[name=order]` (целое; приёмка заполняет его
+сама), `select[name=queue]` — отмеченные очереди (`value` — id узла, текст — название),
+`select[name=default_assignee]` — первый `option value=""` («не назначен»), далее действующие сотрудники (`value` —
+id, текст — ФИО целиком), без HTMX и без зависимости от выбранной очереди (участие проверяет служба при сохранении,
+`assignee_not_participant`), `input[type=checkbox][name=on_form]`; приёмка выбирает `select_option`. (д) Форма заявки
+от исполнителя (12.3, 13.6): ответы `/tickets/new/requester/` и `/tickets/new/queue/` — сама обёртка
+`[data-requester-fields]` / `[data-queue-fields]`, и она заменяется целиком (`hx-swap="outerHTML"`); приёмка ждёт
+ответ (`expect_response`), отсоединения прежней обёртки и затем проверяет значения (`to_have_value`), прежде чем
+вводить в поля или отправлять форму. (е) Групповая панель списка (13.2): `select[name=user]` — первый `option
+value=""`, далее действующие сотрудники (`value` — id, текст — ФИО целиком); участие в очереди каждой заявки проверяет
+служба (пропуск `not_participant`). (ж) Итог группового действия: `li[data-skipped]` несёт
+`data-code="<Skipped.code>"` (6.8: `no_access`, `not_participant`, `ticket_closed`, `archived_value`); номер
+недоступной заявки в строке не раскрывается (доп. 38). (з) Смена категории с переходом в другую очередь: ответ `POST
+/tickets/<номер>/category/` без `confirm` — диалог подтверждения с заголовками `HX-Retarget: #dialog-root` и
+`HX-Reswap: innerHTML` (13.1 — диалоги в `#dialog-root`); после подтверждения — карточка, как у прочих форм (13.3).
+(и) «Слайдер со своей ссылкой» (спека, сценарий 3, п. 11; spec.md:210–213): ссылка номера в списке открывает слайдер с
+`hx-push-url="/tickets/<номер>/"` (адресная строка меняется на адрес карточки), а этот адрес, открытый заново,
+показывает ту же карточку страницей; приёмка FR-242 проверяет оба факта. Уточняет: 12.3 (строки `requester/`,
+`queue/`), 12.4 (строки `reply/`, `category/`), 13.2 (групповая панель и итог), 13.3 (форма `ticket-assign`,
+`reply-resend`, «цель форм действий»), 13.4 (строки «время и автор», «ответ»), 13.6, 13.7 («действия справочника»).
+Правка дополнения после сверки A-16-w10 (Opus): (а) перечень событий, (б) цель и способ замены `q`, ключ `assignee`,
+(и) смена адреса слайдера. Затрагивает: e2e/test_d02_form, test_d03_reply, test_d04_dispatch, test_d07_phone,
+test_d09_settings, test_d10_requesters и файлы волны e2e-2; серверные тесты не меняются
+(test_sd_assignment::test_transfer_event_who_from_to_reason_and_journal_without_reason уже ждёт автора у
+`transferred`; test_sd_card ищет `[data-send-state]` внутри `li`).
+
+**Дополнение 43 (приёмка, волна e2e-2, 2026-10-06). Сортировка с фильтром; вложения в карточке и ленте.** (а) Ссылки
+сортировки `thead th[data-sort] a[href]` и ссылки страниц списка `/tickets/` несут все заданные параметры текущего
+показа (`preset`, `q` и поля фильтра 13.2) и меняют только `sort`/`dir` (ссылка сортировки параметра `page` не несёт —
+показ начинается с первой страницы) или `page` (ссылки страниц): сортировка и листание фильтр не сбрасывают (FR-279).
+(б) Элемент `[data-attachment]` (13.3) показывает имя файла во всех состояниях: у `clean` — в ссылке, у `pending` и
+`quarantine` — текстом рядом с подписью состояния («проверяется», «в карантине»). (в) «Принятые» вложения — строки
+`Attachment` в любом состоянии (`clean`, `pending`, `quarantine`); «не принятые» — отказанные по размеру или типу
+(`li[data-rejected]`). Раздел `[data-section="attachments"]` выводится, если у заявки есть хоть одно вложение —
+принятое или не принятое. Не принятые вложения: блок карточки `[data-rejected-attachments]` лежит внутри
+`[data-section="attachments"]`; блок элемента ленты — внутри своего `li[data-entry]` (в `ul[data-attachments]` или
+рядом с ним); `ul[data-attachments]` есть у элемента, только если у него есть принятые вложения. Прежний текст 13.3
+(абзац после таблицы о поиске вложений) и 13.4 (строка «вложения элемента»), где блок отказов назван внутри
+`ul[data-attachments]`, этим пунктом заменяется. Приёмка ищет блок карточки как `[data-section="attachments"]
+[data-rejected-attachments]`, блок элемента — как `li[data-entry-id="<id>"] [data-rejected-attachments]`. Уточняет:
+12.2, 13.2 (строки «сетка» и «страницы и счётчик»), 13.3 (строки «вложения заявки», «не принятые вложения»), 13.4
+(строка «вложения элемента»). Правка после сверки A-16-w11 (Opus): `page` у сортировки, «принятые», раздел вложений,
+замена прежнего текста 13.3/13.4. Затрагивает: e2e/test_d12_attachments, test_d14_find, test_d03_reply и прочие файлы
+приёмки, которые ищут вложения; серверные тесты не меняются (ищут блоки по всей карточке и проверяют подстроки).

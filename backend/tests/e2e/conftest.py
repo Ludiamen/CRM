@@ -210,3 +210,19 @@ def fresh_counters():
     except (subprocess.SubprocessError, OSError) as e:
         print(f"счётчики не сброшены: {type(e).__name__}")
     yield
+
+
+@pytest.fixture(autouse=True)
+def fresh_form_counters(request):
+    """Порог формы заявок `servicedesk:form:*` (7.4) — с нуля перед каждым тестом файлов `test_d*.py`.
+
+    Все тесты идут с одного адреса: заявки сверх часового порога с формы заблокировали бы соседние тесты.
+    У остальных файлов — сразу `yield`. Ошибки команды стенда печатаются, не поднимаются."""
+    if request.node.path.name.startswith("test_d"):
+        from tests.e2e import helpers_sd
+
+        try:
+            helpers_sd.reset_form_counters()
+        except (subprocess.SubprocessError, OSError) as e:
+            print(f"счётчики порога формы не сброшены: {type(e).__name__}")
+    yield
