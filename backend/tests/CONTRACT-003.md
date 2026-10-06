@@ -2477,3 +2477,22 @@ id. (б) `MAX_BYTES`, `MAX_ROWS` — константы модуля `apps.servi
 1709): одна `form` на `/servicedesk/requesters/<id>/delete/` со скрытым `input[name=confirm][value="1"]` и одной кнопкой
 подтверждения. Уточняет: 9.2, строки `requester.created`, `requester.updated`, `requester.deleted`; 12.6, строка
 `requesters/<id>/delete/`. Затрагивает: test_sd_requesters, test_sd_requester_import_2.
+
+**Дополнение 32 (волна 5, 2026-10-06). Слова запроса и предел текста для поиска.** (а) `search.parse`: сначала
+отбрасываются слова короче `MIN_WORD`, затем остаются первые `MAX_WORDS` годных слов в порядке запроса. (б)
+`LIMIT_MESSAGE` и `LIMIT_TICKET` ограничивают только текст, который идёт в вектор поиска; элемент ленты хранится и
+показывается в карточке целиком. Уточняет: 6.21, строки `search.parse`, `search.index`. Затрагивает: test_sd_search.
+
+**Дополнение 33 (волна 5, 2026-10-06). Смена отметки записи при загрузке заявителей.** Строка `confirm` 6.23
+(строка 977) называет `origin_changed` переход «заявка» → «таблица», а план (plan.md:1231: «сменили отметку на «заявка»:
+E») и подписи итога (строки 1286, 1964) — переход «таблица» → «заявка». План выше: (а) `summary["origin_changed"]` (и
+`totals` журнала `requester_import.completed`) — число записей с отметкой «таблица» и заявками, которых нет в файле, при
+флажке `delete_missing`: они не удаляются, а получают отметку «заявка»; в предпросмотре — сколько таких будет. (б) Запись
+с отметкой «заявка», чей адрес есть в годной строке файла, получает отметку «таблица» молча для итога: строка считается
+по данным (`updated` или `unchanged`), в `origin_changed` не входит. (в) Оба перехода пишут `requester.updated` с
+`before["origin"]` и `after["origin"]` — кодами (дополнение 31). (г) Подмена `requester_import.apply_row` в тесте сбоя
+строки может записать часть данных и затем поднять исключение (как `writes_then_raises` у групповых действий, 3.5):
+точка сохранения строки откатывает частичную запись. Уточняет: 6.23, строка `confirm`; 9.2, строка `requester.updated`.
+Затрагивает: test_sd_requester_import_2::test_flag_table_record_with_tickets_becomes_ticket_origin_not_deleted,
+test_import_ticket_origin_record_becomes_table_origin_not_counted_updated, test_preview_and_total_show_deleted_and_origin_changed_counts,
+test_audit_import_completed_who_and_totals, тест сбоя строки.
