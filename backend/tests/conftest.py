@@ -14,6 +14,7 @@ import redis
 from django.conf import settings
 
 from tests import factories
+from tests.support_servicedesk import bus, bus_spy, fake_mailbox, live_mailbox  # noqa: F401  (фикстуры среза 003, CONTRACT-003 § 3.1, § 5.2)
 
 
 @pytest.fixture(scope="session")
