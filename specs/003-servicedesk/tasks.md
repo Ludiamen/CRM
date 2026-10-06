@@ -58,7 +58,7 @@ Opus по задачам» в конце файла.
   `127.0.0.1:31143` на хосте; служба `test` зависит от `dovecot` с условием `service_started` (в образе нет
   оболочки, проверку здоровья не задать). Переменные `IMAP_HOST`, `IMAP_PORT`, `IMAP_SECURITY`, `IMAP_USER`,
   `IMAP_PASSWORD`, `IMAP_FOLDER`, `IMAP_TIMEOUT`, `SERVICEDESK_MAILBOX` — в `config/settings.py` (пустой `IMAP_HOST`
-  — приём выключен), в `deploy/.env.example` закомментированными с заполнителями (кроме `IMAP_PASSWORD=***` — он обычной строкой: T-3138 (12) вносит его в `SECRET_ENV_NAMES`, а тест требует такие имена незакомментированными) и в `tools/make_dev_env.py` (пароль ящика генерируется, адрес — `tickets@stand.test`); у `make_dev_env.py` новый режим `--add-missing`: дописывает в существующий `deploy/.env` недостающие имена со значениями стенда из таблицы плана и сгенерированным `IMAP_PASSWORD`, прежние значения не трогает и не печатает (без `--force`: тот пересоздал бы все секреты стенда). Проверка: стенд поднимается, из контейнера `test`
+  — приём выключен), в `deploy/.env.example` закомментированными с заполнителями (кроме `IMAP_PASSWORD=***` — он обычной строкой: T-3138 (12) вносит его в `SECRET_ENV_NAMES`, а тест требует такие имена незакомментированными) и в `tools/make_dev_env.py` (пароль ящика генерируется, адрес — `tickets@stand.test`); у `make_dev_env.py` новый режим `--add-missing`: дописывает в существующий `deploy/.env` недостающие имена со значениями стенда из таблицы плана и сгенерированным `IMAP_PASSWORD`, прежние значения не трогает и не печатает (без `--force`: тот пересоздал бы все секреты стенда); режим закрывает новый тест `tools/test_make_dev_env.py::test_add_missing_appends_only_missing_names_keeps_values_and_prints_no_secrets` (решение плана «Запуск» → «Переменные окружения» называет `make_dev_env.py`, способ дописывания — решение задач). Проверка: стенд поднимается, из контейнера `test`
   `imaplib` входит, `APPEND` и `SELECT` работают; `test_env_example_has_only_placeholders` зелёный —
   deploy/docker-compose.yml, deploy/dovecot/99-test.conf, backend/config/settings.py, deploy/.env.example,
   tools/make_dev_env.py; отчёт docs/reviews/TASKS-003.md, раздел «Подготовка: Dovecot» — (FR-210, NFR-201)
@@ -103,7 +103,7 @@ Opus по задачам» в конце файла.
   которые проверяют тесты, ключи `data` событий ленты, коды и ключи событий журнала из таблицы плана, имена
   функций сервисов (`tickets.create`, `tickets.set_status`, `access.scope`, `reconcile.for_users`,
   `letters.render`, `attachments.accept` и др.), формат `related_ref`, названия шаблонов писем. Там же — правила
-  шины (`access.changed`, `mail.failed`, события `servicedesk.*`) и что меняется в `CONTRACT.md` и `CONTRACT-002.md` (перечень — T-3138, п. 13); командная строка и вывод команд стенда `e2e_poll_mailbox`, `e2e_backdate`, `e2e_run_job`; тесты команд, работающих через соединение `migrate` (`e2e_reset_stand`, `servicedesk_after_restore`), — `django_db(transaction=True, databases=["default", "migrate"])`.
+  шины (`access.changed`, `mail.failed`, события `servicedesk.*`) и что меняется в `CONTRACT.md` и `CONTRACT-002.md` (перечень — T-3138, п. 13); командная строка и вывод команд стенда `e2e_poll_mailbox`, `e2e_backdate`, `e2e_run_job`; тесты команд, работающих через соединение `migrate` (`e2e_reset_stand`, `servicedesk_after_restore`), — `django_db(databases=["default", "migrate"])`, как `test_db_roles.py` и `test_org_audit.py` (`transaction=True` в этом наборе не работает: сброс таблиц требует прав владельца, `tests/conftest.py`); данные для команды тест создаёт через то же соединение, которым команда читает, а последовательность номеров от транзакции не зависит.
   `backend/tests/support_servicedesk.py`: фальшивый адаптер IMAP (решение 4); `build_mail(...)` — байты письма с нужными
   заголовками и частями (решение 6); настройка сервис-деска (домены, очереди, очередь по умолчанию, категории);
   фабрики заявок, элементов ленты, заявителей, входящих писем; `backdate(obj, field, days)` (решение 5); чтение
@@ -182,8 +182,8 @@ Opus по задачам» в конце файла.
   (11) backend/tests/test_deploy_files.py::test_cron_registers_preview_purge_quarantine_cleanup_and_scan_requeue —
   шесть прежних заданий без изменений плюс восемь заданий среза 003 (их проверяет T-3135), всего четырнадцать.
   (12) backend/tests/test_stack.py — в `SECRET_ENV_NAMES` добавляется `IMAP_PASSWORD` (значение-заглушка `***`
-  проверяется как у других секретов); сам `test_env_example_has_only_placeholders` не меняется, но `PLAN_ENV_NAMES` включает `SECRET_ENV_NAMES`: строка `IMAP_PASSWORD=***` в `deploy/.env.example` должна быть действующей, не закомментированной (остальные IMAP-переменные — закомментированными, как в T-3001; T-3001 уточнить).
-  (13) `backend/tests/CONTRACT.md` (строки 16, 199, 311–312, 332–334) и `CONTRACT-002.md` (строки 5, 38–42, 64–68, 127, 283–288, 633, 797–800) — названия и числа, которые меняют пункты (1)–(12); правила шины — в `CONTRACT-003.md` (T-3100).
+  проверяется как у других секретов); сам `test_env_example_has_only_placeholders` не меняется, но `PLAN_ENV_NAMES` включает `SECRET_ENV_NAMES`: строка `IMAP_PASSWORD=***` в `deploy/.env.example` должна быть действующей, не закомментированной (остальные IMAP-переменные — закомментированными, как в T-3001).
+  (13) `backend/tests/CONTRACT.md` (строки 199, 311–312, 332–334) и `CONTRACT-002.md` (строки 5, 38–42, 127, 283–288, 633, 797–800) — названия и числа, которые меняют пункты (1)–(12); строку 16 `CONTRACT.md` (пометка о `CONTRACT-003.md`) правит T-3100, строки 64–68 `CONTRACT-002.md` (поля `StoredFile`) — T-3200; правила шины — в `CONTRACT-003.md` (T-3100).
   Остальные тесты срезов 001 и 002 не меняются; `test_core_without_registered_extensions_behaves_as_slice_001`
   остаётся без правки, потому что `badge` добавляется только пунктам с функцией `badge` (решение 10) —
   backend/tests/test_extensions.py, test_org_permissions.py, test_permissions.py, test_deploy_files.py,
@@ -210,7 +210,7 @@ Opus по задачам» в конце файла.
 
 ## Этап 3 — реализация
 
-Волны: (а) ядро, почта и `org` — T-3200…T-3206; (б) модели и службы `servicedesk` — T-3210…T-3224; (в) страницы —
+Волны: (а) ядро, почта, `org`, IMAP-адаптер и разбор письма (чистые функции, без моделей) — T-3200…T-3209; (б) модели и службы `servicedesk` — T-3210…T-3224; (в) страницы —
 T-3230…T-3237 (по одной: общие `urls.py` и `portal.css`); (г) развёртывание и стенд — T-3240…T-3243; затем
 T-3260. После каждой задачи — полный серверный прогон и сверка с эталоном регрессий (последний полный прогон). Вызовы вперёд внутри волны «б»: подтверждение и письмо «открыта заново» (`letters`, T-3217), открытие заново (`closing.reopen`, T-3219) и выпуск ответа после проверки вложений (`replies`, T-3219) в T-3213, T-3215 и T-3216 вызываются через небольшие пустые функции в тех же модулях; настоящие тела пишут T-3217 и T-3219, и в них же закрываются тесты на эти ветки (красные до тех пор — это ожидаемо и записывается в эталон).
 
@@ -260,7 +260,7 @@ T-3260. После каждой задачи — полный серверный
   backend/apps/integrations/mail/services.py, tasks.py; тесты T-3118, T-3129, T-3130, почта среза 001 зелёная — (FR-247,
   FR-253…257, FR-290)
 - [ ] T-3207 [sonnet] IMAP-адаптер (план: «Опрос — задание `poll_mailbox`», п. 2–4; «Интеграции»): `apps/integrations/mail/imap.py` — соединение по `IMAP_SECURITY` (`IMAP4_SSL` или `starttls()` с контекстом `ssl.create_default_context()`, либо без шифрования), тайм-аут `IMAP_TIMEOUT`, `select(readonly=True)` (`EXAMINE`), UIDVALIDITY и UIDNEXT из ответа на выбор папки, `UID SEARCH` с фильтром на клиенте, `UID FETCH (RFC822.SIZE INTERNALDATE BODY.PEEK[])`, `MailboxUnavailable` с текстом без пароля; фабрика соединения, которую подменяет фальшивый адаптер (решение 4) — backend/apps/integrations/mail/imap.py; тесты T-3106, T-3109 — (FR-210, FR-211)
-- [ ] T-3209 [sonnet] текст и части письма (план: «Разбор», п. 2, 7, 8): чистые функции без моделей — отправитель из `From`, текст (`get_body`, HTML в текст на `html.parser`, запасные кодировки), обход частей `walk()` с пропуском потомков вложенного письма, встроенные картинки, имена вложений (RFC 2231 и 2047, очистка), очистка суррогатов и NUL, идентификаторы `In-Reply-To`/`References` выражением `<[^<>\s]+>`, сбор `Cc` из всех заголовков — backend/apps/servicedesk/services/mail_parse.py; тесты T-3108 — (FR-217, FR-218, FR-219, FR-286, NFR-214)
+- [ ] T-3209 [sonnet] текст и части письма (план: «Разбор», п. 2, 7, 8): чистые функции без моделей — отправитель из `From`, текст (`get_body`, HTML в текст на `html.parser`, запасные кодировки), обход частей `walk()` с пропуском потомков вложенного письма, встроенные картинки, имена вложений (RFC 2231 и 2047, очистка), очистка суррогатов и NUL, очистка темы от переводов строки и управляющих знаков (её зовёт `tickets.create`, T-3213), идентификаторы `In-Reply-To`/`References` выражением `<[^<>\s]+>`, сбор `Cc` из всех заголовков — backend/apps/servicedesk/services/mail_parse.py; тесты T-3108 — (FR-217, FR-218, FR-219, FR-286, NFR-214)
 - [ ] T-3210 [sonnet] модели `servicedesk` и миграции (план: «Приложение `servicedesk`»): все модели таблицы плана с
   ограничениями и индексами (частичные индексы `Ticket`, GIN по `search`, `UniqueConstraint` статуса по
   умолчанию, пары `(uidvalidity, uid)`, участника), последовательность `servicedesk_ticket_number`
