@@ -382,7 +382,8 @@ def test_nginx_body_size_6m_and_protected_location_internal_with_headers():
 
 def test_cron_registers_preview_purge_quarantine_cleanup_and_scan_requeue():
     """FR-132, FR-141, NFR-105: config/cron.py регистрирует purge_import_previews (03:40), purge_quarantine (03:50),
-    requeue_pending_scans (каждый час) в очереди mail, ничего не дублируя; три задания среза 001 остались."""
+    requeue_pending_scans (каждый час) в очереди mail, ничего не дублируя; три задания среза 001 остались. Шесть прежних
+    заданий проверяются по именам, общее число вызовов `register` — нет: задания среза 003 проверяет test_sd_deploy."""
     registrations = _cron_registrations()
     by_name = {}
     for item in registrations:
@@ -402,6 +403,5 @@ def test_cron_registers_preview_purge_quarantine_cleanup_and_scan_requeue():
     for name, (function, cron) in expected.items():
         assert name in by_name, f"{name} не зарегистрировано"
         assert (by_name[name]["function"], by_name[name]["cron"], by_name[name]["queue"]) == (function, cron, "mail"), by_name[name]
-    assert len(registrations) == 6, f"ожидалось шесть заданий, найдено {len(registrations)}"
     source = uncommented((BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8"))
     assert "apps.org.tasks" in source and "apps.core.tasks" in source

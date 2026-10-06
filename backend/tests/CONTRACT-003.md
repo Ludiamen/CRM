@@ -1931,7 +1931,7 @@ Opus по B1-1: тест сверяет такой текст только по 
 |---|---|---|---|
 | «Заявка #N создана в очереди «…»» | `[role=status]` страницы `/tickets/` после создания заявки исполнителем, если заявка ему не видна | plan.md:1101; spec.md:352, 896 | test_sd_executor::test_non_member_redirected_to_list_with_created_message, e2e/test_d07_phone |
 | «Заявка #N передана в очередь «…»» | `[role=status]` страницы `/tickets/` (или `/`, если пункта меню «Заявки» нет) после `HX-Redirect` или 302 при передаче, если заявка перестала быть видна | plan.md:769 | test_sd_assignment::test_transfer_to_unavailable_ticket_returns_hx_redirect_with_message |
-| «Заявка #N открыта заново и передана в очередь «…»» | `[role=status]` страницы `/tickets/` (или `/`, если пункта меню «Заявки» нет) после `HX-Redirect` или 302 при открытии заново, если заявка перестала быть видна актёру (дополнение 27 (г)) | текст контракта | test_sd_closing_2::test_manual_reopen_when_node_not_queue_goes_to_default_queue_with_event |
+| «Заявка #N открыта заново и передана в очередь «…»» | `[role=status]` страницы `/tickets/` (или `/`, если пункта меню «Заявки» нет) после `HX-Redirect` или 302 при открытии заново, если заявка перестала быть видна актёру (дополнение 27 (г)) | текст контракта (дополнение 27 (г)) | test_sd_closing_2::test_manual_reopen_when_node_not_queue_goes_to_default_queue_with_event |
 | «Заявка перейдёт в очередь «…»» | фрагмент подтверждения смены категории (`[data-dialog="ticket-category"]`) | plan.md:771-772 | test_sd_assignment::test_category_change_to_other_queue_asks_confirmation_first |
 | «Выполнено: N; пропущено: M» и строки «#номер — причина» | `[data-bulk-result]` | plan.md:805-808; причина недоступной — «нет доступа» | test_sd_assignment_2::test_group_*, e2e/test_d04_dispatch |
 | «Заявка принята. Подтверждение с номером придёт на <адрес>» | `/request/done/` | plan.md:1069-1070; spec.md:126, 860 | test_sd_form |
@@ -2535,3 +2535,23 @@ test_sd_list.
 должен быть таблицей CSV или XLSX». (б)
 `TableFileError(code, message)`: `str(error) == message`, как у `ServiceDeskError` (6.1). Уточняет: 6.23, строка
 `table_file.read`. Затрагивает: test_table_file.
+
+**Дополнение 37 (волна 6, 2026-10-06). Журнал смены категории со сменой очереди.** `transfer.change_category`,
+сменившая очередь, пишет `ticket.updated` (категория до и после) и `ticket.transferred` с `reason_given: False` (у смены
+категории причины нет). Уточняет: 6.9, строка `change_category`; 9.2, строка `ticket.transferred`. Затрагивает:
+test_sd_audit::test_assign_transfer_update_events_were_became.
+
+**Дополнение 38 (волна 6, 2026-10-06). Несуществующий номер в групповом действии; бюджет `menu_visible`.** (а)
+Номер, которого нет в базе, групповое действие пропускает с той же причиной «нет доступа», что и невидимый (номер в
+итоге не раскрывается). (б) «Не больше двух запросов» у `access.menu_visible` (6.3) — сверх запросов
+`structure.work_units_of` (4: не больше двух); на свежем объекте пользователя всего не больше четырёх, и число не
+зависит от числа заявок и очередей. Уточняет: 6.3, строка `menu_visible`; 6.8, строка `bulk`. Затрагивает:
+test_sd_capacity::test_menu_query_count_independent_of_ticket_and_queue_count, test_sd_pages, test_sd_assignment_2.
+
+**Дополнение 39 (волна 7, 2026-10-06). Файлы развёртывания: форма записи.** (а) `deploy/docker-compose.yml` пишется
+блоками «ключ: значение» без якорей и слияний YAML (`&`, `*`, `<<:`) и без потоковой формы (`{…}`, `[…]` — кроме
+`command` и `healthcheck.test` в форме списка, как сейчас), как в срезах 001–002: тесты читают файл текстом. (б) В
+`location` формы и ответа nginx повторяются из `location /` директивы `proxy_pass`, `proxy_set_header` и
+`proxy_read_timeout`; прочие `proxy_*` — по желанию. (в) Прежние шесть заданий cron не меняются; есть ли у них
+`job_timeout`, тест не проверяет (plan.md:236 требует явный срок у заданий среза 003). Уточняет: § 1 (службы, nginx,
+cron). Затрагивает: test_sd_deploy, test_deploy_files.
