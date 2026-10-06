@@ -1,7 +1,7 @@
 ---
 id: TASKS-003
 вид: задачи
-статус: черновик
+статус: на-проверке
 версия: 1
 зависит_от: PLAN-003
 основан_на: PLAN-003 sha256:80e2bc9c7fd2319a595ffaa5059b1fa630fd9ebbd01fccfaabc7ad6dcc37ed4c
@@ -61,7 +61,7 @@ Opus по задачам» в конце файла.
   — приём выключен), в `deploy/.env.example` закомментированными с заполнителями (кроме `IMAP_PASSWORD=***` — он обычной строкой: T-3138 (12) вносит его в `SECRET_ENV_NAMES`, а тест требует такие имена незакомментированными) и в `tools/make_dev_env.py` (пароль ящика генерируется, адрес — `tickets@stand.test`); у `make_dev_env.py` новый режим `--add-missing`: дописывает в существующий `deploy/.env` недостающие имена со значениями стенда из таблицы плана и сгенерированным `IMAP_PASSWORD`, прежние значения не трогает и не печатает (без `--force`: тот пересоздал бы все секреты стенда); режим закрывает новый тест `tools/test_make_dev_env.py::test_add_missing_appends_only_missing_names_keeps_values_and_prints_no_secrets` (решение плана «Запуск» → «Переменные окружения» называет `make_dev_env.py`, способ дописывания — решение задач). Проверка: стенд поднимается, из контейнера `test`
   `imaplib` входит, `APPEND` и `SELECT` работают; `test_env_example_has_only_placeholders` зелёный —
   deploy/docker-compose.yml, deploy/dovecot/99-test.conf, backend/config/settings.py, deploy/.env.example,
-  tools/make_dev_env.py; отчёт docs/reviews/TASKS-003.md, раздел «Подготовка: Dovecot» — (FR-210, NFR-201)
+  tools/make_dev_env.py, tools/test_make_dev_env.py (проверяет на временных `ОБРАЗЕЦ` и `ЦЕЛЬ`, настоящий `deploy/.env` не трогает); отчёт docs/reviews/TASKS-003.md, раздел «Подготовка: Dovecot» — (FR-210, NFR-201)
 - [ ] T-3002 [P] [opus] образцы для тестов вложений и писем (план: «Вложения», «Путь письма»; решение 6). В
   `backend/tests/fixtures/servicedesk/`: архивы с паролем (ZIP ZipCrypto, ZIP AES, RAR5, RAR4, 7z с простым,
   зашифрованным и сжатым заголовком) и такие же без пароля, обычный ZIP с зашифрованным ZIP внутри (для T-3003 и второго рубежа clamd), картинки PNG и JPEG, файлы с сигнатурами исполняемых (PE, ELF, Mach-O,
@@ -183,7 +183,7 @@ Opus по задачам» в конце файла.
   шесть прежних заданий без изменений плюс восемь заданий среза 003 (их проверяет T-3135), всего четырнадцать.
   (12) backend/tests/test_stack.py — в `SECRET_ENV_NAMES` добавляется `IMAP_PASSWORD` (значение-заглушка `***`
   проверяется как у других секретов); сам `test_env_example_has_only_placeholders` не меняется, но `PLAN_ENV_NAMES` включает `SECRET_ENV_NAMES`: строка `IMAP_PASSWORD=***` в `deploy/.env.example` должна быть действующей, не закомментированной (остальные IMAP-переменные — закомментированными, как в T-3001).
-  (13) `backend/tests/CONTRACT.md` (строки 199, 311–312, 332–334) и `CONTRACT-002.md` (строки 5, 38–42, 127, 283–288, 633, 797–800) — названия и числа, которые меняют пункты (1)–(12); строку 16 `CONTRACT.md` (пометка о `CONTRACT-003.md`) правит T-3100, строки 64–68 `CONTRACT-002.md` (поля `StoredFile`) — T-3200; правила шины — в `CONTRACT-003.md` (T-3100).
+  (13) `backend/tests/CONTRACT.md` (строки 199, 311–312, 332–334; в строке 16 «Файлы» — пометка, что файлы среза 003 описывает `CONTRACT-003.md`) и `CONTRACT-002.md` (строки 5, 38–42, 127, 283–288, 633, 797–800; строки 64–68 — поля `StoredFile`, которые меняет T-3200: пустой владелец, назначение `attachment`, `content_type` до 255) — названия и числа, которые меняют пункты (1)–(12) и модели среза; правила шины — в `CONTRACT-003.md` (T-3100).
   Остальные тесты срезов 001 и 002 не меняются; `test_core_without_registered_extensions_behaves_as_slice_001`
   остаётся без правки, потому что `badge` добавляется только пунктам с функцией `badge` (решение 10) —
   backend/tests/test_extensions.py, test_org_permissions.py, test_permissions.py, test_deploy_files.py,
