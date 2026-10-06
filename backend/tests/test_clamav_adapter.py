@@ -159,7 +159,7 @@ def test_connection_error_timeout_and_error_reply_raise_scan_unavailable(fake_ne
 
 
 def test_host_port_timeout_from_environment_with_defaults(fake_net, settings, tmp_path):
-    """NFR-105: незаданные аргументы берутся из settings.CLAMAV_* при каждом вызове; значения по умолчанию — clamav, 3310, 30."""
+    """NFR-105: незаданные аргументы берутся из settings.CLAMAV_* при каждом вызове; значения по умолчанию — clamav, 3310, 120."""
     from apps.integrations.clamav import client
 
     path = tmp_path / "f.bin"
@@ -189,7 +189,7 @@ def test_host_port_timeout_from_environment_with_defaults(fake_net, settings, tm
                              capture_output=True, text=True, timeout=60, check=True)
         return json.loads(out.stdout.strip().splitlines()[-1])
 
-    assert read({}) == ["clamav", 3310, 30]  # json различает 3310 и "3310"
+    assert read({}) == ["clamav", 3310, 120]  # json различает 3310 и "3310"
     assert read({"CLAMAV_HOST": "h9", "CLAMAV_PORT": "4999", "CLAMAV_TIMEOUT": "5"}) == ["h9", 4999, 5]
 
 

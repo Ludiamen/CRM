@@ -152,10 +152,15 @@ def test_owner_credentials_only_in_one_shot_migrate_service():
 
 
 def test_worker_runs_with_scheduler_and_cron_service_present():
-    """FR-053: рабочий процесс — `rq worker --with-scheduler` (паузы повторов), отдельный сервис — `rq cron` для ночных заданий."""
+    """FR-053: рабочие процессы — `rq worker --with-scheduler` (паузы повторов): `worker` — очередь files, `worker-mail` —
+    mail и maintenance, `worker-inbox` — inbox; отдельный сервис — `rq cron` для ночных заданий."""
     services = compose_services()
-    assert re.search(r"rq\s+worker\b[^\n]*--with-scheduler|--with-scheduler[^\n]*rq\s+worker", services["worker"].replace("\n", " "))
-    assert re.search(r"\bmail\b", services["worker"]), "рабочий слушает очередь mail"
+    for name, queues in (("worker", "files"), ("worker-mail", "mail maintenance"), ("worker-inbox", "inbox")):
+        assert name in services, f"в docker-compose.yml нет службы {name}"
+        one_line = services[name].replace("\n", " ")
+        assert re.search(r"rq\s+worker\b[^\n]*--with-scheduler|--with-scheduler[^\n]*rq\s+worker", one_line), name
+        assert re.search(rf"--with-scheduler {queues}(?: |$)", _compose_one_line(services[name])), (
+            f"{name} слушает очереди {queues}")
     assert re.search(r"rq\s+cron\s+config\.cron", services["scheduler"].replace("\n", " "))
     assert "--with-scheduler" not in services["scheduler"]
 
@@ -279,7 +284,8 @@ def test_clamav_service_pinned_internal_port_healthcheck_and_volume():
 def test_freshclam_conf_mounted_with_default_mirror():
     """NFR-105: deploy/clamav/freshclam.conf смонтирован в clamav только для чтения; в нём ровно пять действующих
     строк файла образа 1.4.6 (зеркало database.clamav.net) и закомментированный пример PrivateMirror; переменных
-    FRESHCLAM_CONF_*, CLAMD_CONF_* и FRESHCLAM_CHECKS в compose нет (/init правит по ним файл командой sed -i)."""
+    FRESHCLAM_CONF_* и FRESHCLAM_CHECKS в compose нет (/init правит по ним файл командой sed -i); из CLAMD_CONF_* есть
+    только `CLAMD_CONF_AlertEncryptedArchive: "yes"` (срез 003; clamd.conf не смонтирован, правка идёт через окружение)."""
     block = _compose_block("clamav")
     assert re.search(r"-\s*[\"']?\./clamav/freshclam\.conf:/etc/clamav/freshclam\.conf:ro[\"']?\s*$", block, re.M), (
         "bind ./clamav/freshclam.conf → /etc/clamav/freshclam.conf с :ro")
@@ -294,29 +300,37 @@ def test_freshclam_conf_mounted_with_default_mirror():
     ], f"действующие строки freshclam.conf: {active}"
     assert any(re.match(r"^\s*#\s*PrivateMirror\s+\S+", line) for line in lines), "нет закомментированного примера PrivateMirror"
     everything = uncommented(deploy_text("docker-compose.yml"))
-    assert not re.search(r"FRESHCLAM_CONF_|CLAMD_CONF_", everything)
+    assert not re.search(r"FRESHCLAM_CONF_", everything)
+    clamd_conf = re.findall(r"^\s*(CLAMD_CONF_\w+):\s*[\"']?([^\s\"']*)[\"']?\s*$", everything, re.M)
+    assert clamd_conf == [("CLAMD_CONF_AlertEncryptedArchive", "yes")], f"из CLAMD_CONF_* разрешена одна: {clamd_conf}"
+    assert len(re.findall(r"CLAMD_CONF_", everything)) == 1, "CLAMD_CONF_* упомянута вне этой строки"
+    assert re.search(r"CLAMD_CONF_AlertEncryptedArchive:", block), "CLAMD_CONF_AlertEncryptedArchive — в службе clamav"
     assert "FRESHCLAM_CHECKS" not in everything, "частота обновления баз — как в образе"
 
 
 def test_worker_listens_files_before_mail_and_mounts_protected():
-    """FR-132, NFR-105: worker слушает очередь files раньше mail (проверка фото не ждёт писем), планировщик повторов
-    включён, том protected смонтирован на тот же путь, что у web."""
+    """FR-132, NFR-105: worker слушает только очередь files (проверка фото не ждёт писем: очереди mail, maintenance и inbox —
+    службы worker-mail и worker-inbox), планировщик повторов включён, том protected у всех трёх служб смонтирован на тот
+    же путь, что у web."""
     worker = _compose_block("worker")
     command = _compose_one_line(worker)
-    assert re.search(r"command:\s*rq worker -c config\.rq_settings --with-scheduler files mail(?: |$)", command), (
-        "ожидается `rq worker -c config.rq_settings --with-scheduler files mail`")
+    assert re.search(r"command:\s*rq worker -c config\.rq_settings --with-scheduler files(?: |$)", command), (
+        "ожидается `rq worker -c config.rq_settings --with-scheduler files`")
+    assert not re.search(r"--with-scheduler files \S", re.search(r"command:[^\n]*", worker).group(0)), (
+        "worker слушает только очередь files")
     web_mount = re.search(r"-\s*[\"']?(protected:\S+?)[\"']?\s*$", _compose_block("web"), re.M)
-    worker_mount = re.search(r"-\s*[\"']?(protected:\S+?)[\"']?\s*$", worker, re.M)
-    assert worker_mount, "у worker не смонтирован том protected"
-    assert web_mount and worker_mount.group(1) == web_mount.group(1) == "protected:/app/protected"
-    assert not worker_mount.group(1).endswith(":ro"), "worker пишет файлы (перекодированные фото)"
+    for name in ("worker", "worker-mail", "worker-inbox"):
+        mount = re.search(r"-\s*[\"']?(protected:\S+?)[\"']?\s*$", _compose_block(name), re.M)
+        assert mount, f"у {name} не смонтирован том protected"
+        assert web_mount and mount.group(1) == web_mount.group(1) == "protected:/app/protected", name
+        assert not mount.group(1).endswith(":ro"), f"{name} пишет файлы (перекодированные фото, вложения)"
 
 
 def test_clamav_env_defaults_in_compose_commented_in_env_example():
-    """NFR-105: CLAMAV_HOST, CLAMAV_PORT, CLAMAV_TIMEOUT имеют в compose значения по умолчанию (clamav, 3310, 30) у web,
-    worker и test, а в deploy/.env.example перечислены только закомментированными строками."""
-    defaults = {"CLAMAV_HOST": "clamav", "CLAMAV_PORT": "3310", "CLAMAV_TIMEOUT": "30"}
-    for service in ("web", "worker", "test"):
+    """NFR-105: CLAMAV_HOST, CLAMAV_PORT, CLAMAV_TIMEOUT имеют в compose значения по умолчанию (clamav, 3310, 120) у web,
+    worker, worker-mail, worker-inbox и test, а в deploy/.env.example перечислены только закомментированными строками."""
+    defaults = {"CLAMAV_HOST": "clamav", "CLAMAV_PORT": "3310", "CLAMAV_TIMEOUT": "120"}
+    for service in ("web", "worker", "worker-mail", "worker-inbox", "test"):
         block = _compose_block(service)
         for name, default in defaults.items():
             pattern = rf"^\s+{name}:\s*[\"']?(?:\$\{{{name}:-{default}\}}|{default})[\"']?\s*$"
@@ -339,12 +353,20 @@ def test_test_service_waits_for_healthy_clamav():
 
 
 def test_nginx_body_size_6m_and_protected_location_internal_with_headers():
-    """FR-132, NFR-108: в nginx.conf и nginx.prod.conf лимит тела запроса 6m (фото до 5 МБ в форме), а /protected/ —
-    внутреннее расположение с alias на том, nosniff, типом image/jpeg и Cache-Control private, max-age=86400."""
+    """FR-132, NFR-108: в nginx.conf и nginx.prod.conf лимит тела запроса 6m в `http` (фото до 5 МБ в форме), 55m — только
+    в двух `location` формы и ответа (срез 003), а /protected/ — внутреннее расположение с alias на том, nosniff, типом
+    image/jpeg и Cache-Control private, max-age=86400 (общий /protected/ для фото срезом 003 не меняется)."""
+    form_locations = (r"location\s*=\s*/request/\s*\{([^{}]*)\}",
+                      r"location\s*~\s*\^/tickets/\(new/\|\[0-9\]\+/reply/\)\$\s*\{([^{}]*)\}")
     for name in ("nginx.conf", "nginx.prod.conf"):
         text = uncommented(deploy_text(name))
+        for pattern in form_locations:
+            found = re.findall(pattern, text)
+            assert len(found) == 1, f"{name}: нет ровно одного location {pattern}"
+            assert re.findall(r"client_max_body_size\s+([^;]+);", found[0]) == ["55m"], f"{name}: в location формы нужен 55m"
+            text = re.sub(pattern, "", text, count=1)
         sizes = re.findall(r"client_max_body_size\s+([^;]+);", text)
-        assert sizes == ["6m"], f"{name}: client_max_body_size должен быть один и равен 6m, найдено {sizes}"
+        assert sizes == ["6m"], f"{name}: вне location формы и ответа client_max_body_size один и равен 6m, найдено {sizes}"
         location = re.search(r"location\s+/protected/\s*\{(.*?)\n\s*\}", text, re.S)
         assert location, f"{name}: нет location /protected/"
         body = location.group(1)

@@ -474,3 +474,27 @@ pyflakes и ворота — чисто, отдельной проверки п�
 **Раздел 16 контракта** — дополнения 2–36; сверен шестью кругами свежих проверяющих (`review/A-16-w1…w6.md`, блокирующих
 ни в одном), правки по каждому кругу внесены; последний круг (A-16-w6) правок по существу не требовал, его мелочи
 внесены Opus без отдельной проверки.
+
+## Ход выполнения: этап 2, T-3138 — правка тестов срезов 001–002 — 2026-10-06
+
+Диффы подготовил исполнитель Sonnet в копиях вне репозитория (`crm-work/slice003/stage2/t3138/`: `work/`, `diffs/`, `README.md`),
+пункт (12) `test_stack.py` (его не было в выжимке имён: правится константа модуля) — Opus. Свежий проверяющий
+(`t3138/review.md`) нашёл одну блокирующую ошибку диффа (10): замена `text.replace(тело, "")` убирала оба одинаковых тела
+`location`, и проверка второго падала на верной реализации; Opus исправил на `re.sub(pattern, "", text, count=1)` и проверил
+на образце nginx с двумя `location` (остаётся ровно `['6m']`).
+
+**Разрешения владельца (2026-10-06, по одному тесту, с диффом):** разрешены (1) test_extensions::test_org_registers_all_nine_extension_points,
+(2) test_org_permissions::test_menu_staff_structure_calendar_items_by_permission, (3) test_permissions::test_three_builtin_roles_with_initial_permissions,
+(4) test_org_permissions::test_three_new_permissions_and_initial_distribution, (5)–(7), (9), (10) test_deploy_files (`worker` и
+две новые службы, том `protected`, `CLAMAV_TIMEOUT` 120, `CLAMD_CONF_AlertEncryptedArchive`, `location` 55m), (8)
+test_clamav_adapter::test_host_port_timeout_from_environment_with_defaults, (12) test_stack (`IMAP_PASSWORD` среди секретов).
+**Не разрешена (11)** test_deploy_files::test_cron_registers_preview_purge_quarantine_cleanup_and_scan_requeue (число вызовов
+`register` 14 вместо 6): тест не менялся и в Этапе 3 упадёт на верной реализации — решение владельца нужно до Этапа 3; в
+строке cron CONTRACT-002 это помечено.
+
+Применено `patch` к файлам репозитория; файлы совпадают с проверенными копиями (кроме неразрешённой правки). Прогон шести
+файлов: 10 failed (ровно изменённые тесты, ждут кода Этапа 3), 54 passed (test_stack проходит и сейчас: строка
+`IMAP_PASSWORD=***` в `.env.example` есть с Этапа 1). Диффы CONTRACT.md и CONTRACT-002.md — по таблицам 11.1–11.2 дословно.
+Мелочи проверки: в CONTRACT-002 пометки «(правка — п. (N) T-3138)» стоят в ячейке «Тесты», а не в конце ячейки требования
+(смысл тот же); у `worker-mail` и `worker-inbox` тест (7) требует все три `CLAMAV_*` (CONTRACT-002, строка 38) — вписать в
+задание Этапа 3.

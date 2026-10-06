@@ -13,7 +13,7 @@
 |---|---|---|
 | Корень репозитория в контейнере тестов | сервис `test` монтирует только `../backend`; тестам нужен ещё `../deploy` (в `/app/deploy`), а T-118 и `docs/` — по надобности. Без этого `repo_file()` падает с понятным сообщением. Для проверки вручную: `docker compose ... run --rm -v "$PWD/deploy:/app/deploy:ro" test` | test_stack (layout, env_example, forbidden_words) |
 | Настройки pytest | после T-200 `pytest.ini` переключается на `config.settings`; тесты проверяют это через `settings.INSTALLED_APPS` | test_stack::test_admin_not_installed |
-| Файлы | `config/cron.py`, `apps/core/management/commands/{create_first_admin,rotate_field_keys}.py`, `deploy/{Dockerfile,nginx.conf}`, `templates/` с подключением `vendor/bootstrap-*`, `vendor/htmx-*`, `vendor/alpine-*` через `{% static %}` | test_stack::test_project_layout_matches_plan, test_vendor_assets_present_with_licenses |
+| Файлы | `config/cron.py`, `apps/core/management/commands/{create_first_admin,rotate_field_keys}.py`, `deploy/{Dockerfile,nginx.conf}`, `templates/` с подключением `vendor/bootstrap-*`, `vendor/htmx-*`, `vendor/alpine-*` через `{% static %}`; файлы среза 003 (`apps/servicedesk/`, `deploy/dovecot/`, `deploy/backup/`) описывает `CONTRACT-003.md` | test_stack::test_project_layout_matches_plan, test_vendor_assets_present_with_licenses |
 | Куки | `CSRF_COOKIE_HTTPONLY = True` (NFR-007 требует HttpOnly для куки; в settings.py сейчас нет) | test_config::test_settings_cookie_flags |
 
 ## Модели и поля сверх плана
@@ -196,7 +196,7 @@ ADR-0006, решения владельца), но не ослаблять. Зн
 | `deploy/nginx.conf` | `set_real_ip_from` с `${TRUSTED_PROXIES}` или адресами (не `0.0.0.0/0`, не `all`), `real_ip_header X-Forwarded-For`, `real_ip_recursive on`; в Django `X-Forwarded-For $remote_addr`; `X-Forwarded-Proto` только значением-переменной (`$scheme`…), не константой; `location /media/` с `add_header X-Content-Type-Options "nosniff" always;`; свой `log_format` без `$request`, `$request_uri`, `$args`, `$query_string`, `$http_cookie`, `$http_authorization`, `$request_body`, `$http_referer` (путь — `$uri`), `access_log` использует его; `listen … ssl`, `ssl_certificate` и `ssl_certificate_key` в `/etc/nginx/certs/`, `ssl_protocols` только TLSv1.2/1.3, `return 301 https://` для HTTP |
 | `deploy/dev-cert.sh` | исполняемый, `set -e…`, `openssl req -x509`, `subjectAltName` с `127.0.0.1`, пишет в `deploy/certs/` |
 | `deploy/.gitignore` | строка `certs/` |
-| `deploy/docker-compose.yml` | сервисы `web`, `worker`, `scheduler`, `nginx`, `postgres`, `valkey`, `mailpit`; `profiles: ["dev"]` только у `mailpit`; `worker`: `rq worker --with-scheduler … mail`; `scheduler`: `rq cron config.cron` без `--with-scheduler`; `web`: `gunicorn` + `uvicorn_worker.UvicornWorker` + `config.asgi` (compose или `Dockerfile`); у `nginx` — `./certs:/etc/nginx/certs` и `127.0.0.1:8031:`; порты postgres и valkey наружу не публикуются |
+| `deploy/docker-compose.yml` | сервисы `web`, `worker`, `worker-mail`, `worker-inbox`, `scheduler`, `backup`, `nginx`, `postgres`, `valkey`, `mailpit`, `dovecot`; `profiles: ["dev"]` только у `mailpit`, `profiles: ["dev", "test"]` у `dovecot`; `worker`: `rq worker -c config.rq_settings --with-scheduler files`, `worker-mail`: то же с очередями `mail maintenance`, `worker-inbox`: то же с очередью `inbox` (раздел 1 CONTRACT-003); `scheduler`: `rq cron config.cron` без `--with-scheduler`; `web`: `gunicorn` + `uvicorn_worker.UvicornWorker` + `config.asgi` (compose или `Dockerfile`); у `nginx` — `./certs:/etc/nginx/certs` и `127.0.0.1:8031:`; порты postgres и valkey наружу не публикуются |
 | закрытые ключи | в `deploy/` и `backend/` нет `*.key`, `*.pem`, `*.p12` и текста `-----BEGIN … PRIVATE KEY-----` вне `deploy/certs/` |
 
 ## Решения Opus по вопросам этапа 2б (2026-10-01)
@@ -308,8 +308,8 @@ test_s10 (механика, 1 минута через базу).
   Referer не уходит. Проверка CSRF — стандартная Django без исключений,
   `Origin: null` отвергается всегда.
 - **RQ:** `config/rq_settings.py` (поднимает Django, отдаёт адрес Valkey).
-  Рабочий процесс: `rq worker -c config.rq_settings --with-scheduler mail`,
-  ночные задания: `rq cron config.cron -c config.rq_settings` (очередь `mail`,
+  Рабочие процессы: `rq worker -c config.rq_settings --with-scheduler` с очередями `files` (`worker`), `mail maintenance` (`worker-mail`) и `inbox` (`worker-inbox`),
+  ночные задания: `rq cron config.cron -c config.rq_settings` (задания среза 001 — очередь `mail`,
   03:10, 03:20, 03:30).
 - **Письма:** код ссылки в задание не передаётся — рабочий процесс берёт его
   из `OneTimeLink`; погашенная до отправки ссылка — письмо `failed` без
@@ -329,6 +329,6 @@ test_s10 (механика, 1 минута через базу).
   prefix-location `/media/` — `return 404`. Каталог целиком не отдаётся.
 - **Учётные данные владельца схемы**: миграции выполняет разовая служба
   compose `migrate` (`RUN_MIGRATIONS=1`, `restart: "no"`), web ждёт её через
-  `service_completed_successfully`; у web, worker и scheduler
+  `service_completed_successfully`; у web, worker, worker-mail, worker-inbox и scheduler
   `DATABASE_MIGRATE_URL: ""`. `DATABASE_MIGRATE_URL` есть у `migrate`,
-  `standtools` и `test`. Тест — test_deploy_files::test_owner_credentials_only_in_one_shot_migrate_service.
+  `standtools` и `test`; служба `backup` получает только `DATABASE_MIGRATE_URL` из `.env` через `environment`, без `env_file` (решение Opus C9); у `worker-mail` и `worker-inbox` — `DATABASE_MIGRATE_URL: ""`, как у `worker`. Тест — test_deploy_files::test_owner_credentials_only_in_one_shot_migrate_service (перечень служб в теле теста не меняется: он проверяет только `web`, `worker`, `scheduler`).

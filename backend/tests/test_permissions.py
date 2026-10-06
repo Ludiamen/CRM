@@ -4,6 +4,7 @@ import re
 import pytest
 
 from tests import factories, support
+from tests import support_servicedesk as sd
 from tests.support import PERMISSIONS, make_with_permissions, model
 
 pytestmark = pytest.mark.django_db
@@ -22,11 +23,12 @@ def test_seven_permissions_created_by_migration():
 
 
 def test_three_builtin_roles_with_initial_permissions():
-    """FR-015, FR-020, FR-118: три начальные роли; у администратора все десять прав, у «Руководителя» и «Сотрудника ИТ» ровно `staff.view`."""
+    """FR-015, FR-020, FR-118: три начальные роли; у администратора все двенадцать прав (срезы 001–003), у «Руководителя» и «Сотрудника ИТ» ровно `staff.view`."""
     Role = model("core.Role")
     builtin = {r.name: r for r in Role.objects.filter(is_builtin=True)}
     assert set(builtin) == {support.ADMIN_ROLE, support.MANAGER_ROLE, support.STAFF_ROLE}
-    assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(PERMISSIONS + support.PERMISSIONS_002)
+    assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(
+        PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003)
     assert set(builtin[support.MANAGER_ROLE].permissions.values_list("code", flat=True)) == {"staff.view"}
     assert set(builtin[support.STAFF_ROLE].permissions.values_list("code", flat=True)) == {"staff.view"}
     employee = support.logged_in(support.make_employee(roles=[builtin[support.STAFF_ROLE]]))

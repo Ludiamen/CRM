@@ -12,6 +12,8 @@ pytestmark = pytest.mark.django_db
 
 POINTS = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory",
           "card_sections", "day_marks", "home_notices", "stand_reset")
+# четыре точки среза 003 (CONTRACT-003 § 3.2): в них `org` не регистрируется, их проверяет T-3132
+POINTS_003 = ("unit_usage", "file_purposes", "mail_renderers", "login_links")
 CORE_MENU_TITLES = ["Сотрудники", "Роли и права", "Журнал событий", "Настройки портала", "Безопасность и политика"]
 ORG_IMPORT = re.compile(r"\bapps\.org\b|^\s*from\s+apps\s+import\s+[^#\n]*\borg\b", re.M)
 
@@ -64,10 +66,11 @@ def test_core_without_registered_extensions_behaves_as_slice_001(no_extensions):
 
 
 def test_org_registers_all_nine_extension_points():
-    """FR-120, FR-122, FR-123: `POINTS` — девять имён; `org` при запуске регистрирует по функции в каждой точке; неизвестная точка — `ValueError`, повтор той же функции не дублируется, `empty()` очищает и возвращает прежнее, `clear()` очищает все точки."""
+    """FR-120, FR-122, FR-123: `POINTS` — девять имён среза 002 и четыре среза 003 (всего тринадцать); `org` при запуске регистрирует по функции в каждой из девяти точек среза 002; неизвестная точка — `ValueError`, повтор той же функции не дублируется, `empty()` очищает и возвращает прежнее, `clear()` очищает все точки."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS
+    assert tuple(extensions.POINTS) == POINTS + POINTS_003
+    all_points = POINTS + POINTS_003
     for point in POINTS:
         funcs = extensions.registered(point)
         # в реестре могут быть и функции ядра; от `org` нужна хотя бы одна обычная функция модуля apps.org (доп. 39)
@@ -78,20 +81,20 @@ def test_org_registers_all_nine_extension_points():
         extensions.register("no_such_point", lambda: None)
     with pytest.raises(ValueError):
         extensions.registered("no_such_point")
-    before = {point: extensions.registered(point) for point in POINTS}
+    before = {point: extensions.registered(point) for point in all_points}
     extensions.register("stand_reset", before["stand_reset"][0])
     assert extensions.registered("stand_reset") == before["stand_reset"], "повторная регистрация игнорируется"
     extensions.registered("stand_reset").clear()
     assert extensions.registered("stand_reset") == before["stand_reset"], "registered отдаёт копию"
     with extensions.empty():
-        assert all(extensions.registered(point) == [] for point in POINTS)
+        assert all(extensions.registered(point) == [] for point in all_points)
         for point in POINTS:
             extensions.register(point, before[point][0])
         assert all(extensions.registered(point) for point in POINTS)
         extensions.clear()
-        assert all(extensions.registered(point) == [] for point in POINTS), "clear() очищает все девять точек"
+        assert all(extensions.registered(point) == [] for point in all_points), "clear() очищает все тринадцать точек"
     # `stand_reset`: здесь проверяется только регистрация; очистку данных модуля проверяет стенд (T-2242)
-    assert {point: extensions.registered(point) for point in POINTS} == before
+    assert {point: extensions.registered(point) for point in all_points} == before
 
 
 def test_org_public_interface_is_services_package():
