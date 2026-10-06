@@ -1931,6 +1931,7 @@ Opus по B1-1: тест сверяет такой текст только по 
 |---|---|---|---|
 | «Заявка #N создана в очереди «…»» | `[role=status]` страницы `/tickets/` после создания заявки исполнителем, если заявка ему не видна | plan.md:1101; spec.md:352, 896 | test_sd_executor::test_non_member_redirected_to_list_with_created_message, e2e/test_d07_phone |
 | «Заявка #N передана в очередь «…»» | `[role=status]` страницы `/tickets/` (или `/`, если пункта меню «Заявки» нет) после `HX-Redirect` или 302 при передаче, если заявка перестала быть видна | plan.md:769 | test_sd_assignment::test_transfer_to_unavailable_ticket_returns_hx_redirect_with_message |
+| «Заявка #N открыта заново и передана в очередь «…»» | `[role=status]` страницы `/tickets/` (или `/`, если пункта меню «Заявки» нет) после `HX-Redirect` или 302 при открытии заново, если заявка перестала быть видна актёру (дополнение 27 (г)) | текст контракта | test_sd_closing_2::test_manual_reopen_when_node_not_queue_goes_to_default_queue_with_event |
 | «Заявка перейдёт в очередь «…»» | фрагмент подтверждения смены категории (`[data-dialog="ticket-category"]`) | plan.md:771-772 | test_sd_assignment::test_category_change_to_other_queue_asks_confirmation_first |
 | «Выполнено: N; пропущено: M» и строки «#номер — причина» | `[data-bulk-result]` | plan.md:805-808; причина недоступной — «нет доступа» | test_sd_assignment_2::test_group_*, e2e/test_d04_dispatch |
 | «Заявка принята. Подтверждение с номером придёт на <адрес>» | `/request/done/` | plan.md:1069-1070; spec.md:126, 860 | test_sd_form |
@@ -2403,7 +2404,8 @@ plan.md:766–768, 773–776 (у передачи — одно событие «
 `change_category`; 6.11, строка `reopen`; 6.13, строка `assignee_changed` (зовут ещё `change_category` и `reopen`);
 9.2, строка `ticket.assignee_removed`; 9.3, строка `assignee_changed` (после «ручное снятие» читать «; снятие при
 передаче, смене категории и открытии»). Затрагивает: test_sd_assignment::test_transfer_removes_assignee_not_in_new_queue_keeps_member,
-test_category_change_removes_assignee_not_in_new_queue, test_category_change_assigns_new_default_assignee_with_taken_letter;
+test_category_change_removes_assignee_not_in_new_queue, test_category_change_assigns_new_default_assignee_with_taken_letter (ветвь
+«снятие, затем назначение по умолчанию»; дописана правкой волны 3);
 test_sd_assignment_2::test_group_transfer_unassigns_non_member_of_new_queue;
 test_sd_closing_2::test_reopen_without_assignee_when_assignee_dismissed, test_reopen_keeps_assignee_who_is_member_of_final_queue.
 
@@ -2443,29 +2445,34 @@ test_requester_lookup_post_fills_name_and_department_for_known_address.
 месте. (б) Длина решения (до 10 000 знаков) считается после обрезки пробелов по краям; пустое после обрезки —
 `resolution_required`. (в) Открыть заново вручную может участник очереди заявки или её ответственный, даже не
 участник (FR-252, plan.md:882–883), как и закрыть (6.11, `not_participant` у `reopen` нет). (г) Маршрут
-`/tickets/<номер>/reopen/`: если после открытия заявка ушла в очередь по умолчанию и актёру больше не видна — ответ как у
-передачи (12.4, строка `transfer/`): НХ — 200 с `HX-Redirect` на `/tickets/` (или `/`, если пункта «Заявки» нет), обычный
-запрос — 302 туда же, с `[role=status]` (текст — «Заявка #N открыта заново», текст контракта; тесты проверяют наличие
-`[role=status]` и адрес перехода). Уточняет: 6.2, строка `system_protected`; 6.11,
-строки `close`, `reopen`; 12.4, строка `reopen/`. Затрагивает: test_sd_closing::test_close_form_excludes_system_autoclosed_and_archived_statuses,
+`/tickets/<номер>/reopen/` (решение Opus; строка 1622 успешного ответа не задавала): заявка актёру видна — как у
+прочих действий (вводный абзац 12.4): НХ — 200 с фрагментом карточки, обычный запрос — 302 на `/tickets/<номер>/`; не
+видна после открытия (ушла в очередь по умолчанию) — как у передачи (12.4, строка `transfer/`): НХ — 200 с
+`HX-Redirect` на `/tickets/` (или `/`, если пункта «Заявки» нет), обычный — 302 туда же, с `[role=status]` «Заявка #N
+открыта заново и передана в очередь «<название очереди>»» — текст контракта (как подписи A7: в спеке его нет, владелец
+увидит на ручном проходе T-3301; тесты проверяют наличие `[role=status]` и адрес перехода). Уточняет: 6.2, строка `system_protected`; 6.11,
+строки `close`, `reopen`; 12.4, строка `reopen/`; 14.2 (строка добавлена после строки «Заявка #N передана в очередь»). Затрагивает: test_sd_closing::test_close_form_excludes_system_autoclosed_and_archived_statuses,
 test_close_resolution_up_to_10_thousand; test_sd_closing_2::test_manual_reopen_*.
 
 **Дополнение 28 (волна 3, 2026-10-06). Закрытая без «закрыл» и предел группового действия.** (а) У закрытой заявки
 без `closed_by` (автозакрытие; заявка из фабрики) поле карточки `[data-field="closed-by"]` есть с `data-empty="true"`;
 в списке у такой заявки без ответственного — «не назначен». (б) `assignment.bulk`: повторы номеров убираются до
 проверки предела; предел — не больше 100 разных номеров (`bulk_limit` — 101 и больше). Уточняет: 13.2, 13.3 (поле
-`closed-by`); 6.8, строка `bulk`. Затрагивает: test_sd_assignment_2::test_closed_ticket_*, test_group_over_hundred_tickets_refused;
-test_sd_status_autoclose; test_sd_card::test_closed_ticket_card_shows_who_closed.
+`closed-by`); 6.8, строка `bulk`. Затрагивает: test_sd_assignment_2::test_group_over_hundred_tickets_refused;
+test_sd_card::test_closed_ticket_card_shows_who_closed;
+test_sd_status_autoclose::test_autoclose_on_seventh_day_sets_system_status_closed_at_and_empty_closed_by; test_sd_list_2.
 
 **Дополнение 29 (волна 3, 2026-10-06). Длина текста — после обрезки.** Пределы длины текста ответа и комментария
 (50 000 знаков, `text_too_long`) и решения (10 000, дополнение 27 (б)) считаются после обрезки пробелов по краям;
-пустое после обрезки — `text_required` / `resolution_required`. Уточняет: 6.10, строки `reply`, `comment`; 6.2, строки
-`text_too_long`, `text_required`. Затрагивает: test_sd_reply::test_reply_text_required_plain_up_to_50_thousand,
+пустое после обрезки — `text_required` / `resolution_required`. Уточняет: 6.10, строки `reply`, `comment`; 6.11, строка `close`;
+6.2, строки `text_too_long`, `text_required`, `resolution_required`, `resolution_too_long` (длиннее — `text_too_long` у
+текста, `resolution_too_long` у решения). Затрагивает: test_sd_reply::test_reply_text_required_plain_up_to_50_thousand,
 test_sd_closing::test_close_resolution_up_to_10_thousand.
 
 **Дополнение 30 (волна 5, 2026-10-06). Предпросмотр загрузки заявителей.** (а) В `rows[...]["changes"]` значения
 `before`/`after` у ключа `unit` — названия подразделений-клиентов (`""` — нет), у ФИО — строки, как в журнале (9.2), не
-id. (б) `MAX_BYTES`, `MAX_ROWS` — константы модуля `apps.servicedesk.services.requester_import` (строка 974). (в) У строк
+id. (б) `MAX_BYTES`, `MAX_ROWS` — константы модуля `apps.servicedesk.services.requester_import` (строка 974; модуль — как у `apply_row`,
+строка 309). (в) У строк
 предпросмотра `tr[data-import-row]` атрибут `data-row-result` — значение `result` строки (`will_add`, `will_update`,
 `unchanged`, `error`); у строк итога — `added`, `updated`, `unchanged`, `error` (13.8). Уточняет: 6.23, строки
 `make_preview`, `MAX_BYTES`; 13.1, 13.8. Затрагивает: test_sd_requester_import, test_sd_requester_import_2.
@@ -2481,7 +2488,8 @@ id. (б) `MAX_BYTES`, `MAX_ROWS` — константы модуля `apps.servi
 **Дополнение 32 (волна 5, 2026-10-06). Слова запроса и предел текста для поиска.** (а) `search.parse`: сначала
 отбрасываются слова короче `MIN_WORD`, затем остаются первые `MAX_WORDS` годных слов в порядке запроса. (б)
 `LIMIT_MESSAGE` и `LIMIT_TICKET` ограничивают только текст, который идёт в вектор поиска; элемент ленты хранится и
-показывается в карточке целиком. Уточняет: 6.21, строки `search.parse`, `search.index`. Затрагивает: test_sd_search.
+показывается в карточке целиком. Уточняет: 6.21, строки `search.parse`, `search.index`. Затрагивает: test_sd_search::test_search_more_than_eight_words_cut_to_eight,
+test_search_message_over_100k_chars_tail_not_searchable_but_visible, test_search_ticket_over_300k_chars_stops_appending.
 
 **Дополнение 33 (волна 5, 2026-10-06). Смена отметки записи при загрузке заявителей.** Строка `confirm` 6.23
 (строка 977) называет `origin_changed` переход «заявка» → «таблица», а план (plan.md:1231: «сменили отметку на «заявка»:
@@ -2492,7 +2500,38 @@ E») и подписи итога (строки 1286, 1964) — переход �
 по данным (`updated` или `unchanged`), в `origin_changed` не входит. (в) Оба перехода пишут `requester.updated` с
 `before["origin"]` и `after["origin"]` — кодами (дополнение 31). (г) Подмена `requester_import.apply_row` в тесте сбоя
 строки может записать часть данных и затем поднять исключение (как `writes_then_raises` у групповых действий, 3.5):
-точка сохранения строки откатывает частичную запись. Уточняет: 6.23, строка `confirm`; 9.2, строка `requester.updated`.
+точка сохранения строки откатывает частичную запись. Ключ строки предпросмотра `origin_change: bool` (6.23, строка `make_preview`: «отметка записи «заявка» станет
+«таблица»») остаётся с прежним смыслом; слова строки 977 «(`origin_changed`, обновлением не считается)» читать как
+«(ключ строки `origin_change`; в `summary["origin_changed"]` не входит, обновлением не считается)». В предпросмотре
+`summary["origin_changed"]` считается так, как если бы флажок был поставлен (как `would_delete`); итог выполнения — по
+фактическому флажку. `confirm` ловит в
+`apply_row` любое `Exception` (строка — `error`), не только `ServiceDeskError`. Уточняет: 6.23, строки `make_preview`,
+`confirm`; 3.5, строка «сбой строки загрузки заявителей» (запись до сбоя допустима); 9.2, строка `requester.updated`
+(в колонке `after` читать «`origin` (`table` или `ticket`)»).
 Затрагивает: test_sd_requester_import_2::test_flag_table_record_with_tickets_becomes_ticket_origin_not_deleted,
 test_import_ticket_origin_record_becomes_table_origin_not_counted_updated, test_preview_and_total_show_deleted_and_origin_changed_counts,
-test_audit_import_completed_who_and_totals, тест сбоя строки.
+test_audit_import_completed_who_and_totals, test_confirm_each_valid_row_in_own_savepoint.
+
+**Дополнение 34 (волна 5, 2026-10-06). Изменённые ключи у `requester.updated`.** Как у прочих событий «изменено»
+(9.2, `ticket.updated`): в `before`/`after` события `requester.updated` — только изменённое: `client_unit` — если
+подразделение сменилось, `name_changed: True` — если ФИО изменено, `origin` — если сменилась отметка. Правка одного ФИО
+даёт `before == {}`, `after == {"name_changed": True}`. Уточняет: 9.2, строка `requester.updated`; 6.22. Затрагивает:
+test_sd_requesters::test_edit_unit_audit_was_became_name_only_changed,
+test_sd_requester_import_2::test_audit_requester_events_by_record_number_without_address_and_name.
+
+**Дополнение 35 (волна 5, 2026-10-06). Имя ответственного в списке; «—» последнего сообщения.** (а) Ячейка
+`[data-cell="assignee"]` списка у заявки с ответственным — `User.full_name` целиком (как в ленте, дополнения 10, 23);
+правило «Имя Фамилия» — только у «Закрыл: …» (дополнение 11). (б) `last_message_at` и `last_message_from` ставит
+`tickets.create` у любой заявки (первый элемент — письмо или описание, plan.md:514–518; `last_message_at` — время элемента, строка 602), поэтому «—» строки 1736 у
+заявки не встречается; тесты эту ветвь не проверяют. Уточняет: 13.2, строка «значения ячеек». Затрагивает: test_sd_list_2,
+test_sd_list.
+
+**Дополнение 36 (волна 7, 2026-10-06). Тексты отказов чтения таблицы.** (а) Код у всех нечитаемых файлов —
+`bad_format`; текст берётся из `texts` так: файл не ZIP или ZIP без книги XLSX — `texts["bad_format_archive"]`, ошибка
+разбора CSV (`csv.Error`) — `texts["bad_format_csv"]`, прочая нечитаемая книга — `texts["bad_format"]` (как у загрузки
+сотрудников среза 002). NUL в CSV и неверная кодировка — оба `not_utf8` с текстом `texts["not_utf8"]` (у сотрудников срез 002 держит
+два текста; у `table_file` ключ один — свои тексты сотрудников обеспечивает вызывающий). Загрузка заявителей
+(`requester_import`) передаёт для `bad_format`, `bad_format_archive` и `bad_format_csv` один текст строки 1915 «Файл
+должен быть таблицей CSV или XLSX». (б)
+`TableFileError(code, message)`: `str(error) == message`, как у `ServiceDeskError` (6.1). Уточняет: 6.23, строка
+`table_file.read`. Затрагивает: test_table_file.
