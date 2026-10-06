@@ -512,7 +512,7 @@ plan.md:591-594): служба `poll_mailbox` пропускает текст л
 | `can_work` | `can_work(user, ticket)` | `bool`: `ticket` среди видимых (видеть и работать — одно и то же, план «Что считает access»); без запроса к базе: по `ticket.queue_id` и `ticket.assignee_id` | нет | ничего | test_sd_access, test_sd_closing_2::test_manual_reopen_refused_for_outsider_even_direct_request |
 | `eligible_assignees` | `eligible_assignees(unit_id)` | `list[PersonRef]`: `structure.queue_people(unit_id)` и держатели `servicedesk.all` (`permissions.users_with`), без уволенных и повторов, по `full_name`, затем `id` | нет | ничего | test_sd_access::test_eligible_assignees_queue_people_plus_all_holders_without_dismissed |
 | `suggest_assignees` | `suggest_assignees(unit_id, prefix)` | `list[PersonRef]`: из `eligible_assignees`, у которых `name_key(full_name)` начинается с `name_key(prefix)` (без регистра и «ё/е»); пустой `prefix` — все | нет | ничего | test_sd_assignment::test_assignee_suggestions_only_queue_members_by_name_start_case_and_yo_insensitive |
-| `menu_visible` | `menu_visible(user)` | `bool` для `visible` пункта «Заявки»: `has_all`, или в `work_units` есть узел-очередь (`Queue.objects.filter(unit_id__in=...).exists()`), или `Ticket.objects.filter(assignee=user).exists()`; не больше двух запросов, не зависит от числа заявок и очередей | нет | ничего | test_sd_access::test_menu_item_tickets_visible_to_participant_all_holder_or_assignee_only, test_sd_capacity |
+| `menu_visible` | `menu_visible(user)` | `bool` для `visible` пункта «Заявки»: `has_all`, или в `work_units` есть узел-очередь (`Queue.objects.filter(unit_id__in=...).exists()`), или `Ticket.objects.filter(assignee=user).exists()`; не больше двух запросов сверх `work_units_of` (всего не больше четырёх — дополнение 38 (б)), не зависит от числа заявок и очередей | нет | ничего | test_sd_access::test_menu_item_tickets_visible_to_participant_all_holder_or_assignee_only, test_sd_capacity |
 | `can_create` | `can_create(user)` | `bool` для маршрутов `/tickets/new/`: `has_all` или в `work_units` есть узел-очередь (без «только ответственный»); тест `test_non_participant_has_no_new_ticket_button_and_direct_request_refused` берёт сотрудника, который ответственный по заявке чужой очереди (пункт меню виден), и ждёт 200 на `/tickets/` без `a[data-action="ticket-new"]`, 403 на `/tickets/new/` | нет | ничего | test_sd_access::test_non_participant_has_no_new_ticket_button_and_direct_request_refused |
 
 Правила для заявителя и участника из копии: у них нет учётной записи, функций доступа для них нет
@@ -2546,12 +2546,19 @@ test_sd_audit::test_assign_transfer_update_events_were_became.
 итоге не раскрывается). (б) «Не больше двух запросов» у `access.menu_visible` (6.3) — сверх запросов
 `structure.work_units_of` (4: не больше двух); на свежем объекте пользователя всего не больше четырёх, и число не
 зависит от числа заявок и очередей. Уточняет: 6.3, строка `menu_visible`; 6.8, строка `bulk`. Затрагивает:
-test_sd_capacity::test_menu_query_count_independent_of_ticket_and_queue_count, test_sd_pages, test_sd_assignment_2.
+test_sd_capacity::test_menu_query_count_independent_of_ticket_and_queue_count (б); test_sd_pages и
+test_sd_assignment_2 (а — несуществующий номер в групповом действии).
 
-**Дополнение 39 (волна 7, 2026-10-06). Файлы развёртывания: форма записи.** (а) `deploy/docker-compose.yml` пишется
-блоками «ключ: значение» без якорей и слияний YAML (`&`, `*`, `<<:`) и без потоковой формы (`{…}`, `[…]` — кроме
-`command` и `healthcheck.test` в форме списка, как сейчас), как в срезах 001–002: тесты читают файл текстом. (б) В
+**Дополнение 39 (волна 7, 2026-10-06). Файлы развёртывания: форма записи.** (а) `deploy/docker-compose.yml`: в блоке каждой службы,
+которую читают тесты (`web`, `worker`, `worker-mail`, `worker-inbox`, `scheduler`, `backup`, `clamav`, `dovecot`, `test`),
+ключи `command`, `environment`, `volumes`, `depends_on`, `profiles` и `deploy` записаны в самом блоке, а не получены
+якорем или слиянием YAML (`*…`, `<<:`). `command` у `worker`, `worker-mail`, `worker-inbox` и `scheduler` — одной строкой
+(`command: rq worker -c config.rq_settings --with-scheduler …`, как сейчас; так их читает и test_deploy_files); у прочих
+служб — как сейчас. `deploy` — блоком: строка `    deploy:`, следующая — `      replicas: 2`. `profiles` — списком в
+квадратных скобках, как сейчас (`profiles: ["dev"]`). Якорь `&portal-build` со слиянием `<<: *portal-build` у ключа
+`build` (как сейчас, строки 55 и 164) допустим: тесты `build` не читают. Тесты читают файл текстом. (б) В
 `location` формы и ответа nginx повторяются из `location /` директивы `proxy_pass`, `proxy_set_header` и
 `proxy_read_timeout`; прочие `proxy_*` — по желанию. (в) Прежние шесть заданий cron не меняются; есть ли у них
-`job_timeout`, тест не проверяет (plan.md:236 требует явный срок у заданий среза 003). Уточняет: § 1 (службы, nginx,
+`job_timeout`, тест не проверяет (plan.md:227–228: «прежние задания … не меняются. У каждого задания явный
+`job_timeout`» — понимается как задания среза 003). Уточняет: § 1 (службы, nginx,
 cron). Затрагивает: test_sd_deploy, test_deploy_files.
