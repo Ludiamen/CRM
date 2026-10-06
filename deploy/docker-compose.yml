@@ -217,6 +217,23 @@ services:
       timeout: 3s
       retries: 20
 
+  # Тестовый IMAP-ящик заявок (PLAN-003, «Тестовый ящик»): только стенд и тесты, в установку не входит.
+  # Образ закреплён по дайджесту (запасной тег 2.4.4). IMAP слушает порт 31143 внутри сети
+  # compose; на хосте он виден только на 127.0.0.1. Любое имя пользователя входит с паролем
+  # USER_PASSWORD (формат {PLAIN}пароль). Проверки здоровья нет: в образе нет оболочки,
+  # готовность ящика ждут сами тесты повтором входа. Без `:?`: compose подставляет переменные
+  # во весь файл независимо от профилей, и на установке без IMAP_PASSWORD он бы сломался.
+  dovecot:
+    image: dovecot/dovecot:2.4.5@sha256:43c14def08a57f25107593cbcf64a0a6fbae84a7b9de7aa038513c9b21e91914
+    profiles: ["dev", "test"]
+    restart: unless-stopped
+    environment:
+      USER_PASSWORD: "{PLAIN}${IMAP_PASSWORD:-}"
+    volumes:
+      - ./dovecot/99-test.conf:/etc/dovecot/conf.d/99-test.conf:ro
+    ports:
+      - "127.0.0.1:31143:31143"
+
   # Тесты: pytest + pytest-django на PostgreSQL этого же стенда.
   # Тестовая база test_crm создаётся и мигрируется под crm_owner, запросы теста
   # идут под crm_app. Valkey — база 15, не рабочая 0.
@@ -233,6 +250,8 @@ services:
         required: false   # профиль dev; нужен только тестам почты
       clamav:
         condition: service_healthy   # настоящий clamd для test_clamav_live и проверки фото
+      dovecot:
+        condition: service_started   # проверки здоровья у образа нет (нет оболочки)
     env_file: .env
     environment:
       VALKEY_URL: redis://valkey:6379/15

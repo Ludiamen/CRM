@@ -52,7 +52,7 @@ Opus по задачам» в конце файла.
 
 ## Этап 1 — подготовка
 
-- [ ] T-3001 [sonnet] тестовый ящик Dovecot в составе стенда (план: «Новые компоненты и лицензии», «Запуск»,
+- [x] T-3001 [sonnet] тестовый ящик Dovecot в составе стенда (план: «Новые компоненты и лицензии», «Запуск»,
   «Тестовый ящик»). Закрепить образ `dovecot/dovecot:2.4.5` по дайджесту (записать дайджест и запасной тег 2.4.4).
   Служба `dovecot` в профилях `dev` и `test`: `deploy/dovecot/99-test.conf` (`auth_allow_cleartext = yes`,
   `ssl = no`) смонтирован только для чтения, `USER_PASSWORD={PLAIN}${IMAP_PASSWORD}`, порт 31143 внутри сети и
@@ -63,7 +63,7 @@ Opus по задачам» в конце файла.
   `imaplib` входит, `APPEND` и `SELECT` работают; `test_env_example_has_only_placeholders` зелёный —
   deploy/docker-compose.yml, deploy/dovecot/99-test.conf, backend/config/settings.py, deploy/.env.example,
   tools/make_dev_env.py, tools/test_make_dev_env.py (проверяет на временных `ОБРАЗЕЦ` и `ЦЕЛЬ`, настоящий `deploy/.env` не трогает); отчёт docs/reviews/TASKS-003.md, раздел «Подготовка: Dovecot» — (FR-210, NFR-201)
-- [ ] T-3002 [P] [opus] образцы для тестов вложений и писем (план: «Вложения», «Путь письма»; решение 6). В
+- [x] T-3002 [P] [opus] образцы для тестов вложений и писем (план: «Вложения», «Путь письма»; решение 6). В
   `backend/tests/fixtures/servicedesk/`: архивы с паролем (ZIP ZipCrypto, ZIP AES, RAR5, RAR4, 7z с простым,
   зашифрованным и сжатым заголовком) и такие же без пароля, обычный ZIP с зашифрованным ZIP внутри (для T-3003 и второго рубежа clamd), картинки PNG и JPEG, файлы с сигнатурами исполняемых (PE, ELF, Mach-O,
   скрипт `#!`, MSI, JAR) — маленькие, собраны средствами машины разработки или байтами по описанию формата;
@@ -71,21 +71,21 @@ Opus по задачам» в конце файла.
   настоящих нет, так и записать). Письма собирают тесты сами помощником T-3100 (`build_mail`), образцы писем в
   репозиторий не кладутся. Исполняемые образцы — не настоящие программы, а файлы с сигнатурой; строки EICAR в
   образцах нет — backend/tests/fixtures/servicedesk/ — (FR-284, NFR-213)
-- [ ] T-3003 [sonnet] проверка clamd (после T-3002) с `CLAMD_CONF_AlertEncryptedArchive=yes` (план: «Интеграции», ClamAV;
+- [x] T-3003 [sonnet] проверка clamd (после T-3002) с `CLAMD_CONF_AlertEncryptedArchive=yes` (план: «Интеграции», ClamAV;
   «Вложения»). Временный контейнер `clamav/clamav:1.4.6` со своим именем и временным томом (сеть и контейнеры
   `crm-*` не трогать): запуск не падает, строка `AlertEncryptedArchive yes` в `clamd.conf` появилась; ответы на
   образцы T-3002 — зашифрованный ZIP (ZipCrypto и AES), RAR5, 7z с простым, с зашифрованным и со сжатым
   заголовком, вложенный зашифрованный ZIP — дают `Heuristics.Encrypted.*`, обычные архивы и картинки — `OK`;
   время проверки 20 МБ несжимаемого ZIP одним и двумя потоками одновременно (две копии `worker`). Затем удалить
   временные контейнер и том — отчёт docs/reviews/TASKS-003.md, раздел «Подготовка: clamd» — (FR-284, NFR-206)
-- [ ] T-3004 [sonnet] каркас ровно по блоку «Где живёт код» плана, ничего сверх: `apps/servicedesk/` (`apps.py` с
+- [x] T-3004 [sonnet] каркас ровно по блоку «Где живёт код» плана, ничего сверх: `apps/servicedesk/` (`apps.py` с
   меткой `servicedesk`, пустые `models.py`, `tasks.py`, `extensions.py`, `audit_labels.py`, `stand.py`, `urls.py`,
   пакеты `views/`, `migrations/`, пакет `services/` с пустыми модулями из плана), `templates/servicedesk/`,
   `static/js/tickets.js` (пустой); в `INSTALLED_APPS` — `django.contrib.postgres` и `apps.servicedesk`; в
   `RQ_QUEUES` — `inbox` и `maintenance` (`DEFAULT_TIMEOUT` 120). Сервер и тесты срезов 001–002 после каркаса
   зелёные — backend/apps/servicedesk/, backend/config/settings.py — (план: «Где живёт код», «Сверка с
   конституцией», стек-бэкенд)
-- [ ] T-3005 [человек] прочитать раздел «Решения Opus по задачам» в конце этого файла и согласиться с ним; затем
+- [x] T-3005 [человек] прочитать раздел «Решения Opus по задачам» в конце этого файла и согласиться с ним; затем
   подписать TASKS-003 (`python3 tools/sdd.py подписать specs/003-servicedesk/tasks.md --кто …`). Задачи
   подписываются до начала Этапа 2 — tasks.md: статус «утверждён» — (инвариант «спека-прежде-кода»)
 - [ ] T-3006 [P] [человек] перед установкой на ВМ, вместе с T-014, T-015 и T-2006: узнать у администратора почты

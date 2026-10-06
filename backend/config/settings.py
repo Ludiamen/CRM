@@ -45,11 +45,13 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.sessions",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "django_otp",
     "django_rq",
     "apps.core",
     "apps.org",
     "apps.integrations.mail",
+    "apps.servicedesk",
 ]
 # Встроенной админки Django нет: администрирование — свой раздел с проверкой
 # прав и журналом (PLAN-001, «Решения плана»).
@@ -123,6 +125,8 @@ CACHES = {
 RQ_QUEUES = {
     "mail": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
     "files": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
+    "inbox": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
+    "maintenance": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
 }
 
 # --- Сессии в базе (закрывать по одной), пароли argon2 -----------------------
@@ -198,3 +202,15 @@ EMAIL_TIMEOUT = 30
 CLAMAV_HOST = env("CLAMAV_HOST", default="clamav")
 CLAMAV_PORT = env.int("CLAMAV_PORT", default=3310)
 CLAMAV_TIMEOUT = env.int("CLAMAV_TIMEOUT", default=30)
+
+# --- Ящик заявок сервис-деска, IMAP (PLAN-003, «Запуск» → «Переменные окружения») ---
+# Здесь только чтение переменных; опрос ящика — в приложении сервис-деска.
+
+IMAP_HOST = env("IMAP_HOST", default="")  # пусто — приём писем выключен
+IMAP_PORT = env.int("IMAP_PORT", default=993)  # 993 — для ssl; значение по умолчанию выбрал исполнитель T-3001, план его не называет
+IMAP_SECURITY = env("IMAP_SECURITY", default="ssl")  # ssl, starttls или none (none — только стенд)
+IMAP_USER = env("IMAP_USER", default="")
+IMAP_PASSWORD = env("IMAP_PASSWORD", default="")
+IMAP_FOLDER = env("IMAP_FOLDER", default="INBOX")
+IMAP_TIMEOUT = env.int("IMAP_TIMEOUT", default=30)
+SERVICEDESK_MAILBOX = env("SERVICEDESK_MAILBOX", default="")

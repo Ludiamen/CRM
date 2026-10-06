@@ -1,0 +1,1 @@
+"""Модели сервис-деска: Ticket, TicketEntry, TicketParticipant, Attachment, Queue, Category, Priority, Complexity, Status, Source, ClientUnit, Requester, RequesterImport, InboundMail, MailboxState, ServiceDeskSettings (PLAN-003, «Где живёт код»)."""
