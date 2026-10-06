@@ -462,7 +462,7 @@ plan.md:591-594): служба `poll_mailbox` пропускает текст л
 | `name_too_long` | название длиннее 100 знаков (`ClientUnit` — 150) | текст — раздел 14 | plan.md:341-345 (модели) | test_sd_dictionaries |
 | `name_taken` | такой `name_key` уже есть в этом справочнике (другая запись) | текст — раздел 14 | plan.md:446-448 | test_sd_dictionaries::test_name_required_and_unique_case_yo_and_spaces_insensitive_in_every_dictionary |
 | `in_use` | удаление значения справочника, которое есть в заявках (у `ClientUnit` — ещё и в записях заявителей); в сообщении предложение убрать в архив | текст — раздел 14 («отказ и предложение убрать его в архив») | spec.md:414-415 | test_sd_dictionaries::test_delete_used_value_refused_with_archive_offer |
-| `system_protected` | архив или удаление системного значения: категория «Другое», статус `autoclosed`, источники `mail` и `form`; ручное закрытие системным статусом | текст — раздел 14 | spec.md:718-719 | test_sd_dictionaries |
+| `system_protected` | архив или удаление системного значения: категория «Другое», статус `autoclosed`, источники `mail` и `form` (ручное закрытие системным статусом — `bad_status`, дополнение 27) | текст — раздел 14 | spec.md:718-719 | test_sd_dictionaries |
 | `default_protected` | архив или удаление статуса по умолчанию своего вида или критичности по умолчанию; у статуса проверяется после `last_active`, поэтому тест статуса по умолчанию берёт вид, где действующих статусов несколько (например `closed`) | текст — раздел 14 | spec.md:716-717 | test_sd_dictionaries |
 | `last_active` | архив или удаление последнего действующего статуса вида; проверяется раньше `default_protected`: у единственного действующего статуса вида (он же по умолчанию) отказ с кодом `last_active` | текст — раздел 14 | spec.md:416-417 | test_sd_dictionaries::test_last_active_status_of_kind_cannot_be_archived |
 | `queue_not_marked` | у категории очередь — не отмеченный узел | текст — раздел 14 | plan.md:463-465 | test_sd_dictionaries::test_category_queue_only_marked_unit |
@@ -2360,40 +2360,120 @@ test_sd_intake::test_cyrillic_domain_matched_via_xn_and_unconvertible_domain_for
 **Дополнение 18 (волна 2, 2026-10-06). Тема в результате разбора.** `mail_parse.parse(raw).subject` — уже
 `clean_subject(...)` темы письма (переводы строк, табуляции и управляющие знаки — пробел, пробелы сжаты, края обрезаны,
 до 255 знаков): решение 14 задач — очистка темы относится к любой заявке, в том числе из письма. `tickets.create`
-зовёт `clean_subject` ещё раз (повторная очистка ничего не меняет). Уточняет: 6.14, строки `ParsedMail`, `parse`.
+зовёт `clean_subject` ещё раз (повторная очистка ничего не меняет). Номер `[#N]` `find_ticket` ищет в этой очищенной
+теме (до 255 знаков): номер дальше 255-го знака не находится (решение Opus). Уточняет: 6.14, строки `ParsedMail`,
+`parse`; 6.16, строка `find_ticket`.
 Затрагивает: test_sd_mail_parse::test_subject_cleaned_of_line_breaks_and_control_chars, test_sd_intake (тема
 заявки из письма), test_sd_letters::test_subject_is_number_and_ticket_subject_with_control_chars_cleaned.
 
-**Дополнение 19 (волна 2, 2026-10-06). Шаги разбора зовутся все.** Для письма, прошедшего проверки (`checks` вернул
-`None`), `intake.process` зовёт все шаги `STEPS` по порядку (`parse`, `checks`, `link`, `ticket`, `attachments`,
-`finish`); `attachments` — и при пустом списке частей. Письмо, отклонённое проверками (`rejected_*`, `auto`), и
-письмо, ждущее настройки, после `checks` идут сразу в `finish`. Уточняет: 3.5 (строка «шаги разбора письма»), 6.16
+**Дополнение 19 (волна 2, 2026-10-06). Шаги разбора зовутся все.** Для письма, которое проверки не отклонили
+(`checks` вернул `None`) и для которого есть очередь по умолчанию, `intake.process` зовёт все шаги `STEPS` по порядку
+(`parse`, `checks`, `link`, `ticket`, `attachments`, `finish`); `attachments` — и при пустом списке частей. Письмо,
+отклонённое проверками (`rejected_*`, `auto`), и письмо, ждущее настройки (нет очереди по умолчанию: это проверяет
+`process` сразу после шага `checks`, plan.md:650–653), идут сразу в `finish`. Уточняет: 3.5 (строка «шаги разбора письма»), 6.16
 (строка `process`). Затрагивает: test_sd_intake::test_error_on_any_step_rolls_back_marks_parse_error_last_error_step_and_class_only.
 
 **Дополнение 20 (волна 2, 2026-10-06). Повтор адреса в копии.** `mail_parse.cc_pairs` и `intake.corporate_cc` при
 повторе адреса (без учёта регистра) оставляют одну пару: адрес — строчными, имя — первое непустое среди повторов
-(пустое, если имени нет ни у одного). Уточняет: 6.14, строка `cc_pairs`; 6.16, строка `corporate_cc`. Затрагивает:
+(пустое, если имени нет ни у одного); порядок пар — по первому вхождению адреса. Уточняет: 6.14, строка `cc_pairs`; 6.16, строка `corporate_cc`. Затрагивает:
 test_sd_intake::test_cc_corporate_addresses_become_participants_excluding_mailbox_smtp_from_requester_duplicates,
 test_sd_mail_parse::test_cc_addresses_collected_from_all_cc_headers.
 
 **Дополнение 21 (волна 3, 2026-10-06). Одно событие журнала на правку полей.** Один вызов `tickets.update_fields`
 (маршрут `fields/`, групповое «критичность») пишет одно событие `ticket.updated` на заявку: `before`/`after` — все
-изменённые поля этого вызова (9.2, строка `ticket.updated`); ничего не изменилось — события нет. Уточняет: 6.7, строка
+изменённые поля этого вызова (9.2, строка `ticket.updated`); ФИО заявителя входит в то же событие только флагом
+`requester_name_changed: True` в `after` (в `before` — ничего); ничего не изменилось — события нет. Уточняет: 6.7, строка
 `update_fields`; 9.2. Затрагивает: test_sd_assignment_2::test_criticality_and_complexity_edit_write_event_per_field
 (события ленты — по одному на поле, журнал — одно), test_requester_name_edit_event_has_no_values, test_sd_audit.
 
-**Дополнение 22 (волна 3, 2026-10-06). Снятие ответственного передачей, сменой категории и открытием.** План
-(plan.md:754–756: «каждое назначение, смена и снятие ответственного — событие ленты») распространяется и на снятие,
-которое делают `transfer.transfer`, `transfer.change_category` (ответственный не участник новой очереди) и
-`closing.reopen`: событие ленты `assignee_changed` (`before` — имя, `after` `""`, `before_id`, `after_id` `None`)
-пишется после события `transferred`, `queue_changed` или `category_changed` того же действия; журнал —
-`ticket.assignee_removed` с `reason="queue_changed"`; шина — `assignee_changed`. Сверка (`reconcile`) пишет своё событие
-`assignee_reconciled`, не `assignee_changed` (9.3). Уточняет: 9.3, строка `assignee_changed`; 6.9; 6.11, строка
-`reopen`. Затрагивает: test_sd_assignment::test_transfer_removes_assignee_not_in_new_queue_keeps_member,
-test_category_change_removes_assignee_not_in_new_queue; test_sd_assignment_2::test_group_transfer_unassigns_non_member_of_new_queue;
-test_sd_closing_2::test_reopen_without_assignee_when_assignee_dismissed (если ответственный ещё стоит).
+**Дополнение 22 (волна 3, 2026-10-06). Снятие ответственного передачей, сменой категории и открытием.** Решение
+Opus, сводящее два места плана: plan.md:754–756 («каждое назначение, смена и снятие ответственного — событие ленты») и
+plan.md:766–768, 773–776 (у передачи — одно событие «кто, откуда, куда, причина»; у смены категории — «одно событие
+ленты на смену категории и одно на смену очереди»). Снятие ответственного — отдельный факт, поэтому к событиям
+действия добавляется событие ленты `assignee_changed` (`before` — имя, `after` `""`, `before_id`, `after_id` `None`), когда
+`transfer.transfer`, `transfer.change_category` (ответственный не участник новой очереди) или `closing.reopen` снимают
+ответственного; события самого действия (`transferred`, `category_changed`, `queue_changed`) остаются по одному. Если
+после снятия `change_category` назначает ответственного по умолчанию новой категории, событий `assignee_changed` два:
+снятие (`after` `""`), затем назначение (`before` `""`); шина получает два `assignee_changed` так же; письмо «взята в
+работу» — по 6.8 (только если оно ещё не уходило, признак `assigned_once`). Журнал —
+`ticket.assignee_removed` с `reason="queue_changed"`, если очередь сменилась (передача, смена категории, открытие
+в очередь по умолчанию), иначе `reason="not_participant"` (открытие в прежней очереди, когда ответственный в ней больше
+не участник). Порядок событий одного действия тесты не проверяют, если имя теста его не называет. Сверка (`reconcile`)
+пишет своё событие `assignee_reconciled`, не `assignee_changed` (9.3). Уточняет: 6.9, строки `transfer`,
+`change_category`; 6.11, строка `reopen`; 6.13, строка `assignee_changed` (зовут ещё `change_category` и `reopen`);
+9.2, строка `ticket.assignee_removed`; 9.3, строка `assignee_changed` (после «ручное снятие» читать «; снятие при
+передаче, смене категории и открытии»). Затрагивает: test_sd_assignment::test_transfer_removes_assignee_not_in_new_queue_keeps_member,
+test_category_change_removes_assignee_not_in_new_queue, test_category_change_assigns_new_default_assignee_with_taken_letter;
+test_sd_assignment_2::test_group_transfer_unassigns_non_member_of_new_queue;
+test_sd_closing_2::test_reopen_without_assignee_when_assignee_dismissed, test_reopen_keeps_assignee_who_is_member_of_final_queue.
 
 **Дополнение 23 (волна 3, 2026-10-06). Имя автора в ленте.** «Имя сотрудника» в `[data-author]` (13.4, строка «время и
 автор») — `User.full_name` целиком, как в данных событий (дополнение 10); правило «Имя Фамилия» — только в письмах и
-«Закрыл:». Уточняет: 13.4. Затрагивает: test_sd_card::test_feed_authors_staff_name_dismissed_mark_requester_and_participant_address,
+«Закрыл:». У события ленты с актёром `[data-author]` есть (его имя), у события системы — нет (13.4, 14.5,
+строка `transferred`). Уточняет: 13.4 (строка «время и автор»); 14.3 (строка «<Имя> (уволен)»: имя — `full_name`
+целиком). Затрагивает: test_sd_card::test_feed_authors_staff_name_dismissed_mark_requester_and_participant_address,
 test_sd_assignment::test_transfer_event_who_from_to_reason_and_journal_without_reason.
+
+**Дополнение 24 (волна 4, 2026-10-06). Тип содержимого длиннее 255 знаков.** `StoredFile.content_type` у вложения —
+присланный тип без управляющих знаков (plan.md:323), затем первые 255 знаков (обрезка, без замены на
+`application/octet-stream`). Уточняет: 6.18, строка
+`accept`; 2.2, строка `StoredFile`. Затрагивает: test_sd_attachments::test_stored_file_content_type_up_to_255_chars.
+
+**Дополнение 25 (волна 4, 2026-10-06). Письмо ответа и вложения в письмах.** (а) `letters.send(ticket, "ticket.reply",
+entry=entry)` в том же колбэке после фиксации сразу после `send_rendered` (она возвращает `MailMessage`) ставит
+`entry.mail` одним `TicketEntry.objects.filter(pk=entry.pk).update(mail=message)`: по нему недоставка (после последнего
+повтора, через часы) находит элемент. Ленты и журнала `send` по-прежнему не пишет. У прочих шаблонов `entry.mail` не
+ставится. (б) Строка «Вложения, которые не
+приняты» перечисляет пары в порядке `Attachment.id`; тот же порядок у `attachments.rejected_of` (карточка). (в) `letters.attachment_ids(entry)` — только вложения элемента со
+`StoredFile.status == "clean"` (ответ уходит, когда проверены все файлы; 10.2, строка `attachments`); наличие файла на диске
+`attachment_ids` не проверяет — недоступный файл не прикладывает рендерер (строка 1364). Уточняет: 6.17,
+строки `send` (колонка записи), `attachment_ids`; 6.18, строка `rejected_of`; 10.2, 10.3. Затрагивает: test_sd_letters::test_deliver_renders_body_from_database_at_send_time,
+test_confirmation_optional_lines_rejected_attachments_and_executor; test_sd_reply (недоставка ответа).
+
+**Дополнение 26 (волна 4, 2026-10-06). Подстановка по адресу в заявке от исполнителя.** (а) `/tickets/new/requester/`
+принимает только POST; порядок по общим правилам § 12: без входа — 302 на `/login/`, без права — 403, затем метод:
+GET у того, кому маршрут доступен, — 405; адрес в URL не читается. (б) `requesters.lookup(email)` при записи с архивным
+подразделением: `found=True`, `name` — ФИО записи, `client_unit_id=None` (подразделение не подставляется, FR-273).
+Уточняет: 12.3, строка `/tickets/new/requester/`; 6.22, строка `lookup`. Затрагивает:
+test_sd_executor::test_requester_lookup_address_in_body_not_in_url_no_suggestions,
+test_requester_lookup_post_fills_name_and_department_for_known_address.
+
+**Дополнение 27 (волна 3, 2026-10-06). Закрытие и открытие заново: уточнения.** (а) Ручное закрытие системным
+статусом `autoclosed` отказывает `bad_status` (6.11, 6.2 строка `bad_status`); строка `system_protected` исправлена на
+месте. (б) Длина решения (до 10 000 знаков) считается после обрезки пробелов по краям; пустое после обрезки —
+`resolution_required`. (в) Открыть заново вручную может участник очереди заявки или её ответственный, даже не
+участник (FR-252, plan.md:882–883), как и закрыть (6.11, `not_participant` у `reopen` нет). (г) Маршрут
+`/tickets/<номер>/reopen/`: если после открытия заявка ушла в очередь по умолчанию и актёру больше не видна — ответ как у
+передачи (12.4, строка `transfer/`): НХ — 200 с `HX-Redirect` на `/tickets/` (или `/`, если пункта «Заявки» нет), обычный
+запрос — 302 туда же, с `[role=status]` (текст — «Заявка #N открыта заново», текст контракта; тесты проверяют наличие
+`[role=status]` и адрес перехода). Уточняет: 6.2, строка `system_protected`; 6.11,
+строки `close`, `reopen`; 12.4, строка `reopen/`. Затрагивает: test_sd_closing::test_close_form_excludes_system_autoclosed_and_archived_statuses,
+test_close_resolution_up_to_10_thousand; test_sd_closing_2::test_manual_reopen_*.
+
+**Дополнение 28 (волна 3, 2026-10-06). Закрытая без «закрыл» и предел группового действия.** (а) У закрытой заявки
+без `closed_by` (автозакрытие; заявка из фабрики) поле карточки `[data-field="closed-by"]` есть с `data-empty="true"`;
+в списке у такой заявки без ответственного — «не назначен». (б) `assignment.bulk`: повторы номеров убираются до
+проверки предела; предел — не больше 100 разных номеров (`bulk_limit` — 101 и больше). Уточняет: 13.2, 13.3 (поле
+`closed-by`); 6.8, строка `bulk`. Затрагивает: test_sd_assignment_2::test_closed_ticket_*, test_group_over_hundred_tickets_refused;
+test_sd_status_autoclose; test_sd_card::test_closed_ticket_card_shows_who_closed.
+
+**Дополнение 29 (волна 3, 2026-10-06). Длина текста — после обрезки.** Пределы длины текста ответа и комментария
+(50 000 знаков, `text_too_long`) и решения (10 000, дополнение 27 (б)) считаются после обрезки пробелов по краям;
+пустое после обрезки — `text_required` / `resolution_required`. Уточняет: 6.10, строки `reply`, `comment`; 6.2, строки
+`text_too_long`, `text_required`. Затрагивает: test_sd_reply::test_reply_text_required_plain_up_to_50_thousand,
+test_sd_closing::test_close_resolution_up_to_10_thousand.
+
+**Дополнение 30 (волна 5, 2026-10-06). Предпросмотр загрузки заявителей.** (а) В `rows[...]["changes"]` значения
+`before`/`after` у ключа `unit` — названия подразделений-клиентов (`""` — нет), у ФИО — строки, как в журнале (9.2), не
+id. (б) `MAX_BYTES`, `MAX_ROWS` — константы модуля `apps.servicedesk.services.requester_import` (строка 974). (в) У строк
+предпросмотра `tr[data-import-row]` атрибут `data-row-result` — значение `result` строки (`will_add`, `will_update`,
+`unchanged`, `error`); у строк итога — `added`, `updated`, `unchanged`, `error` (13.8). Уточняет: 6.23, строки
+`make_preview`, `MAX_BYTES`; 13.1, 13.8. Затрагивает: test_sd_requester_import, test_sd_requester_import_2.
+
+**Дополнение 31 (волна 5, 2026-10-06). Журнал записи заявителя и диалог удаления.** (а) `origin` в `before`/`after`
+событий `requester.*` — код (`ticket`, `table`); русские подписи — подписи `Requester.Origin` (2.2, строка 207: «таблица», «заявка»)
+на странице журнала через подписи значений 9.1. (б) Очистка подразделения записи: `requester.updated` с `before["client_unit"]` — название,
+`after["client_unit"]` — `""`. (в) Диалог `[data-dialog="requester-delete"]` — по общему правилу диалогов (13.1, строка
+1709): одна `form` на `/servicedesk/requesters/<id>/delete/` со скрытым `input[name=confirm][value="1"]` и одной кнопкой
+подтверждения. Уточняет: 9.2, строки `requester.created`, `requester.updated`, `requester.deleted`; 12.6, строка
+`requesters/<id>/delete/`. Затрагивает: test_sd_requesters, test_sd_requester_import_2.
