@@ -2356,3 +2356,44 @@ test_sd_attachments::test_source_eml_*.
 (FR-261 требует уникальности без учёта регистра, не написания домена; решение Opus). Уточняет: 6.16, 6.22
 (`normalize_email`). Затрагивает:
 test_sd_intake::test_cyrillic_domain_matched_via_xn_and_unconvertible_domain_foreign.
+
+**Дополнение 18 (волна 2, 2026-10-06). Тема в результате разбора.** `mail_parse.parse(raw).subject` — уже
+`clean_subject(...)` темы письма (переводы строк, табуляции и управляющие знаки — пробел, пробелы сжаты, края обрезаны,
+до 255 знаков): решение 14 задач — очистка темы относится к любой заявке, в том числе из письма. `tickets.create`
+зовёт `clean_subject` ещё раз (повторная очистка ничего не меняет). Уточняет: 6.14, строки `ParsedMail`, `parse`.
+Затрагивает: test_sd_mail_parse::test_subject_cleaned_of_line_breaks_and_control_chars, test_sd_intake (тема
+заявки из письма), test_sd_letters::test_subject_is_number_and_ticket_subject_with_control_chars_cleaned.
+
+**Дополнение 19 (волна 2, 2026-10-06). Шаги разбора зовутся все.** Для письма, прошедшего проверки (`checks` вернул
+`None`), `intake.process` зовёт все шаги `STEPS` по порядку (`parse`, `checks`, `link`, `ticket`, `attachments`,
+`finish`); `attachments` — и при пустом списке частей. Письмо, отклонённое проверками (`rejected_*`, `auto`), и
+письмо, ждущее настройки, после `checks` идут сразу в `finish`. Уточняет: 3.5 (строка «шаги разбора письма»), 6.16
+(строка `process`). Затрагивает: test_sd_intake::test_error_on_any_step_rolls_back_marks_parse_error_last_error_step_and_class_only.
+
+**Дополнение 20 (волна 2, 2026-10-06). Повтор адреса в копии.** `mail_parse.cc_pairs` и `intake.corporate_cc` при
+повторе адреса (без учёта регистра) оставляют одну пару: адрес — строчными, имя — первое непустое среди повторов
+(пустое, если имени нет ни у одного). Уточняет: 6.14, строка `cc_pairs`; 6.16, строка `corporate_cc`. Затрагивает:
+test_sd_intake::test_cc_corporate_addresses_become_participants_excluding_mailbox_smtp_from_requester_duplicates,
+test_sd_mail_parse::test_cc_addresses_collected_from_all_cc_headers.
+
+**Дополнение 21 (волна 3, 2026-10-06). Одно событие журнала на правку полей.** Один вызов `tickets.update_fields`
+(маршрут `fields/`, групповое «критичность») пишет одно событие `ticket.updated` на заявку: `before`/`after` — все
+изменённые поля этого вызова (9.2, строка `ticket.updated`); ничего не изменилось — события нет. Уточняет: 6.7, строка
+`update_fields`; 9.2. Затрагивает: test_sd_assignment_2::test_criticality_and_complexity_edit_write_event_per_field
+(события ленты — по одному на поле, журнал — одно), test_requester_name_edit_event_has_no_values, test_sd_audit.
+
+**Дополнение 22 (волна 3, 2026-10-06). Снятие ответственного передачей, сменой категории и открытием.** План
+(plan.md:754–756: «каждое назначение, смена и снятие ответственного — событие ленты») распространяется и на снятие,
+которое делают `transfer.transfer`, `transfer.change_category` (ответственный не участник новой очереди) и
+`closing.reopen`: событие ленты `assignee_changed` (`before` — имя, `after` `""`, `before_id`, `after_id` `None`)
+пишется после события `transferred`, `queue_changed` или `category_changed` того же действия; журнал —
+`ticket.assignee_removed` с `reason="queue_changed"`; шина — `assignee_changed`. Сверка (`reconcile`) пишет своё событие
+`assignee_reconciled`, не `assignee_changed` (9.3). Уточняет: 9.3, строка `assignee_changed`; 6.9; 6.11, строка
+`reopen`. Затрагивает: test_sd_assignment::test_transfer_removes_assignee_not_in_new_queue_keeps_member,
+test_category_change_removes_assignee_not_in_new_queue; test_sd_assignment_2::test_group_transfer_unassigns_non_member_of_new_queue;
+test_sd_closing_2::test_reopen_without_assignee_when_assignee_dismissed (если ответственный ещё стоит).
+
+**Дополнение 23 (волна 3, 2026-10-06). Имя автора в ленте.** «Имя сотрудника» в `[data-author]` (13.4, строка «время и
+автор») — `User.full_name` целиком, как в данных событий (дополнение 10); правило «Имя Фамилия» — только в письмах и
+«Закрыл:». Уточняет: 13.4. Затрагивает: test_sd_card::test_feed_authors_staff_name_dismissed_mark_requester_and_participant_address,
+test_sd_assignment::test_transfer_event_who_from_to_reason_and_journal_without_reason.
