@@ -90,7 +90,7 @@ FIELD_TITLES = {
     "retention_years": "срок хранения заявок, лет", "inbound_retention_days": "срок хранения писем без заявки, дней",
     "dictionary": "справочник", "name": "название", "order": "порядок",
     "default_assignee": "ответственный по умолчанию", "on_form": "на форме", "status_kind": "вид статуса",
-    "is_default": "по умолчанию", "uidvalidity": "UIDVALIDITY", "last_uid": "последний UID",
+    "is_default": "по умолчанию", "uidvalidity": "номер версии ящика (UIDVALIDITY)", "last_uid": "последний UID",
     "added": "добавлено", "updated": "обновлено", "unchanged": "без изменений", "deleted": "удалено",
     "reason": "причина", "queue_id": "номер очереди", "assignee_id": "номер ответственного",
     "created_by_id": "номер создавшего",
@@ -209,6 +209,11 @@ def _one(ctx, name, code):
 def _fresh(obj):
     obj.refresh_from_db()
     return obj
+
+
+def _copy(obj):
+    """Свежая отдельная копия строки из базы (исходный объект `delete()` не тронет)."""
+    return type(obj).objects.get(pk=obj.pk)
 
 
 def _desk(capture, settings):
@@ -352,7 +357,8 @@ def _admin_part(ctx):
     ctx.status_extra = dictionaries.create("status", name=f"Ожидание {_tok()}", kind="waiting", actor=admin)
     _step(ctx, "status_archive", lambda: dictionaries.archive(_fresh(ctx.status_extra), actor=admin))
     _step(ctx, "status_restore", lambda: dictionaries.restore(_fresh(ctx.status_extra), actor=admin))
-    _step(ctx, "status_delete", lambda: dictionaries.delete(_fresh(ctx.status_extra), actor=admin))
+    # удаляется отдельная копия: `delete()` обнуляет `pk` у переданного объекта, а `ctx.status_extra.pk` нужен проверкам
+    _step(ctx, "status_delete", lambda: dictionaries.delete(_copy(ctx.status_extra), actor=admin))
 
     ctx.cu2 = dictionaries.create("client_unit", name=f"Клиент {_tok()}", actor=admin)
     tok["cu_name1"] = ctx.cu2.name  # «было» до `update`: объект меняется на месте
@@ -360,7 +366,7 @@ def _admin_part(ctx):
     _step(ctx, "cu_update", lambda: dictionaries.update(_fresh(ctx.cu2), name=tok["cu_name2"], actor=admin))
     _step(ctx, "cu_archive", lambda: dictionaries.archive(_fresh(ctx.cu2), actor=admin))
     _step(ctx, "cu_restore", lambda: dictionaries.restore(_fresh(ctx.cu2), actor=admin))
-    _step(ctx, "cu_delete", lambda: dictionaries.delete(_fresh(ctx.cu2), actor=admin))
+    _step(ctx, "cu_delete", lambda: dictionaries.delete(_copy(ctx.cu2), actor=admin))
 
     ctx.q3 = org.make_unit(f"Очередь В {_tok()}")
     _step(ctx, "q_mark", lambda: queues.mark(ctx.q3.pk, actor=admin))
@@ -519,7 +525,7 @@ def test_event_codes_have_russian_labels_registered(
             for value in side.values():
                 if isinstance(value, dict):
                     keys |= set(value)
-    for key in sorted(keys - {"uidvalidity"}):  # подпись «UIDVALIDITY» — латиницей по § 9.2, точное совпадение ниже
+    for key in sorted(keys):  # все подписи по-русски, как требует тест журнала среза 001 (дополнение 51)
         assert is_russian(audit_labels.label(key), key), f"поле {key} не переведено: {audit_labels.label(key)!r}"
     for key, title in FIELD_TITLES.items():
         assert audit_labels.label(key) == title, key

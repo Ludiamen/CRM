@@ -45,15 +45,17 @@ class _Run:
 def enqueue(inbound_id) -> None:
     """Ставит разбор письма в очередь `inbox`: внутри транзакции — после фиксации, вне её — сразу.
 
+    Откладывает сам django-rq (режим `on_db_commit`, как у `mail.services.enqueue`): своего `on_commit` нет,
+    иначе постановка откладывалась бы дважды.
+
     Функция задания названа строкой пути: её определяет `apps.servicedesk.tasks`, а у `intake` импорта нет.
     """
     from rq import Retry
 
-    def put():
-        django_rq.get_queue(QUEUE).enqueue(TASK, inbound_id, job_timeout=JOB_TIMEOUT,
-                                           retry=Retry(max=len(RETRY_INTERVALS), interval=RETRY_INTERVALS))
-
-    transaction.on_commit(put)
+    # после фиксации транзакции вызывающего (вне транзакции — сразу), как `mail.services.enqueue`
+    queue = django_rq.get_queue(QUEUE, commit_mode="on_db_commit")
+    queue.enqueue(TASK, inbound_id, job_timeout=JOB_TIMEOUT,
+                  retry=Retry(max=len(RETRY_INTERVALS), interval=RETRY_INTERVALS))
 
 
 def has_job(inbound_id) -> bool:

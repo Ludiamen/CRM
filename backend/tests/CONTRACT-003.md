@@ -2775,3 +2775,18 @@ test_sd_audit (число событий `requester.updated` в сценария
 блокирует; несуществующий номер подразделения — `archived_value` (как дополнение 48). Уточняет: 3.4 (строка `make_ticket`),
 6.7 (`update_fields`), 6.8 (`bulk`), 6.9 (`change_category`). Затрагивает: тесты с `sd.make_ticket` (номер по умолчанию),
 test_sd_assignment*.
+
+**Дополнение 50 (Этап 3, волна (б), 2026-10-07). Правка теста журнала справочников.** В
+test_sd_audit::test_dictionary_queue_settings_events_were_became_in_russian помощник `_fresh` обновляет и возвращает тот же
+объект, поэтому после шагов `status_delete` и `cu_delete` Django обнулял `pk` у `ctx.status_extra` и `ctx.cu2`, и тест
+сверял журнал с номером `statuses:None` (верный код писал `statuses:<номер>`). Шаги удаления передают в службу отдельную копию
+строки (помощник `_copy`); проверки теста не меняются. Правка — с разрешения владельца 2026-10-07 (дифф —
+crm-work/slice003/stage3/testfix/fix-audit-pk-after-delete.diff). Затрагивает: test_sd_audit.
+
+**Дополнение 51 (Этап 3, волна (б), 2026-10-07). Подпись ключа `uidvalidity` в журнале.** Подпись «UIDVALIDITY» латиницей
+(9.2, :1284) противоречила тесту среза 001 test_audit::test_audit_every_written_key_has_russian_label («журнал по-русски»:
+у каждого записанного ключа — русское название). По решению владельца 2026-10-07 подпись — «номер версии ящика
+(UIDVALIDITY)»; test_sd_audit сверяет её точно и больше не исключает этот ключ из проверки «по-русски» (правка теста — с
+разрешения владельца; дифф — crm-work/slice003/stage3/testfix/fix-audit-uidvalidity-label.diff). Уточняет: 9.2 (подписи
+полей). Затрагивает: test_sd_audit::test_dictionary_queue_settings_events_were_became_in_russian и соседние проверки
+названий; test_audit::test_audit_every_written_key_has_russian_label (срез 001, без правки).

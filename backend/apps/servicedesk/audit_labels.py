@@ -45,7 +45,7 @@ FIELDS = dict([
     ("inbound_retention_days", "срок хранения писем без заявки, дней"),
     ("dictionary", "справочник"), ("name", "название"), ("order", "порядок"),
     ("default_assignee", "ответственный по умолчанию"), ("on_form", "на форме"), ("status_kind", "вид статуса"),
-    ("is_default", "по умолчанию"), ("uidvalidity", "UIDVALIDITY"), ("last_uid", "последний UID"),
+    ("is_default", "по умолчанию"), ("uidvalidity", "номер версии ящика (UIDVALIDITY)"), ("last_uid", "последний UID"),
     # итоги загрузки заявителей (вложенные ключи `totals`)
     ("added", "добавлено"), ("updated", "обновлено"), ("unchanged", "без изменений"), ("deleted", "удалено"),
     ("origin_changed", "сменили отметку на «заявка»"),
