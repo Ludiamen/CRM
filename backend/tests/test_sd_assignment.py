@@ -639,13 +639,15 @@ def test_transfer_event_who_from_to_reason_and_journal_without_reason(django_cap
     assert reason not in str(journal[0].before) + str(journal[0].after)
     assert _journal("ticket.transferred", plain)[0].after["reason_given"] is False
     assert _feed(_fresh(plain), "transferred")[0].data["reason_text"] == ""
-    card = support.logged_in(actor).get(f"/tickets/{ticket.number}/")
+    # после передачи актёр (участник только прежней очереди) заявку не видит (12.4) — карточку смотрит участник новой
+    viewer = _member(target.unit, "Смотрова Вера Петровна")
+    card = support.logged_in(viewer).get(f"/tickets/{ticket.number}/")
     element = _element_html(card, "data-event", "transferred")
     authors = _find_one(card, data_event="transferred").find_all(data_author=True)
     assert len(authors) == 1 and actor.full_name in authors[0].text()
     text = _text(element)
     assert "Линия первая" in text and "Линия вторая" in text and reason in text
-    assert "причина" not in _text(_element_html(support.logged_in(actor).get(f"/tickets/{plain.number}/"),
+    assert "причина" not in _text(_element_html(support.logged_in(viewer).get(f"/tickets/{plain.number}/"),
                                                 "data-event", "transferred"))
 
 

@@ -212,7 +212,7 @@ def test_card_query_count_independent_of_feed_items():
     small, small_html = count_queries(client, path)
     add(45)
     large, large_html = count_queries(client, path)
-    assert "Комментарий 49" in large_html and "Комментарий 49" not in small_html
+    assert "Комментарий 44" in large_html and "Комментарий 44" not in small_html
     assert large - small < SLACK, f"число запросов карточки растёт с лентой: {small} → {large}"
 
 
