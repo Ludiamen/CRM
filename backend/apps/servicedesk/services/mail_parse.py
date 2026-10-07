@@ -98,11 +98,15 @@ def _raw_names(message, header_name):
     for key, raw in message.raw_items():
         if key.lower() != header_name.lower():
             continue
-        for name, addr in email.utils.getaddresses([str(raw)]):
+        try:
+            pairs = email.utils.getaddresses([str(raw)])
+        except (TypeError, ValueError, IndexError, email.errors.MessageError):  # останется имя политики
+            continue
+        for name, addr in pairs:
             if "=?" in name:
                 try:
                     name = str(email.header.make_header(email.header.decode_header(name)))
-                except (UnicodeError, LookupError, email.errors.HeaderParseError):
+                except (UnicodeError, LookupError, ValueError, email.errors.MessageError):  # имя возьмёт политика
                     continue
                 names.setdefault(addr.lower(), name)
     return names
@@ -110,7 +114,13 @@ def _raw_names(message, header_name):
 
 def _display_name(address, raw_names):
     """Имя адреса: из исходного заголовка, если оно закодировано RFC 2047, иначе из разбора политики."""
-    return raw_names.get((address.addr_spec or "").lower()) or address.display_name or ""
+    policy_name = address.display_name or ""
+    raw_name = raw_names.get((address.addr_spec or "").lower())
+    if not raw_name:
+        return policy_name
+    if "\ufffd" in raw_name and "\ufffd" not in policy_name:
+        return policy_name
+    return raw_name
 
 
 def sender_of(message):

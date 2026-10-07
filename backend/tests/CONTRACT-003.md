@@ -2857,3 +2857,10 @@ CONTRACT-002 `add_members`); (г) test_d10 — подтверждение заг
 тесты сервис-деска раньше в круге создают свои узлы-очереди, а тест ждёт дерево после сброса. Затрагивает: e2e/conftest,
 test_d06_autoclose, test_d07_phone, test_d10_requesters, test_d11_inbound, test_d14_find, test_d_success_criteria,
 test_o01_structure.
+
+**Дополнение 57 (Этап 3, T-3260, 2026-10-07). Код отказа «файл не выбран» на странице загрузки заявителей.** POST
+`/servicedesk/requesters/import/` без файла: служба `requester_import` такого отказа не строит (файла нет — нечего
+читать), страница отвечает 200 с `[role=alert][data-code="no_file"]` и текстом «Выберите файл таблицы (CSV или XLSX).» (13.1: у
+каждого отказа — `data-code`; разбор второго прогона приёмки, группа G4; проверка R-3260-1). Решение Opus по образцу
+дополнения 53 (б) — код строит сама страница. Уточняет: 6.2, 12.6 (строка `/servicedesk/requesters/import/`), 14.1.
+Затрагивает: test_sd_requester_import, e2e/test_d10_requesters.
