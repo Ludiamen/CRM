@@ -20,10 +20,10 @@ def register_all() -> None:
 
     Собрано в круге б2: `unit_usage`, `home_notices` — T-3211; `menu_items` — T-3221; `file_purposes` — T-3216;
     `mail_renderers` — T-3217; `audit_labels` — T-3224; `card_sections` — T-3237. `login_links` — T-3233
-    (сборка в2); остаётся `stand_reset` — T-3242. Подписки на события живут не здесь, а в `services.events.register()`.
+    (сборка в2); `stand_reset` — T-3242: все точки зарегистрированы. Подписки на события живут не здесь, а в `services.events.register()`.
     """
     from apps.core import extensions
-    from apps.servicedesk import audit_labels
+    from apps.servicedesk import audit_labels, stand
     from apps.servicedesk.services import attachments, form, letters, listing, queues
     from apps.servicedesk.services import settings as sd_settings
 
@@ -35,3 +35,4 @@ def register_all() -> None:
     extensions.register("audit_labels", audit_labels.audit_labels)
     extensions.register("card_sections", card_sections)
     extensions.register("login_links", form.login_links)
+    extensions.register("stand_reset", stand.stand_reset)

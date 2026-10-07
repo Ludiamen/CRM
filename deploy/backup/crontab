@@ -1,0 +1,2 @@
+# Расписание службы backup (время по Москве, TZ=Europe/Moscow): каждую ночь в 01:30.
+30 1 * * * sh /backup/backup.sh

@@ -67,7 +67,7 @@ services:
       TRUSTED_PROXIES: "${TRUSTED_PROXIES:-},${CRM_SUBNET:-172.31.77.0/24}"
       CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
       CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
-      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-30}"
+      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-120}"
     command: >-
       gunicorn config.asgi:application --bind 0.0.0.0:8000
       --worker-class uvicorn_worker.UvicornWorker
@@ -104,10 +104,10 @@ services:
       postgres:
         condition: service_healthy
 
-  # Рабочий процесс: очереди files (проверка фото на вирусы) и mail, в таком порядке —
-  # проверка фото не ждёт писем; --with-scheduler нужен для пауз между повторами писем
-  # и проверок. Том protected — тот же, что у web: worker пишет перекодированные фото.
-  # От здоровья clamav worker не зависит: недоступная проверка повторяется заданием.
+  # Рабочие процессы разнесены по очередям, чтобы тяжёлое не ждало лёгкого. `worker` — очередь files
+  # (проверка фото на вирусы), две копии (deploy.replicas); --with-scheduler нужен для пауз между
+  # повторами проверок. Том protected — тот же, что у web: рабочие пишут перекодированные фото.
+  # От здоровья clamav рабочие не зависят: недоступная проверка повторяется заданием.
   worker:
     image: crm-portal:local
     restart: unless-stopped
@@ -116,8 +116,10 @@ services:
       DATABASE_MIGRATE_URL: ""
       CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
       CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
-      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-30}"
-    command: rq worker -c config.rq_settings --with-scheduler files mail
+      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-120}"
+    command: rq worker -c config.rq_settings --with-scheduler files
+    deploy:
+      replicas: 2
     volumes:
       - protected:/app/protected
     depends_on:
@@ -126,15 +128,79 @@ services:
       valkey:
         condition: service_healthy
 
+  # Письма и ночное обслуживание: очереди mail и maintenance, в таком порядке.
+  worker-mail:
+    image: crm-portal:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_MIGRATE_URL: ""
+      CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
+      CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
+      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-120}"
+    command: rq worker -c config.rq_settings --with-scheduler mail maintenance
+    volumes:
+      - protected:/app/protected
+    depends_on:
+      web:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  # Приём писем в ящик заявок: очередь inbox, чтобы медленный ящик не задерживал остальное.
+  worker-inbox:
+    image: crm-portal:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_MIGRATE_URL: ""
+      CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
+      CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
+      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-120}"
+    command: rq worker -c config.rq_settings --with-scheduler inbox
+    volumes:
+      - protected:/app/protected
+    depends_on:
+      web:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  # Резервные копии: crond в образе postgres:17-alpine запускает по crontab (01:30 по Москве)
+  # скрипт backup.sh: дамп базы под владельцем схемы, архивы томов protected и media (только
+  # чтение), удаление копий старше 14 дней. Каталог ./backup смонтирован только для чтения,
+  # поэтому расписание ставится командой crontab, а не копированием в /etc/crontabs.
+  # Из файла окружения берётся только адрес DATABASE_MIGRATE_URL (env_file не подключается).
+  backup:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      DATABASE_MIGRATE_URL: "${DATABASE_MIGRATE_URL}"
+      TZ: Europe/Moscow
+    entrypoint: ["sh", "-c"]
+    command: ["crontab /backup/crontab && exec crond -f -d 8"]
+    volumes:
+      - ./backup:/backup:ro
+      - backups:/backups
+      - protected:/data/protected:ro
+      - media:/data/media:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # Антивирус ClamAV (clamd, порт 3310 только внутри сети compose, наружу не публикуется).
   # Образ с базами сигнатур; том clamav-db хранит базы (Docker заполняет его из образа,
-  # только пока он пуст). freshclam.conf смонтирован только для чтения. Переменные
-  # FRESHCLAM_CONF_*, CLAMD_CONF_* и FRESHCLAM_CHECKS не задаются: /init образа работает
-  # под `set -eu` и правит по ним файлы командой `sed -i`, на файле только для чтения
-  # запуск упадёт; частота обновления баз — как в образе (при старте и раз в сутки).
+  # только пока он пуст). freshclam.conf смонтирован только для чтения. Единственная
+  # настройка clamd — CLAMD_CONF_AlertEncryptedArchive: шифрованные архивы помечаются
+  # как заражённые (Heuristics.Encrypted.*). Переменные FRESHCLAM_CONF_* и FRESHCLAM_CHECKS не
+  # задаются: /init образа работает под `set -eu` и правит по ним файлы командой `sed -i`,
+  # а freshclam.conf смонтирован только для чтения, запуск упадёт; частота обновления баз —
+  # как в образе (при старте и раз в сутки).
   clamav:
     image: clamav/clamav:1.4.6
     restart: unless-stopped
+    environment:
+      CLAMD_CONF_AlertEncryptedArchive: "yes"
     volumes:
       - clamav-db:/var/lib/clamav
       - ./clamav/freshclam.conf:/etc/clamav/freshclam.conf:ro
@@ -257,7 +323,7 @@ services:
       VALKEY_URL: redis://valkey:6379/15
       CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
       CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
-      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-30}"
+      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-120}"
       PIP_ROOT_USER_ACTION: ignore
       PIP_DEFAULT_TIMEOUT: "60"
       PIP_RETRIES: "10"
@@ -289,3 +355,4 @@ volumes:
   test-venv:
   media:
   protected:
+  backups:

@@ -172,3 +172,96 @@ def _check_org_p95(environment, **_kwargs):
         print(f"NFR-102 (срез 002) не выполнено: p95 выше {P95_LIMIT_MS} мс или нет замера {over}, "
               f"ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1
+
+
+class ServiceDeskUser(HttpUser):
+    """Срез 003 (T-3242, NFR-203, NFR-210): вошедший сотрудник листает заявки — список по пресетам, список с фильтром и
+    поиском, карточку-фрагмент, открытую форму (GET и POST) и счётчик. Модель нагрузки та же (PLAN-001 версия 4); данные —
+    `prepare_users.py`, `fill_tickets.py` (110 тыс. заявок, 550 тыс. сообщений, очереди) и затем `prepare_org.py` (часть
+    пользователей становится участниками очередей: у них список открывается на «Мои очереди», у остальных — на «Мои»).
+    Запуск только этого класса (Этап 4, T-3304; на время прогона порог формы в настройках сервис-деска поднят, после —
+    возвращён):
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+            --reset-stats --host https://127.0.0.1:8031 ServiceDeskUser
+    (имя класса — в конце команды: без него locust запускает все классы файла и делит `-u` между ними)
+    Поиск в списке — строка LOAD_TICKET_QUERY (по умолчанию «принтер», слово из сообщений `fill_tickets.py`). Номера
+    заявок для карточки и значения полей формы берутся со страниц при входе. Поток писем (30 в час через `APPEND`) и
+    поток заявок формы (около 30 в час) задаёт приёмка T-3304: здесь форму отправляет с заданной долей LOAD_FORM_POST
+    (по умолчанию 1 запрос из 30 действий)."""
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+    PRESETS = ("mine", "unassigned", "my_queues", "waiting", "closed", "all")
+
+    def on_start(self):
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        self.query = os.environ.get("LOAD_TICKET_QUERY", "принтер")
+        listing = self.client.get("/tickets/?preset=all", name="setup /tickets/").text
+        self.numbers = sorted(set(re.findall(r'href="/tickets/(\d+)/"', listing))) or ["1"]
+        form = self.client.get("/request/", name="setup /request/").text
+        self.category = (re.findall(r'<option[^>]*\bvalue="(\d+)"', form.split('name="category"', 1)[-1]) or [""])[0]
+
+    @task(4)
+    def preset_list(self):
+        self.client.get(f"/tickets/?preset={random.choice(self.PRESETS)}", name="/tickets/?preset")
+
+    @task(3)
+    def filtered_list(self):
+        kind = random.choice(("new", "in_progress", "waiting", "closed"))
+        self.client.get(f"/tickets/?preset=all&kind={kind}&sort=created_at&dir=desc", name="/tickets/?kind")
+
+    @task(3)
+    def search_list(self):
+        self.client.get(f"/tickets/?preset=all&q={self.query}", name="/tickets/?q")
+
+    @task(3)
+    def ticket_fragment(self):
+        self.client.get(f"/tickets/{random.choice(self.numbers)}/", headers={"HX-Request": "true"},
+                        name="/tickets/<n>/ (HTMX)")
+
+    @task(2)
+    def count(self):
+        self.client.get(f"/tickets/count/?preset={random.choice(self.PRESETS)}", headers={"HX-Request": "true"},
+                        name="/tickets/count/")
+
+    @task(1)
+    def form_get(self):
+        self.client.get("/request/", name="GET /request/")
+
+    @task(int(os.environ.get("LOAD_FORM_POST", "1")))
+    def form_post(self):
+        self.client.get("/request/", name="GET /request/")
+        token = self.client.cookies.get("csrftoken", "")
+        data = {"email": f"load-form-{random.randrange(10**9)}@client.example", "name": "Заявитель Нагрузка",
+                "client_unit": "", "category": self.category, "subject": "Не печатает принтер",
+                "text": "Нагрузочная заявка с открытой формы", "consent": "on", "csrfmiddlewaretoken": token}
+        with self.client.post("/request/", data=data, headers={"Referer": self.host + "/request/"}, name="POST /request/",
+                              allow_redirects=True, catch_response=True) as response:
+            if response.status_code >= 400 or not response.url.endswith("/request/done/"):
+                response.failure(f"/request/: {response.status_code}, заявка не принята")
+
+
+SD_PAGES = ("/tickets/?preset", "/tickets/?kind", "/tickets/?q", "/tickets/<n>/ (HTMX)", "/tickets/count/", "GET /request/")
+
+
+@events.quitting.add_listener
+def _check_sd_p95(environment, **_kwargs):
+    """NFR-203 для страниц среза 003: p95 каждой не больше 500 мс, ни одной ошибки и все страницы замерены."""
+    if ServiceDeskUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    for name in SD_PAGES:
+        entry = stats.entries.get((name, "GET"))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > P95_LIMIT_MS:
+            over[name] = p95
+    post = stats.entries.get(("POST /request/", "POST"))
+    if post and post.num_requests and post.get_response_time_percentile(0.95) > P95_LIMIT_MS:
+        over["POST /request/"] = post.get_response_time_percentile(0.95)
+    if stats.total.num_failures or over:
+        print(f"NFR-203 (срез 003) не выполнено: p95 выше {P95_LIMIT_MS} мс или нет замера {over}, "
+              f"ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1

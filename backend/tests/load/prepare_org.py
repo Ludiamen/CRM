@@ -7,6 +7,10 @@
 первый участник — руководитель. Часть сотрудников (LOAD_ORG_PHOTOS, по умолчанию 50) получает чистое фото
 с настоящими файлами 512 и 96 (чтобы карточка и список показывали фото, как в жизни: фото — для реалистичной нагрузки, решение Opus 2026-10-04).
 
+Новый шаг (срез 003): если `fill_tickets.py` уже отметил узлы `Нагрузка очередь NN` очередями сервис-деска, часть
+сотрудников нагрузки (LOAD_QUEUE_USERS, по умолчанию половина) становится участниками этих узлов по кругу — у них список
+заявок открывается на пресете «Мои очереди»; остальные остаются без очередей. Очередей нет — шаг пропускается.
+
 Узлы и членства пишутся через ORM, без событий журнала. Повторный запуск безопасен: членства сотрудников
 нагрузки пересоздаются, недостающие узлы добираются до LOAD_UNITS. Работает ТОЛЬКО при E2E_STAND=1 (как
 e2e_reset_stand); данные убирает следующий сброс приёмки. Каталог tests в образ не входит, поэтому скрипт
@@ -32,6 +36,7 @@ from apps.org.models import Membership, Unit  # noqa: E402
 
 UNIT_PREFIX = "Нагрузка узел"
 CHILDREN = 5
+QUEUE_PREFIX = "Нагрузка очередь"  # узлы-очереди `fill_tickets.py`
 
 
 def name_key(text: str) -> str:
@@ -108,5 +113,16 @@ with transaction.atomic():
         if user.photo_id is None:
             attach_photo(user, index)
 
+from apps.servicedesk.models import Queue  # noqa: E402
+
+queue_units = list(Unit.objects.filter(pk__in=Queue.objects.values("unit_id"), name__startswith=QUEUE_PREFIX).order_by("path"))
+if queue_units:
+    with transaction.atomic():
+        half = int(os.environ.get("LOAD_QUEUE_USERS", str(len(people) // 2)))
+        for index, user in enumerate(people[:half]):
+            Membership.objects.get_or_create(user=user, unit=queue_units[index % len(queue_units)],
+                                             defaults={"mark": "", "created_by": people[0]})
+
 print(f"узлов: {Unit.objects.count()}, членств сотрудников нагрузки: {Membership.objects.filter(user__in=people).count()}, "
-      f"с фото: {User.objects.filter(pk__in=[u.pk for u in people], photo__isnull=False).count()}")
+      f"с фото: {User.objects.filter(pk__in=[u.pk for u in people], photo__isnull=False).count()}, "
+      f"участников очередей: {Membership.objects.filter(user__in=people, unit__in=queue_units).count()}")

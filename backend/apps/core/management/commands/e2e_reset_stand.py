@@ -15,7 +15,7 @@ import os
 
 import django_rq
 from django.core.management.base import BaseCommand, CommandError
-from django.db import connections
+from django.db import connections, transaction
 
 from apps.core import extensions
 from apps.core.models import PortalSettings, Role, SecuritySettings, StoredFile
@@ -50,7 +50,15 @@ class Command(BaseCommand):
         tables = [t for t in owner.introspection.django_table_names(only_existing=True, include_views=False)
                   if t not in KEEP_TABLES and t.startswith(DATA_PREFIXES)]
         statements = owner.ops.sql_flush(self.style, tables, reset_sequences=True, allow_cascade=True)
-        owner.ops.execute_sql_flush(statements)
+        # Отложенные проверки внешних ключей, оставшиеся от записей в той же транзакции (так идут тесты сброса),
+        # запрещают TRUNCATE («pending trigger events»): на время очистки проверки немедленные, затем режим
+        # возвращается. На стенде внешняя транзакция обычная, и команда выполняется как раньше.
+        with transaction.atomic(using="migrate"):
+            with owner.cursor() as cursor:
+                cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
+            owner.ops.execute_sql_flush(statements)
+            with owner.cursor() as cursor:
+                cursor.execute("SET CONSTRAINTS ALL DEFERRED")
         files.remove_paths(stale_files)
         # данные приложений — до удаления своих ролей; обратный порядок: данные приложений, зарегистрированных
         # позже, держат ссылки PROTECT на данные зарегистрированных раньше (роли узлов `org`, узлы `org`)
