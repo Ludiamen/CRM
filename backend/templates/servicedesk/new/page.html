@@ -1,0 +1,65 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Новая заявка{% endblock %}
+{% block content %}
+<div data-ticket-new class="ticket-new">
+  <header class="page-head">
+    <h1 class="page-title">Новая заявка</h1>
+    <a class="btn btn-outline-secondary" href="/tickets/">К списку заявок</a>
+  </header>
+  <form class="card card-body ticket-new-form" data-form="ticket-new" method="post" action="/tickets/new/" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% if general_error %}<div class="alert alert-danger" role="alert" data-code="{{ general_error.code }}">{{ general_error.text }}</div>{% endif %}
+    <div class="mb-3">
+      <label class="form-label" for="id_email">Почта заявителя</label>
+      <input class="form-control" id="id_email" name="email" type="text" inputmode="email" autocomplete="off" required value="{{ values.email }}"
+             hx-post="/tickets/new/requester/" hx-trigger="change" hx-target="[data-requester-fields]" hx-swap="outerHTML">
+      {% if field_error and field_error.field == "email" %}<div class="invalid-feedback d-block" data-error="email" data-code="{{ field_error.code }}">{{ field_error.text }}</div>{% endif %}
+    </div>
+    {% include "servicedesk/new/_requester_fields.html" %}
+    <div class="mb-3">
+      <label class="form-label" for="id_category">Категория</label>
+      <select class="form-select" id="id_category" name="category" required hx-get="/tickets/new/queue/" hx-include="[name=category]" hx-target="[data-queue-fields]" hx-swap="outerHTML" hx-trigger="change">
+        <option value="">Выберите категорию</option>
+        {% for item in category_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+      </select>
+      {% if field_error and field_error.field == "category" %}<div class="invalid-feedback d-block" data-error="category" data-code="{{ field_error.code }}">{{ field_error.text }}</div>{% endif %}
+    </div>
+    {% include "servicedesk/new/_queue_fields.html" %}
+    <div class="row g-2 mb-3">
+      <div class="col-12 col-md-6">
+        <label class="form-label" for="id_priority">Критичность</label>
+        <select class="form-select" id="id_priority" name="priority">
+          {% for item in priority_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-6">
+        <label class="form-label" for="id_source">Источник</label>
+        <select class="form-select" id="id_source" name="source" required>
+          <option value="">Выберите источник</option>
+          {% for item in source_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+        </select>
+        {% if field_error and field_error.field == "source" %}<div class="invalid-feedback d-block" data-error="source" data-code="{{ field_error.code }}">{{ field_error.text }}</div>{% endif %}
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="id_subject">Тема</label>
+      <input class="form-control" id="id_subject" name="subject" type="text" maxlength="255" required value="{{ values.subject }}">
+      {% if field_error and field_error.field == "subject" %}<div class="invalid-feedback d-block" data-error="subject" data-code="{{ field_error.code }}">{{ field_error.text }}</div>{% endif %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="id_text">Описание</label>
+      <textarea class="form-control" id="id_text" name="text" rows="6" required>{{ values.text }}</textarea>
+      {% if field_error and field_error.field == "text" %}<div class="invalid-feedback d-block" data-error="text" data-code="{{ field_error.code }}">{{ field_error.text }}</div>{% endif %}
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="id_files">Вложения</label>
+      <input class="form-control" id="id_files" name="files" type="file" multiple>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-primary" type="submit">Создать заявку</button>
+      <a class="btn btn-outline-secondary" href="/tickets/">Отмена</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

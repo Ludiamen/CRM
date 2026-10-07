@@ -1,0 +1,10 @@
+{# Меню разделов сервис-деска; `active`: settings, queues, dictionaries, requesters, inbound #}
+<nav class="sd-nav" data-servicedesk-nav aria-label="Разделы сервис-деска">
+  <ul class="chip-row">
+    <li><a class="chip{% if active == 'settings' %} active{% endif %}" data-servicedesk-link="settings" href="/servicedesk/"{% if active == 'settings' %} aria-current="true"{% endif %}>Настройки</a></li>
+    <li><a class="chip{% if active == 'queues' %} active{% endif %}" data-servicedesk-link="queues" href="/servicedesk/queues/"{% if active == 'queues' %} aria-current="true"{% endif %}>Очереди</a></li>
+    <li><a class="chip{% if active == 'dictionaries' %} active{% endif %}" data-servicedesk-link="dictionaries" href="/servicedesk/dictionaries/categories/"{% if active == 'dictionaries' %} aria-current="true"{% endif %}>Справочники</a></li>
+    <li><a class="chip{% if active == 'requesters' %} active{% endif %}" data-servicedesk-link="requesters" href="/servicedesk/requesters/"{% if active == 'requesters' %} aria-current="true"{% endif %}>Заявители</a></li>
+    <li><a class="chip{% if active == 'inbound' %} active{% endif %}" data-servicedesk-link="inbound" href="/servicedesk/inbound/"{% if active == 'inbound' %} aria-current="true"{% endif %}>Входящие письма</a></li>
+  </ul>
+</nav>

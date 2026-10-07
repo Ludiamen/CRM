@@ -1,0 +1,82 @@
+{% extends layout %}
+{% block title %}Входящие письма{% endblock %}
+{% block content %}
+<div data-inbound-list class="inbound-list">
+  <header class="page-head">
+    <h1 class="page-title">Входящие письма</h1>
+  </header>
+  {% include "servicedesk/settings/_nav.html" with active="inbound" %}
+  <section class="card card-body mb-3 mailbox-status" data-mailbox-status data-mailbox-state="{% if mailbox.configured %}connected{% else %}not-connected{% endif %}" aria-label="Состояние ящика">
+    <dl class="mailbox-fields mb-0">
+      <dt>Ящик заявок</dt>
+      <dd data-field="mailbox-address">{{ mailbox.address }}</dd>
+      <dt>Последний удачный опрос</dt>
+      <dd data-field="last-ok-at">{% if not mailbox.configured %}ящик не подключён{% elif mailbox.last_ok_at %}<time data-at="{{ mailbox.last_ok_at|date:'c' }}">{{ mailbox.last_ok_at|date:'d.m.Y H:i' }}</time>{% else %}{{ "—" }}{% endif %}</dd>
+      <dt>Последняя ошибка</dt>
+      <dd data-field="last-error">{{ mailbox.last_error }}</dd>
+    </dl>
+  </section>
+  <form id="inbound-filter" data-form="inbound-filter" class="filter-bar card card-body mb-3" method="get" action="/servicedesk/inbound/">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-4">
+        <label class="form-label small mb-1" for="id_outcome">Итог</label>
+        <select class="form-select" id="id_outcome" name="outcome">
+          <option value="">Любой</option>
+          {% for item in outcome_choices %}<option value="{{ item.code }}"{% if item.selected %} selected{% endif %}>{{ item.title }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-1" for="id_date_from">Получено с</label>
+        {{ date_from_field }}
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small mb-1" for="id_date_to">Получено по</label>
+        {{ date_to_field }}
+      </div>
+      <div class="col-12 col-md-4 d-flex gap-2 filter-actions">
+        <button class="btn btn-primary flex-fill" type="submit">Найти</button>
+        <a class="btn btn-outline-secondary" href="/servicedesk/inbound/">Сбросить</a>
+      </div>
+    </div>
+  </form>
+  {% if items %}
+  <div class="table-wrap">
+    <table class="table table-sm align-top grid-table inbound-table" data-narrow="cards">
+      <thead>
+        <tr>
+          <th scope="col">Получено</th>
+          <th scope="col">Отправитель</th>
+          <th scope="col">Тема</th>
+          <th scope="col">Итог</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}{% with mail=item.mail %}
+        <tr data-inbound data-id="{{ mail.pk }}" data-outcome="{{ mail.outcome }}" data-status="{{ mail.status }}">
+          <td data-cell="received" data-label="Получено"><time data-at="{{ mail.received_at|date:'c' }}">{{ mail.received_at|date:'d.m.Y H:i' }}</time></td>
+          <td data-cell="sender" data-label="Отправитель">{{ item.sender }}</td>
+          <td data-cell="subject" data-label="Тема">{{ item.subject }}</td>
+          <td data-cell="outcome" data-label="Итог">{{ mail.get_outcome_display }}{% if item.ticket_number %} <a data-ticket-link href="/tickets/{{ item.ticket_number }}/">#{{ item.ticket_number }}</a>{% endif %}
+            {% if item.failed %}
+            <div class="small text-danger mt-1"><span data-error-reason>{{ mail.last_error }}</span></div>
+            <form data-form="inbound-retry" method="post" action="/servicedesk/inbound/{{ mail.pk }}/retry/" class="mt-1">
+              {% csrf_token %}
+              <button class="btn btn-outline-primary btn-sm" type="submit" data-action="inbound-retry">Разобрать снова</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endwith %}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state" data-empty-state="inbound"><p>{{ empty_text }}</p></div>
+  {% endif %}
+  <nav class="pager d-flex flex-wrap gap-3 align-items-center mt-2" aria-label="Страницы">
+    {% if prev_url %}<a href="{{ prev_url }}">Назад</a>{% endif %}
+    <span class="text-muted small"><span data-page>Страница {{ page }}</span>. <span id="{{ total_id }}">{% if total is not None %}{% include "servicedesk/inbound/_total.html" %}{% else %}<a href="{{ count_url }}" data-action="show-count" hx-get="{{ count_url }}" hx-target="#{{ total_id }}" hx-swap="innerHTML">показать количество</a>{% endif %}</span></span>
+    {% if next_url %}<a href="{{ next_url }}">Далее</a>{% endif %}
+  </nav>
+</div>
+{% endblock %}

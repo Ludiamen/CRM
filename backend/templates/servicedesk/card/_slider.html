@@ -1,0 +1,10 @@
+<a class="slider-backdrop" href="/tickets/" aria-label="Закрыть панель" tabindex="-1"></a>
+<section class="slider-panel" role="dialog" aria-labelledby="slider-title" tabindex="-1">
+  <header class="slider-header">
+    <h2 id="slider-title">Заявка № {{ ticket.number }}</h2>
+    <a class="slider-close" data-slider-close href="/tickets/" aria-label="Закрыть">&times;</a>
+  </header>
+  <div class="slider-body">
+    {% include "servicedesk/card/_card.html" %}
+  </div>
+</section>

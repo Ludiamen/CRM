@@ -1,0 +1,63 @@
+{% extends "base_public.html" %}
+{% block title %}Заявка в ИТ-отдел{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Заявка в ИТ-отдел</h1>
+{% if not is_open %}
+<div class="alert alert-warning" data-closed-notice="request"{% if alert %} role="alert" data-code="{{ alert.code }}"{% endif %}>{{ closed_text }}</div>
+{% else %}
+{% if alert %}<div class="alert alert-danger" role="alert" data-code="{{ alert.code }}">{{ alert.text }}</div>{% endif %}
+<form method="post" action="/request/" enctype="multipart/form-data" data-form="request">
+  {% csrf_token %}
+  <div class="mb-3">
+    <label class="form-label" for="id_email">Рабочая почта</label>
+    <input class="form-control" id="id_email" name="email" type="email" value="{{ values.email }}" autocomplete="email" required>
+    {% if errors.email %}<div class="invalid-feedback d-block" data-error="email" data-code="{{ errors.email.code }}">{{ errors.email.text }}</div>{% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="id_name">ФИО</label>
+    <input class="form-control" id="id_name" name="name" type="text" value="{{ values.name }}" autocomplete="name" required>
+    {% if errors.name %}<div class="invalid-feedback d-block" data-error="name" data-code="{{ errors.name.code }}">{{ errors.name.text }}</div>{% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="id_client_unit">Подразделение</label>
+    <select class="form-select" id="id_client_unit" name="client_unit">
+      <option value="">Нет в списке</option>
+      {% for unit in choices.client_units %}<option value="{{ unit.pk }}"{% if values.client_unit == unit.pk|stringformat:"d" %} selected{% endif %}>{{ unit.name }}</option>
+      {% endfor %}
+    </select>
+    {% if errors.client_unit %}<div class="invalid-feedback d-block" data-error="client_unit" data-code="{{ errors.client_unit.code }}">{{ errors.client_unit.text }}</div>{% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="id_category">Категория</label>
+    <select class="form-select" id="id_category" name="category" required>
+      <option value="">Выберите категорию</option>
+      {% for category in choices.categories %}<option value="{{ category.pk }}"{% if values.category == category.pk|stringformat:"d" %} selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+    {% if errors.category %}<div class="invalid-feedback d-block" data-error="category" data-code="{{ errors.category.code }}">{{ errors.category.text }}</div>{% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="id_subject">Тема</label>
+    <input class="form-control" id="id_subject" name="subject" type="text" value="{{ values.subject }}" required>
+    {% if errors.subject %}<div class="invalid-feedback d-block" data-error="subject" data-code="{{ errors.subject.code }}">{{ errors.subject.text }}</div>{% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="id_text">Описание</label>
+    <textarea class="form-control" id="id_text" name="text" rows="6" required>{{ values.text }}</textarea>
+    {% if errors.text %}<div class="invalid-feedback d-block" data-error="text" data-code="{{ errors.text.code }}">{{ errors.text.text }}</div>{% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="id_files">Вложения</label>
+    <input class="form-control" id="id_files" name="files" type="file" multiple>
+    <div class="form-text">Не больше 10 файлов, вместе не больше 50 МБ.</div>
+  </div>
+  <div class="form-check mb-3">
+    <input class="form-check-input" id="id_consent" name="consent" type="checkbox" value="on"{% if values.consent %} checked{% endif %} required>
+    <label class="form-check-label" for="id_consent" data-consent-text>Я согласен на обработку моих персональных данных (почта, ФИО, подразделение, текст заявки) для рассмотрения заявки ИТ-отделом</label>
+    {% if errors.consent %}<div class="invalid-feedback d-block" data-error="consent" data-code="{{ errors.consent.code }}">{{ errors.consent.text }}</div>{% endif %}
+  </div>
+  <button class="btn btn-primary w-100" type="submit">Отправить заявку</button>
+</form>
+{% endif %}
+<p class="mt-3 mb-0 text-center"><a href="/login/">Войти в портал</a></p>
+{% endblock %}

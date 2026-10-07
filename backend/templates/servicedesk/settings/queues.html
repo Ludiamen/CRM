@@ -1,0 +1,31 @@
+{% extends layout %}
+{% block title %}Очереди сервис-деска{% endblock %}
+{% block content %}
+<div class="sd-queues">
+  <header class="page-head"><h1 class="page-title">Очереди сервис-деска</h1></header>
+  {% include "servicedesk/settings/_nav.html" with active="queues" %}
+  {% if not dialog %}{% include "servicedesk/settings/_alert.html" %}{% endif %}
+  <p class="text-muted">Очередью можно отметить любой узел структуры. Очередь по умолчанию принимает письма и заявки с категорией «Другое».</p>
+  <ul class="unit-tree sd-queue-tree" data-unit-tree>
+    {% for node in tree %}
+    <li class="sd-depth-{{ node.depth }}" data-unit-id="{{ node.id }}" data-queue="{{ node.queue|yesno:'true,false' }}" data-default="{{ node.default|yesno:'true,false' }}">
+      <span class="sd-unit-name">{{ node.name }}</span>
+      {% if node.default %}<span class="badge text-bg-primary" data-default-mark>по умолчанию</span>{% endif %}
+      {% if not node.queue %}
+      <form class="d-inline" method="post" action="/servicedesk/queues/" data-form="queue-mark">{% csrf_token %}
+        <input type="hidden" name="action" value="mark"><input type="hidden" name="unit" value="{{ node.id }}">
+        <button class="btn btn-sm btn-outline-primary" type="submit">Отметить очередью</button></form>
+      {% else %}
+      <a class="btn btn-sm btn-outline-secondary" data-action="queue-unmark" href="/servicedesk/queues/?unmark={{ node.id }}" hx-get="/servicedesk/queues/?unmark={{ node.id }}" hx-target="#dialog-root" hx-swap="innerHTML">Снять отметку</a>
+      {% if not node.default %}
+      <form class="d-inline" method="post" action="/servicedesk/queues/" data-form="queue-default">{% csrf_token %}
+        <input type="hidden" name="action" value="default"><input type="hidden" name="unit" value="{{ node.id }}">
+        <button class="btn btn-sm btn-outline-primary" type="submit">Очередью по умолчанию</button></form>
+      {% endif %}
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+<div id="dialog-root" class="dialog-root">{% if dialog %}{% include "servicedesk/settings/_unmark_dialog.html" %}{% endif %}</div>
+{% endblock %}

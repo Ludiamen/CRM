@@ -20,3 +20,6 @@ Pillow==11.3.0
 openpyxl==3.1.5
 et-xmlfile==2.0.0
 defusedxml==0.7.1
+# Срез 003: клиент Valkey уже стоит как зависимость rq; закреплён, потому что открытая форма ловит его исключения
+# (redis.exceptions.RedisError, CONTRACT-003 6.19). Нового пакета в установке нет.
+redis==8.1.0

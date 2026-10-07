@@ -1,0 +1,190 @@
+{% comment %}Карточка заявки: поля и действия (`data-card-fields`), затем лента (`data-card-feed`). Одна разметка для слайдера и страницы.{% endcomment %}
+<div class="ticket-card" data-ticket-card data-number="{{ ticket.number }}" data-kind="{{ ticket.kind }}" data-layout="{{ card_layout }}">
+  {% if alert %}<div class="alert alert-danger" role="alert" data-code="{{ alert.code }}">{{ alert.text }}</div>{% endif %}
+  <div class="ticket-card-fields" data-card-fields>
+    <div class="card-fields">
+      <div class="card-field" data-field="number"><span class="card-field-label" data-field-label>Номер</span> <span class="card-field-value">#{{ ticket.number }}</span></div>
+      <div class="card-field" data-field="subject"><span class="card-field-label" data-field-label>Тема</span> <span class="card-field-value">{{ ticket.subject }}</span></div>
+      <div class="card-field" data-field="status"><span class="card-field-label" data-field-label>Статус</span> <span class="card-field-value">{{ ticket.status.name }}</span></div>
+      <div class="card-field" data-field="queue"><span class="card-field-label" data-field-label>Очередь</span> <span class="card-field-value">{{ ticket.queue.name }}</span></div>
+      <div class="card-field"{% if not ticket.category %} data-empty="true"{% endif %} data-field="category"><span class="card-field-label" data-field-label>Категория</span> <span class="card-field-value">{% if ticket.category %}{{ ticket.category.name }}{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field" data-field="priority"><span class="card-field-label" data-field-label>Критичность</span> <span class="card-field-value">{{ ticket.priority.name }}</span></div>
+      <div class="card-field"{% if not ticket.complexity %} data-empty="true"{% endif %} data-field="complexity"><span class="card-field-label" data-field-label>Сложность</span> <span class="card-field-value">{% if ticket.complexity %}{{ ticket.complexity.name }}{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field"{% if not ticket.client_unit %} data-empty="true"{% endif %} data-field="client-unit"><span class="card-field-label" data-field-label>Подразделение заявителя</span> <span class="card-field-value">{% if ticket.client_unit %}{{ ticket.client_unit.name }}{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field" data-field="source"><span class="card-field-label" data-field-label>Источник</span> <span class="card-field-value">{{ ticket.source.name }}</span></div>
+      <div class="card-field" data-field="requester"><span class="card-field-label" data-field-label>Заявитель</span> <span class="card-field-value">{% if ticket.requester_name %}{{ ticket.requester_name }}{% else %}{{ ticket.requester_email }}{% endif %}</span></div>
+      <div class="card-field"{% if not ticket.requester_name %} data-empty="true"{% endif %} data-field="requester-name"><span class="card-field-label" data-field-label>ФИО заявителя</span> <span class="card-field-value">{% if ticket.requester_name %}{{ ticket.requester_name }}{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field" data-field="requester-email"><span class="card-field-label" data-field-label>Почта заявителя</span> <span class="card-field-value">{{ ticket.requester_email }}</span></div>
+      <div class="card-field"{% if not ticket.assignee %} data-empty="true"{% endif %} data-field="assignee"><span class="card-field-label" data-field-label>Ответственный</span> <span class="card-field-value">{% if ticket.assignee %}<span{% if assignee_dismissed %} data-dismissed="true"{% endif %}>{{ ticket.assignee.full_name }}{% if assignee_dismissed %} (уволен){% endif %}</span>{% else %}не назначен{% endif %}</span></div>
+      <div class="card-field" data-field="created"><span class="card-field-label" data-field-label>Создана</span> <span class="card-field-value"><time data-at="{{ ticket.created_at|date:'c' }}">{{ ticket.created_at|date:'d.m.Y H:i' }}</time></span></div>
+      {% if not open %}
+      <div class="card-field"{% if not closed_by_name %} data-empty="true"{% endif %} data-field="closed-by"><span class="card-field-label" data-field-label>Закрытие</span> <span class="card-field-value">{% if closed_by_name %}<span{% if closed_by_dismissed %} data-dismissed="true"{% endif %}>Закрыл: {{ closed_by_name }}{% if closed_by_dismissed %} (уволен){% endif %}</span>{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field" data-field="resolution"><span class="card-field-label" data-field-label>Решение</span> <span class="card-field-value">{{ ticket.resolution|linebreaksbr }}</span></div>
+      {% endif %}
+      {% if consent %}<div class="card-field" data-field="consent"><span class="card-field-label" data-field-label>Согласие</span> <span class="card-field-value">согласие на обработку ПДн: <time data-at="{{ consent|date:'c' }}">{{ consent|date:'d.m.Y H:i' }}</time></span></div>{% endif %}
+      {% if previous_link %}<div class="card-field">{% if previous_link.visible %}<a data-field="previous" href="/tickets/{{ previous_link.number }}/">продолжение заявки #{{ previous_link.number }}</a>{% else %}<span data-field="previous">продолжение заявки #{{ previous_link.number }}</span>{% endif %}</div>{% endif %}
+      {% if continuation_link %}<div class="card-field">{% if continuation_link.visible %}<a data-field="continuation" href="/tickets/{{ continuation_link.number }}/">продолжение — заявка #{{ continuation_link.number }}</a>{% else %}<span data-field="continuation">продолжение — заявка #{{ continuation_link.number }}</span>{% endif %}</div>{% endif %}
+    </div>
+
+    {% if open %}
+    <div class="card-actions">
+      {% if can_take %}
+      <form class="card-form" data-form="ticket-take" method="post" action="/tickets/{{ ticket.number }}/take/" hx-post="/tickets/{{ ticket.number }}/take/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="layout" value="{{ card_layout }}">
+        <button class="btn btn-primary btn-sm" type="submit" data-action="ticket-take">Взять себе</button>
+      </form>
+      {% endif %}
+      <form class="card-form" data-form="ticket-assign" method="post" action="/tickets/{{ ticket.number }}/assign/" hx-post="/tickets/{{ ticket.number }}/assign/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="layout" value="{{ card_layout }}">
+        <label class="form-label small mb-1">Назначить ответственного
+          <input class="form-control form-control-sm" type="search" name="q" autocomplete="off" placeholder="Начало имени" hx-get="/tickets/{{ ticket.number }}/assignees/" hx-trigger="input changed delay:300ms, search" hx-target="#candidates-{{ ticket.number }}" hx-swap="innerHTML">
+        </label>
+        <div class="candidates" id="candidates-{{ ticket.number }}" data-candidates></div>
+        <button class="btn btn-outline-primary btn-sm" type="submit">Назначить</button>
+      </form>
+      {% if ticket.assignee %}
+      <form class="card-form" data-form="ticket-unassign" method="post" action="/tickets/{{ ticket.number }}/assign/" hx-post="/tickets/{{ ticket.number }}/assign/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="layout" value="{{ card_layout }}">
+        <input type="hidden" name="assignee" value="">
+        <button class="btn btn-outline-secondary btn-sm" type="submit" data-action="ticket-unassign">Снять ответственного</button>
+      </form>
+      {% endif %}
+      <p class="card-links">
+        <a data-action="ticket-transfer" href="/tickets/{{ ticket.number }}/transfer/" hx-get="/tickets/{{ ticket.number }}/transfer/" hx-vals='{"layout": "{{ card_layout }}"}' hx-target="#dialog-root" hx-swap="innerHTML">Передать в очередь</a>
+        <a data-action="ticket-close" href="/tickets/{{ ticket.number }}/close/" hx-get="/tickets/{{ ticket.number }}/close/" hx-vals='{"layout": "{{ card_layout }}"}' hx-target="#dialog-root" hx-swap="innerHTML">Закрыть заявку</a>
+      </p>
+      <form class="card-form" data-form="ticket-category" method="post" action="/tickets/{{ ticket.number }}/category/" hx-post="/tickets/{{ ticket.number }}/category/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="layout" value="{{ card_layout }}">
+        <label class="form-label small mb-1">Категория
+          <select class="form-select form-select-sm" name="category">
+            {% if not ticket.category %}<option value="">Выберите категорию</option>{% endif %}
+            {% for item in categories %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}{% if item.disabled %} disabled{% endif %}>{{ item.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <button class="btn btn-outline-primary btn-sm" type="submit">Сменить категорию</button>
+      </form>
+      <form class="card-form" data-form="ticket-fields" method="post" action="/tickets/{{ ticket.number }}/fields/" hx-post="/tickets/{{ ticket.number }}/fields/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="layout" value="{{ card_layout }}">
+        <label class="form-label small mb-1">Критичность
+          <select class="form-select form-select-sm" name="priority">
+            {% for item in priorities %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}{% if item.disabled %} disabled{% endif %}>{{ item.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="form-label small mb-1">Сложность
+          <select class="form-select form-select-sm" name="complexity">
+            <option value=""{% if not ticket.complexity %} selected{% endif %}>Не задана</option>
+            {% for item in complexities %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}{% if item.disabled %} disabled{% endif %}>{{ item.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="form-label small mb-1">Подразделение заявителя
+          <select class="form-select form-select-sm" name="client_unit">
+            <option value=""{% if not ticket.client_unit %} selected{% endif %}>Не задано</option>
+            {% for item in client_units %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}{% if item.disabled %} disabled{% endif %}>{{ item.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="form-label small mb-1">ФИО заявителя
+          <input class="form-control form-control-sm" type="text" name="requester_name" value="{{ ticket.requester_name }}" maxlength="255" autocomplete="off">
+        </label>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-primary btn-sm" type="submit">Сохранить</button>
+          <button class="btn btn-outline-secondary btn-sm" type="submit" name="save_to_record" value="1">Сохранить и в записи заявителя</button>
+        </div>
+      </form>
+      <form class="card-form" data-form="ticket-status" method="post" action="/tickets/{{ ticket.number }}/status/" hx-post="/tickets/{{ ticket.number }}/status/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="layout" value="{{ card_layout }}">
+        <label class="form-label small mb-1">Статус
+          <select class="form-select form-select-sm" name="status">
+            <option value="">Выберите статус</option>
+            {% for item in statuses %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <button class="btn btn-outline-primary btn-sm" type="submit">Сменить статус</button>
+      </form>
+    </div>
+    {% else %}
+    <div class="card-actions">
+      <form class="card-form" data-form="ticket-reopen" method="post" action="/tickets/{{ ticket.number }}/reopen/" hx-post="/tickets/{{ ticket.number }}/reopen/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="layout" value="{{ card_layout }}">
+        <button class="btn btn-primary btn-sm" type="submit" data-action="ticket-reopen">Открыть заново</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if participants %}
+    <section class="card-section" data-section="participants">
+      <h3 class="card-section-title">Участники переписки</h3>
+      <ul class="card-list">
+        {% for item in participants %}<li data-participant data-participant-id="{{ item.id }}"{% if item.removed %} data-removed="true"{% endif %}>{{ item.email }}{% if item.name %} ({{ item.name }}){% endif %}{% if item.removed %} — снят{% elif open %} <a data-action="participant-remove" href="/tickets/{{ ticket.number }}/participants/{{ item.id }}/remove/" hx-get="/tickets/{{ ticket.number }}/participants/{{ item.id }}/remove/" hx-vals='{"layout": "{{ card_layout }}"}' hx-target="#dialog-root" hx-swap="innerHTML">снять</a>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+    {% if all_attachments %}
+    <section class="card-section" data-section="attachments">
+      <h3 class="card-section-title">Вложения</h3>
+      <ul class="card-list">
+        {% for file in all_attachments %}<li data-attachment data-state="{{ file.state }}">{% if file.state == "clean" %}<a href="{{ file.url }}">{{ file.name }}</a>{% elif file.state == "pending" %}{{ file.name }} — проверяется{% else %}{{ file.name }} — в карантине{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+    {% if all_rejected %}
+    <section class="card-section" data-rejected-attachments>
+      <h3 class="card-section-title">Не принятые вложения</h3>
+      <ul class="card-list">
+        {% for file in all_rejected %}<li data-rejected="{{ file.code }}">{{ file.name }} — {{ file.title }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+
+  <div class="ticket-card-feed" data-card-feed>
+    {% if open %}
+    <form class="card-form" data-form="ticket-reply" method="post" action="/tickets/{{ ticket.number }}/reply/" enctype="multipart/form-data" hx-post="/tickets/{{ ticket.number }}/reply/" hx-encoding="multipart/form-data" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="layout" value="{{ card_layout }}">
+      <label class="form-label small mb-1">Ответ заявителю
+        <textarea class="form-control" name="text" rows="4">{{ reply_text }}</textarea>
+      </label>
+      <label class="form-label small mb-1">Файлы
+        <input class="form-control form-control-sm" type="file" name="files" multiple>
+      </label>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" name="wait" value="1" id="reply_wait_{{ ticket.number }}">
+        <label class="form-check-label" for="reply_wait_{{ ticket.number }}">Ждём ответа заявителя</label>
+      </div>
+      <button class="btn btn-primary btn-sm" type="submit">Отправить ответ</button>
+    </form>
+    {% endif %}
+    <form class="card-form" data-form="ticket-comment" method="post" action="/tickets/{{ ticket.number }}/comment/" hx-post="/tickets/{{ ticket.number }}/comment/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="layout" value="{{ card_layout }}">
+      <label class="form-label small mb-1">Внутренний комментарий
+        <textarea class="form-control" name="text" rows="2"></textarea>
+      </label>
+      <button class="btn btn-outline-primary btn-sm" type="submit">Добавить комментарий</button>
+    </form>
+
+    <ol class="feed" data-feed>
+      {% for item in feed %}
+      {% if item.kind == "event" %}<li class="feed-entry feed-event" data-entry data-entry-id="{{ item.id }}" data-kind="event" data-event="{{ item.event }}"><time data-at="{{ item.at|date:'c' }}">{{ item.at|date:'d.m.Y H:i' }}</time>{% if item.author %} <span data-author data-author-kind="{{ item.author.kind }}"{% if item.author.dismissed %} data-dismissed="true"{% endif %}>{{ item.author.label }}</span>{% endif %} {{ item.event_text }}</li>
+      {% else %}<li class="feed-entry" data-entry data-entry-id="{{ item.id }}" data-kind="{{ item.kind }}">
+        <div class="feed-head"><time data-at="{{ item.at|date:'c' }}">{{ item.at|date:'d.m.Y H:i' }}</time>{% if item.author %} <span data-author data-author-kind="{{ item.author.kind }}"{% if item.author.dismissed %} data-dismissed="true"{% endif %}>{{ item.author.label }}</span>{% endif %}{% if item.kind == "comment" %} <span class="badge text-bg-secondary" data-internal>внутренний</span>{% endif %}{% if item.kind == "reply" %} <span class="badge text-bg-primary" data-reply-label>ответ исполнителя</span>{% if item.send_state %} <span data-send-state="{{ item.send_state }}">{{ item.send_label }}</span>{% endif %}{% if item.mail_status %} <span data-mail-status="{{ item.mail_status }}">{{ item.mail_label }}</span>{% if item.mail_status == "failed" %} <span data-undelivered>письмо не доставлено</span>{% endif %}{% endif %}{% endif %}</div>
+        <div class="feed-text" data-entry-text>{{ item.text|linebreaksbr }}</div>
+        {% if item.attachments %}<ul class="card-list" data-attachments>{% for file in item.attachments %}<li data-attachment data-state="{{ file.state }}">{% if file.state == "clean" %}<a href="{{ file.url }}">{{ file.name }}</a>{% elif file.state == "pending" %}{{ file.name }} — проверяется{% else %}{{ file.name }} — в карантине{% endif %}</li>{% endfor %}</ul>{% endif %}
+        {% if item.rejected %}<ul class="card-list" data-rejected-attachments>{% for file in item.rejected %}<li data-rejected="{{ file.code }}">{{ file.name }} — {{ file.title }}</li>{% endfor %}</ul>{% endif %}
+        {% if item.source_mail %}<a data-action="source-mail" href="{{ item.source_mail }}">Исходное письмо</a>{% endif %}
+        {% if item.resend %}<form class="card-form" data-form="reply-resend" method="post" action="/tickets/{{ ticket.number }}/reply/{{ item.id }}/resend/" hx-post="/tickets/{{ ticket.number }}/reply/{{ item.id }}/resend/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">{% csrf_token %}<input type="hidden" name="layout" value="{{ card_layout }}"><button class="btn btn-outline-primary btn-sm" type="submit" data-action="reply-resend">Отправить заново без заражённых вложений</button></form>{% endif %}
+      </li>{% endif %}
+      {% endfor %}
+    </ol>
+  </div>
+</div>

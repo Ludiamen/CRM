@@ -1,0 +1,34 @@
+{% extends layout %}
+{% block title %}Загрузка заявителей из таблицы{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Загрузка заявителей из таблицы</h1>
+  <a class="btn btn-outline-secondary" href="/servicedesk/requesters/">К списку заявителей</a>
+</div>
+{% include "servicedesk/settings/_nav.html" with active="requesters" %}
+{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+<section class="card form-card import-card">
+  <div class="card-body">
+    <form method="post" action="/servicedesk/requesters/import/" enctype="multipart/form-data" data-form="import-upload">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label" for="id_file">Файл таблицы (до {{ max_mb }} МБ, не больше {{ max_rows }} строк)</label>
+        <input class="form-control" id="id_file" name="file" type="file" accept=".csv,.xlsx" required>
+        <div class="form-text">Сначала будет предпросмотр: ничего не записывается, пока вы не подтвердите. Файл нигде не хранится.</div>
+      </div>
+      <button class="btn btn-primary" type="submit">Показать предпросмотр</button>
+    </form>
+  </div>
+</section>
+<section class="card import-help" data-format-help>
+  <div class="card-body">
+    <h2 class="h5">Какие данные хранятся</h2>
+    <p>{{ format_help }}.</p>
+    <h2 class="h5">Колонки</h2>
+    <p>Обязательная: {% for name in required %}<b>{{ name }}</b>{% endfor %}. Необязательные:{% for name in columns %}{% if name not in required %} {{ name }}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}.</p>
+    <p class="form-text">Заголовки читаются без учёта регистра, пробелов и «е/ё». Остальные колонки не загружаются. Недостающие подразделения будут созданы при подтверждении.</p>
+    <h2 class="h5">Образцы файла</h2>
+    <p><a href="/servicedesk/requesters/import/sample.csv" data-sample="csv">Образец CSV</a> · <a href="/servicedesk/requesters/import/sample.xlsx" data-sample="xlsx">Образец XLSX</a></p>
+  </div>
+</section>
+{% endblock %}

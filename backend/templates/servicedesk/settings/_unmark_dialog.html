@@ -1,0 +1,25 @@
+<div class="dialog-backdrop">
+  <section class="dialog-panel" data-dialog="queue-unmark" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
+    <h2 id="dialog-title" class="dialog-title">Снять отметку очереди</h2>
+    {% include "servicedesk/settings/_alert.html" with error=dialog.error %}
+    {% if not dialog.blocked %}
+    <p>Узел «{{ dialog.unit.name }}». Открытых заявок в очереди: {{ dialog.open_tickets }}.</p>
+    {% if dialog.categories %}<p>Категории перейдут в очередь по умолчанию:</p>{% endif %}
+    <ul class="dialog-consequences">
+      {% for category in dialog.categories %}<li data-consequence>Категория «{{ category.name }}» перейдёт в очередь «{{ dialog.default_name }}»</li>{% endfor %}
+    </ul>
+    <form method="post" action="/servicedesk/queues/" data-form="queue-unmark">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="unmark">
+      <input type="hidden" name="unit" value="{{ dialog.unit.id }}">
+      <input type="hidden" name="confirm" value="1">
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-danger" type="submit">Снять отметку</button>
+        <button class="btn btn-outline-secondary" type="button" data-dialog-cancel>Отмена</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="d-flex flex-wrap gap-2"><button class="btn btn-outline-secondary" type="button" data-dialog-cancel>Закрыть</button></div>
+    {% endif %}
+  </section>
+</div>

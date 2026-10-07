@@ -1,0 +1,7 @@
+{% extends "base_public.html" %}
+{% block title %}Заявка принята{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">Заявка принята</h1>
+<p data-request-done>Заявка принята. Подтверждение с номером придёт на <strong data-done-email>{{ email }}</strong></p>
+<p class="mb-0"><a href="/request/">Подать ещё одну заявку</a></p>
+{% endblock %}

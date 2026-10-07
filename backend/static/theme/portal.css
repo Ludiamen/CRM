@@ -375,3 +375,78 @@ body { background: var(--portal-surface); color: var(--portal-text); }
   .tickets-grid[data-narrow="cards"] .tickets-table tbody td[data-cell="priority"],
   .tickets-grid[data-narrow="cards"] .tickets-table tbody td[data-cell="created"] { display: none; }
 }
+
+/* T-3231 — карточка заявки: две колонки на широком окне, лента под полями до 600 px */
+.ticket-card { display: block; }
+.ticket-card .card-field { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0.2rem 0; overflow-wrap: anywhere; }
+.ticket-card .card-field-label { color: var(--portal-muted); min-width: 9rem; }
+.ticket-card .card-field[data-empty="true"] .card-field-value { color: var(--portal-muted); }
+.ticket-card .card-form { border: 1px solid var(--portal-border); border-radius: 0.6rem; padding: 0.6rem 0.75rem; margin-bottom: 0.6rem; }
+.ticket-card .card-section { margin-top: 0.85rem; }
+.ticket-card .card-section-title { font-size: 1rem; }
+.ticket-card .card-list { padding-left: 1.1rem; margin: 0; }
+.ticket-card .candidates label { display: block; }
+.ticket-card .feed { list-style: none; padding: 0; margin: 1rem 0 0; }
+.ticket-card .feed-entry { border-bottom: 1px solid var(--portal-border); padding: 0.55rem 0; overflow-wrap: anywhere; }
+.ticket-card .feed-event { color: var(--portal-muted); font-size: 0.92rem; }
+.ticket-card .feed-head { font-size: 0.88rem; color: var(--portal-muted); display: flex; flex-wrap: wrap; gap: 0.4rem; }
+@media (min-width: 601px) {
+  .ticket-card { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 1.25rem; align-items: start; }
+  .ticket-card > .alert { grid-column: 1 / -1; }
+}
+
+/* T-3232 — заявка от исполнителя (/tickets/new/) */
+.ticket-new { max-width: 52rem; }
+.ticket-new-form .invalid-feedback { font-size: .875rem; }
+@media (max-width: 575.98px) {
+  .ticket-new .page-head { flex-wrap: wrap; gap: .5rem; }
+  .ticket-new-form .btn { flex: 1 1 100%; }
+}
+
+/* T-3233: открытая форма заявки — на узком экране поля и кнопка на всю ширину карточки; длинный текст согласия переносится */
+[data-form="request"] .form-check-label[data-consent-text] { overflow-wrap: anywhere; }
+[data-form="request"] textarea { min-height: 8rem; }
+[data-request-done] { overflow-wrap: anywhere; }
+
+/* T-3234: настройки, очереди и справочники сервис-деска */
+.sd-nav, .sd-subnav { margin-bottom: 1rem; }
+.sd-facts { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; margin: 0; }
+.sd-facts dt { font-weight: 600; }
+.sd-facts dd { margin: 0; overflow-wrap: anywhere; }
+.sd-queue-tree { list-style: none; margin: 0; padding: 0; }
+.sd-queue-tree li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .35rem 0; border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
+.sd-queue-tree .sd-unit-name { font-weight: 500; }
+.sd-queue-tree .sd-depth-1 { padding-left: 1.25rem; }
+.sd-queue-tree .sd-depth-2 { padding-left: 2.5rem; }
+.sd-queue-tree .sd-depth-3 { padding-left: 3.75rem; }
+.sd-queue-tree .sd-depth-4 { padding-left: 5rem; }
+.sd-queue-tree .sd-depth-5 { padding-left: 6.25rem; }
+.sd-queue-tree .sd-depth-6 { padding-left: 7.5rem; }
+.sd-queue-tree .sd-depth-7 { padding-left: 8.75rem; }
+.sd-queue-tree .sd-depth-8 { padding-left: 10rem; }
+.sd-dictionary-table .sd-row-actions { white-space: nowrap; }
+@media (max-width: 575.98px) {
+  .sd-facts { grid-template-columns: 1fr; }
+  .sd-queue-tree .sd-depth-3, .sd-queue-tree .sd-depth-4, .sd-queue-tree .sd-depth-5,
+  .sd-queue-tree .sd-depth-6, .sd-queue-tree .sd-depth-7, .sd-queue-tree .sd-depth-8 { padding-left: 3.75rem; }
+  .sd-dictionary-table .sd-row-actions { white-space: normal; }
+}
+
+/* T-3235 — «Заявители» и загрузка таблицы: страница использует классы import-* и slider-*/dialog-* среза 002 */
+.requesters-table td { overflow-wrap: break-word; }
+.requesters-table td[data-cell="email"] { max-width: 18rem; }
+@media (max-width: 575.98px) {
+  .requesters-table thead { display: none; }
+  .requesters-table tbody tr { display: block; border-bottom: 1px solid var(--portal-border); padding: 0.5rem 0.25rem; }
+  .requesters-table tbody td { display: block; border: 0; padding: 0.1rem 0.5rem; }
+  .requesters-table tbody td[data-label]::before { content: attr(data-label) ": "; color: #5b6472; }
+}
+
+/* T-3236 — «Входящие письма» (/servicedesk/inbound/) */
+.mailbox-fields { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; }
+.mailbox-fields dt { font-weight: 500; color: var(--bs-secondary-color, #6c757d); }
+.mailbox-fields dd { margin: 0; overflow-wrap: anywhere; }
+.inbound-table td[data-cell="subject"] { overflow-wrap: anywhere; }
+@media (max-width: 575.98px) {
+  .mailbox-fields { grid-template-columns: 1fr; }
+}

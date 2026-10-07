@@ -1,0 +1,66 @@
+{% extends layout %}
+{% block title %}Справочники: {{ title }}{% endblock %}
+{% block content %}
+<div class="sd-dictionary">
+  <header class="page-head">
+    <h1 class="page-title">Справочники: {{ title }}</h1>
+    <a class="btn btn-primary" data-action="dictionary-new" href="/servicedesk/dictionaries/{{ path_kind }}/new/" hx-get="/servicedesk/dictionaries/{{ path_kind }}/new/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">Добавить</a>
+  </header>
+  {% include "servicedesk/settings/_nav.html" with active="dictionaries" %}
+  <nav class="sd-subnav" aria-label="Справочники">
+    <ul class="chip-row">
+      {% for path, name in tabs %}<li><a class="chip{% if path == path_kind %} active{% endif %}" data-dictionary-link="{{ path }}" href="/servicedesk/dictionaries/{{ path }}/"{% if path == path_kind %} aria-current="true"{% endif %}>{{ name }}</a></li>{% endfor %}
+    </ul>
+  </nav>
+  {% if not dialog %}
+  {% include "servicedesk/settings/_alert.html" %}
+  {% if error.archive_item %}
+  <form class="mb-3" method="post" action="/servicedesk/dictionaries/{{ path_kind }}/{{ error.archive_item.pk }}/archive/" data-form="dictionary-archive">{% csrf_token %}
+    <button class="btn btn-outline-secondary btn-sm" type="submit" data-action="dictionary-archive">Убрать в архив</button></form>
+  {% endif %}
+  {% endif %}
+  <div class="table-responsive">
+  <table class="table sd-dictionary-table" data-dictionary="{{ kind }}">
+    <thead><tr>
+      <th>Название</th>
+      {% if kind != "client_unit" %}<th>Порядок</th>{% endif %}
+      {% if kind == "category" %}<th>Очередь</th><th>Ответственный по умолчанию</th><th>На форме</th>{% endif %}
+      {% if kind == "status" %}<th>Вид</th><th>По умолчанию</th>{% endif %}
+      {% if kind == "category" or kind == "status" or kind == "source" %}<th>Системное</th>{% endif %}
+      <th>Действия</th>
+    </tr></thead>
+    <tbody>
+      {% for row in rows %}{% with item=row.item %}
+      <tr data-dictionary-row data-id="{{ item.pk }}" data-archived="{{ item.archived|yesno:'true,false' }}">
+        <td data-cell="name">{{ item.name }}{% if item.archived %} <span class="badge text-bg-secondary" data-archived-mark>в архиве</span>{% endif %}</td>
+        {% if kind != "client_unit" %}<td data-cell="order">{{ item.order }}</td>{% endif %}
+        {% if kind == "category" %}
+        <td data-cell="queue">{{ item.queue.name|default:"" }}</td>
+        <td data-cell="default-assignee">{{ item.default_assignee.full_name|default:"" }}</td>
+        <td data-cell="on-form">{% if item.on_form %}да{% else %}нет{% endif %}</td>
+        {% endif %}
+        {% if kind == "status" %}
+        <td data-cell="kind">{{ row.kind_title }}</td>
+        <td data-cell="default">{% if item.is_default %}по умолчанию{% endif %}</td>
+        {% endif %}
+        {% if kind == "category" or kind == "status" or kind == "source" %}
+        <td data-cell="system">{% if row.system %}<span class="badge text-bg-light" data-system-mark>системное</span>{% endif %}</td>
+        {% endif %}
+        <td class="sd-row-actions">
+          <a data-action="dictionary-edit" href="/servicedesk/dictionaries/{{ path_kind }}/{{ item.pk }}/edit/" hx-get="/servicedesk/dictionaries/{{ path_kind }}/{{ item.pk }}/edit/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="true">Изменить</a>
+          {% if item.archived %}
+          <form class="d-inline" method="post" action="/servicedesk/dictionaries/{{ path_kind }}/{{ item.pk }}/restore/" data-form="dictionary-restore">{% csrf_token %}<button class="btn btn-link btn-sm" type="submit">Вернуть</button></form>
+          {% else %}
+          <form class="d-inline" method="post" action="/servicedesk/dictionaries/{{ path_kind }}/{{ item.pk }}/archive/" data-form="dictionary-archive">{% csrf_token %}<button class="btn btn-link btn-sm" type="submit" data-action="dictionary-archive">В архив</button></form>
+          {% endif %}
+          <a data-action="dictionary-delete" href="/servicedesk/dictionaries/{{ path_kind }}/{{ item.pk }}/delete/" hx-get="/servicedesk/dictionaries/{{ path_kind }}/{{ item.pk }}/delete/" hx-target="#dialog-root" hx-swap="innerHTML">Удалить</a>
+        </td>
+      </tr>
+      {% endwith %}{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+<div id="slider-root" class="slider-root">{% if slider %}{% include "servicedesk/settings/_slider.html" %}{% endif %}</div>
+<div id="dialog-root" class="dialog-root">{% if dialog %}{% include "servicedesk/settings/_delete_dialog.html" %}{% endif %}</div>
+{% endblock %}

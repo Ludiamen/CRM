@@ -1,0 +1,63 @@
+{% extends layout %}
+{% block title %}Заявители{% endblock %}
+{% block content %}
+<div data-requesters-list class="requesters-list">
+  <header class="page-head">
+    <h1 class="page-title">Заявители</h1>
+    <a class="btn btn-outline-primary" data-action="requesters-import" href="/servicedesk/requesters/import/">Загрузить из таблицы</a>
+  </header>
+  {% include "servicedesk/settings/_nav.html" with active="requesters" %}
+  <form class="filter-bar card card-body mb-3" data-form="requesters-filter" method="get" action="/servicedesk/requesters/">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-6">
+        <label class="form-label small mb-1" for="id_q">Поиск по адресу и ФИО</label>
+        <input class="form-control" id="id_q" name="q" type="search" value="{{ q }}" autocomplete="off">
+      </div>
+      <div class="col-8 col-md-4">
+        <label class="form-label small mb-1" for="id_client_unit">Подразделение</label>
+        <select class="form-select" id="id_client_unit" name="client_unit">
+          <option value="">Любое</option>
+          {% for item in unit_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}{% if item.archived %} (в архиве){% endif %}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-4 col-md-2"><button class="btn btn-primary w-100" type="submit">Найти</button></div>
+    </div>
+  </form>
+  {% if rows %}
+  <div class="table-responsive">
+    <table class="table requesters-table">
+      <thead><tr><th>Адрес</th><th>ФИО</th><th>Подразделение</th><th>Запись</th><th>Заявок</th><th></th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr data-requester data-id="{{ row.requester.pk }}">
+          <td data-label="Адрес" data-cell="email">{{ row.requester.email }}</td>
+          <td data-label="ФИО" data-cell="name">{{ row.requester.full_name }}</td>
+          <td data-label="Подразделение" data-cell="client-unit">{{ row.unit }}</td>
+          <td data-label="Запись" data-cell="origin">{{ row.origin }}</td>
+          <td data-label="Заявок" data-cell="tickets-count">{{ row.tickets_count }}</td>
+          <td class="text-nowrap">
+            <a data-action="requester-edit" href="/servicedesk/requesters/{{ row.requester.pk }}/edit/" hx-get="/servicedesk/requesters/{{ row.requester.pk }}/edit/" hx-target="#slider-root" hx-swap="innerHTML">Изменить</a>
+            <a data-action="requester-delete" href="/servicedesk/requesters/{{ row.requester.pk }}/delete/" hx-get="/servicedesk/requesters/{{ row.requester.pk }}/delete/" hx-target="#dialog-root" hx-swap="innerHTML">Удалить</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <nav class="d-flex flex-wrap gap-3 align-items-center" aria-label="Страницы">
+    {% if prev_url %}<a data-page-prev href="{{ prev_url }}">Назад</a>{% endif %}
+    <span data-page>Страница {{ page }}</span>
+    {% if next_url %}<a data-page-next href="{{ next_url }}">Дальше</a>{% endif %}
+  </nav>
+  {% elif filtered %}
+  <div class="empty-state" data-empty-filtered><p>По вашему запросу заявителей нет</p></div>
+  {% else %}
+  <div class="empty-state" data-empty-state="requesters">
+    <p>Записей заявителей пока нет: они появятся из заявок или из загрузки таблицы</p>
+    <a class="btn btn-outline-primary btn-sm" data-action="requesters-import" href="/servicedesk/requesters/import/">Загрузить из таблицы</a>
+  </div>
+  {% endif %}
+</div>
+<div id="slider-root" class="slider-root">{% if form %}{% include "servicedesk/requesters/_slider.html" %}{% endif %}</div>
+<div id="dialog-root" class="dialog-root">{% if dialog %}{% include "servicedesk/requesters/_dialog.html" %}{% endif %}</div>
+{% endblock %}

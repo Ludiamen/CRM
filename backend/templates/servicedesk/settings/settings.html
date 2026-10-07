@@ -1,0 +1,46 @@
+{% extends layout %}
+{% block title %}Настройки сервис-деска{% endblock %}
+{% block content %}
+<div class="sd-settings" data-servicedesk-settings>
+  <header class="page-head"><h1 class="page-title">Настройки сервис-деска</h1></header>
+  {% include "servicedesk/settings/_nav.html" with active="settings" %}
+  {% include "servicedesk/settings/_alert.html" %}
+  {% if imap_none %}
+  <div class="alert alert-warning" data-warning="imap-security">Соединение с ящиком заявок не защищено (IMAP_SECURITY=none): режим только для стенда.</div>
+  {% endif %}
+  <section class="card card-body mb-3" data-mailbox-state>
+    <dl class="sd-facts">
+      <dt>Адрес ящика заявок</dt><dd><span data-field="mailbox-address">{{ mailbox_address|default:"не задан" }}</span></dd>
+      <dt>Последний успешный опрос</dt><dd><span data-field="last-ok-at">{% if last_ok_at %}<time data-at="{{ last_ok_at|date:'c' }}">{{ last_ok_at|date:'d.m.Y H:i' }}</time>{% else %}ещё не было{% endif %}</span></dd>
+      <dt>Последняя ошибка</dt><dd><span data-field="last-error">{{ last_error|default:"нет" }}</span></dd>
+      <dt>Очередь по умолчанию</dt><dd><span data-field="default-queue">{{ default_queue_name|default:"не задана" }}</span> <a href="/servicedesk/queues/">Выбрать на странице очередей</a></dd>
+    </dl>
+  </section>
+  <form class="card card-body" method="post" action="/servicedesk/" data-form="servicedesk-settings">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label" for="id_domains">Домены заявителей (через запятую или с новой строки)</label>
+      <textarea class="form-control" id="id_domains" name="domains" rows="3">{{ values.domains }}</textarea>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="id_default_priority">Критичность по умолчанию</label>
+      <select class="form-select" id="id_default_priority" name="default_priority">
+        {% for p in priorities %}<option value="{{ p.pk }}"{% if values.default_priority == p.pk|stringformat:"s" %} selected{% endif %}>{{ p.name }}{% if p.archived %} (в архиве){% endif %}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-md-6"><label class="form-label" for="id_autoclose_days">Срок автозакрытия, дней (1–90)</label>
+        <input class="form-control" id="id_autoclose_days" name="autoclose_days" type="number" value="{{ values.autoclose_days }}"></div>
+      <div class="col-12 col-md-6"><label class="form-label" for="id_reopen_days">Срок открытия заново, дней (1–90)</label>
+        <input class="form-control" id="id_reopen_days" name="reopen_days" type="number" value="{{ values.reopen_days }}"></div>
+      <div class="col-12 col-md-6"><label class="form-label" for="id_form_hourly_limit">Порог открытой формы в час (1–1000)</label>
+        <input class="form-control" id="id_form_hourly_limit" name="form_hourly_limit" type="number" value="{{ values.form_hourly_limit }}"></div>
+      <div class="col-12 col-md-6"><label class="form-label" for="id_retention_years">Срок хранения заявок, лет (1–10)</label>
+        <input class="form-control" id="id_retention_years" name="retention_years" type="number" value="{{ values.retention_years }}"></div>
+      <div class="col-12 col-md-6"><label class="form-label" for="id_inbound_retention_days">Срок хранения писем без заявки, дней (1–365)</label>
+        <input class="form-control" id="id_inbound_retention_days" name="inbound_retention_days" type="number" value="{{ values.inbound_retention_days }}"></div>
+    </div>
+    <div><button class="btn btn-primary" type="submit">Сохранить</button></div>
+  </form>
+</div>
+{% endblock %}

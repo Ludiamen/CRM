@@ -1,0 +1,2 @@
+{% for person in people %}<label class="candidate" data-candidate data-user-id="{{ person.id }}"><input type="radio" name="assignee" value="{{ person.id }}"> {{ person.full_name }}{% if person.position %} <span class="text-muted">{{ person.position }}</span>{% endif %}</label>
+{% endfor %}

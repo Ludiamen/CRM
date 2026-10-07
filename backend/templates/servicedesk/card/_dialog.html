@@ -1,0 +1,74 @@
+{% with name=dialog.name form=dialog.form ticket=dialog.ticket %}
+<div class="dialog-backdrop">
+  <section class="dialog-panel" data-dialog="{{ name }}" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
+    {% if name == "ticket-transfer" %}<h2 id="dialog-title" class="dialog-title">Передать заявку в другую очередь</h2>
+    {% elif name == "ticket-close" %}<h2 id="dialog-title" class="dialog-title">Закрыть заявку</h2>
+    {% elif name == "ticket-category" %}<h2 id="dialog-title" class="dialog-title">Сменить категорию</h2>
+    {% else %}<h2 id="dialog-title" class="dialog-title">Снять участника</h2>{% endif %}
+    {% if dialog.error %}<div class="alert alert-danger" role="alert" data-code="{{ dialog.error.code }}">{{ dialog.error.message }}</div>{% endif %}
+    {% if name == "ticket-transfer" %}
+    <form method="post" action="/tickets/{{ ticket.number }}/transfer/" data-form="ticket-transfer-dialog" hx-post="/tickets/{{ ticket.number }}/transfer/" hx-target="[data-ticket-card]" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="layout" value="{{ form.layout }}">
+      <div class="mb-3">
+        <label class="form-label" for="dialog_queue">Очередь</label>
+        <select class="form-select" id="dialog_queue" name="queue">
+          <option value="">Выберите очередь</option>
+          {% for unit in dialog.queues %}<option value="{{ unit.id }}"{% if form.queue == unit.id|stringformat:"s" %} selected{% endif %}>{{ unit.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="dialog_reason">Причина передачи <span class="text-muted">(по желанию)</span></label>
+        <textarea class="form-control" id="dialog_reason" name="reason" rows="3">{{ form.reason }}</textarea>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" type="submit">Передать</button>
+        <button class="btn btn-outline-secondary" type="button" data-dialog-cancel>Отмена</button>
+      </div>
+    </form>
+    {% elif name == "ticket-close" %}
+    <form method="post" action="/tickets/{{ ticket.number }}/close/" data-form="ticket-close-dialog" hx-post="/tickets/{{ ticket.number }}/close/" hx-target="[data-ticket-card]" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="layout" value="{{ form.layout }}">
+      <div class="mb-3">
+        <label class="form-label" for="dialog_status">Статус</label>
+        <select class="form-select" id="dialog_status" name="status">
+          {% for status in dialog.statuses %}<option value="{{ status.pk }}"{% if form.status == status.pk|stringformat:"s" %} selected{% endif %}>{{ status.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="mb-3">
+        <label class="form-label" for="dialog_resolution">Решение</label>
+        <textarea class="form-control" id="dialog_resolution" name="resolution" rows="4">{{ form.resolution }}</textarea>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" type="submit">Закрыть заявку</button>
+        <button class="btn btn-outline-secondary" type="button" data-dialog-cancel>Отмена</button>
+      </div>
+    </form>
+    {% elif name == "ticket-category" %}
+    <form method="post" action="/tickets/{{ ticket.number }}/category/" data-form="ticket-category-confirm" hx-post="/tickets/{{ ticket.number }}/category/" hx-target="[data-ticket-card]" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="layout" value="{{ form.layout }}">
+      <input type="hidden" name="category" value="{{ form.category }}">
+      <input type="hidden" name="confirm" value="1">
+      {% if form.queue_name %}<p data-consequence>Заявка перейдёт в очередь «{{ form.queue_name }}»</p>{% endif %}
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" type="submit">Подтвердить</button>
+        <button class="btn btn-outline-secondary" type="button" data-dialog-cancel>Отмена</button>
+      </div>
+    </form>
+    {% else %}
+    <form method="post" action="/tickets/{{ ticket.number }}/participants/{{ form.participant }}/remove/" data-form="participant-remove-confirm" hx-post="/tickets/{{ ticket.number }}/participants/{{ form.participant }}/remove/" hx-target="[data-ticket-card]" hx-swap="outerHTML">
+      {% csrf_token %}
+      <input type="hidden" name="layout" value="{{ form.layout }}">
+      <input type="hidden" name="confirm" value="1">
+      <p data-consequence>Участник перестанет получать письма по этой заявке, его письма в неё больше не попадут.</p>
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-danger" type="submit">Снять участника</button>
+        <button class="btn btn-outline-secondary" type="button" data-dialog-cancel>Отмена</button>
+      </div>
+    </form>
+    {% endif %}
+  </section>
+</div>
+{% endwith %}

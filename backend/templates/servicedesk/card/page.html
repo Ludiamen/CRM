@@ -1,0 +1,10 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Заявка № {{ ticket.number }}{% endblock %}
+{% block content %}
+<h1 class="page-title">Заявка № {{ ticket.number }}</h1>
+<p><a href="/tickets/">К списку заявок</a></p>
+{% include "servicedesk/card/_card.html" %}
+<div id="dialog-root" class="dialog-root">{% if dialog %}{% include "servicedesk/card/_dialog.html" %}{% endif %}</div>
+<script src="{% static 'js/tickets.js' %}" defer></script>
+{% endblock %}

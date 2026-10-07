@@ -21,7 +21,7 @@ class MailMessage(models.Model):
 
     to = models.CharField(max_length=254)
     template = models.CharField(max_length=64)
-    subject = models.CharField(max_length=255, blank=True)
+    subject = models.CharField(max_length=300, blank=True)
     status = models.CharField(max_length=16, choices=MailStatus.choices, default=MailStatus.QUEUED)
     attempts = models.PositiveIntegerField(default=0)
     last_error = models.TextField(blank=True)

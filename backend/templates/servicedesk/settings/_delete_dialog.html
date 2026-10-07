@@ -1,0 +1,15 @@
+<div class="dialog-backdrop">
+  <section class="dialog-panel" data-dialog="dictionary-delete" role="dialog" aria-modal="true" aria-labelledby="dialog-title" tabindex="-1">
+    <h2 id="dialog-title" class="dialog-title">Удалить значение</h2>
+    {% include "servicedesk/settings/_alert.html" with error=dialog.error %}
+    <p>Значение «{{ dialog.item.name }}» будет удалено. Если оно уже есть в заявках, удалить его нельзя — уберите его в архив.</p>
+    <form method="post" action="{{ dialog.action }}" data-form="dictionary-delete">
+      {% csrf_token %}
+      <input type="hidden" name="confirm" value="1">
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-danger" type="submit">Удалить</button>
+        <button class="btn btn-outline-secondary" type="button" data-dialog-cancel>Отмена</button>
+      </div>
+    </form>
+  </section>
+</div>

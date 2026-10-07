@@ -1,0 +1,63 @@
+<a class="slider-backdrop" href="{{ slider.close_url }}" aria-label="Закрыть панель" tabindex="-1"></a>
+<section class="slider-panel" role="dialog" aria-labelledby="slider-title" tabindex="-1">
+  <header class="slider-header">
+    <h2 id="slider-title">{% if slider.item %}Правка значения{% else %}Новое значение{% endif %}</h2>
+    <a class="slider-close" data-slider-close href="{{ slider.close_url }}" aria-label="Закрыть">&times;</a>
+  </header>
+  <div class="slider-body">
+    <form method="post" action="{{ slider.action }}" data-form="dictionary">
+      {% csrf_token %}
+      {% include "servicedesk/settings/_alert.html" with error=slider.error %}
+      <div class="mb-3">
+        <label class="form-label" for="id_name">Название</label>
+        <input class="form-control" id="id_name" name="name" value="{{ slider.values.name }}" required autocomplete="off">
+      </div>
+      {% if slider.kind != "client_unit" %}
+      <div class="mb-3">
+        <label class="form-label" for="id_order">Порядок</label>
+        <input class="form-control" id="id_order" name="order" type="number" value="{{ slider.values.order }}">
+      </div>
+      {% endif %}
+      {% if slider.kind == "category" %}
+      {% if not slider.system %}
+      <div class="mb-3">
+        <label class="form-label" for="id_queue">Очередь</label>
+        <select class="form-select" id="id_queue" name="queue">
+          <option value="">Выберите очередь</option>
+          {% for unit in slider.queue_choices %}<option value="{{ unit.id }}"{% if slider.values.queue == unit.id|stringformat:"s" %} selected{% endif %}>{{ unit.name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="mb-3">
+        <label class="form-label" for="id_default_assignee">Ответственный по умолчанию</label>
+        <select class="form-select" id="id_default_assignee" name="default_assignee">
+          <option value="">Нет</option>
+          {% for person in slider.assignee_choices %}<option value="{{ person.id }}"{% if slider.values.default_assignee == person.id|stringformat:"s" %} selected{% endif %}>{{ person.full_name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" id="id_on_form" name="on_form" type="checkbox" value="1"{% if slider.values.on_form %} checked{% endif %}>
+        <label class="form-check-label" for="id_on_form">Показывать на открытой форме</label>
+      </div>
+      {% endif %}
+      {% if slider.kind == "status" %}
+      {% if not slider.item %}
+      <div class="mb-3">
+        <label class="form-label" for="id_kind">Вид</label>
+        <select class="form-select" id="id_kind" name="kind">
+          {% for code, title in slider.status_kinds %}<option value="{{ code }}"{% if slider.values.kind == code %} selected{% endif %}>{{ title }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="form-check mb-3">
+        <input class="form-check-input" id="id_is_default" name="is_default" type="checkbox" value="1"{% if slider.values.is_default %} checked{% endif %}>
+        <label class="form-check-label" for="id_is_default">По умолчанию для своего вида</label>
+      </div>
+      {% endif %}
+      <div class="d-flex flex-wrap gap-2">
+        <button class="btn btn-primary" type="submit">{% if slider.item %}Сохранить{% else %}Создать{% endif %}</button>
+        <a class="btn btn-outline-secondary" href="{{ slider.close_url }}">Отмена</a>
+      </div>
+    </form>
+  </div>
+</section>
