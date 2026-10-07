@@ -37,6 +37,8 @@ def ticket_closed(ticket) -> None:
 def register() -> None:
     """Подписки приложения на события шины (вызывается из `ServicedeskConfig.ready()`).
 
-    Сейчас пусто: подписку `mail.failed` -> `replies.on_mail_failed` добавит T-3219, `access.changed` ->
-    `reconcile.on_access_changed` — T-3220 (до них этих функций нет).
+    `access.changed` -> `reconcile.on_access_changed` добавит T-3220 (до неё этой функции нет).
     """
+    from . import replies
+
+    bus.subscribe("mail.failed", replies.on_mail_failed)

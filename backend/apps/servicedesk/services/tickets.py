@@ -293,3 +293,126 @@ def add_incoming(ticket, *, author_email, author_name="", text, at=None, inbound
         search.index(ticket, entry)
         events.reply_received(ticket)
     return entry
+
+
+def _name_of(obj) -> str:
+    """Название значения справочника или пустая строка."""
+    return obj.name if obj is not None else ""
+
+
+def _sync_requester_record(ticket, *, unit, set_unit: bool, name, set_name: bool, actor, ip) -> None:
+    """Пишет подразделение и ФИО в запись заявителя заявки; одно событие журнала `requester.updated` (9.2)."""
+    if ticket.requester_id is None:
+        return
+    record = Requester.objects.select_for_update(of=("self",)).select_related("client_unit").get(
+        pk=ticket.requester_id)
+    fields, before, after = [], {}, {}
+    if set_unit and record.client_unit_id != (unit.pk if unit else None):
+        before["client_unit"] = _unit_name(record.client_unit)
+        after["client_unit"] = _unit_name(unit)
+        record.client_unit = unit
+        fields.append("client_unit")
+    if set_name and record.full_name != name:
+        after["name_changed"] = True
+        record.full_name = name
+        fields.append("full_name")
+    if fields:
+        record.save(update_fields=fields + ["updated_at"])
+        audit.record("requester.updated", actor=actor, object_type="requester", object_id=record.pk, before=before,
+                     after=after, ip=ip)
+
+
+def update_fields(ticket, *, actor, ip=None, priority=UNSET, complexity=UNSET, client_unit_id=UNSET,
+                  requester_name=UNSET, save_name_to_record=False) -> list[str]:
+    """Правит критичность, сложность, подразделение и ФИО заявителя в заявке (6.7, FR-246).
+
+    Возвращает имена изменённых полей по порядку аргументов. Одно событие ленты на поле (у ФИО без значений), одно
+    событие журнала `ticket.updated` на вызов (дополнение 21). Подразделение пишется и в запись заявителя всегда,
+    ФИО — при `save_name_to_record`. Архивные значения отказывают до любой записи (`archived_value`).
+    """
+    if priority is None:
+        raise TypeError("у заявки критичность есть всегда: priority=None недопустимо")
+    with transaction.atomic():
+        _lock(ticket)
+        if not access.can_work(actor, ticket):
+            raise _error("no_access", "нет доступа")
+        require_open(ticket)
+        unit = None
+        if client_unit_id is not UNSET and client_unit_id is not None:
+            unit = ClientUnit.objects.filter(pk=client_unit_id).first()
+            if unit is None:
+                raise _error("archived_value", "Значение в архиве: выберите другое")
+        name = None
+        if requester_name is not UNSET:
+            name = str(requester_name or "").strip()
+            if len(name) > 255:
+                raise _error("requester_name_too_long", "ФИО не длиннее 255 знаков")
+        _check_active(
+            priority if priority is not UNSET and priority.pk != ticket.priority_id else None,
+            complexity if complexity is not UNSET and complexity is not None
+            and complexity.pk != ticket.complexity_id else None,
+            unit if client_unit_id is not UNSET and unit is not None and unit.pk != ticket.client_unit_id else None)
+        changed, before, after, saved = [], {}, {}, []
+        if priority is not UNSET and priority.pk != ticket.priority_id:
+            old = ticket.priority
+            replies.add_event(ticket, "priority_changed", actor=actor, data={
+                "before": old.name, "after": priority.name, "before_id": old.pk, "after_id": priority.pk})
+            before["priority"], after["priority"] = old.name, priority.name
+            ticket.priority = priority
+            changed.append("priority")
+            saved.append("priority")
+        if complexity is not UNSET and (complexity.pk if complexity else None) != ticket.complexity_id:
+            old = ticket.complexity
+            replies.add_event(ticket, "complexity_changed", actor=actor, data={
+                "before": _name_of(old), "after": _name_of(complexity),
+                "before_id": old.pk if old else None, "after_id": complexity.pk if complexity else None})
+            before["complexity"], after["complexity"] = _name_of(old), _name_of(complexity)
+            ticket.complexity = complexity
+            changed.append("complexity")
+            saved.append("complexity")
+        if client_unit_id is not UNSET and (unit.pk if unit else None) != ticket.client_unit_id:
+            old = ticket.client_unit
+            replies.add_event(ticket, "client_unit_changed", actor=actor, data={
+                "before": _name_of(old), "after": _name_of(unit),
+                "before_id": old.pk if old else None, "after_id": unit.pk if unit else None})
+            before["client_unit"], after["client_unit"] = _name_of(old), _name_of(unit)
+            ticket.client_unit = unit
+            changed.append("client_unit")
+            saved.append("client_unit")
+        name_changed = name is not None and name != ticket.requester_name
+        if name_changed:
+            replies.add_event(ticket, "requester_name_changed", actor=actor, data={})
+            after["requester_name_changed"] = True
+            ticket.requester_name = name
+            changed.append("requester_name")
+            saved.append("requester_name")
+        if saved:
+            ticket.save(update_fields=saved + ["updated_at"])
+            audit.record("ticket.updated", actor=actor, object_type="ticket", object_id=ticket.number, before=before,
+                         after=after, ip=ip)
+        _sync_requester_record(ticket, unit=unit, set_unit=client_unit_id is not UNSET, name=name,
+                               set_name=save_name_to_record and name is not None, actor=actor, ip=ip)
+        if name_changed:
+            search.rebuild(ticket)
+    return changed
+
+
+def remove_participant(ticket, participant_id, *, actor, ip=None) -> None:
+    """Снимает участника: `removed_at`, `removed_by`, событие ленты и журнала без адреса (6.7, FR-217).
+
+    Снятого повторно — тихо ничего; участник другой заявки — `TicketParticipant.DoesNotExist`.
+    """
+    with transaction.atomic():
+        _lock(ticket)
+        if not access.can_work(actor, ticket):
+            raise _error("no_access", "нет доступа")
+        require_open(ticket)
+        participant = TicketParticipant.objects.select_for_update().get(pk=participant_id, ticket=ticket)
+        if participant.removed_at is not None:
+            return
+        participant.removed_at = timezone.now()
+        participant.removed_by = actor
+        participant.save(update_fields=["removed_at", "removed_by"])
+        replies.add_event(ticket, "participant_removed", actor=actor, data={"participant_id": participant.pk})
+        audit.record("ticket.participant_removed", actor=actor, object_type="ticket", object_id=ticket.number,
+                     before={}, after={"participant_id": participant.pk}, ip=ip)

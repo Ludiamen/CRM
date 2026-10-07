@@ -738,11 +738,12 @@ def make_requester(email: str | None = None, *, full_name: str = "", client_unit
 
 def make_ticket(*, queue=None, requester=None, kind: str = "new", number: int | None = None,
                 using: str = "default", **over):
-    """Заявка через ORM (не через сервис): номер — следующий за наибольшим, справочники — начальные строки.
+    """Заявка через ORM (не через сервис): номер — из последовательности `servicedesk_ticket_number` (как у
+    `tickets.create`: иначе первая заявка службы в том же тесте получит уже занятый номер), справочники — начальные строки.
 
     `last_message_at` и `created_at` ставятся в «сейчас» (тест сдвигает их `backdate`). `status` без `kind` в
     `over` — вид берётся из статуса."""
-    from django.db.models import Max
+    from django.db import connections
 
     Ticket = support.model("servicedesk.Ticket")
     Status, Priority, Source = (support.model(f"servicedesk.{n}") for n in ("Status", "Priority", "Source"))
@@ -750,7 +751,9 @@ def make_ticket(*, queue=None, requester=None, kind: str = "new", number: int | 
     _require(using, queue, "queue")
     unit = _unit_of(queue) if queue is not None else make_queue(using=using).unit
     if number is None:
-        number = (_db(Ticket, using).aggregate(top=Max("number"))["top"] or 0) + 1
+        with connections[using].cursor() as cur:
+            cur.execute("SELECT nextval('servicedesk_ticket_number')")
+            number = cur.fetchone()[0]
     now = timezone.now()
     fields = {
         "number": number, "subject": f"Тема {number}", "requester": requester,

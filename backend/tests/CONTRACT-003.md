@@ -2760,3 +2760,18 @@ test_sd_audit (число событий `requester.updated` в сценария
 нет). (б) Тест test_sd_letters::test_subject_is_number_and_ticket_subject_with_control_chars_cleaned кладёт тему
 предельной длины 255 вместо 300 (поле `Ticket.subject` — до 255, plan.md:347) — правка с разрешения владельца
 2026-10-07. Уточняет: 6.22, строка `update`. Затрагивает: test_sd_requesters (правка записи), test_sd_letters (тема).
+
+**Дополнение 49 (Этап 3, волна (б), 2026-10-07). Номер у `make_ticket`; решения по заявке от исполнителя и групповым
+действиям.** (а) Помощник `make_ticket` без явного `number` берёт номер из последовательности `servicedesk_ticket_number`
+(`nextval` на соединении `using`), как `tickets.create`: прежнее «следующий за наибольшим, последовательность не
+расходуется» (3.4) давало в одном тесте заявку помощника и заявку службы с одним номером — `UniqueViolation`, зависящий от
+порядка прогона (test_sd_closing_2::test_letter_after_term_creates_new_ticket_with_previous_and_confirmation и до 64 тестов
+с обоими путями). Правка помощника — с разрешения владельца 2026-10-07 (диффы — crm-work/slice003/stage3/testfix/).
+Тесты, которым важен номер, задают `number=` явно или выставляют последовательность `set_sequence`. (б) `assignment.bulk`
+с несуществующим `priority_id` — пропуск заявки с кодом `archived_value` (как дополнение 48). (в) Ответственного по
+умолчанию при `transfer.change_category` назначает актёр действия (`actor` журнала `ticket.assigned` — исполнитель); правило
+`None` дополнения 7 относится только к `tickets.create`. (г) `tickets.update_fields` проверяет архивность (`archived_value`)
+только у **изменяемых** значений: архивное значение, которое уже стоит в заявке и не меняется, правку других полей не
+блокирует; несуществующий номер подразделения — `archived_value` (как дополнение 48). Уточняет: 3.4 (строка `make_ticket`),
+6.7 (`update_fields`), 6.8 (`bulk`), 6.9 (`change_category`). Затрагивает: тесты с `sd.make_ticket` (номер по умолчанию),
+test_sd_assignment*.
