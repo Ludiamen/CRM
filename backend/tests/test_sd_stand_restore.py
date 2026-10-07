@@ -467,6 +467,8 @@ def test_stand_poll_mailbox_polls_and_parses_at_once(monkeypatch, fake_mailbox, 
     monkeypatch.setenv("E2E_STAND", "1")
     queue = make_queue()
     configure_servicedesk(domains=["client.test"], default_queue=queue)
+    # ящик уже подключали раньше: первое подключение писем не забирает (FR-211, 6.15 `poll`)
+    support.model("servicedesk.MailboxState").objects.create(pk=1, uidvalidity=fake_mailbox.uidvalidity, last_uid=0)
     senders = ["first@client.test", "second@client.test"]
     for sender in senders:
         fake_mailbox.append(build_mail(from_addr=sender, to=["tickets@stand.test"], subject=f"Тема от {sender}", text="Текст"))
@@ -495,8 +497,9 @@ def test_stand_poll_mailbox_polls_and_parses_at_once(monkeypatch, fake_mailbox, 
 
 
 @PLAIN
-def test_stand_backdate_shifts_ticket_and_mail_timestamps_back():
+def test_stand_backdate_shifts_ticket_and_mail_timestamps_back(monkeypatch):
     """NFR-210: `e2e_backdate` сдвигает отметки заявки, письма и ящика назад на сутки, вывод — по формату; отказы по 8.2."""
+    monkeypatch.setenv("E2E_STAND", "1")
     stamp = timezone.now() - timedelta(days=5)
     ticket = make_ticket(kind="waiting", waiting_since=stamp)
     mail = make_inbound(message_id=f"<{secrets.token_hex(6)}@client.test>")

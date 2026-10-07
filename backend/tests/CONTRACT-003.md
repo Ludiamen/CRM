@@ -2828,3 +2828,15 @@ crm-work/slice003/stage3/testfix/wave-c2-2-fixes.diff), проверки тес�
 (б) test_sd_capacity::test_card_query_count_independent_of_feed_items: второй вызов `add(45)` нумеровал комментарии снова
 с нуля, «Комментарий 49» не появлялся ни при какой реализации; проверяется «Комментарий 44» (есть среди 50, нет среди 5).
 Затрагивает: test_sd_assignment, test_sd_capacity.
+
+**Дополнение 55 (Этап 3, волна (г), 2026-10-07). Две правки test_sd_stand_restore, на которых падает любая верная
+реализация.** Нашёл исполнитель T-3242, сверил Opus; правки — с разрешения владельца 2026-10-07, проверки тестов не
+меняются: (а) test_stand_backdate_shifts_ticket_and_mail_timestamps_back не ставил `E2E_STAND=1`, а в службе `test` флага
+нет (он только у `standtools`); по 8.1 и test_stand_commands_…_refused_without_e2e_stand команда без флага отказывает —
+флаг ставится в начале теста, как в соседних тестах команд; (б) test_stand_poll_mailbox_polls_and_parses_at_once начинал
+без строки `MailboxState`, и первое подключение по FR-211 и 6.15 (`poll`) ставило `last_uid` на конец ящика, не забирая
+двух писем теста — теперь тест сначала создаёт состояние «ящик уже подключали» (`uidvalidity` ящика, `last_uid=0`) через
+обычное соединение, как test_sd_mailbox:561. Первая редакция правки (б) брала помощник файла `_put_mailbox_state`,
+который пишет через соединение `migrate`, недоступное этому тесту; исправленную редакцию владелец разрешил отдельно (диффы —
+crm-work/slice003/stage3/testfix/wave-d-2-fixes.diff и wave-d-2-fixes-v2.diff, в силе — v2). Затрагивает:
+test_sd_stand_restore.
