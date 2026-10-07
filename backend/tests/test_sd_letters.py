@@ -389,7 +389,9 @@ def test_subject_is_number_and_ticket_subject_with_control_chars_cleaned(
     assert delivered["Subject"] == "[#77] Сломался принтер на втором"
     empty, _, _ = _ticket(subject="", number=78)
     assert letters.subject_of(empty) == "[#78]"
-    long_one, _, _ = _ticket(subject="а" * 300, number=79)
+    # тема заявки в базе не длиннее 255 (plan.md:347, `Ticket.subject`); 300 знаков база не примет, поэтому
+    # проверяется, что тема предельной длины уходит в письмо целиком, без лишней обрезки
+    long_one, _, _ = _ticket(subject="а" * 255, number=79)
     assert letters.subject_of(long_one) == "[#79] " + "а" * 255
     category = sd.make_category(on_form=True)
     with django_capture_on_commit_callbacks(execute=True):

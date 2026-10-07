@@ -2745,3 +2745,18 @@ test_sd_boundaries::test_set_marks_publishes_access_changed.
 изменилась — журнала правки нет (test_sd_requesters::test_form_with_other_unit_does_not_change_record_ticket_keeps_form_unit).
 Уточняет: 6.7, строка `create`; 9.2, строка `requester.updated` (автор `None` у формы и письма). Затрагивает: test_sd_requesters,
 test_sd_audit (число событий `requester.updated` в сценариях с `create`).
+
+**Дополнение 47 (Этап 3, волна (б), 2026-10-07). Подразделение у заявки из письма.** Строка 6.7 «`MAIL` — подразделение записи
+или пусто» описывает обычный разбор письма: `intake` подразделение не передаёт. Если вызывающий всё же передал
+`client_unit_id` с каналом `MAIL` (так делает test_sd_create::test_ticket_fields_set_on_creation), оно обрабатывается как у
+`FORM`: идёт в заявку, а в запись заявителя — только если там пусто (журнал — по дополнению 46). Уточняет: 6.7, строка
+`create`. Затрагивает: test_sd_create::test_ticket_fields_set_on_creation.
+
+**Дополнение 48 (Этап 3, волна (б), 2026-10-07). Правка записи заявителя с архивным подразделением; правка теста темы.**
+(а) `requesters.update(requester, *, name, client_unit_id, …)` отказывает `archived_value` только тогда, когда выбирается
+**другое** подразделение и оно в архиве; если передано то же подразделение, что уже в записи (пусть архивное), правка ФИО
+проходит, подразделение не меняется (решение Opus по R-3222-3: «неархивное» в 6.22 относится к выбору значения, как у
+справочников заявки). Несуществующий номер подразделения — тот же отказ `archived_value` (кода `unit_not_offered` в 6.2
+нет). (б) Тест test_sd_letters::test_subject_is_number_and_ticket_subject_with_control_chars_cleaned кладёт тему
+предельной длины 255 вместо 300 (поле `Ticket.subject` — до 255, plan.md:347) — правка с разрешения владельца
+2026-10-07. Уточняет: 6.22, строка `update`. Затрагивает: test_sd_requesters (правка записи), test_sd_letters (тема).
