@@ -122,7 +122,8 @@ def build(user, *, preset: str | None = None, filters: Filters | None = None, so
     chosen, queryset = _base(user, preset, filters)
     fields = _SORT_FIELDS.get(sort, _SORT_FIELDS["number"])
     prefix = "-" if descending else ""
-    queryset = queryset.select_related("status", "priority", "category", "assignee", "client_unit", "queue")
+    queryset = queryset.select_related("status", "priority", "category", "assignee", "client_unit", "queue",
+                                     "closed_by")
     queryset = queryset.order_by(*[prefix + field for field in fields])
     page = page if isinstance(page, int) and page >= 1 else 1
     start = (page - 1) * PAGE_SIZE

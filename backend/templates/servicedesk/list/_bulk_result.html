@@ -1,0 +1,7 @@
+{% if bulk.error %}<div class="alert alert-danger mb-0 mt-2" role="alert" data-code="{{ bulk.code }}">{{ bulk.error }}</div>{% elif bulk %}<div class="alert alert-info mb-0 mt-2" data-bulk-result role="status">
+  <p class="mb-1">Выполнено: {{ bulk.done }}; пропущено: {{ bulk.skipped }}</p>
+  {% if bulk.items %}<ul class="mb-0">
+    {% for item in bulk.items %}<li data-skipped data-code="{{ item.code }}">{% if item.number %}#{{ item.number }} — {% endif %}{{ item.message }}</li>
+    {% endfor %}
+  </ul>{% endif %}
+</div>{% endif %}

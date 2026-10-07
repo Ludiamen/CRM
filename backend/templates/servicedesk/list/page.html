@@ -1,0 +1,149 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Заявки{% endblock %}
+{% block content %}
+<div data-tickets-list class="tickets-list">
+  <header class="page-head">
+    <h1 class="page-title">Заявки</h1>
+    {% if can_create %}<a class="btn btn-primary" data-action="ticket-new" href="/tickets/new/">Новая заявка</a>{% endif %}
+  </header>
+  <nav data-presets class="tickets-presets" aria-label="Готовые выборки">
+    <ul class="chip-row">
+      {% for item in presets %}
+      <li><a class="chip{% if item.active %} active{% endif %}" data-preset="{{ item.code }}" href="{{ item.url }}" hx-get="{{ item.url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true"{% if item.active %} aria-current="true"{% endif %}>{{ item.title }}</a></li>
+      {% endfor %}
+    </ul>
+  </nav>
+  <details data-filter-panel class="filter-panel mb-3"{% if filtered %} open{% endif %}>
+    <summary class="filter-summary">Фильтр{% if filtered %} (задан){% endif %}</summary>
+    <form id="tickets-filter" data-form="tickets-filter" class="filter-bar card card-body" method="get" action="/tickets/"
+          hx-get="/tickets/" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit">
+      <div class="row g-2 align-items-end">
+        <div class="col-12 col-md-4">
+          <label class="form-label small mb-1" for="id_q">Поиск по номеру, теме, заявителю и тексту</label>
+          <input class="form-control" id="id_q" name="q" type="search" value="{{ q }}" autocomplete="off">
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="id_queue">Очередь</label>
+          <select class="form-select" id="id_queue" name="queue">
+            <option value="">Любая</option>
+            {% for item in queue_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="id_category">Категория</label>
+          <select class="form-select" id="id_category" name="category">
+            <option value="">Любая</option>
+            {% for item in category_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}{% if item.archived %} (в архиве){% endif %}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="id_priority">Критичность</label>
+          <select class="form-select" id="id_priority" name="priority">
+            <option value="">Любая</option>
+            {% for item in priority_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}{% if item.archived %} (в архиве){% endif %}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="id_status">Статус</label>
+          <select class="form-select" id="id_status" name="status">
+            <option value="">Любой</option>
+            {% for item in status_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}{% if item.archived %} (в архиве){% endif %}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="id_kind">Вид статуса</label>
+          <select class="form-select" id="id_kind" name="kind">
+            <option value="">Любой</option>
+            {% for item in kind_choices %}<option value="{{ item.code }}"{% if item.selected %} selected{% endif %}>{{ item.title }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small mb-1" for="id_assignee">Ответственный</label>
+          <select class="form-select" id="id_assignee" name="assignee">
+            <option value="">Любой</option>
+            <option value="none"{% if assignee_value == "none" %} selected{% endif %}>без ответственного</option>
+            {% if extra_assignee %}<option value="{{ extra_assignee.id }}" selected>{{ extra_assignee.name }}</option>{% endif %}
+            {% for person in people %}<option value="{{ person.id }}"{% if assignee_value == person.id %} selected{% endif %}>{{ person.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <label class="form-label small mb-1" for="id_client_unit">Подразделение заявителя</label>
+          <select class="form-select" id="id_client_unit" name="client_unit">
+            <option value="">Любое</option>
+            {% for item in client_unit_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}{% if item.archived %} (в архиве){% endif %}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="id_source">Источник</label>
+          <select class="form-select" id="id_source" name="source">
+            <option value="">Любой</option>
+            {% for item in source_choices %}<option value="{{ item.id }}"{% if item.selected %} selected{% endif %}>{{ item.name }}{% if item.archived %} (в архиве){% endif %}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="id_created_from">Создана с</label>
+          {{ created_from_field }}
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small mb-1" for="id_created_to">Создана по</label>
+          {{ created_to_field }}
+        </div>
+        <div class="col-12 col-md-2 d-flex gap-2 filter-actions">
+          <button class="btn btn-primary flex-fill" type="submit">Найти</button>
+          <a class="btn btn-outline-secondary" href="/tickets/?preset={{ page.preset }}">Сбросить</a>
+        </div>
+      </div>
+      <input type="hidden" name="preset" value="{{ page.preset }}">
+      <input type="hidden" name="sort" value="{{ current_sort }}">
+      <input type="hidden" name="dir" value="{{ current_dir }}">
+    </form>
+  </details>
+  <form id="tickets-bulk" data-form="tickets-bulk" class="bulk-bar card card-body mb-3" method="post" action="/tickets/bulk/"
+        hx-post="/tickets/bulk/" hx-target="#bulk-result" hx-swap="innerHTML">
+    {% csrf_token %}
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-3">
+        <label class="form-label small mb-1" for="id_bulk_action">Действие над отмеченными заявками</label>
+        <select class="form-select" id="id_bulk_action" name="action">
+          <option value="">Выберите действие</option>
+          <option value="assign">Назначить ответственного</option>
+          <option value="transfer">Передать в очередь</option>
+          <option value="priority">Сменить критичность</option>
+        </select>
+      </div>
+      <div class="col-12 col-md-3" data-bulk-action="assign">
+        <label class="form-label small mb-1" for="id_bulk_user">Ответственный</label>
+        <select class="form-select" id="id_bulk_user" name="user">
+          <option value="">Выберите сотрудника</option>
+          {% for person in people %}<option value="{{ person.id }}">{{ person.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3" data-bulk-action="transfer">
+        <label class="form-label small mb-1" for="id_bulk_queue">Очередь</label>
+        <select class="form-select" id="id_bulk_queue" name="queue">
+          <option value="">Выберите очередь</option>
+          {% for item in bulk_queues %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}
+        </select>
+        <label class="form-label small mb-1 mt-1" for="id_bulk_reason">Причина передачи</label>
+        <textarea class="form-control" id="id_bulk_reason" name="reason" rows="2"></textarea>
+      </div>
+      <div class="col-12 col-md-3" data-bulk-action="priority">
+        <label class="form-label small mb-1" for="id_bulk_priority">Критичность</label>
+        <select class="form-select" id="id_bulk_priority" name="priority">
+          <option value="">Выберите значение</option>
+          {% for item in bulk_priorities %}<option value="{{ item.pk }}">{{ item.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-2">
+        <button class="btn btn-primary" type="submit">Применить</button>
+      </div>
+    </div>
+    <div id="bulk-result" class="bulk-result" aria-live="polite">{% if bulk %}{% include "servicedesk/list/_bulk_result.html" %}{% endif %}</div>
+  </form>
+  {% include "servicedesk/list/_grid.html" %}
+</div>
+<div id="slider-root" class="slider-root"></div>
+<div id="dialog-root" class="dialog-root"></div>
+<script src="{% static 'js/tickets.js' %}" defer></script>
+{% endblock %}

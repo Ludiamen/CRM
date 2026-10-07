@@ -1,0 +1,54 @@
+<div id="tickets-grid" class="tickets-grid" data-tickets-grid data-narrow="cards">
+  {% if hint_short %}<p class="small text-muted mb-2" data-hint="short">введите хотя бы 2 буквы</p>{% endif %}
+  <div class="table-wrap">
+    <table class="table table-sm align-top grid-table tickets-table">
+      <thead>
+        <tr>
+          <th scope="col"><span class="visually-hidden">Выбор</span></th>
+          <th scope="col" data-sort="number"{% if cols.number.aria_sort %} aria-sort="{{ cols.number.aria_sort }}"{% endif %}><a class="sort-link" href="{{ cols.number.url }}" hx-get="{{ cols.number.url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">{{ cols.number.title }}</a></th>
+          <th scope="col">Тема</th>
+          <th scope="col">Заявитель</th>
+          <th scope="col">Подразделение</th>
+          <th scope="col">Категория</th>
+          <th scope="col">Очередь</th>
+          <th scope="col" data-sort="priority"{% if cols.priority.aria_sort %} aria-sort="{{ cols.priority.aria_sort }}"{% endif %}><a class="sort-link" href="{{ cols.priority.url }}" hx-get="{{ cols.priority.url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">{{ cols.priority.title }}</a></th>
+          <th scope="col">Статус</th>
+          <th scope="col">Ответственный</th>
+          <th scope="col" data-sort="created"{% if cols.created.aria_sort %} aria-sort="{{ cols.created.aria_sort }}"{% endif %}><a class="sort-link" href="{{ cols.created.url }}" hx-get="{{ cols.created.url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">{{ cols.created.title }}</a></th>
+          <th scope="col" data-sort="last_message"{% if cols.last_message.aria_sort %} aria-sort="{{ cols.last_message.aria_sort }}"{% endif %}><a class="sort-link" href="{{ cols.last_message.url }}" hx-get="{{ cols.last_message.url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">{{ cols.last_message.title }}</a></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}{% with ticket=row.ticket %}
+        <tr data-ticket="{{ ticket.number }}" data-kind="{{ ticket.kind }}">
+          <td data-cell="select"><input type="checkbox" name="numbers" value="{{ ticket.number }}" form="tickets-bulk" aria-label="Отметить заявку {{ ticket.number }}"></td>
+          <td data-cell="number" data-label="Номер"><a href="/tickets/{{ ticket.number }}/" hx-get="/tickets/{{ ticket.number }}/" hx-target="#slider-root" hx-swap="innerHTML" hx-push-url="/tickets/{{ ticket.number }}/">#{{ ticket.number }}</a></td>
+          <td data-cell="subject" data-label="Тема" class="ticket-subject">{{ ticket.subject }}</td>
+          <td data-cell="requester" data-label="Заявитель">{{ row.requester|default:"—" }}</td>
+          <td data-cell="client-unit" data-label="Подразделение">{% if ticket.client_unit %}{{ ticket.client_unit.name }}{% else %}—{% endif %}</td>
+          <td data-cell="category" data-label="Категория">{% if ticket.category %}{{ ticket.category.name }}{% else %}—{% endif %}</td>
+          <td data-cell="queue" data-label="Очередь">{{ ticket.queue.name }}</td>
+          <td data-cell="priority" data-label="Критичность">{{ ticket.priority.name }}</td>
+          <td data-cell="status" data-label="Статус">{{ ticket.status.name }}</td>
+          <td data-cell="assignee" data-label="Ответственный">{% if ticket.assignee %}{{ ticket.assignee.full_name }}{% if row.assignee_dismissed %} <span data-dismissed-badge>(уволен)</span>{% endif %}{% elif ticket.kind == "closed" and row.closed_by %}Закрыл: {{ row.closed_by }}{% if row.closed_by_dismissed %} <span data-dismissed-badge>(уволен)</span>{% endif %}{% else %}не назначен{% endif %}</td>
+          <td data-cell="created" data-label="Создана"><time data-at="{{ ticket.created_at|date:'c' }}">{{ ticket.created_at|date:'d.m.Y H:i' }}</time></td>
+          <td data-cell="last-message" data-label="Последнее сообщение">{% if ticket.last_message_from %}<time data-at="{{ ticket.last_message_at|date:'c' }}">{{ ticket.last_message_at|date:'d.m.Y H:i' }}</time> <span class="small text-muted" data-last-from="{{ ticket.last_message_from }}">{% if ticket.last_message_from == "requester" %}заявитель{% else %}исполнитель{% endif %}</span>{% else %}—{% endif %}</td>
+        </tr>
+        {% endwith %}{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not rows %}
+  <div class="empty-state" data-empty-state="tickets" data-preset="{{ page.preset }}">
+    <p class="mb-2">{{ empty_text }}</p>
+    {% if can_create and not filtered %}<a class="btn btn-primary" data-action="ticket-new" href="/tickets/new/">Новая заявка</a>{% endif %}
+  </div>
+  {% endif %}
+  <nav class="grid-footer" aria-label="Страницы списка">
+    <span class="text-muted small"><span data-page>Страница {{ page.page }}</span>. <a href="{{ count_url }}" data-action="show-count" hx-get="{{ count_url }}" hx-target="this" hx-swap="outerHTML">показать количество</a></span>
+    <span class="d-flex gap-2">
+      {% if prev_url %}<a class="btn btn-outline-secondary btn-sm" data-action="page-prev" href="{{ prev_url }}" hx-get="{{ prev_url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">Назад</a>{% endif %}
+      {% if next_url %}<a class="btn btn-outline-secondary btn-sm" data-action="page-next" href="{{ next_url }}" hx-get="{{ next_url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">Вперёд</a>{% endif %}
+    </span>
+  </nav>
+</div>
