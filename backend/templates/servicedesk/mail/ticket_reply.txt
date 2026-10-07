@@ -1,0 +1,3 @@
+{{ text }}
+{% if signature %}{{ signature }}
+{% endif %}

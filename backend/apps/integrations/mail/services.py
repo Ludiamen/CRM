@@ -93,9 +93,10 @@ def send(template: str, to: str, context: dict, *, related_user=None) -> MailMes
 
 def renderer_for(template: str):
     """Рендерер письма приложения по префиксу шаблона или `None` (прежние шесть писем среза)."""
-    for renderer in extensions.registered("mail_renderers"):
-        if template.startswith(renderer.prefix):
-            return renderer
+    for func in extensions.registered("mail_renderers"):
+        for renderer in func():
+            if template.startswith(renderer.prefix):
+                return renderer
     return None
 
 
