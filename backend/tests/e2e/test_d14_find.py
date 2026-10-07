@@ -558,7 +558,7 @@ def test_d14_employee_card_tickets_link_filters_by_assignee_and_shows_only_acces
     viewer = employee(full_name=f"Тест{tag} Власов Виктор")
     outsider = employee(full_name=f"Тест{tag} Одинов Олег")
     helpers_sd.add_queue_member(page, q1, [assignee.id, viewer.id], q=f"Тест{tag}")
-    helpers_sd.add_queue_member(page, q2, [assignee.id], q=f"Тест{tag}")
+    helpers_org.add_members(page, q2, [assignee.id], q=f"Тест{tag}", mode="concurrent")  # остаётся и в q1
     words = [_word(), _word()]
     _deliver_all([_mail(helpers_sd.requester_email(), f"Карточка сотрудника {w}") for w in words])
     in_q1, in_q2 = (helpers_sd.ticket_number_by_subject(page, w) for w in words)

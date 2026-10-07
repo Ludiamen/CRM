@@ -3,17 +3,19 @@ import secrets
 
 from playwright.sync_api import expect
 
-from tests.e2e import helpers_org
+from tests.e2e import helpers_org, helpers_sd
 from tests.e2e.helpers_org import (ROOT_NAME, card_text, create_unit, descendant_li, direct_post, has_alert,
                                    open_structure, root_id, try_create_unit, unique_name, unit_card, unit_li,
                                    unit_link)
 
 
-def test_o01_root_department_and_new_department_and_team(admin_page):
+def test_o01_root_department_and_new_department_and_team(browser, browser_context_args, stand_admin, admin_page):
     """Сценарий 1, п. 7, 1-4 (первый структурный тест круга, стенд после сброса — E2E_RESET_CMD, stand_reset,
     T-2242): в дереве корневой отдел «ИТ-отдел»; отдел «Сеть» под ним и команда под «Сетью» видны
     в дереве (команда отмечена видом), карточка нового узла открывается сама, журнал пишет создание «было / стало»;
     отдел под командой и повтор названия под одним родителем отклонены с названной причиной (FR-101…105, FR-150)."""
+    # стенд после сброса: тесты сервис-деска раньше в круге создают свои узлы-очереди
+    helpers_sd.reset_stand_and_relogin(browser, browser_context_args, stand_admin, admin_page)
     page = admin_page
     open_structure(page)
     rid = root_id(page)

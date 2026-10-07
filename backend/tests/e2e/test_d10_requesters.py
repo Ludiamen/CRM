@@ -314,10 +314,11 @@ def test_d10_csv_both_delimiters_and_xlsx_500_rows_preview_statuses_nothing_writ
     # XLSX на 500 строк: предпросмотр строится, до подтверждения записей нет, после — все 500 добавлены
     emails = [requester_email() for _ in range(500)]
     big = _table([[e, f"Тысячев{i}", "Иван", "", ""] for i, e in enumerate(emails)], "xlsx")
-    _upload_preview(page, big, f"{secrets.token_hex(3)}.xlsx", XLSX_MIME)
+    number = _upload_preview(page, big, f"{secrets.token_hex(3)}.xlsx", XLSX_MIME)
     expect(_row(page, 1)).to_have_attribute("data-row-result", "will_add")
     _no_requester(page, emails[0])
     _no_requester(page, emails[-1])
+    page.goto(f"/servicedesk/requesters/import/{number}/")  # подтверждение — на странице предпросмотра
     summary = _confirm(page)
     _expect_totals(summary, added=500, updated=0, unchanged=0, errors=0)
     expect(_requester(page, emails[-1])).to_have_count(1)

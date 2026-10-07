@@ -414,7 +414,8 @@ def test_d11_auto_reply_without_service_headers_appended_as_requester_mail(admin
     mine = _incoming(card).filter(has_text=word)
     expect(mine).to_have_count(1)
     expect(mine.locator('[data-author][data-author-kind="requester"]')).to_contain_text(requester)
-    _no_ticket(page, word)
+    # новой заявки нет: слово находит только заявку, куда письмо дописано (поиск идёт и по текстам сообщений)
+    assert helpers_sd.tickets_by_subject(page, word) == [number]
 
 
 def test_d11_night_job_deletes_stored_unlinked_mail_keeps_record_without_address_and_subject_keeps_ticket_mail(

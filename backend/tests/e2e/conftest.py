@@ -123,7 +123,7 @@ def create_first_admin(email: str) -> str:
         cmd = custom.format(email=email).split()
     else:
         cmd = ["docker", "compose", "-f", str(COMPOSE_FILE), "--profile", "dev", "exec", "-T", "web",
-               "python", "manage.py", "create_first_admin", "--email", email]
+               "python", "manage.py", "create_first_admin", "--email", email, "--full-name", "Администратор Стенда"]
     out = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=120).stdout
     found = re.search(r"https?://\S+/activate/\S*", out)
     if not found:

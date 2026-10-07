@@ -339,8 +339,8 @@ def test_foreign_domain_and_automatic_mails_create_zero_tickets(
     page = admin_page
     control, foreign, auto, bulk, null_path, box = (_word() for _ in range(6))
 
-    def mail(sender, word, **extra):
-        return build_mail(from_addr=sender, to=[MAILBOX], subject=f"Письмо {word}", text=f"Текст письма {word}",
+    def mail(sender, word, subject=None, **extra):
+        return build_mail(from_addr=sender, to=[MAILBOX], subject=subject or f"Письмо {word}", text=f"Текст письма {word}",
                           message_id=_message_id(), **extra)
 
     control_sender = helpers_sd.requester_email()

@@ -54,7 +54,7 @@ def _new_queue(page, prefix: str = "Очередь"):
 
 def _member(page, queue_id, account, tok) -> None:
     """Делает сотрудника участником очереди (член узла) и проверяет, что добавление прошло."""
-    note = helpers_sd.add_queue_member(page, queue_id, [account.id], q=tok)
+    note = helpers_org.add_members(page, queue_id, [account.id], q=tok, mode="concurrent")  # в двух очередях сразу
     assert "уже участник" not in note, note
     helpers_org.open_structure(page, queue_id)
     expect(helpers_org.member_row(page, account.id)).to_have_count(1)

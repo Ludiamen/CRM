@@ -338,7 +338,7 @@ def test_d06_reply_blocked_by_quarantine_has_no_countdown_and_not_autoclosed_cou
     helpers_sd.open_ticket(page, number)
     _card(page, number).locator('form[data-form="ticket-take"] button[data-action="ticket-take"]').click()
     expect(_card(page, number)).to_have_attribute("data-kind", "in_progress")
-    infected = [{"name": "eicar.com", "mimeType": "application/octet-stream", "buffer": eicar_bytes()}]
+    infected = [{"name": "eicar-sample.txt", "mimeType": "text/plain", "buffer": eicar_bytes()}]
     _reply(page, number, f"Ответ с вложением {word}", wait=True, entries=1, files=infected)
     # настоящий clamd: ждём «не отправлен» опросом карточки до 60 с (карточка сама не обновляется — контракт молчит)
     deadline = time.monotonic() + 60
