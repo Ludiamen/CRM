@@ -119,8 +119,8 @@ def requester_delete(request, requester_id: int):
     return HttpResponseRedirect(LIST_URL)
 
 
-def _upload_page(request, *, error: str = "", status: int = 200):
-    context = {"error": error, "format_help": FORMAT_HELP, "columns": import_service.COLUMNS,
+def _upload_page(request, *, error: str = "", code: str = "", status: int = 200):
+    context = {"error": error, "code": code, "format_help": FORMAT_HELP, "columns": import_service.COLUMNS,
                "required": import_service.REQUIRED, "max_mb": import_service.MAX_BYTES // (1024 * 1024),
                "max_rows": import_service.MAX_ROWS}
     return render_page(request, "servicedesk/requesters/import.html", context, status=status)
@@ -134,12 +134,12 @@ def import_start(request):
         return _upload_page(request)
     upload = request.FILES.get("file")
     if upload is None:
-        return _upload_page(request, error=NO_FILE)
+        return _upload_page(request, error=NO_FILE, code="no_file")
     content = upload.read(import_service.MAX_BYTES + 1)
     try:
         item = import_service.make_preview(content, file_name=upload.name, actor=request.user, ip=request.client_ip)
     except ServiceDeskError as error:
-        return _upload_page(request, error=str(error))
+        return _upload_page(request, error=str(error), code=error.code)
     return HttpResponseRedirect(f"{IMPORT_URL}{item.pk}/")
 
 

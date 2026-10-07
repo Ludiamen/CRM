@@ -14,7 +14,7 @@
       {% endfor %}
     </ul>
   </nav>
-  <details data-filter-panel class="filter-panel mb-3"{% if filtered %} open{% endif %}>
+  <details data-filter-panel class="filter-panel mb-3" open{% if filtered %} data-filtered="true"{% endif %}>
     <summary class="filter-summary">Фильтр{% if filtered %} (задан){% endif %}</summary>
     <form id="tickets-filter" data-form="tickets-filter" class="filter-bar card card-body" method="get" action="/tickets/"
           hx-get="/tickets/" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true" hx-trigger="submit">

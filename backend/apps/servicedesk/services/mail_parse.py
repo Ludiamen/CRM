@@ -5,8 +5,11 @@
 Исключение разбора идёт наружу: его ловит шаг `parse` службы `intake`.
 """
 import email
+import email.errors
+import email.header
 import email.message
 import email.policy
+import email.utils
 import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
@@ -85,6 +88,31 @@ def clean_subject(value):
     return value[:_SUBJECT_MAX].strip()
 
 
+def _raw_names(message, header_name):
+    """Имена из исходных (не разобранных политикой) заголовков: адрес строчными -> имя.
+
+    Политика `default` склеивает смежные слова RFC 2047 пробелом и рвёт длинные имена («Серг еевич»);
+    `make_header(decode_header(...))` склеивает их без пробела.
+    """
+    names = {}
+    for key, raw in message.raw_items():
+        if key.lower() != header_name.lower():
+            continue
+        for name, addr in email.utils.getaddresses([str(raw)]):
+            if "=?" in name:
+                try:
+                    name = str(email.header.make_header(email.header.decode_header(name)))
+                except (UnicodeError, LookupError, email.errors.HeaderParseError):
+                    continue
+                names.setdefault(addr.lower(), name)
+    return names
+
+
+def _display_name(address, raw_names):
+    """Имя адреса: из исходного заголовка, если оно закодировано RFC 2047, иначе из разбора политики."""
+    return raw_names.get((address.addr_spec or "").lower()) or address.display_name or ""
+
+
 def sender_of(message):
     """Пара (адрес строчными, имя) первого адреса `From`; нет адреса или домена — адрес пуст."""
     header = message.get("From")
@@ -92,7 +120,7 @@ def sender_of(message):
     if not addresses:
         return "", ""
     first = addresses[0]
-    name = clean_text(first.display_name or "")
+    name = clean_text(_display_name(first, _raw_names(message, "From")))
     address = clean_text(first.addr_spec or "").lower()
     if "@" not in address or not address.rpartition("@")[2] or not address.rpartition("@")[0]:
         return "", name
@@ -226,12 +254,13 @@ def subject_number(subject):
 def cc_pairs(message):
     """Пары (адрес строчными, имя) из всех заголовков `Cc`; повтор адреса — одна пара с первым непустым именем."""
     names = {}
+    raw_names = _raw_names(message, "Cc")
     for header in message.get_all("Cc", []):
         for address in getattr(header, "addresses", ()):
             addr = clean_text(address.addr_spec or "").lower()
             if "@" not in addr:
                 continue
-            name = clean_text(address.display_name or "")
+            name = clean_text(_display_name(address, raw_names))
             if addr not in names or (not names[addr] and name):
                 names[addr] = name
     return list(names.items())

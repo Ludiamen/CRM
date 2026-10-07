@@ -6,7 +6,7 @@
   <a class="btn btn-outline-secondary" href="/servicedesk/requesters/">К списку заявителей</a>
 </div>
 {% include "servicedesk/settings/_nav.html" with active="requesters" %}
-{% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+{% if error %}<div class="alert alert-danger" role="alert" data-code="{{ code }}">{{ error }}</div>{% endif %}
 <section class="card form-card import-card">
   <div class="card-body">
     <form method="post" action="/servicedesk/requesters/import/" enctype="multipart/form-data" data-form="import-upload">

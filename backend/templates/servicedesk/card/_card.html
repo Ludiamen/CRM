@@ -7,18 +7,18 @@
       <div class="card-field" data-field="subject"><span class="card-field-label" data-field-label>Тема</span> <span class="card-field-value">{{ ticket.subject }}</span></div>
       <div class="card-field" data-field="status"><span class="card-field-label" data-field-label>Статус</span> <span class="card-field-value">{{ ticket.status.name }}</span></div>
       <div class="card-field" data-field="queue"><span class="card-field-label" data-field-label>Очередь</span> <span class="card-field-value">{{ ticket.queue.name }}</span></div>
-      <div class="card-field"{% if not ticket.category %} data-empty="true"{% endif %} data-field="category"><span class="card-field-label" data-field-label>Категория</span> <span class="card-field-value">{% if ticket.category %}{{ ticket.category.name }}{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field" data-empty="{% if ticket.category %}false{% else %}true{% endif %}" data-field="category"><span class="card-field-label" data-field-label>Категория</span> <span class="card-field-value">{% if ticket.category %}{{ ticket.category.name }}{% else %}не заполнено{% endif %}</span></div>
       <div class="card-field" data-field="priority"><span class="card-field-label" data-field-label>Критичность</span> <span class="card-field-value">{{ ticket.priority.name }}</span></div>
-      <div class="card-field"{% if not ticket.complexity %} data-empty="true"{% endif %} data-field="complexity"><span class="card-field-label" data-field-label>Сложность</span> <span class="card-field-value">{% if ticket.complexity %}{{ ticket.complexity.name }}{% else %}не заполнено{% endif %}</span></div>
-      <div class="card-field"{% if not ticket.client_unit %} data-empty="true"{% endif %} data-field="client-unit"><span class="card-field-label" data-field-label>Подразделение заявителя</span> <span class="card-field-value">{% if ticket.client_unit %}{{ ticket.client_unit.name }}{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field" data-empty="{% if ticket.complexity %}false{% else %}true{% endif %}" data-field="complexity"><span class="card-field-label" data-field-label>Сложность</span> <span class="card-field-value">{% if ticket.complexity %}{{ ticket.complexity.name }}{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field" data-empty="{% if ticket.client_unit %}false{% else %}true{% endif %}" data-field="client-unit"><span class="card-field-label" data-field-label>Подразделение заявителя</span> <span class="card-field-value">{% if ticket.client_unit %}{{ ticket.client_unit.name }}{% else %}не заполнено{% endif %}</span></div>
       <div class="card-field" data-field="source"><span class="card-field-label" data-field-label>Источник</span> <span class="card-field-value">{{ ticket.source.name }}</span></div>
       <div class="card-field" data-field="requester"><span class="card-field-label" data-field-label>Заявитель</span> <span class="card-field-value">{% if ticket.requester_name %}{{ ticket.requester_name }}{% else %}{{ ticket.requester_email }}{% endif %}</span></div>
-      <div class="card-field"{% if not ticket.requester_name %} data-empty="true"{% endif %} data-field="requester-name"><span class="card-field-label" data-field-label>ФИО заявителя</span> <span class="card-field-value">{% if ticket.requester_name %}{{ ticket.requester_name }}{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field" data-empty="{% if ticket.requester_name %}false{% else %}true{% endif %}" data-field="requester-name"><span class="card-field-label" data-field-label>ФИО заявителя</span> <span class="card-field-value">{% if ticket.requester_name %}{{ ticket.requester_name }}{% else %}не заполнено{% endif %}</span></div>
       <div class="card-field" data-field="requester-email"><span class="card-field-label" data-field-label>Почта заявителя</span> <span class="card-field-value">{{ ticket.requester_email }}</span></div>
-      <div class="card-field"{% if not ticket.assignee %} data-empty="true"{% endif %} data-field="assignee"><span class="card-field-label" data-field-label>Ответственный</span> <span class="card-field-value">{% if ticket.assignee %}<span{% if assignee_dismissed %} data-dismissed="true"{% endif %}>{{ ticket.assignee.full_name }}{% if assignee_dismissed %} (уволен){% endif %}</span>{% else %}не назначен{% endif %}</span></div>
+      <div class="card-field" data-empty="{% if ticket.assignee %}false{% else %}true{% endif %}" data-field="assignee"><span class="card-field-label" data-field-label>Ответственный</span> <span class="card-field-value">{% if ticket.assignee %}<span{% if assignee_dismissed %} data-dismissed="true"{% endif %}>{{ ticket.assignee.full_name }}{% if assignee_dismissed %} (уволен){% endif %}</span>{% else %}не назначен{% endif %}</span></div>
       <div class="card-field" data-field="created"><span class="card-field-label" data-field-label>Создана</span> <span class="card-field-value"><time data-at="{{ ticket.created_at|date:'c' }}">{{ ticket.created_at|date:'d.m.Y H:i' }}</time></span></div>
       {% if not open %}
-      <div class="card-field"{% if not closed_by_name %} data-empty="true"{% endif %} data-field="closed-by"><span class="card-field-label" data-field-label>Закрытие</span> <span class="card-field-value">{% if closed_by_name %}<span{% if closed_by_dismissed %} data-dismissed="true"{% endif %}>Закрыл: {{ closed_by_name }}{% if closed_by_dismissed %} (уволен){% endif %}</span>{% else %}не заполнено{% endif %}</span></div>
+      <div class="card-field" data-empty="{% if closed_by_name %}false{% else %}true{% endif %}" data-field="closed-by"><span class="card-field-label" data-field-label>Закрытие</span> <span class="card-field-value">{% if closed_by_name %}<span{% if closed_by_dismissed %} data-dismissed="true"{% endif %}>Закрыл: {{ closed_by_name }}{% if closed_by_dismissed %} (уволен){% endif %}</span>{% else %}не заполнено{% endif %}</span></div>
       <div class="card-field" data-field="resolution"><span class="card-field-label" data-field-label>Решение</span> <span class="card-field-value">{{ ticket.resolution|linebreaksbr }}</span></div>
       {% endif %}
       {% if consent %}<div class="card-field" data-field="consent"><span class="card-field-label" data-field-label>Согласие</span> <span class="card-field-value">согласие на обработку ПДн: <time data-at="{{ consent|date:'c' }}">{{ consent|date:'d.m.Y H:i' }}</time></span></div>{% endif %}
@@ -126,22 +126,24 @@
       </ul>
     </section>
     {% endif %}
-    {% if all_attachments %}
+    {% if all_attachments or all_rejected %}
     <section class="card-section" data-section="attachments">
       <h3 class="card-section-title">Вложения</h3>
+      {% if all_attachments %}
       <ul class="card-list">
         {% for file in all_attachments %}<li data-attachment data-state="{{ file.state }}">{% if file.state == "clean" %}<a href="{{ file.url }}">{{ file.name }}</a>{% elif file.state == "pending" %}{{ file.name }} — проверяется{% else %}{{ file.name }} — в карантине{% endif %}</li>
         {% endfor %}
       </ul>
-    </section>
-    {% endif %}
-    {% if all_rejected %}
-    <section class="card-section" data-rejected-attachments>
-      <h3 class="card-section-title">Не принятые вложения</h3>
-      <ul class="card-list">
-        {% for file in all_rejected %}<li data-rejected="{{ file.code }}">{{ file.name }} — {{ file.title }}</li>
-        {% endfor %}
-      </ul>
+      {% endif %}
+      {% if all_rejected %}
+      <div class="card-subsection" data-rejected-attachments>
+        <h4 class="card-section-title">Не принятые вложения</h4>
+        <ul class="card-list">
+          {% for file in all_rejected %}<li data-rejected="{{ file.code }}">{{ file.name }} — {{ file.title }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
     </section>
     {% endif %}
   </div>

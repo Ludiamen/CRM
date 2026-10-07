@@ -51,6 +51,15 @@
   });
   document.addEventListener('DOMContentLoaded', showBulkGroup);
 
+  /* Панель фильтра: на широком экране открыта всегда; до 576 px сворачивается, если фильтр не задан. */
+  function foldFilterPanel() {
+    var panel = document.querySelector('details[data-filter-panel]');
+    if (panel && window.innerWidth <= 576 && !panel.hasAttribute('data-filtered')) {
+      panel.removeAttribute('open');
+    }
+  }
+  document.addEventListener('DOMContentLoaded', foldFilterPanel);
+
   document.addEventListener('htmx:afterSwap', function (event) {
     var target = event.detail && event.detail.target;
     if (!target) {
