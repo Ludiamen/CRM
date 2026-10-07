@@ -162,7 +162,7 @@ def qid(queue) -> int:
     return queue.unit_id if hasattr(queue, "unit_id") else queue.pk
 
 
-def form_data(category, queue, **over) -> dict:
+def form_data(category, queue, /, **over) -> dict:
     data = {"email": new_email(), "name": "", "client_unit": "", "category": category.pk, "queue": qid(queue),
             "priority": "", "source": source_named("Телефон").pk, "subject": unique_subject(),
             "text": "Заявитель позвонил: не работает принтер"}

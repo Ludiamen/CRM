@@ -399,7 +399,7 @@ def test_autoclosed_ticket_reopened_by_requester_within_term(settings, protected
 
     _prepare(settings)
     queue_row = sd.make_queue()
-    ticket = sd.make_ticket(queue=queue_row, kind="waiting")
+    ticket = sd.make_ticket(queue=queue_row, kind="waiting", requester=sd.make_requester(_addr("req")))
     sd.make_entry(ticket, "incoming", text="Первое письмо")
     sd.backdate(ticket, "waiting_since", days=8)
     ticket = _fresh(ticket)

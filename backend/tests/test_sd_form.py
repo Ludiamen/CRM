@@ -54,7 +54,7 @@ def client_unit(name: str, *, archived: bool = False):
         name=name, name_key=support_org.name_key(name), archived=archived)
 
 
-def valid_data(category, **over) -> dict:
+def valid_data(category, /, **over) -> dict:
     """Поля формы (CONTRACT-003 § 12.1); значение `None` убирает ключ (как не отмеченный флажок)."""
     data = {"email": "anna.petrova@corp.test", "name": "Анна Петрова", "client_unit": "", "category": str(category.pk),
             "subject": "Не печатает принтер", "text": "Принтер на втором этаже не печатает", "consent": "on"}

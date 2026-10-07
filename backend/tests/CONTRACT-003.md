@@ -2790,3 +2790,17 @@ crm-work/slice003/stage3/testfix/fix-audit-pk-after-delete.diff). Затраги
 разрешения владельца; дифф — crm-work/slice003/stage3/testfix/fix-audit-uidvalidity-label.diff). Уточняет: 9.2 (подписи
 полей). Затрагивает: test_sd_audit::test_dictionary_queue_settings_events_were_became_in_russian и соседние проверки
 названий; test_audit::test_audit_every_written_key_has_russian_label (срез 001, без правки).
+
+**Дополнение 52 (Этап 3, перед волной (в), 2026-10-07). Три правки тестов, на которых падает любая верная реализация.**
+Нашли фактологи волны (в) (crm-work/slice003/stage3/review/facts-c1.md, facts-c2.md); правки — с разрешения владельца
+2026-10-07 (дифф — crm-work/slice003/stage3/testfix/wave-c-3-fixes.diff), проверки тестов не меняются:
+(а) test_sd_form, помощник `valid_data(category, **over)`: вызов `valid_data(category, category=value)`
+(test_category_or_department_not_offered_refused) давал `TypeError: got multiple values for argument 'category'` до запроса
+к странице; первый параметр стал только позиционным — `valid_data(category, /, **over)`;
+(б) test_sd_executor, помощник `form_data(category, queue, **over)`: то же для `category=""`, `queue=""`
+(test_required_fields_refused_and_name_optional) и `queue="abc"` (test_queue_must_be_marked_and_other_values_unarchived) —
+`form_data(category, queue, /, **over)`;
+(в) test_sd_closing_2::test_autoclosed_ticket_reopened_by_requester_within_term: заявка создавалась с заявителем по
+умолчанию (`…@example.com`) при списке доменов `corp.test`, и письмо заявителя получало `rejected_domain` (порядок проверок —
+6.16) до открытия заново; заявитель теперь `sd.make_requester(_addr("req"))`, как у соседних тестов файла. Затрагивает:
+test_sd_form, test_sd_executor, test_sd_closing_2.
