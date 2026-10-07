@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 from django.http import HttpResponseRedirect
 from django.views.decorators.http import require_http_methods, require_POST
 
+from apps.core import extensions
 from apps.core.models import User
 from apps.core.services import backup_codes, devices, links, login, passwords, sessions
 
@@ -74,7 +75,9 @@ def login_view(request):
     next_url = request.GET.get("next", "")
     if next_url and safe_next(request, next_url, "") == "":
         next_url = ""
-    context = {"action": _login_action(next_url), "idle": request.GET.get("idle") == "1"}
+    links_for_login = [item for func in extensions.registered("login_links") for item in func()]
+    context = {"action": _login_action(next_url), "idle": request.GET.get("idle") == "1",
+               "login_links": links_for_login}
     if request.method == "POST":
         step = login.check_password(request.POST.get("email", ""), request.POST.get("password", ""),
                                     ip=request.client_ip, user_agent=user_agent(request))

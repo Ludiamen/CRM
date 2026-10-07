@@ -13,8 +13,8 @@ from django.db import transaction
 from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
 
-from apps.core import extensions
-from apps.core.models import Permission, Role, User
+from apps.core import events, extensions
+from apps.core.models import Permission, Role, User, UserState
 
 CACHE_SECONDS = 12 * 3600
 
@@ -44,16 +44,27 @@ def _role_ids(user) -> set[int]:
     return ids
 
 
-def permissions_of(user) -> frozenset[str]:
-    """Коды прав записи: права личных ролей и ролей из точки `role_sources`."""
+def permissions_of(user, *, fresh: bool = False) -> frozenset[str]:
+    """Коды прав записи: права личных ролей и ролей из точки `role_sources`.
+
+    При `fresh=True` кэш не читается и не пишется.
+    """
     if not getattr(user, "is_authenticated", False):
         return frozenset()
-    cached = cache.get(_key(user.pk))
-    if cached is not None:
-        return frozenset(cached)
+    if not fresh:
+        cached = cache.get(_key(user.pk))
+        if cached is not None:
+            return frozenset(cached)
     codes = frozenset(Permission.objects.filter(roles__in=_role_ids(user)).values_list("code", flat=True).distinct())
-    cache.set(_key(user.pk), sorted(codes), CACHE_SECONDS)
+    if not fresh:
+        cache.set(_key(user.pk), sorted(codes), CACHE_SECONDS)
     return codes
+
+
+def users_with(code: str) -> list[User]:
+    """Неуволенные записи (заблокированные входят), у которых есть право `code`; по имени, затем по id."""
+    candidates = User.objects.exclude(state=UserState.DISMISSED).order_by("full_name", "pk")
+    return [user for user in candidates if code in permissions_of(user)]
 
 
 def roles_by_source(user) -> list[tuple[str, list]]:
@@ -77,16 +88,25 @@ def has_permission(user, code: str) -> bool:
     return code in permissions_of(user)
 
 
-def forget_users(user_ids) -> None:
-    """Сбрасывает ключи прав держателей после фиксации (вне транзакции — сразу)."""
-    keys = [_key(pk) for pk in user_ids]
+def forget_users(user_ids, *, publish: bool = True) -> None:
+    """Сбрасывает ключи прав держателей после фиксации (вне транзакции — сразу).
+
+    Затем, если `publish` и список не пуст, публикует `access.changed` (подписчик видит сброшенный кэш).
+    """
+    ids = sorted(set(user_ids))
+    if not ids:
+        return
+    keys = [_key(pk) for pk in ids]
     transaction.on_commit(lambda: cache.delete_many(keys))
+    if publish:
+        events.publish("access.changed", user_ids=ids)
 
 
 def forget_all() -> None:
     """Сбрасывает ключи прав всех записей после фиксации."""
     keys = [_key(pk) for pk in User.objects.values_list("pk", flat=True)]
     transaction.on_commit(lambda: cache.delete_many(keys))
+    events.publish("access.changed", user_ids=None)
 
 
 def has_any_permission(user, codes) -> bool:
@@ -99,9 +119,19 @@ def menu_for(user) -> list[dict]:
     described = list(CORE_MENU)
     for func in extensions.registered("menu_items"):
         described.extend(func())
-    items = [item for item in described if granted.intersection(item["permissions"])]
+    items = []
+    for item in described:
+        # `visible` зовётся только если права нет и не больше раза за вызов
+        if granted.intersection(item["permissions"]) or ("visible" in item and item["visible"](user)):
+            items.append(item)
     items.sort(key=lambda item: (item["order"], item["title"]))
-    return [{"url": i["url"], "title": i["title"], "icon": i["icon"], "order": i["order"]} for i in items]
+    result = []
+    for i in items:
+        entry = {"url": i["url"], "title": i["title"], "icon": i["icon"], "order": i["order"]}
+        if "badge" in i:
+            entry["badge"] = i["badge"](user)
+        result.append(entry)
+    return result
 
 
 def require_permission(code: str):

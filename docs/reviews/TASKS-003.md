@@ -636,3 +636,82 @@ d_success_criteria); два падения — тайм-ауты в одном �
 **Эталон регрессий для Этапа 3** — по-прежнему последний полный серверный прогон (485 passed, из них 475 тестов срезов 001–002
 и 10 тестов среза 003; красные 10 тестов T-3138 ждут кода) и вся приёмка срезов 001–002 зелёная; этот красный прогон эталоном
 не служит.
+
+## Ход выполнения: этап 3, волна (а) (T-3200…T-3209) — 2026-10-06/07
+
+Рабочий каталог — crm-work/slice003/stage3/: template.md (исполнитель), review-template.md (проверяющий), params.md
+(параметры волны), review/ (P1, P2 — проверка параметров до запуска; R-32NN — проверка кода по снимку диффа; V-testfix,
+V-fix-a), out/ (отчёты исполнителей), snap/ (снимки диффов), full/ (полный прогон), testfix/ (правки тестов). Исполнители
+— crm-implementer (Sonnet), проверяющие — crm-reviewer; каждая задача — свежим исполнителем по параметрам, каждый дифф —
+свежим проверяющим.
+
+**Параметры до запуска.** Две партии проверки параметров (P1 — круг 1, P2 — круг 2) нашли 13 находок, в том числе одну
+блокирующую: в T-3209 «HTML-пара» была названа «второй частью `multipart/alternative`», а в тесте она лежит внутри
+вложенного `multipart/related` (верно — часть, которую даёт `get_body(("html",))`). Важные: обёртка подписчика шины —
+обычная функция (у `functools.partial` нет `__qualname__`, Django при `robust=True` его читает); второй текст `not_utf8`
+у загрузки сотрудников выбирается после перехвата `TableFileError` (предпроверка NUL ломала бы XLSX и порядок
+`too_big`); константы `staff_import` остаются; `FakeImap` на `FETCH` отвечает пусто — разбор ответов исполнитель T-3207
+проверил своим скриптом на поддельных ответах; `enqueue_scan` с `job_timeout=300` (решение Opus C2 контракта — ни в одной
+задаче не было, отдано T-3203).
+
+**Порядок.** Круг 1 параллельно: T-3200, T-3201, T-3204, T-3207, T-3209; круг 2: T-3202 после T-3201 (общий
+`permissions.py`), затем T-3203, T-3205, T-3206 параллельно. Правило «один автор общего файла за раз» соблюдено.
+
+**Что сделано.**
+- T-3200 — `StoredFile.Purpose.ATTACHMENT`, `owner` может быть пустым, `content_type` до 255; новые поля `MailMessage`
+  (`cc`, `reply_to`, `message_id`, `references`, `auto_submitted` с `AutoSubmitted`, `related_ref`, `attachments`);
+  миграции схемы core 0007 и mail 0002.
+- T-3201 — шина `apps/core/events.py` (`subscribe`, `publish` после фиксации своей транзакцией, ошибка подписчика — в
+  лог), `permissions_of(fresh=True)`, `users_with`, `forget_users(..., publish=True)` и `forget_all` публикуют
+  `access.changed`.
+- T-3202 — тринадцать точек `POINTS`, `FilePurpose`, `MailRenderer`, `Rendered`; `menu_for` с `visible`/`badge` (ключ
+  `badge` только у пунктов с функцией), счётчик `span[data-menu-badge]` в меню; `login_links` на странице входа;
+  `e2e_reset_stand` зовёт `stand_reset` в обратном порядке.
+- T-3203 — диспетчер `scan_file` по назначению через `file_purposes` (путь фото без изменений), `attachment_path`,
+  `enqueue_scan` с `job_timeout=300`, `purge_quarantine` по назначению, `CLAMAV_TIMEOUT` 120 в settings.
+- T-3204 — `apps/core/services/table_file.py` (перенос чтения CSV и XLSX из `staff_import` с пределами и текстами
+  параметрами, `TableFileError`); `staff_import` обёрнут в `OrgError` с прежними кодами и текстами — тесты загрузки
+  сотрудников без изменений зелёные.
+- T-3205 — `structure.work_units_of`, `queue_people` (по два запроса), `delete_unit` спрашивает `unit_usage`;
+  `set_marks` и `move_unit` публикуют `access.changed`.
+- T-3206 — `send_rendered`, `deliver_message` с рендерером (заголовки письма заявки по 10.2 контракта; прежние шесть писем
+  — прежним путём), `on_failure` публикует `mail.failed`, `safe_error` скрывает `IMAP_PASSWORD`, `anonymize_related`.
+- T-3207 — IMAP-адаптер `apps/integrations/mail/imap.py` (`connect` по `IMAP_SECURITY` с проверкой сертификата,
+  `EXAMINE`, UIDVALIDITY/UIDNEXT из ответа на выбор папки, `search_uids`, `search_since`, `fetch`, `head`, разбор
+  `INTERNALDATE` в UTC без `Internaldate2tuple`).
+- T-3209 — чистые функции разбора письма `apps/servicedesk/services/mail_parse.py` по 6.14 контракта.
+
+**Проверка кода.** Девять проверок R-3200…R-3209: все «годен», блокирующих и важных находок по коду нет (важная R-3200-1
+касалась T-3203 и закрыта ею). Пять мелких (R-3209-1 CRLF до сжатия переводов строки, R-3202-1 лишний перевод строки на
+странице входа, R-3207-1 ошибка даты `INTERNALDATE` → `MailboxUnavailable`, R-3205-1 событие с пустым списком, R-3203-1
+`.filter().first()` при повторном чтении) внёс один правщик (out/fix-a.md), правки сверены (V-fix-a: все верны). R-3207-2
+(сверка UID в ответе `FETCH`) не делалась: Dovecot отвечает по запрошенному UID, риска нет.
+
+**Правки тестов Этапа 2 — с разрешения владельца 2026-10-07** (дополнение 44 контракта; диффы — crm-work/slice003/stage3/testfix/,
+проверка V-testfix до показа владельцу):
+1. test_sd_imap_live::test_live_login_with_env_password_error_text_has_no_password — тест ждал отказа входа под чужим
+   именем, а Dovecot стенда (`passdb static`) пускает любое имя с паролем `USER_PASSWORD` (факт F1 PLAN-003; проверено
+   входом: чужое имя с верным паролем — вход, неверный пароль — `AUTHENTICATIONFAILED`; logs/dovecot-login-check.txt).
+   Стало: неверный пароль — пароль окружения с случайным хвостом, имя прежнее; проверяется, что в тексте ошибки и
+   `last_error` нет ни отправленного, ни настоящего пароля. После правки тест проходит отказ входа и падает дальше, на
+   `mailbox.poll` (ждёт T-3214).
+2. test_sd_boundaries::test_set_marks_publishes_access_changed — второй блок менял голову и заместителя местами одним
+   вызовом `set_marks`, что запрещает подписанное правило `head_and_deputy` среза 002 (сменить отметку можно только двумя
+   вызовами; «обмен без события» недостижим). Стало: повтор того же вызова без изменений — событие одно на весь тест.
+   Тест зелёный.
+
+**Полный серверный прогон** (crm-work/slice003/stage3/full/after-a.txt, 2026-10-07 06:14–06:22): **658 failed, 542 passed,
+31 errors** (было 659 / 485 / 87). Регрессий против эталона — 0 (check_regress.py). Позеленели 57: test_table_file 12,
+test_sd_mail_parse 20, test_sd_boundaries 13 (шина 9, меню 2, `set_marks`, `move_unit`), test_sd_access 5 (`work_units_of`,
+`queue_people`), test_sd_mailbox 2 (адаптер), test_sd_imap_live 1 (готовность ящика), test_sd_letters 1 (`safe_error`),
+test_sd_stand_restore 1 (обратный порядок сброса), из перечня T-3138 — test_extensions 1 и test_clamav_adapter 1.
+Красные тесты срезов 001–002 — только 8 оставшихся из перечня T-3138 (права среза — T-3210/T-3212, развёртывание —
+T-3240/T-3241). Красные тесты среза 003 падают по ожидаемым причинам: нет моделей `servicedesk` (`KeyError` модели —
+около 480), служб и маршрутов волн (б)–(в). Ошибок `bus`/`bus_spy` на фикстуре больше нет (87 → 31 errors).
+
+**Эталон регрессий для дальнейшего Этапа 3** — этот прогон (542 passed; crm-work/slice003/stage3/baseline-after-a.txt).
+
+**Решения Opus сверх задач.** (а) `apps/servicedesk/services/errors.py` и экспорт `ServiceDeskError`, `Batch` из
+`services/__init__.py` не названы ни в одной задаче — отдельный шаг Б0 в начале волны (б) (дополнение 44 (в)). (б)
+`enqueue_scan` с `job_timeout=300` (решение C2 контракта) выполнено в T-3203. (в) Строка 324 контракта («смена между
+головой и заместителем») описывает недостижимый случай — уточнено дополнением 44 (б).

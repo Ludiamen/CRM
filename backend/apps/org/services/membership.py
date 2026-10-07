@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 
 from django.db import transaction
 
+from apps.core import events
 from apps.core.models import User
 from apps.core.services import audit
 from apps.core.services.permissions import forget_users
@@ -170,6 +171,7 @@ def set_marks(unit, *, heads=None, deputies=None, actor, ip=None) -> None:
             raise OrgError("head_and_deputy", "В одном узле человек либо руководитель, либо заместитель: заменить отметку молча нельзя, сначала снимите прежнюю.")
         if final[head] == current_ids[head] and final[deputy] == current_ids[deputy]:
             return
+        had_mark = current_ids[head] | current_ids[deputy]
         before = {"heads": _names(current[head]), "deputies": _names(current[deputy])}
         members = Membership.objects.filter(unit=unit)
         members.filter(user_id__in=final[head] - current_ids[head]).update(mark=head)
@@ -180,3 +182,6 @@ def set_marks(unit, *, heads=None, deputies=None, actor, ip=None) -> None:
         audit.record(
             "unit.marks_changed", actor=actor, object_type="unit", object_id=unit.pk, ip=ip, before=before,
             after={"heads": _names(after_state[head]), "deputies": _names(after_state[deputy])})
+        ids = sorted(had_mark ^ (final[head] | final[deputy]))
+        if ids:
+            events.publish("access.changed", user_ids=ids)

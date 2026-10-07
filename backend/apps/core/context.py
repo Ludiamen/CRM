@@ -22,7 +22,7 @@ def shell(request):
     user = getattr(request, "user", None)
     if user is not None and user.is_authenticated and not sessions.is_limited(request):
         items = [{"url": "/", "title": "Главная", "icon": HOME_ICON}] + [
-            {"url": entry["url"], "title": entry["title"], "icon": entry["icon"]}
+            {key: entry[key] for key in ("url", "title", "icon", "badge") if key in entry}
             for entry in permissions.menu_for(user)]
         context["menu"] = [{**item, "active": _active(item["url"], request.path)} for item in items]
     return context

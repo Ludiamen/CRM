@@ -15,7 +15,9 @@
 """
 from datetime import date, datetime, timedelta
 
-from .models import MailMessage, MailStatus
+from apps.core import extensions
+
+from .models import MailAttempt, MailMessage, MailStatus
 
 QUEUE = "mail"
 RETRY_MAX = 11
@@ -33,6 +35,8 @@ SUBJECTS = dict([
     ("second_factor_reset", "Второй фактор входа в портал «{name}» сброшен"),
     ("password_changed", "Пароль в портале «{name}» изменён"),
 ])
+# Значение адреса получателя и вложений у обезличенного письма (то же слово у `servicedesk`: `ANONYMIZED`)
+ANONYMIZED = "обезличено"
 # Ключи контекста, которые в очередь не попадают никогда (их задание берёт из базы)
 SECRET_CONTEXT = frozenset({"link", "code", "password", "token"})
 
@@ -85,6 +89,36 @@ def send(template: str, to: str, context: dict, *, related_user=None) -> MailMes
         related_user=related_user)
     enqueue(message.pk, {"context": public_context(context)})
     return message
+
+
+def renderer_for(template: str):
+    """Рендерер письма приложения по префиксу шаблона или `None` (прежние шесть писем среза)."""
+    for renderer in extensions.registered("mail_renderers"):
+        if template.startswith(renderer.prefix):
+            return renderer
+    return None
+
+
+def send_rendered(template: str, to: str, *, subject: str, cc: list[str], reply_to: str, message_id: str,
+                  references: str, auto_submitted: str, related_ref: str, attachments: list[str],
+                  context: dict) -> MailMessage:
+    """Ставит в очередь письмо приложения (заявки): тело соберёт рендерер своего префикса в момент отправки."""
+    if renderer_for(template) is None:
+        raise ValueError(f"нет рендерера для шаблона письма: {template}")
+    message = MailMessage.objects.create(
+        to=to, template=template, subject=subject, status=MailStatus.QUEUED, cc=", ".join(cc),
+        reply_to=reply_to, message_id=message_id, references=references, auto_submitted=auto_submitted,
+        related_ref=related_ref, attachments=[str(item) for item in attachments])
+    enqueue(message.pk, {"context": public_context(context)})
+    return message
+
+
+def anonymize_related(related_ref: str) -> int:
+    """Обезличивает письма по `related_ref`: получатель, копии, вложения, тексты ошибок; возвращает число писем."""
+    qs = MailMessage.objects.filter(related_ref=related_ref)
+    ids = list(qs.values_list("pk", flat=True))
+    MailAttempt.objects.filter(message_id__in=ids).update(error="")
+    return qs.update(to=ANONYMIZED, cc="", attachments=[], last_error="")
 
 
 def last_message(user, template: str) -> MailMessage | None:

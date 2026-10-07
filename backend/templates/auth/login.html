@@ -17,4 +17,6 @@
   <button class="btn btn-primary w-100" type="submit">Продолжить</button>
 </form>
 <p class="mt-3 mb-0 text-center"><a href="/password/forgot/">Забыли пароль?</a></p>
+{% for link in login_links %}<p class="mt-2 mb-0 text-center"><a data-login-link href="{{ link.url }}">{{ link.title }}</a></p>
+{% endfor -%}
 {% endblock %}

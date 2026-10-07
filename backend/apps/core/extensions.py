@@ -4,12 +4,14 @@
 регистрации. Без зарегистрированных функций ядро ведёт себя как после среза 001.
 Ядро не импортирует приложения, которые в нём регистрируются.
 """
+import pathlib
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Callable, NamedTuple
 
 POINTS = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory",
-          "card_sections", "day_marks", "home_notices", "stand_reset")
+          "card_sections", "day_marks", "home_notices", "stand_reset",
+          "unit_usage", "file_purposes", "mail_renderers", "login_links")
 
 _registry: dict[str, list] = {point: [] for point in POINTS}
 
@@ -98,3 +100,25 @@ class CardSection:
     order: int
     template: str
     context: dict = field(default_factory=dict)
+
+
+@dataclass
+class FilePurpose:
+    """Назначение файла в хранилище: как приложение обрабатывает итог проверки на вирусы."""
+    purpose: str
+    still_waiting: Callable
+    clean: Callable
+    found: Callable
+
+
+@dataclass
+class MailRenderer:
+    """Сборка письма приложения в момент отправки: `render(MailMessage, context) -> Rendered`."""
+    prefix: str
+    render: Callable
+
+
+class Rendered(NamedTuple):
+    """Готовое письмо: текст и вложения (имя и путь файла в томе `protected`)."""
+    body: str
+    attachments: list[tuple[str, pathlib.Path]]

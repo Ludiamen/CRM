@@ -15,6 +15,10 @@ class MailStatus(models.TextChoices):
 
 
 class MailMessage(models.Model):
+    class AutoSubmitted(models.TextChoices):
+        REPLIED = "auto-replied", "автоответ"
+        GENERATED = "auto-generated", "автоматическое"
+
     to = models.CharField(max_length=254)
     template = models.CharField(max_length=64)
     subject = models.CharField(max_length=255, blank=True)
@@ -24,6 +28,13 @@ class MailMessage(models.Model):
     created_at = models.DateTimeField(default=now)
     sent_at = models.DateTimeField(null=True, blank=True)
     related_user = models.ForeignKey("core.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    cc = models.TextField(blank=True)
+    reply_to = models.CharField(max_length=254, blank=True)
+    message_id = models.CharField(max_length=255, blank=True, db_index=True)
+    references = models.TextField(blank=True)
+    auto_submitted = models.CharField(max_length=16, blank=True, choices=AutoSubmitted.choices)
+    related_ref = models.CharField(max_length=64, blank=True, db_index=True)
+    attachments = models.JSONField(default=list, blank=True)
 
     class Meta:
         default_permissions = ()

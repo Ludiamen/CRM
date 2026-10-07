@@ -6,7 +6,9 @@
 статуса письма пишется в журнал событий (`mail.status_changed`).
 """
 import os
+import pathlib
 from datetime import datetime
+from email.utils import formataddr
 
 import django
 from django.apps import apps as _apps
@@ -21,6 +23,9 @@ from django.db import close_old_connections, connection  # noqa: E402
 from django.template.loader import render_to_string  # noqa: E402
 from django.utils import timezone  # noqa: E402
 
+from apps.core import events  # noqa: E402
+
+from . import services  # noqa: E402
 from .models import MailAttempt, MailMessage, MailStatus  # noqa: E402
 
 # Письма уходят только по SMTP из окружения; настройка EMAIL_BACKEND (в тестах Django подменяет её на
@@ -45,7 +50,7 @@ def _fresh_connection() -> None:
 def safe_error(exc: BaseException) -> str:
     """Текст ошибки для журнала доставки: без секретов, не длиннее 500 знаков."""
     text = f"{type(exc).__name__}: {exc}"
-    for secret in (settings.EMAIL_HOST_PASSWORD,):
+    for secret in (settings.EMAIL_HOST_PASSWORD, settings.IMAP_PASSWORD):
         if secret:
             text = text.replace(secret, "***")
     return text[:MAX_ERROR_LENGTH]
@@ -78,6 +83,36 @@ def build_context(message: MailMessage, public: dict) -> dict:
     return context
 
 
+def _app_email(message: MailMessage, rendered) -> EmailMessage:
+    """Письмо приложения (заявки): заголовки из полей `MailMessage`; пустые значения не пишутся.
+
+    `Message-ID` из `headers` Django не заменяет своим (`EmailMessage.message()` добавляет его только при отсутствии).
+    """
+    from apps.core.services import portal_settings
+
+    references = message.references.split()
+    headers = {TEMPLATE_HEADER: message.template}
+    if message.message_id:
+        headers["Message-ID"] = message.message_id
+    if references:
+        headers["References"] = " ".join(references)
+        headers["In-Reply-To"] = references[-1]
+    if message.auto_submitted:
+        headers["Auto-Submitted"] = message.auto_submitted
+    email = EmailMessage(
+        subject=message.subject, body=rendered.body,
+        from_email=formataddr((portal_settings.get().name, settings.DEFAULT_FROM_EMAIL)), to=[message.to],
+        cc=[a.strip() for a in message.cc.split(",") if a.strip()],
+        reply_to=[message.reply_to] if message.reply_to else None,
+        headers=headers, connection=get_connection(SMTP_BACKEND))
+    for name, path in rendered.attachments:
+        try:
+            email.attach(name, pathlib.Path(path).read_bytes())
+        except OSError:  # файла нет на диске: письмо уходит без него
+            continue
+    return email
+
+
 def deliver_message(message_id: int) -> None:
     """Одна попытка доставки письма `message_id`."""
     from rq import get_current_job
@@ -89,12 +124,16 @@ def deliver_message(message_id: int) -> None:
     job = get_current_job()
     public = (job.meta.get("context") if job is not None else None) or {}
     try:
-        context = build_context(message, public)
-        body = render_to_string(f"mail/{message.template}.txt", context)
-        EmailMessage(
-            subject=message.subject, body=body, from_email=settings.DEFAULT_FROM_EMAIL, to=[message.to],
-            headers={TEMPLATE_HEADER: message.template}, connection=get_connection(SMTP_BACKEND),
-        ).send(fail_silently=False)
+        renderer = services.renderer_for(message.template)
+        if renderer is not None:
+            _app_email(message, renderer.render(message, public)).send(fail_silently=False)
+        else:
+            context = build_context(message, public)
+            body = render_to_string(f"mail/{message.template}.txt", context)
+            EmailMessage(
+                subject=message.subject, body=body, from_email=settings.DEFAULT_FROM_EMAIL, to=[message.to],
+                headers={TEMPLATE_HEADER: message.template}, connection=get_connection(SMTP_BACKEND),
+            ).send(fail_silently=False)
     except LinkGone:
         _finish(message, ok=False, error="Ссылка в письме уже недействительна: письмо не отправлено.",
                 final=MailStatus.FAILED)
@@ -136,3 +175,4 @@ def on_failure(job, connection_, exc_type, exc_value, traceback) -> None:
     message.status = MailStatus.FAILED
     message.save(update_fields=["status"])
     _record_status(message, old, MailStatus.FAILED)
+    events.publish("mail.failed", mail_id=message.pk, related_ref=message.related_ref)

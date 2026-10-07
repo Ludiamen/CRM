@@ -35,6 +35,7 @@
           <a class="menu-item{% if item.active %} active{% endif %}" href="{{ item.url }}" title="{{ item.title }}"{% if item.active %} aria-current="page"{% endif %}>
             <span class="menu-icon" aria-hidden="true">{% include item.icon %}</span>
             <span class="menu-label">{{ item.title }}</span>
+            {% if item.badge and item.badge > 0 %}<span class="badge text-bg-primary ms-auto" data-menu-badge>{{ item.badge }}</span>{% endif %}
           </a>
         </li>
         {% endfor %}

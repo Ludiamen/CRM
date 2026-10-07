@@ -201,7 +201,8 @@ EMAIL_TIMEOUT = 30
 
 CLAMAV_HOST = env("CLAMAV_HOST", default="clamav")
 CLAMAV_PORT = env.int("CLAMAV_PORT", default=3310)
-CLAMAV_TIMEOUT = env.int("CLAMAV_TIMEOUT", default=30)
+# Несжимаемый ZIP 20 МБ clamd проверяет 27–29 с: запас до 120 с
+CLAMAV_TIMEOUT = env.int("CLAMAV_TIMEOUT", default=120)
 
 # --- Ящик заявок сервис-деска, IMAP (PLAN-003, «Запуск» → «Переменные окружения») ---
 # Здесь только чтение переменных; опрос ящика — в приложении сервис-деска.

@@ -52,8 +52,9 @@ class Command(BaseCommand):
         statements = owner.ops.sql_flush(self.style, tables, reset_sequences=True, allow_cascade=True)
         owner.ops.execute_sql_flush(statements)
         files.remove_paths(stale_files)
-        # данные приложений — до удаления своих ролей: их могут держать ссылки приложений с PROTECT (роли узлов `org`)
-        for reset in extensions.registered("stand_reset"):
+        # данные приложений — до удаления своих ролей; обратный порядок: данные приложений, зарегистрированных
+        # позже, держат ссылки PROTECT на данные зарегистрированных раньше (роли узлов `org`, узлы `org`)
+        for reset in reversed(extensions.registered("stand_reset")):
             reset()
         Role.objects.using("migrate").filter(is_builtin=False).delete()
         defaults = {f.name: f.get_default() for f in SecuritySettings._meta.concrete_fields if not f.primary_key}

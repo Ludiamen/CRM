@@ -1,8 +1,9 @@
-"""Файлы ядра: путь фото сотрудника (T-2216, FR-132, NFR-105, NFR-108; CONTRACT-002 § 3, ADR-0007).
+"""Файлы ядра: путь фото сотрудника и вложений (T-2216, T-3203, FR-132, NFR-105, NFR-108; CONTRACT-002 § 3, ADR-0007).
 
 Загрузка проверяется Pillow по содержимому и ложится в `incoming/`; антивирус и перекодирование делает
 задание `core.tasks.scan_file`. Чистое фото хранится в `photos/<id>-512.jpg` и `-96.jpg`, найденное —
-в `quarantine/<id>`. Всё под `settings.PROTECTED_ROOT`; в журнал событий путь и содержимое не попадают.
+в `quarantine/<id>`. Вложение: `incoming/<id>`, чистое `attachments/<id>`, найденное `quarantine/<id>`
+(`attachment_path`; итог решает приложение через точку `file_purposes`). Всё под `settings.PROTECTED_ROOT`; в журнал событий путь и содержимое не попадают.
 """
 import hashlib
 import io
@@ -61,6 +62,17 @@ def photo_path(stored: StoredFile, size: int | None = None) -> pathlib.Path:
     if stored.status == StoredFile.Status.QUARANTINE:
         return root / "quarantine" / str(stored.pk)
     raise ValueError("у чистого файла путь зависит от размера")
+
+
+def attachment_path(stored: StoredFile) -> pathlib.Path:
+    """Путь вложения под `PROTECTED_ROOT` по состоянию проверки: `incoming/`, `attachments/` или `quarantine/`."""
+    root = pathlib.Path(settings.PROTECTED_ROOT)
+    folder = {
+        StoredFile.Status.PENDING: "incoming",
+        StoredFile.Status.CLEAN: "attachments",
+        StoredFile.Status.QUARANTINE: "quarantine",
+    }[stored.status]
+    return root / folder / str(stored.pk)
 
 
 def initials(full_name: str) -> str:

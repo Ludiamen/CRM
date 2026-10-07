@@ -1,4 +1,4 @@
-"""Хранимые файлы (PLAN-002, «Ядро (изменения)»): сейчас — только фото сотрудника.
+"""Хранимые файлы (PLAN-002, «Ядро (изменения)»): фото сотрудника и вложения заявок.
 
 Сами файлы лежат в томе `protected`; здесь только запись о файле и его проверке.
 Связь с `User` — строковая ссылка: `accounts.py` ссылается на `StoredFile` так же.
@@ -13,6 +13,7 @@ from ._util import now
 class StoredFile(models.Model):
     class Purpose(models.TextChoices):
         PHOTO = "photo", "фото"
+        ATTACHMENT = "attachment", "вложение"
 
     class Status(models.TextChoices):
         PENDING = "pending", "проверяется"
@@ -21,10 +22,12 @@ class StoredFile(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     purpose = models.CharField("назначение", max_length=16, choices=Purpose.choices, default=Purpose.PHOTO)
-    owner = models.ForeignKey("core.User", on_delete=models.PROTECT, related_name="stored_files")
+    owner = models.ForeignKey(
+        "core.User", null=True, blank=True, on_delete=models.PROTECT, related_name="stored_files"
+    )
     size = models.PositiveBigIntegerField("размер, байт")
     sha256 = models.CharField(max_length=64)
-    content_type = models.CharField("тип содержимого", max_length=64)
+    content_type = models.CharField("тип содержимого", max_length=255)
     status = models.CharField("состояние проверки", max_length=16, choices=Status.choices, default=Status.PENDING)
     signature = models.CharField("сигнатура", max_length=255, blank=True)
     attempts = models.PositiveIntegerField("попыток проверки", default=0)

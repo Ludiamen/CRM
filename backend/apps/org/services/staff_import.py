@@ -4,11 +4,8 @@
 выполнение (`confirm`) и образцы (`sample_csv`, `sample_xlsx`). Файл разбирается в памяти и нигде не сохраняется (FR-141).
 """
 import csv
-import datetime
 import io
-import zipfile
 from dataclasses import dataclass, field
-from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
@@ -16,7 +13,7 @@ from django.db import DatabaseError, transaction
 from django.db.models.functions import Lower
 
 from apps.core.models import User, UserState
-from apps.core.services import accounts, audit, roles
+from apps.core.services import accounts, audit, roles, table_file
 from apps.core.services.permissions import forget_users
 
 from . import structure
@@ -58,111 +55,29 @@ def _norm_header(text) -> str:
 
 # --- разбор файла -----------------------------------------------------------------------------
 
-def _cell_text(value) -> str:
-    """Значение ячейки XLSX текстом: дата — ДД.ММ.ГГГГ, целое — без «.0» и экспоненты, дробное — без экспоненты."""
-    if value is None:
-        return ""
-    if isinstance(value, (datetime.datetime, datetime.date)):
-        return value.strftime("%d.%m.%Y")
-    if isinstance(value, bool):
-        return str(value)
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, float):
-        if value.is_integer():
-            return str(int(value))
-        return format(Decimal(repr(value)), "f")
-    return str(value)
-
-
-def _xlsx_error(error: Exception, bomb_type) -> OrgError:
-    """Ошибка чтения книги -> `xml_bomb`, если в цепочке причин (openpyxl оборачивает) есть отказ defusedxml."""
-    link, hops = error, 0
-    while link is not None and hops < 10:
-        if bomb_type and isinstance(link, bomb_type):
-            return OrgError("xml_bomb", "Файл отклонён: внутри таблицы опасная XML-конструкция.")
-        link, hops = link.__cause__ or link.__context__, hops + 1
-    return OrgError("bad_format", "Не удалось прочитать таблицу XLSX: файл повреждён.")
-
-
-def _read_xlsx(content: bytes) -> list[list[str]]:
-    """Первый лист книги: заголовок и строки данных, не больше `MAX_ROWS + 1` строк данных (читаем лениво)."""
-    try:
-        from defusedxml.common import DefusedXmlException
-    except ImportError:  # defusedxml в зависимостях; без него защиты нет, но и класса нет
-        DefusedXmlException = ()
-    from openpyxl import load_workbook
-    try:
-        book = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
-    except Exception as error:
-        raise _xlsx_error(error, DefusedXmlException) from None
-    try:
-        sheet = book.worksheets[0]
-        out = []
-        for raw in sheet.iter_rows(values_only=True):
-            cells = [_cell_text(value) for value in raw]
-            if out and not any(cell.strip() for cell in cells):
-                continue  # пустые строки данных не считаются
-            out.append(cells)
-            if len(out) > MAX_ROWS + 1:  # заголовок и 1001-я строка: дальше не читаем
-                break
-        return out
-    except IndexError:
-        return []
-    except Exception as error:
-        raise _xlsx_error(error, DefusedXmlException) from None
-    finally:
-        book.close()
-
-
-def _read_csv(content: bytes) -> list[list[str]]:
-    """CSV: строгое UTF-8 (с BOM или без) без нулевых байтов; разделитель «;» или «,» по строке заголовков."""
-    if b"\x00" in content:
-        raise OrgError("not_utf8", "Файл не в кодировке UTF-8 (или содержит нулевые байты).")
-    try:
-        text = content.decode("utf-8-sig")
-    except UnicodeDecodeError:
-        raise OrgError("not_utf8", "Файл не в кодировке UTF-8: сохраните таблицу как CSV UTF-8 или XLSX.") from None
-    first = text.split("\n", 1)[0]
-    delimiter = ";" if first.count(";") >= first.count(",") and ";" in first else ","
-    out = []
-    try:
-        for raw in csv.reader(io.StringIO(text, newline=""), delimiter=delimiter):
-            if out and not any(cell.strip() for cell in raw):
-                continue
-            out.append(raw)
-            if len(out) > MAX_ROWS + 1:
-                break
-    except csv.Error:
-        raise OrgError("bad_format", "Не удалось прочитать CSV: слишком длинное значение или нарушена разметка.") from None
-    return out
-
-
-def _open_archive(content: bytes):
-    """ZIP-архив или `None`, если содержимое не архив."""
-    try:
-        return zipfile.ZipFile(io.BytesIO(content))
-    except (zipfile.BadZipFile, ValueError, OSError):
-        return None
+# тексты отказов чтения таблицы: свои, срез 002 (ключи — `table_file.read`, дополнение 36 контракта)
+_TEXTS = {
+    "too_big": "Файл больше 1 МБ: разделите его на части.",
+    "bad_format": "Не удалось прочитать таблицу XLSX: файл повреждён.",
+    "bad_format_archive": "Это архив, но не таблица XLSX. Загрузите CSV (UTF-8) или XLSX.",
+    "bad_format_csv": "Не удалось прочитать CSV: слишком длинное значение или нарушена разметка.",
+    "not_utf8": "Файл не в кодировке UTF-8: сохраните таблицу как CSV UTF-8 или XLSX.",
+    "too_many_rows": "В файле больше 1000 строк: разделите его на части.",
+    "zip_bomb": "Файл отклонён: слишком много частей или слишком большой объём внутри.",
+    "xml_bomb": "Файл отклонён: внутри таблицы опасная XML-конструкция.",
+}
+_NUL_TEXT = "Файл не в кодировке UTF-8 (или содержит нулевые байты)."
 
 
 def parse_file(content: bytes) -> ParsedFile:
     """Разбирает файл сотрудников. Порядок отказов: размер, формат, оглавление XLSX, разбор, колонки, строки."""
-    if len(content) > MAX_BYTES:
-        raise OrgError("too_big", "Файл больше 1 МБ: разделите его на части.")
-    archive = _open_archive(content)
-    if archive is not None:
-        with archive:
-            names = set(archive.namelist())
-            if "[Content_Types].xml" not in names or "xl/workbook.xml" not in names:
-                raise OrgError("bad_format", "Это архив, но не таблица XLSX. Загрузите CSV (UTF-8) или XLSX.")
-            parts = archive.infolist()
-            if len(parts) > MAX_PARTS or sum(part.file_size for part in parts) > MAX_UNPACKED:
-                raise OrgError("zip_bomb", "Файл отклонён: слишком много частей или слишком большой объём внутри.")
-        file_format, table = "xlsx", _read_xlsx(content)
-    else:
-        file_format, table = "csv", _read_csv(content)
-    header = table[0] if table else []
+    try:
+        table = table_file.read(content, max_bytes=MAX_BYTES, max_rows=MAX_ROWS, max_parts=MAX_PARTS,
+                                max_unpacked=MAX_UNPACKED, texts=_TEXTS)
+    except table_file.TableFileError as error:
+        message = _NUL_TEXT if error.code == "not_utf8" and b"\x00" in content else error.message
+        raise OrgError(error.code, message) from None
+    file_format, header = table.file_format, table.header
     columns, not_loaded = {}, []
     for index, title in enumerate(header):
         title = str(title or "")
@@ -178,9 +93,11 @@ def parse_file(content: bytes) -> ParsedFile:
     missing = [name for name in REQUIRED_COLUMNS if name not in columns]
     if missing:
         raise OrgError("missing_columns", "В файле нет обязательных колонок: " + ", ".join(missing) + ". Загрузите таблицу CSV (UTF-8) или XLSX по образцу.")
-    data = table[1:]
-    if len(data) > MAX_ROWS:
-        raise OrgError("too_many_rows", "В файле больше 1000 строк: разделите его на части.")
+    data = table.rows
+    try:
+        table_file.check_rows(data, MAX_ROWS, _TEXTS)
+    except table_file.TableFileError as error:
+        raise OrgError(error.code, error.message) from None
     rows = []
     for raw in data:
         row = {}

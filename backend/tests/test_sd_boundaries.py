@@ -304,8 +304,9 @@ def test_access_changed_handler_sees_new_permissions_after_cache_reset(bus, djan
 
 
 def test_set_marks_publishes_access_changed(bus, django_capture_on_commit_callbacks):
-    """FR-292: `set_marks` публикует `access.changed` с теми, у кого отметка появилась или исчезла; смена между головой и
-    заместителем и повтор без изменений события не дают (решение Opus A4)."""
+    """FR-292: `set_marks` публикует `access.changed` с теми, у кого отметка появилась или исчезла; повтор без изменений
+    события не даёт (решение Opus A4). Обмен головы и заместителя одним вызовом запрещён правилом `head_and_deputy` среза
+    002 (CONTRACT-002 § 4: сменить отметку можно только двумя вызовами), поэтому здесь не проверяется."""
     from apps.org.services import membership
 
     bus.listen("access.changed")
@@ -317,9 +318,8 @@ def test_set_marks_publishes_access_changed(bus, django_capture_on_commit_callba
         membership.set_marks(unit, heads=[gained_head], deputies=[gained_deputy], actor=admin)
     assert bus.calls("access.changed") == [{"user_ids": sorted([lost.pk, gained_head.pk, gained_deputy.pk])}]
     with django_capture_on_commit_callbacks(execute=True):
-        membership.set_marks(unit, heads=[gained_deputy], deputies=[gained_head], actor=admin)
-        membership.set_marks(unit, heads=[gained_deputy], deputies=[gained_head], actor=admin)
-    assert len(bus.calls("access.changed")) == 1, "обмен голова/заместитель и повтор не меняют состав очередей"
+        membership.set_marks(unit, heads=[gained_head], deputies=[gained_deputy], actor=admin)
+    assert len(bus.calls("access.changed")) == 1, "повтор без изменений не меняет состав очередей"
 
 
 def test_move_unit_publishes_access_changed_with_former_upper_heads(bus, django_capture_on_commit_callbacks):

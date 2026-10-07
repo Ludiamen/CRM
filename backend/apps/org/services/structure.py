@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import F, Q, Value
 from django.db.models.functions import Concat, Substr
 
+from apps.core import events, extensions
 from apps.core.services import audit
 from apps.core.services.permissions import forget_users
 from apps.org.models import Membership, Unit
@@ -20,6 +21,11 @@ _NAME_TAKEN = "У этого родителя уже есть узел с так
 def name_key(text: str) -> str:
     """`Unit.name_key`: без крайних и повторных пробелов, в нижнем регистре, «ё» -> «е»."""
     return " ".join(text.split()).lower().replace("ё", "е")
+
+
+def _chain_ids(path: str) -> list[int]:
+    """Номера узлов цепочки по `path`, от корня к узлу."""
+    return [int(part) for part in path.split("/") if part]
 
 
 def lock_root() -> Unit:
@@ -121,12 +127,25 @@ def move_unit(unit, new_parent, *, actor, ip=None) -> Unit:
         old_path = unit.path
         new_path = f"{new_parent.path}{unit.pk}/"
         delta = (new_parent.depth + 1) - unit.depth
-        user_ids = list(
+        # Все чтения для состава события `access.changed` — до записи путей: после неё цепочки уже новые.
+        subtree_ids = set(
             Membership.objects.filter(unit__path__startswith=old_path).values_list("user_id", flat=True).distinct())
+        user_ids = list(subtree_ids)
+        marked = [Membership.Mark.HEAD, Membership.Mark.DEPUTY]
+        old_chain = _chain_ids(old_parent.path)
+        new_chain = _chain_ids(new_parent.path)
+        former_heads = set(
+            Membership.objects.filter(unit_id__in=old_chain, mark__in=marked).values_list("user_id", flat=True))
+        kept_heads = set(
+            Membership.objects.filter(unit_id__in=new_chain, mark__in=marked, user_id__in=former_heads)
+            .values_list("user_id", flat=True)) if former_heads else set()
+        event_ids = sorted(subtree_ids | (former_heads - kept_heads))
         Unit.objects.filter(path__startswith=old_path).update(
             path=Concat(Value(new_path), Substr("path", len(old_path) + 1)), depth=F("depth") + delta)
         Unit.objects.filter(pk=unit.pk).update(parent=new_parent)
-        forget_users(user_ids)
+        forget_users(user_ids, publish=False)
+        if event_ids:
+            events.publish("access.changed", user_ids=event_ids)
         audit.record(
             "unit.moved", actor=actor, object_type="unit", object_id=unit.pk, ip=ip,
             before={"parent": old_parent.name, "parent_id": old_parent.pk},
@@ -143,6 +162,10 @@ def delete_unit(unit, *, actor, ip=None) -> None:
             raise OrgError("root_protected", "Корневой отдел нельзя удалить.")
         if unit.memberships.exists() or unit.children.exists():
             raise OrgError("not_empty", "Узел не пуст: в нём есть участники или вложенные узлы.")  # дополнение 52
+        for func in extensions.registered("unit_usage"):
+            reason = func(unit.pk)
+            if reason:
+                raise OrgError("in_use", f"Узел нельзя удалить: {reason}.")
         roles = sorted(unit.unit_roles.values_list("role__name", flat=True))
         before = {"kind": unit.kind, "name": unit.name, "parent": unit.parent.name, "roles": roles}
         pk = unit.pk
@@ -227,3 +250,40 @@ def subordinates_of(user) -> list[PersonRef]:
         if m.user.state != "dismissed"}
     ordered = sorted(people.values(), key=lambda p: (p.full_name, p.pk))
     return [_person_ref(p) for p in ordered]
+
+
+def work_units_of(user) -> frozenset[int]:
+    """Узлы работы `user`: где он состоит, и все узлы, вложенные в узлы, где он руководитель или заместитель.
+
+    Родитель узла участника не входит; уволенный и не участник — `frozenset()`. Два запроса (узлы и членства
+    человека), дальше всё в памяти; по текущей структуре, без кэша.
+    """
+    if getattr(user, "state", None) == "dismissed":
+        return frozenset()
+    memberships = list(Membership.objects.filter(user=user).values_list("unit_id", "mark"))
+    if not memberships:
+        return frozenset()
+    units = list(Unit.objects.values_list("pk", "path"))
+    result = {unit_id for unit_id, _ in memberships}
+    marked_ids = {unit_id for unit_id, mark in memberships if mark}
+    paths = [path for pk, path in units if pk in marked_ids]
+    for pk, path in units:
+        if any(path.startswith(top) for top in paths):
+            result.add(pk)
+    return frozenset(result)
+
+
+def queue_people(unit_id: int) -> list[PersonRef]:
+    """Участники очереди узла: его прямые участники и руководители и заместители всех вышестоящих узлов.
+
+    Без повторов и без уволенных, по `full_name`, затем `id`; несуществующий узел — `[]`. Два запроса.
+    """
+    path = Unit.objects.filter(pk=unit_id).values_list("path", flat=True).first()
+    if path is None:
+        return []
+    upper = _chain_ids(path)[:-1]
+    found = Membership.objects.filter(
+        Q(unit_id=unit_id) | Q(unit_id__in=upper, mark__in=[Membership.Mark.HEAD, Membership.Mark.DEPUTY])
+    ).exclude(user__state="dismissed").select_related("user")
+    people = {m.user_id: m.user for m in found}
+    return [_person_ref(p) for p in sorted(people.values(), key=lambda p: (p.full_name, p.pk))]

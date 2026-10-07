@@ -7,6 +7,7 @@
 импортируются внутри тестов: сбор проходит до появления кода.
 """
 import os
+import secrets
 import socket
 import time
 from email.utils import make_msgid
@@ -180,25 +181,28 @@ def test_live_non_inbox_folder_deleted_and_created_after_close_changes_uidvalidi
 
 
 def test_live_login_with_env_password_error_text_has_no_password(settings, django_capture_on_commit_callbacks):
-    """FR-210, NFR-201: отказ входа на настоящем Dovecot — `MailboxUnavailable` с текстом без пароля из окружения;
+    """FR-210, NFR-201: отказ входа на настоящем Dovecot — `MailboxUnavailable` с текстом без пароля из окружения
+    (неверный пароль — пароль окружения с лишним хвостом: Dovecot стенда пускает любое имя с паролем `USER_PASSWORD`,
+    факт F1 PLAN-003, поэтому отказ даёт только пароль);
     `poll()` не поднимает ошибку и пишет в `last_error` текст без пароля; `safe_error` заменяет пароль на `***`."""
     from apps.integrations.mail import imap, tasks
 
     sd.live_mailbox_ready()
-    password = os.environ["IMAP_PASSWORD"]
-    assert password
+    real = os.environ["IMAP_PASSWORD"]
+    assert real
+    password = real + "-x" + secrets.token_urlsafe(6)
     settings.IMAP_PASSWORD = password
-    settings.IMAP_USER = "no-such-user"
 
     with pytest.raises(imap.MailboxUnavailable) as caught:
         imap.connect()
     text = str(caught.value)
-    assert text and password not in text
+    assert text and password not in text and real not in text
 
     result = _poll(django_capture_on_commit_callbacks)
     assert result.state == "unavailable"
     state = _state()
-    assert state.last_error and password not in state.last_error and state.last_poll_at is not None
+    assert state.last_error and password not in state.last_error and real not in state.last_error
+    assert state.last_poll_at is not None
     assert state.uidvalidity is None and state.last_uid is None
 
     leaked = tasks.safe_error(RuntimeError(f"LOGIN failed for password {password}"))
