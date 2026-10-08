@@ -719,6 +719,23 @@ def test_closed_ticket_card_shows_who_closed():
     assert not q(card, data_field="closed-by") and not q(card, data_field="resolution")
 
 
+def test_closed_ticket_card_shows_closing_date_manual_and_auto():
+    """FR-249, FR-250 (сценарии 5.2, 6.1): у закрытой заявки — поле «Дата закрытия» ДД.ММ.ГГГГ ЧЧ:ММ по Москве, у закрытой вручную и у автозакрытой; у открытой поля нет."""
+    user, queue = _staff()
+    closer = support.make_employee(full_name="Иванов Пётр Сергеевич")
+    at = datetime(2026, 3, 2, 7, 5, tzinfo=dt_timezone.utc)   # 10:05 по Москве
+    manual = sd.make_ticket(queue=queue, kind="closed", closed_by=closer, closed_at=at, resolution="Готово")
+    auto = sd.make_ticket(queue=queue, kind="closed", closed_at=at)
+    open_ticket = sd.make_ticket(queue=queue)
+    for number in (manual.number, auto.number):
+        client, root, card = _card_page(user, number)
+        field = q1(card, data_field="closed-at")
+        assert q(field, data_field_label=True) and "Дата закрытия" in field.text()
+        assert "02.03.2026 10:05" in field.text() and field.attrs.get("data-empty") != "true"
+    client, root, card = _card_page(user, open_ticket.number)
+    assert not q(card, data_field="closed-at")
+
+
 # --- экранирование HTML и переводы строк -------------------------------------------------------------------
 
 def _assert_escaped(response, *needles):

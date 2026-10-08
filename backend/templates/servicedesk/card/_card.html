@@ -19,6 +19,7 @@
       <div class="card-field" data-field="created"><span class="card-field-label" data-field-label>Создана</span> <span class="card-field-value"><time data-at="{{ ticket.created_at|date:'c' }}">{{ ticket.created_at|date:'d.m.Y H:i' }}</time></span></div>
       {% if not open %}
       <div class="card-field" data-empty="{% if closed_by_name %}false{% else %}true{% endif %}" data-field="closed-by"><span class="card-field-label" data-field-label>Закрытие</span> <span class="card-field-value">{% if closed_by_name %}<span{% if closed_by_dismissed %} data-dismissed="true"{% endif %}>Закрыл: {{ closed_by_name }}{% if closed_by_dismissed %} (уволен){% endif %}</span>{% else %}не заполнено{% endif %}</span></div>
+      {% if ticket.closed_at %}<div class="card-field" data-field="closed-at"><span class="card-field-label" data-field-label>Дата закрытия</span> <span class="card-field-value"><time data-at="{{ ticket.closed_at|date:'c' }}">{{ ticket.closed_at|date:'d.m.Y H:i' }}</time></span></div>{% endif %}
       <div class="card-field" data-field="resolution"><span class="card-field-label" data-field-label>Решение</span> <span class="card-field-value">{{ ticket.resolution|linebreaksbr }}</span></div>
       {% endif %}
       {% if consent %}<div class="card-field" data-field="consent"><span class="card-field-label" data-field-label>Согласие</span> <span class="card-field-value">согласие на обработку ПДн: <time data-at="{{ consent|date:'c' }}">{{ consent|date:'d.m.Y H:i' }}</time></span></div>{% endif %}

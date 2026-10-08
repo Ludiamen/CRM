@@ -5,6 +5,8 @@
 `requester_import`; здесь только форма, ответ и тексты. Файл читается в память и нигде не хранится (FR-265).
 Отказ службы на POST — ответ 200 с тем же шаблоном и текстом отказа в `[role=alert]`; база не меняется.
 """
+from urllib.parse import urlencode
+
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_GET, require_http_methods
@@ -49,7 +51,7 @@ def _list_context(request, **extra) -> dict:
     number = _number(request.GET.get("page")) or 1
     page = requesters_service.page(query=query, client_unit_id=unit_id, number=number)
     params = {"q": query, "client_unit": unit_id or ""}
-    base = "?" + "&".join(f"{key}={value}" for key, value in params.items() if value != "")
+    base = "?" + urlencode({key: value for key, value in params.items() if value != ""})
     glue = "&" if len(base) > 1 else "?"
     rows = [{"requester": row.requester, "tickets_count": row.tickets_count,
              "origin": ORIGIN_TITLES.get(row.requester.origin, ""),

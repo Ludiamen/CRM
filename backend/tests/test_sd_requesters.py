@@ -287,6 +287,31 @@ def test_page_has_50_rows():
     assert [row["id"] for row in _rows(_get(client, page=2))] == ordered[50:]
 
 
+def test_page_links_keep_search_with_special_characters():
+    """FR-267: ссылки «Назад» и «Дальше» кодируют строку поиска — `&`, `#`, `+` и пробелы не теряются."""
+    from html import unescape
+    from urllib.parse import parse_qs, urlsplit
+
+    query = "Ромашка & Ко #1+2"
+    created = [sd.make_requester(f"r{index:02d}@{CORP}", full_name=query) for index in range(51)]
+    sd.make_requester(f"other@{CORP}", full_name="Другой заявитель")
+    ordered = [str(record.pk) for record in created]
+    client = support.logged_in(_manager(), ip=IP)
+
+    first = _get(client, q=query)
+    assert [row["id"] for row in _rows(first)] == ordered[:50]
+    next_href = unescape(re.search(r'<a data-page-next href="([^"]+)"', first).group(1))
+    assert urlsplit(next_href).path == LIST
+    assert parse_qs(urlsplit(next_href).query) == {"q": [query], "page": ["2"]}
+
+    second = client.get(next_href)
+    assert second.status_code == 200
+    html = second.content.decode()
+    assert [row["id"] for row in _rows(html)] == ordered[50:]
+    prev_href = unescape(re.search(r'<a data-page-prev href="([^"]+)"', html).group(1))
+    assert parse_qs(urlsplit(prev_href).query) == {"q": [query], "page": ["1"]}
+
+
 # --- правка и удаление (FR-267) ----------------------------------------------------------------------
 
 def test_edit_name_and_client_unit_saved():

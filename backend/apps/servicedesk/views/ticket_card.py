@@ -174,7 +174,7 @@ def _feed(ticket, user, participants: list) -> dict:
             entry_data["send_label"] = SEND_LABELS.get(entry.send_state, "")
             entry_data["mail_status"] = item.mail_status
             entry_data["mail_label"] = MAIL_LABELS.get(item.mail_status, item.mail_status)
-            entry_data["resend"] = open_ticket and entry.send_state == TicketEntry.SendState.NOT_SENT
+            entry_data["resend"] = open_ticket and not item.resent and entry.send_state == TicketEntry.SendState.NOT_SENT
         if entry.kind == TicketEntry.Kind.INCOMING and clean_inbound.get(entry.inbound_id):
             entry_data["source_mail"] = f"/tickets/{ticket.number}/mail/{entry.inbound_id}.eml"
         feed.append(entry_data)

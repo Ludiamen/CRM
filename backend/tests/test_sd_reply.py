@@ -541,6 +541,21 @@ def test_resend_button_only_on_not_sent_reply(django_capture_on_commit_callbacks
     assert not _card(actor, ticket).find_all("form", data_form="reply-resend"), "на закрытой заявке кнопки нет"
 
 
+def test_resend_only_once_second_refused_and_button_hidden(
+        django_capture_on_commit_callbacks, monkeypatch, protected_root):
+    """FR-244: неотправленный ответ отправляется заново один раз: второй `resend` отказывает `not_resendable`, кнопки у исходного больше нет, письмо одно."""
+    replies = _svc("replies")
+    actor = _actor()
+    ticket = _ticket("in_progress")
+    old, good = _infected_reply(django_capture_on_commit_callbacks, monkeypatch, actor, ticket)
+    with django_capture_on_commit_callbacks(execute=True):
+        new = replies.resend(old, actor=actor)
+    _refuse("not_resendable", lambda: replies.resend(old, actor=actor))
+    assert list(_fresh(old).resends.all()) == [new]
+    assert len(sd.ticket_mails(ticket)) == 1
+    assert not _card(actor, ticket).find_all("form", data_form="reply-resend")
+
+
 def test_reply_to_closed_ticket_refused_with_message(django_capture_on_commit_callbacks):
     """FR-244, FR-252: закрытой заявке ответ не отправляется: `ticket_closed` с текстом контракта; маршрут — 200 и `[role=alert]`."""
     actor = _actor()

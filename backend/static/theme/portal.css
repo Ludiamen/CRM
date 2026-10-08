@@ -358,7 +358,11 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .tickets-list .filter-summary { cursor: pointer; padding: 0.4rem 0; font-weight: 600; }
 .tickets-list .bulk-bar { border: 1px solid var(--portal-border); }
 .tickets-list .bulk-bar [data-bulk-action] textarea { min-width: 0; }
-.tickets-table td { overflow-wrap: anywhere; }
+.tickets-table td { overflow-wrap: break-word; }
+.tickets-table td[data-cell="subject"] { min-width: 12rem; }
+.tickets-table td[data-cell="requester"] { min-width: 8rem; }
+.tickets-table td[data-cell="priority"], .tickets-table td[data-cell="created"], .tickets-table td[data-cell="last-message"] { white-space: nowrap; }
+@media (min-width: 576px) { .tickets-grid .tickets-table { min-width: 70rem; } }
 .tickets-table td[data-cell="select"] { width: 2rem; }
 .tickets-table td[data-cell="number"] { white-space: nowrap; }
 .tickets-grid .empty-state { margin-top: 0.75rem; }
@@ -380,6 +384,12 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .ticket-card { display: block; }
 .ticket-card .card-field { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0.2rem 0; overflow-wrap: anywhere; }
 .ticket-card .card-field-label { color: var(--portal-muted); min-width: 9rem; }
+.ticket-card .card-field-value { min-width: 0; }
+@media (min-width: 576px) {
+  .ticket-card .card-field { display: grid; grid-template-columns: 11rem minmax(0, 1fr); column-gap: 0.5rem; }
+  .ticket-card .card-field-label { min-width: 0; }
+}
+.ticket-card .card-links { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
 .ticket-card .card-field[data-empty="true"] .card-field-value { color: var(--portal-muted); }
 .ticket-card .card-form { border: 1px solid var(--portal-border); border-radius: 0.6rem; padding: 0.6rem 0.75rem; margin-bottom: 0.6rem; }
 .ticket-card .card-section { margin-top: 0.85rem; }

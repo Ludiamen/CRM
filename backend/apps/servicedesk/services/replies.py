@@ -26,6 +26,7 @@ class FeedItem:
     author_dismissed: bool
     author_address: str
     mail_status: str
+    resent: bool = False
 
 
 def add_event(ticket, event, *, actor=None, data=None):
@@ -124,7 +125,8 @@ def resend(entry, *, actor, ip=None):
         _lock(ticket)
         _guard(ticket, actor)
         old = TicketEntry.objects.select_for_update().get(pk=old.pk)
-        if old.kind != TicketEntry.Kind.REPLY or old.send_state != TicketEntry.SendState.NOT_SENT:
+        if (old.kind != TicketEntry.Kind.REPLY or old.send_state != TicketEntry.SendState.NOT_SENT
+                or old.resends.exists()):
             raise _error("not_resendable", "Отправить заново можно только неотправленный ответ")
         new = TicketEntry.objects.create(ticket=ticket, kind=TicketEntry.Kind.REPLY, author=actor, text=old.text,
                                          wait_flag=old.wait_flag, resent_from=old)
@@ -205,7 +207,9 @@ def feed(ticket) -> list[FeedItem]:
     is_participant = TicketParticipant.objects.filter(ticket_id=OuterRef("ticket_id"),
                                                       email__iexact=OuterRef("author_email"))
     rows = (TicketEntry.objects.filter(ticket=ticket).select_related("author", "mail")
-            .prefetch_related("attachments").annotate(from_participant=Exists(is_participant)).order_by("at", "id"))
+            .prefetch_related("attachments").annotate(from_participant=Exists(is_participant),
+                                          was_resent=Exists(TicketEntry.objects.filter(resent_from_id=OuterRef("pk"))))
+            .order_by("at", "id"))
     items = []
     for entry in rows:
         dismissed = False
@@ -219,5 +223,5 @@ def feed(ticket) -> list[FeedItem]:
             kind, name = "system", ""
         status = entry.mail.status if entry.kind == TicketEntry.Kind.REPLY and entry.mail is not None else ""
         items.append(FeedItem(entry=entry, author_name=name, author_kind=kind, author_dismissed=dismissed,
-                              author_address=address, mail_status=status))
+                              author_address=address, mail_status=status, resent=entry.was_resent))
     return items
