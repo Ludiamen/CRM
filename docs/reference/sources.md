@@ -1,8 +1,8 @@
 ---
 id: REF-SRC
 вид: эталон
-статус: утверждён
-версия: 7
+статус: на-проверке
+версия: 8
 зависит_от: SDD-PROCESS
 подпись: Максим | 2026-09-30T08:43+03:00 | sha256:b072d1f3cc0d04b2ac82cfbd9e432e7d90f03ce01c0fbccab60e590c21ab79c5
 подпись: Максим | 2026-10-01T07:09+03:00 | sha256:a526613c9e64e899d71e00936f99a3f3fc00cc582a28931159030d0de08578d0
@@ -53,6 +53,10 @@ id: REF-SRC
   (ADR-0009): режимы просмотра задач «Список», «Канбан», «Мой план», «Сроки»;
   тогда же SRC-365 — права постановки задач. Опорные фразы сверены с
   дистрибутивом дословно.
+- **SRC-366…369 добавлены 2026-10-08** (Opus) по требованию владельца об умных
+  напоминаниях (ADR-0010): напоминание о задаче, «почти просрочена» и
+  «просрочена», канал «Push уведомления» и push-сервер эталона. Опорные фразы
+  сверены с дистрибутивом дословно.
 - **SRC-104 — документация API для разработчика**, а не поведение для
   пользователя: как источник возможностей открытых линий не используется.
 - **Снимки SRC-538…704 — досъёмка пробелов REF-UX (2026-10-03).** Сняты
@@ -194,6 +198,10 @@ id: REF-SRC
 | SRC-363 | Техподдержка: правила приёма почты для обращений — привязка обращения к ранее зарегистрированному пользователю по адресу отправителя или анонимное обращение; с каких адресов новое письмо добавляется в уже открытое обращение (только с адреса создателя, с любого адреса домена создателя, с любого адреса — проверяется только тема); шаблоны темы для определения ответа (регулярные выражения с номером обращения); категория, критичность и сайт нового обращения из письма | support/lang/ru/mail/action.php ($MESS['SUPPORT_MAIL_DEF_REGISTERED'], ['SUPPORT_MAIL_ADD_TO_OPENED_TICKET'], ['SUPPORT_MAIL_ADD_TO_OPENED_T_EMAIL'], ['SUPPORT_MAIL_ADD_TO_OPENED_T_DOMAIN'], ['SUPPORT_MAIL_ADD_TO_OPENED_T_ANY'], ['SUPPORT_MAIL_SUBJECT_TEMPLATE'], ['SUPPORT_MAIL_ADD_TO_CATEGORY'], ['SUPPORT_MAIL_ADD_WITH_CRITICALITY'], ['SUPPORT_MAIL_CONNECT_TICKET_WITH_SITE']) | коробка | 2026-10-05 | «Добавлять новое сообщение в уже открытое обращение» |
 | SRC-364 | Задачи: режимы просмотра списка задач — «Список», «Канбан», «Мой план», «Сроки», «Диаграмма Ганта», «Календарь» и другие; в компоненте канбана задач — заголовок «Сроки» и отказ «Запрещено менять крайний срок у задачи» | tasks/lang/ru/classes/general/taskliststate.php ($MESS["TASKS_LIST_CTRL_MODE_LIST"], ["TASKS_LIST_CTRL_MODE_KANBAN"], ["TASKS_LIST_CTRL_MODE_PLAN"], ["TASKS_LIST_CTRL_MODE_TIMELINE2"], ["TASKS_LIST_CTRL_MODE_GANTT"], ["TASKS_LIST_CTRL_MODE_CALENDAR"]); tasks/install/components/bitrix/tasks.kanban/lang/ru/class.php ($MESS["TASK_LIST_TITLE_TIMELINE"], ["TASK_LIST_ERROR_CHANGE_DEADLINE"]) | коробка | 2026-10-05 | «Мой план»; «Сроки» |
 | SRC-365 | Задачи: права постановки задач — сотрудникам своего отдела, начальнику своего отдела, сотрудникам и начальникам других отделов; руководитель наследует право редактировать задачи подчинённых; подчинённый может поставить задачу руководителю | tasks/lang/ru/lib/access/permission/permissiondictionary.php ($MESS["TASK_DEPARTMENT_DIRECT"], ["TASK_DEPARTMENT_MANAGER_DIRECT"], ["TASK_NON_DEPARTMENT_DIRECT"], ["TASK_NON_DEPARTMENT_MANAGER_DIRECT"], ["HINT_TASK_ASSIGNEE_EDIT"]) | коробка | 2026-10-05 | «Постановка задач сотрудникам своего отдела» |
+| SRC-366 | Задачи: напоминание о задаче — «Напомнить» «О крайнем сроке» («за #NUM# день» до срока) или «По дате», «по email» или «мгновенным сообщением»; текст напоминания «Вы просили напомнить о задаче» | tasks/install/components/bitrix/tasks.task/templates/view/lang/ru/template.php ($MESS["TASKS_REMINDER_TITLE"], ["TASKS_ABOUT_DEADLINE"], ["TASKS_BY_DATE"], ["TASKS_REMIND_BEFORE"], ["TASKS_REMIND_VIA_EMAIL"], ["TASKS_REMIND_VIA_JABBER"]); tasks/lang/ru/classes/general/taskreminders.php ($MESS["TASKS_REMINDER"]) | коробка | 2026-10-08 | «за #NUM# день»; «по email» |
+| SRC-367 | Задачи: «Задача почти просрочена» за сутки до срока и «Задача просрочена» после него; триггеры автоматики «Скоро просрочена» и «Просрочена» | tasks/lang/ru/lib/comments/task/commentposter.php ($MESS['COMMENT_POSTER_COMMENT_TASK_EXPIRED_SOON'], ['COMMENT_POSTER_COMMENT_TASK_EXPIRED']); tasks/lang/ru/lib/integration/bizproc/automation/trigger/expiredsoon.php ($MESS['TASKS_AUTOMATION_TRIGGER_EXPIRED_SOON_NAME'], ['TASKS_AUTOMATION_TRIGGER_EXPIRED_SOON_DESCRIPTION']); tasks/lang/ru/lib/integration/bizproc/automation/trigger/expired.php ($MESS['TASKS_AUTOMATION_TRIGGER_EXPIRED_NAME'], ['TASKS_AUTOMATION_TRIGGER_EXPIRED_DESCRIPTION']) | коробка | 2026-10-08 | «Задача почти просрочена.»; «Задача просрочена.» |
+| SRC-368 | Мессенджер: в настройках уведомлений пользователя — канал «Push уведомления» | im/lang/ru/js_im.php ($MESS["IM_SETTINGS_NOTIFY_PUSH"]) | коробка | 2026-10-08 | «Push уведомления» |
+| SRC-369 | Push and Pull: для push-уведомлений нужен свой push-сервер, установленный локально, или облачный сервер 1С-Битрикс | pull/lang/ru/options.php ($MESS["PULL_OPTIONS_PUSH_SERVER_IS_REQUIRED"]) | коробка | 2026-10-08 | «необходимо либо установить и настроить сервер локально, либо воспользоваться облачным сервером» |
 | SRC-276 | Мессенджер: пользователь сам выбирает каналы уведомлений | im/lang/ru/js_im.php (IM_SETTINGS_NC_1_NEW, IM_SETTINGS_NC_2, IM_SETTINGS_NC_4) | коробка | 2026-09-30 | «Получать стандартные уведомления на:» |
 
 ## Снимки экранов тестового портала

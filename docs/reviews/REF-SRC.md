@@ -2,8 +2,8 @@
 id: REV-REF-SRC
 вид: отчёт
 статус: черновик
-версия: 11
-проверяет: REF-SRC sha256:f372167ab8db2e365579a90f274caca7134d0f71a68bd47d36475fdfaa963bf6
+версия: 13
+проверяет: REF-SRC sha256:b09cc076b8a9e45e0d5f76a47d3e20bc5f2b561753adea0e813a3398ed60d490
 исполнитель: sonnet
 ---
 
@@ -598,3 +598,49 @@ S/view13/302, 303, 304 (оригиналы не открывались). Зак�
 Где проверено: сравнение по словам (difflib, split) с версией до правки (`crm-work/tasks009/sources-after-review.md`): отличается только эта фраза. Первоисточник `bitrix/modules/tasks/install/components/bitrix/tasks.kanban/lang/ru/class.php`: TASK_LIST_TITLE_TIMELINE = «Сроки» (строка 22), TASK_LIST_ERROR_CHANGE_DEADLINE = «Запрещено менять крайний срок у задачи.» (строка 27). `python3 tools/check_sources.py`: находок нет.
 Отпечаток было: sha256:22568bd77e7f455c99990b3c516a9ff64ae0c3833069f503b9c0214dd8b906ea (прежний, из отчёта); стало: sha256:f372167ab8db2e365579a90f274caca7134d0f71a68bd47d36475fdfaa963bf6.
 Вердикт: годен.
+
+## Проверка версии 8 (2026-10-08)
+
+Вердикт: **годен после правки Opus в строке SRC-367 (важная находка 1).** `diff` со снимком `crm-work/notify/snap/sources-before-notify.md`: изменены ровно frontmatter (черновик, версия 8), заметка «SRC-366…369 добавлены 2026-10-08» в «Надёжности источников» и четыре новые строки SRC-366…369; других изменений нет. Все опорные фразы и ключи названных файлов существуют и совпадают дословно.
+
+| Утверждение | Источник в дистрибутиве | Результат |
+|---|---|---|
+| SRC-366: «Напомнить» | `tasks/install/components/bitrix/tasks.task/templates/view/lang/ru/template.php`, `TASKS_REMINDER_TITLE`, строка 158 | верно |
+| SRC-366: «за #NUM# день» | там же, `TASKS_REMIND_BEFORE`, строка 165 | верно (формы «дней» в файле нет — в строке реестра дана «за N дней» только как пояснение) |
+| SRC-366: «по email» и «мгновенным сообщением» | там же, `TASKS_REMIND_VIA_EMAIL` (162), `TASKS_REMIND_VIA_JABBER` (161) | верно |
+| SRC-366: «Вы просили напомнить о задаче» | `tasks/lang/ru/classes/general/taskreminders.php`, `TASKS_REMINDER`, строка 3 | верно |
+| SRC-367: «Задача почти просрочена» за сутки до срока | `tasks/lang/ru/lib/comments/task/commentposter.php`, `COMMENT_POSTER_COMMENT_TASK_EXPIRED_SOON` (строка 16): «Задача почти просрочена. … через сутки задача будет просрочена» | верно |
+| SRC-367: «Задача просрочена» после срока | там же, `COMMENT_POSTER_COMMENT_TASK_EXPIRED` (строка 11): «Задача просрочена.» | верно |
+| SRC-367: триггер «Скоро просрочена» | `tasks/lang/ru/lib/integration/bizproc/automation/trigger/expiredsoon.php`: `TASKS_AUTOMATION_TRIGGER_EXPIRED_SOON_NAME` = «Скоро просрочена»; описание «Меняет стадию, если задача завтра будет просрочена» | верно, но ключи в строке не названы (находка 1) |
+| SRC-367: триггер «Просрочена» | `…/trigger/expired.php`: `TASKS_AUTOMATION_TRIGGER_EXPIRED_NAME` = «Просрочена» | факт верен, но файл `expired.php` в строке не назван (находка 1) |
+| SRC-368: «Push уведомления» | `im/lang/ru/js_im.php`, `IM_SETTINGS_NOTIFY_PUSH`, строка 103 | верно |
+| SRC-369: «необходимо либо установить и настроить сервер локально, либо воспользоваться облачным сервером» | `pull/lang/ru/options.php`, `PULL_OPTIONS_PUSH_SERVER_IS_REQUIRED`, строка 67: «…либо воспользоваться облачным сервером 1С-Битрикс» | верно; «облачный сервер производителя» — пересказ |
+| Заметка в «Надёжности источников» | текст заметки | верно; «опорные фразы сверены дословно» подтверждено |
+| `python3 tools/check_sources.py` | запуск | «реестр источников: находок нет» |
+| `python3 tools/sdd.py проверить` | запуск | только «зависимость … не утверждена»; других ошибок нет |
+
+### Правки проверяющего
+Нет.
+
+### Находки для Opus
+Важная.
+1. SRC-367, столбец «Где»: у `expiredsoon.php` ключи не названы, хотя в файле три: `TASKS_AUTOMATION_TRIGGER_EXPIRED_SOON_NAME` («Скоро просрочена»), `…_NAME_1` («Отследить приближение крайнего срока задачи»), `…_DESCRIPTION` («Меняет стадию, если задача завтра будет просрочена»). Нужно назвать хотя бы `…_EXPIRED_SOON_NAME` и `…_DESCRIPTION`, как в остальных строках. Кроме того, триггер «Просрочена» лежит в `trigger/expired.php` (`TASKS_AUTOMATION_TRIGGER_EXPIRED_NAME` = «Просрочена», `…_DESCRIPTION` = «Меняет стадию, если сотрудник просрочил задачу»), его в строке нет: ссылка на SRC-367 для слов «триггеры автоматики «Скоро просрочена» и «Просрочена»» в этой части не подкреплена названными файлами. Я не правил: это смысловая добавка источника.
+
+Мелкие.
+2. SRC-366: «Напомнить на дату» (ADR-0010: «на дату или «за N дней до срока»») в строке не подкреплено: рядом в том же файле есть `TASKS_BY_DATE` = «По дате» (строка 159) и `TASKS_ABOUT_DEADLINE` = «О крайнем сроке» (158). Можно добавить ключи, если ADR опирается на SRC-366 именно в этой части.
+3. SRC-369: цитата в столбце «Опорная фраза» дана с обрезкой перед «1С-Битрикс» — допустимо, но фраза ссылается на «сервер 1С-Битрикс», в строке — «облачный сервер производителя»; это пересказ, не цитата.
+
+Не проверялось: поведение отправки напоминаний и push в работающей системе; английские тексты и прочие языки.
+
+## Уточнение SRC-366, SRC-367, SRC-369 (Opus), 2026-10-08
+
+Что (по находкам 1, 6, 7 отчёта ADR-0010):
+- SRC-367: к `expiredsoon.php` названы ключи `TASKS_AUTOMATION_TRIGGER_EXPIRED_SOON_NAME` («Скоро просрочена») и `…_DESCRIPTION`; добавлен файл `trigger/expired.php` с ключами `TASKS_AUTOMATION_TRIGGER_EXPIRED_NAME` («Просрочена») и `…_DESCRIPTION`.
+- SRC-366: описание — «Напомнить» «О крайнем сроке» («за #NUM# день» до срока) или «По дате»; добавлены ключи `TASKS_ABOUT_DEADLINE`, `TASKS_BY_DATE`.
+- SRC-369: «облачный сервер производителя» → «облачный сервер 1С-Битрикс», как в файле.
+Где проверено: `grep -n MESS` по `tasks/lang/ru/lib/integration/bizproc/automation/trigger/expiredsoon.php` (строки 3, 5) и `expired.php` (строки 3, 5); `tasks/install/components/bitrix/tasks.task/templates/view/lang/ru/template.php` строки 158–160; `pull/lang/ru/options.php:67`. `python3 tools/check_sources.py`: находок нет. Сравнение с версией после проверки — `crm-work/notify/snap/sources-after-review.md`.
+Отпечаток было: sha256:d90facdf9371836842afb738dffb6c564eeb146f3db1181b612c9026577f3d3c; стало: sha256:b09cc076b8a9e45e0d5f76a47d3e20bc5f2b561753adea0e813a3398ed60d490.
+
+### Проверка правок Opus (R6), 2026-10-08
+
+Сравнено пословно `sources-after-review.md` с текущим REF-SRC: изменены только SRC-366, SRC-367, SRC-369, как описано. Ключи сверены по дистрибутиву: `TASKS_AUTOMATION_TRIGGER_EXPIRED_SOON_NAME` «Скоро просрочена» / `…_DESCRIPTION` (expiredsoon.php:3,5) и `TASKS_AUTOMATION_TRIGGER_EXPIRED_NAME` «Просрочена» / `…_DESCRIPTION` (expired.php:3,5); `TASKS_REMINDER_TITLE` «Напомнить», `TASKS_ABOUT_DEADLINE` «О крайнем сроке», `TASKS_BY_DATE` «По дате», `TASKS_REMIND_BEFORE` «за #NUM# день», `TASKS_REMIND_VIA_EMAIL` «по email», `TASKS_REMIND_VIA_JABBER` «мгновенным сообщением» (template.php:158–165); `TASKS_REMINDER` (taskreminders.php:3); `COMMENT_POSTER_COMMENT_TASK_EXPIRED_SOON`/`…_EXPIRED` (commentposter.php:11,16); `IM_SETTINGS_NOTIFY_PUSH` (js_im.php:103); `PULL_OPTIONS_PUSH_SERVER_IS_REQUIRED` — «облачным сервером 1С-Битрикс» (pull/options.php:67). Описания подкреплены названными ключами. Отпечаток `sha256:b09cc076…d60d490` совпадает со «стало» и с `проверяет:`; `check_sources.py` — находок нет. Вердикт: **годен**.
