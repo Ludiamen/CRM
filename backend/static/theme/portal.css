@@ -382,13 +382,9 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 
 /* T-3231 — карточка заявки: две колонки на широком окне, лента под полями до 600 px */
 .ticket-card { display: block; }
-.ticket-card .card-field { display: flex; flex-wrap: wrap; gap: 0.35rem; padding: 0.2rem 0; overflow-wrap: anywhere; }
-.ticket-card .card-field-label { color: var(--portal-muted); min-width: 9rem; }
-.ticket-card .card-field-value { min-width: 0; }
-@media (min-width: 576px) {
-  .ticket-card .card-field { display: grid; grid-template-columns: 11rem minmax(0, 1fr); column-gap: 0.5rem; }
-  .ticket-card .card-field-label { min-width: 0; }
-}
+.ticket-card .card-field { display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; padding: 0.2rem 0; overflow-wrap: anywhere; }
+.ticket-card .card-field-label { color: var(--portal-muted); flex: 0 0 11rem; }
+.ticket-card .card-field-value { flex: 1 1 12rem; min-width: 0; }
 .ticket-card .card-links { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
 .ticket-card .card-field[data-empty="true"] .card-field-value { color: var(--portal-muted); }
 .ticket-card .card-form { border: 1px solid var(--portal-border); border-radius: 0.6rem; padding: 0.6rem 0.75rem; margin-bottom: 0.6rem; }
