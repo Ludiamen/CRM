@@ -122,8 +122,10 @@ def build(user, *, preset: str | None = None, filters: Filters | None = None, so
     chosen, queryset = _base(user, preset, filters)
     fields = _SORT_FIELDS.get(sort, _SORT_FIELDS["number"])
     prefix = "-" if descending else ""
-    queryset = queryset.select_related("status", "priority", "category", "assignee", "client_unit", "queue",
-                                     "closed_by")
+    # Справочники — маленькими запросами `prefetch_related`: соединение девяти таблиц в одной выборке
+    # планируется Postgres десятки миллисекунд (join_collapse_limit = 8), а выполняется за одну.
+    queryset = queryset.select_related("assignee", "closed_by").prefetch_related(
+        "status", "priority", "category", "client_unit", "queue")
     queryset = queryset.order_by(*[prefix + field for field in fields])
     page = page if isinstance(page, int) and page >= 1 else 1
     start = (page - 1) * PAGE_SIZE
@@ -139,8 +141,10 @@ def count(user, *, preset: str | None = None, filters: Filters | None = None) ->
 
 def badge(user) -> int:
     """Счётчик пункта «Заявки»: открытые без ответственного в моих очередях и мои открытые от заявителя (два COUNT)."""
-    unassigned = Ticket.objects.filter(queue_id__in=my_queue_ids(user), assignee__isnull=True,
-                                       kind__in=OPEN_KINDS).count()
+    # «Не закрыта» (а не «вид из открытых») совпадает с условием частичного индекса servicedesk_ticket_unassigned:
+    # счётчик читает только индекс.
+    unassigned = Ticket.objects.filter(queue_id__in=my_queue_ids(user), assignee__isnull=True).exclude(
+        kind=Status.Kind.CLOSED).count()
     mine = Ticket.objects.filter(assignee=user, kind__in=OPEN_KINDS,
                                  last_message_from=Ticket.MessageFrom.REQUESTER).count()
     return unassigned + mine
