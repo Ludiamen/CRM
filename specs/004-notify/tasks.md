@@ -161,7 +161,8 @@ Opus по задачам» в конце файла.
 - [ ] T-4129 [P] [sonnet] тесты журнал (план: «Журнал») — backend/tests/test_notify_audit.py::test_admin_settings_change_writes_was_became_event (FR-341); backend/tests/test_notify_audit.py::test_channel_switch_writes_event (FR-341); backend/tests/test_notify_audit.py::test_defaults_change_writes_event_by_kind (FR-341); backend/tests/test_notify_audit.py::test_save_without_changes_writes_no_event (FR-341); backend/tests/test_notify_audit.py::test_employee_table_cell_change_writes_event (FR-341); backend/tests/test_notify_audit.py::test_employee_quiet_hours_change_writes_event (FR-341); backend/tests/test_notify_audit.py::test_binding_by_employee_writes_channel_bound_event (FR-341); backend/tests/test_notify_audit.py::test_unbinding_by_employee_writes_channel_unbound_event (FR-341); backend/tests/test_notify_audit.py::test_automatic_unbinding_on_unavailable_bot_writes_event_from_system_with_reason (FR-341); backend/tests/test_notify_audit.py::test_push_subscription_by_employee_writes_event_with_browser_and_platform (FR-341); backend/tests/test_notify_audit.py::test_push_removal_by_employee_writes_event (FR-341); backend/tests/test_notify_audit.py::test_push_removal_by_system_on_service_refusal_logout_and_dismissal_writes_event_with_reason (FR-341); backend/tests/test_notify_audit.py::test_dismissal_cleanup_writes_events_for_bindings_and_subscriptions (FR-341); backend/tests/test_notify_audit.py::test_every_action_has_russian_label_in_audit_labels (FR-341); backend/tests/test_notify_audit.py::test_no_event_contains_notification_texts (FR-341); backend/tests/test_notify_audit.py::test_no_event_contains_chat_identifiers (FR-341); backend/tests/test_notify_audit.py::test_no_event_contains_subscription_addresses (FR-341); backend/tests/test_notify_audit.py::test_no_event_contains_keys_tokens_or_binding_codes (FR-341); backend/tests/test_notify_audit.py::test_notifications_deliveries_and_bot_messages_are_not_written_to_journal (FR-341); backend/tests/test_notify_audit.py::test_notify_events_are_append_only (NFR-310); backend/tests/test_notify_audit.py::test_notify_events_are_not_removed_by_retention_job_within_three_years (NFR-310) — (FR-341, NFR-310)
 - [ ] T-4130 [P] [sonnet] тесты развёртывание (план: «Запуск», «Новые компоненты и лицензии», «Восстановление из копии») — backend/tests/test_notify_deploy.py::test_compose_has_worker_notify_on_queue_notify_with_two_replicas (FR-333); backend/tests/test_notify_deploy.py::test_compose_notify_services_follow_worker_pattern_env_file_restart_healthy_dependencies_no_profile (FR-333); backend/tests/test_notify_deploy.py::test_compose_has_notify_poller_single_replica_with_notify_poll_command (NFR-309); backend/tests/test_notify_deploy.py::test_compose_fakebots_only_in_dev_and_test_profiles (NFR-309); backend/tests/test_notify_deploy.py::test_bots_are_polled_no_webhook_route_or_inbound_port (NFR-309); backend/tests/test_notify_deploy.py::test_rq_queues_include_notify (FR-333); backend/tests/test_notify_deploy.py::test_notify_is_last_in_installed_apps (FR-301); backend/tests/test_notify_deploy.py::test_asgi_has_protocol_type_router_origin_validator_and_session_auth (NFR-305); backend/tests/test_notify_deploy.py::test_channel_layers_use_valkey_with_socket_timeout_30_max_connections_300_connect_timeout_2_and_prefix (NFR-305); backend/tests/test_notify_deploy.py::test_dev_nginx_has_location_ws_with_upgrade_timeouts_3600_and_buffering_off (NFR-305); backend/tests/test_notify_deploy.py::test_prod_nginx_has_location_ws_with_upgrade_timeouts_3600_and_buffering_off (NFR-305); backend/tests/test_notify_deploy.py::test_csp_has_worker_src_self (NFR-305); backend/tests/test_notify_deploy.py::test_cron_notify_tick_interval_30_queue_notify_timeout_120 (FR-333); backend/tests/test_notify_deploy.py::test_cron_notify_retention_at_23_40_utc_queue_maintenance_timeout_600 (FR-338); backend/tests/test_notify_deploy.py::test_settings_declare_bot_and_vapid_variables_with_empty_defaults (FR-337); backend/tests/test_notify_deploy.py::test_settings_api_base_and_webpush_hosts_have_documented_defaults (FR-337); backend/tests/test_notify_deploy.py::test_env_example_lists_new_variables_with_secrets_empty (FR-337); backend/tests/test_notify_deploy.py::test_secret_variables_are_in_secrets_list_of_stack_test (FR-337); backend/tests/test_notify_deploy.py::test_requirements_pin_new_dependencies_to_exact_versions (NFR-305); backend/tests/test_notify_deploy.py::test_requirements_dev_pin_websocket_client (NFR-305); backend/tests/test_notify_deploy.py::test_new_dependencies_have_open_licenses_in_components_table (NFR-305); backend/tests/test_notify_deploy.py::test_restore_guide_names_worker_notify_and_notify_poller_in_stop_and_start_steps (FR-333); backend/tests/test_notify_deploy.py::test_vapid_keys_command_prints_pair_for_env (FR-337); backend/tests/test_notify_deploy.py::test_vapid_keys_command_writes_nothing_to_journal_or_database (FR-337) ; backend/tests/test_notify_deploy.py::test_webpush_allowed_hosts_default_is_four_checked_push_services (FR-324) — (FR-324, FR-333, FR-337, FR-338, NFR-305, NFR-309)
 - [ ] T-4131 [P] [sonnet] тесты границы модулей и стенд (план: «Сверка с конституцией», «Проверка» (границы), «Проход в браузере» (`stand_reset`)) — backend/tests/test_notify_boundaries.py::test_notify_does_not_import_servicedesk (FR-301); backend/tests/test_notify_boundaries.py::test_notify_does_not_import_org_except_calendar_service (FR-301); backend/tests/test_notify_boundaries.py::test_core_org_and_servicedesk_do_not_import_notify (FR-301); backend/tests/test_notify_boundaries.py::test_without_notify_registrations_header_has_no_bell (FR-301); backend/tests/test_notify_boundaries.py::test_without_notify_registrations_servicedesk_events_publish_without_subscriber (FR-313); backend/tests/test_notify_boundaries.py::test_stand_reset_of_notify_clears_slice_data (FR-301); backend/tests/test_notify_boundaries.py::test_stand_reset_of_notify_clears_presence_in_valkey_and_polling_cursors (FR-301); backend/tests/test_notify_boundaries.py::test_stand_reset_of_notify_resets_fakebots (FR-301); backend/tests/test_notify_boundaries.py::test_e2e_notify_tick_refused_without_e2e_stand (FR-301); backend/tests/test_notify_boundaries.py::test_e2e_notify_tick_shift_moves_waiting_deliveries_back_and_runs_tick_when_e2e_stand (FR-301) — (FR-301, FR-313)
-- [ ] T-4138 [P] [sonnet] правка тестов и инструментов срезов 001–003, которые меняются вместе со срезом 004 (план:
+- [ ] T-4138 [P] [sonnet] правка тестов и инструментов срезов 001–003, которые меняются вместе со срезом 004 (двумя заходами, решение 36;
+  план:
   «Проверка» → «Тесты срезов 001–003 и инструменты `tools/`, которые меняются»; перечень — по
   `crm-work/slice004/tasks/impact.md`). Каждая правка — с разрешения владельца по диффу, по одному тесту (система
   разрешений правку теста останавливает). Перечень: (1) `test_extensions.py::test_org_registers_all_nine_extension_points`
@@ -213,6 +214,12 @@ Opus по задачам» в конце файла.
 - [ ] T-4149 [P] [sonnet] тесты приёмка сценария 10: страница уведомлений (план: «Проверка», «Проход в браузере») — backend/tests/e2e/test_e10_page.py::test_e10_page_with_120_notifications_shows_first_50_newest_first_with_kind_text_time_and_unread_mark (FR-319); backend/tests/e2e/test_e10_page.py::test_e10_opening_unread_notification_link_marks_it_read_and_bell_counter_drops_at_once (FR-307, FR-318); backend/tests/e2e/test_e10_page.py::test_e10_mark_read_button_marks_notification_read_without_navigation (FR-307); backend/tests/e2e/test_e10_page.py::test_e10_read_all_with_30_unread_marks_all_read_and_counter_zero (FR-307, FR-319); backend/tests/e2e/test_e10_page.py::test_e10_unread_filter_shows_only_unread_and_all_filter_shows_all (FR-319); backend/tests/e2e/test_e10_page.py::test_e10_bell_click_shows_last_10_notifications_and_all_notifications_link (FR-318); backend/tests/e2e/test_e10_page.py::test_e10_nightly_job_deletes_notifications_older_than_retention_and_ticket_history_stays (FR-338); backend/tests/e2e/test_e10_page.py::test_e10_other_employee_notifications_by_guessed_link_refused (FR-342); backend/tests/e2e/test_e10_page.py::test_e10_empty_list_shows_you_have_no_notifications (FR-319); backend/tests/e2e/test_e10_page.py::test_e10_opening_ticket_card_from_list_marks_all_three_unread_notifications_about_it_read (FR-307) — (FR-307, FR-318, FR-319, FR-338, FR-342)
 - [ ] T-4150 [P] [sonnet] тесты приёмка сценария 11: сбои каналов (план: «Проверка», «Проход в браузере») — backend/tests/e2e/test_e11_failures.py::test_e11_telegram_unavailable_portal_notification_at_once_sending_retried_with_growing_pause_portal_not_slowed (FR-333, NFR-304); backend/tests/e2e/test_e11_failures.py::test_e11_blocked_bot_unbinds_channel_creates_channel_unlinked_notification_and_system_journal_entry_without_chat_id (FR-332, FR-344, FR-341); backend/tests/e2e/test_e11_failures.py::test_e11_push_service_subscription_gone_removes_subscription (FR-332); backend/tests/e2e/test_e11_failures.py::test_e11_after_24_hours_delivery_marked_not_delivered_portal_notification_stays_and_no_new_notification (FR-333);  backend/tests/e2e/test_e11_failures.py::test_e11_send_job_run_twice_after_failure_gives_single_message (NFR-306); backend/tests/e2e/test_e11_failures.py::test_e11_dismissed_employee_loses_subscriptions_bindings_codes_gets_no_messages_and_journal_has_was_became_without_chat_id (FR-340, FR-341); backend/tests/e2e/test_e11_failures.py::test_e11_mail_attempts_in_mail_module_delivery_journal_other_channels_in_notification_delivery_record_and_not_in_audit (FR-333, FR-341) — (FR-332, FR-333, FR-340, FR-341, FR-344, NFR-304, NFR-306)
 - [ ] T-4151 [P] [sonnet] тесты сквозная приёмка среза и критерии успеха с замером времени и шириной 360 px (план: «Проверка», «Критерии успеха спеки и чем они проверяются») — backend/tests/e2e/test_e12_criteria.py::test_e12_assigned_notification_reaches_open_tab_within_two_seconds_timed (NFR-301, FR-310); backend/tests/e2e/test_e12_criteria.py::test_e12_assigned_notification_reaches_bot_service_and_real_web_push_within_one_minute_timed (NFR-302, FR-310); backend/tests/e2e/test_e12_criteria.py::test_e12_email_arrives_in_mailpit_within_one_minute_after_mail_term_timed (NFR-303, FR-327); backend/tests/e2e/test_e12_criteria.py::test_e12_overnight_gives_at_most_one_digest_mail_and_one_messenger_message_per_employee (FR-330); backend/tests/e2e/test_e12_criteria.py::test_e12_notification_read_on_portal_before_term_gives_zero_mails (FR-307, FR-327); backend/tests/e2e/test_e12_criteria.py::test_e12_open_tab_gives_zero_web_push_to_the_employee (FR-331); backend/tests/e2e/test_e12_criteria.py::test_e12_quiet_hours_give_zero_system_notifications_mails_push_and_messages_while_bell_counter_grows (FR-329); backend/tests/e2e/test_e12_criteria.py::test_e12_new_ticket_in_my_queue_only_for_direct_members_not_for_parent_heads_or_all_tickets_holders (FR-308); backend/tests/e2e/test_e12_criteria.py::test_e12_every_login_from_new_device_password_change_and_second_factor_reset_visible_on_portal (FR-305); backend/tests/e2e/test_e12_criteria.py::test_e12_zero_notifications_without_ticket_access_and_zero_numbers_subjects_names_addresses_in_external_channels (FR-314, FR-317); backend/tests/e2e/test_e12_criteria.py::test_e12_channel_failure_loses_no_portal_notification (FR-333); backend/tests/e2e/test_e12_criteria.py::test_e12_catalog_shows_four_service_desk_kinds_three_security_kinds_and_channel_unlinked_with_texts_per_fr_316_and_317 (FR-301, FR-302, FR-304, FR-316, FR-317, FR-344); backend/tests/e2e/test_e12_criteria.py::test_e12_ticket_subject_with_markup_shown_as_text_on_portal_and_in_mail (NFR-311); backend/tests/e2e/test_e12_criteria.py::test_e12_notification_pages_and_my_notifications_and_admin_settings_have_no_horizontal_scroll_at_360px (NFR-308); backend/tests/e2e/test_e12_criteria.py::test_e12_notification_pages_show_russian_text_and_moscow_time (NFR-307); backend/tests/e2e/test_e12_criteria.py::test_e12_dismissed_employee_loses_bindings_and_blocked_one_gets_no_external_deliveries (FR-340, FR-345) — (FR-301, FR-302, FR-304, FR-305, FR-307, FR-308, FR-310, FR-314, FR-316, FR-317, FR-327, FR-329, FR-330, FR-331, FR-333, FR-340, FR-344, FR-345, NFR-301, NFR-302, NFR-303, NFR-307, NFR-308, NFR-311)
+- [ ] T-4159 [opus] подготовка стенда к прогонам среза (решения 11 и 21; после T-4005 и T-4138, до T-4160): с
+  разрешения владельца — копия данных ручного прохода T-3308 в `crm-work/stand-backup` до первого сброса,
+  пересборка образа `crm-portal:local` с зависимостями T-4001, подъём службы `fakebots`, миграции; значения стенда
+  `TELEGRAM_API_BASE` и `MAX_API_BASE` (адреса `fakebots`) и токены стенда — `tools/make_dev_env.py --add-missing`;
+  значения в отчёт не попадают — отчёт docs/reviews/TASKS-004.md, раздел «Стенд» — (план: «Проход в браузере»,
+  «Запуск»)
 - [ ] T-4160 [opus] красный прогон: весь серверный набор и приёмка среза 004 на стенде со службой `fakebots`
   (после T-4100…T-4151 и T-4138): новые тесты падают по ожидаемой причине (нет кода среза), тесты срезов 001–003
   зелёные, кроме тестов перечня T-4138: они уже исправлены под срез 004 и падают по той же причине, что и новые, — кода среза нет (их причины в сводке отдельной строкой); сводка «тест → причина» и эталон для регрессии — отчёт
@@ -260,7 +267,8 @@ Opus по задачам» в конце файла.
   — (FR-301…FR-305, FR-321, FR-322, FR-335, FR-336, FR-344)
 - [ ] T-4205 [sonnet] тихие часы (план: «Тихие часы и сводка»): `quiet.is_working`, `quiet.next_start` для трёх
   вариантов (календарь — сервис `apps.org.services.calendar`; «свои часы» через полночь относятся ко дню начала;
-  праздники не учитываются), проверка ввода — backend/apps/notify/services/quiet.py — (FR-323, FR-329, NFR-307)
+  праздники не учитываются; конец интервала не входит — решение 32), проверка ввода `quiet.validate_own_hours`
+  (решение 18) — backend/apps/notify/services/quiet.py — (FR-323, FR-329, NFR-307)
 - [ ] T-4206 [sonnet] создание и раскладка, живая рассылка, прочитано (план: «Создание уведомления и раскладка по
   каналам», «Колокольчик…» → «Отправка в группы», «Присутствие», «Прочитано»): подписки шины в `ready()` обёртками с
   именем события; `dispatch.on_event` (общие правила получателей, записи и доставки одной транзакцией,
@@ -316,7 +324,7 @@ Opus по задачам» в конце файла.
   `notify_poll` — по потоку на бота, работает только при включённом канале и заданном токене (проверка раз в минуту),
   шаг опроса T-4213 в цикле, курсор в `BotState` после пачки, 409 у Telegram — пауза 30 с и `last_error`,
   `deleteWebhook` при первом старте Telegram, имя бота при каждом старте цикла, завершение по SIGTERM после текущего
-  ответа — backend/apps/notify/management/commands/notify_poll.py — (FR-325, FR-332, FR-344)
+  ответа — backend/apps/notify/management/commands/notify_poll.py — (FR-325, FR-332, FR-336, FR-344)
 - [ ] T-4230 [sonnet] маршруты и страницы (план: «Контракты», «Колокольчик…»): `config/urls.py`,
   `apps/notify/urls.py`; «Уведомления» (50, фильтр, «Прочитать все», пусто), фрагмент колокольчика, `open`, `read`,
   `read-all`, `/sw.js` (без входа: `login_required` нет; шаблон сервис-воркера: `push`, `notificationclick` только своего источника); колокольчик в
@@ -327,7 +335,8 @@ Opus по задачам» в конце файла.
   `/me/notifications/` (таблица с карточками на узкой ширине, тихие часы, устройства, привязки с обновлением блока
   по соединению), `static/js/notify-push.js` (кнопка «Разрешить уведомления браузера», пока разрешения нет, — и при выключенном Web Push, решение 34; разрешение по кнопке, регистрация `/sw.js`, подписка, отправка JSON,
   блокировка столбца до разрешения), раздел в карточке профиля только своей (`card_sections`) —
-  backend/apps/notify/views/, backend/static/js/notify-push.js — (FR-321…FR-326, FR-336, FR-341, FR-342, NFR-308)
+  backend/apps/notify/views/, backend/static/js/notify-push.js — (FR-320, FR-321…FR-326, FR-336, FR-341, FR-342,
+  NFR-308)
 - [ ] T-4232 [sonnet] страница администратора (план: «Администратор»): `/settings/notifications/` под
   `notify.manage`, пункт меню «Уведомления» (`menu_items`), каналы с «ключи заданы / не заданы», именем бота и
   статусом ошибки, значения по умолчанию, сроки — backend/apps/notify/views/ — (FR-334…FR-337, NFR-308)
@@ -351,7 +360,9 @@ Opus по задачам» в конце файла.
   `backend/tests/load/locustfile.py` — backend/apps/notify/stand.py, backend/apps/notify/management/commands/,
   backend/tests/load/locustfile.py — (NFR-301, NFR-305, FR-337)
 - [ ] T-4260 [sonnet] зелёный прогон по областям: довести до зелёного T-4101…T-4151 и весь набор срезов 001–003
-  (после T-4138); каждое падение — причина в отчёте; тесты не ослабляются — docs/reviews/TASKS-004.md, раздел
+  (после T-4138); перед приёмкой Opus создаёт пару VAPID стенда командой `notify_vapid_keys` (T-4242), дописывает её
+  в `deploy/.env` без вывода значений и перезапускает службы (решение 21); каждое падение — причина в отчёте; тесты не
+  ослабляются — docs/reviews/TASKS-004.md, раздел
   «Зелёный прогон» — (FR-301…345, NFR-301…312)
 
 ## Этап 4 — финальная проверка
@@ -364,7 +375,7 @@ Opus по задачам» в конце файла.
   для колокольчика, «Уведомлений», «Моих уведомлений», настроек администратора; пункты, которые приёмка не проходит
   (решение 12), — здесь, с остановкой службы стенда Opus по разрешению владельца; кадры с адресами и текстами заявок
   — вне git — docs/reviews/TASKS-004.md, раздел «Проход в браузере» — (FR-301…345, NFR-308)
-- [ ] T-4302 [P] [opus] после T-4301: подготовка стенда (решения 11 и 21: копия данных прохода T-3308 в `crm-work/stand-backup`, пересборка образа и миграции, пара VAPID командой `notify_vapid_keys` в `deploy/.env` без вывода значений, адреса `fakebots`) и прогон приёмки Playwright среза 004 и срезов 001–003 на стенде кругами по Chromium,
+- [ ] T-4302 [opus] после T-4301 (стенд подготовлен T-4159 и T-4260): прогон приёмки Playwright среза 004 и срезов 001–003 на стенде кругами по Chromium,
   Firefox и Edge со сбросом стенда между кругами; Web Push — в кругах Chrome и Edge через настоящий push-сервис —
   backend/tests/e2e/*; docs/reviews/TASKS-004.md — (NFR-301, NFR-302, NFR-308)
 - [ ] T-4303 [P] [opus] `python3 tools/sdd.py проверить` и `python3 -m unittest discover -s tools -p "test_*.py"`
@@ -428,8 +439,8 @@ Opus по задачам» в конце файла.
    сразу; режимы — решение 33). Тихие часы приёмка задаёт «своими часами» сотрудника вокруг текущего времени; для
    пункта 7.2 порядок такой: уведомление создано в рабочее время, затем тест меняет «свои часы» так, что сейчас
    тихое время, затем `--shift`.
-8. **Пропуски.** Пропусков в серверных тестах нет, кроме одного, заданного планом: живой тест изоляции корня MAX
-   (`test_max_trust.py`) пропускается без выхода в интернет, как `test_clamav_live` (план, «Проверка»); на стенде
+8. **Пропуски.** Пропусков в серверных тестах нет, кроме заданного планом: два живых теста изоляции корня MAX
+   (`test_max_trust.py`, T-4121) пропускаются без выхода в интернет, как `test_clamav_live` (план, «Проверка»); на стенде
    выход есть (F6 Ф3), и тест выполняется. В приёмке Web Push
    проверяется только в кругах Chrome и Edge (в сборке Firefox Playwright подписка не выдаётся, F2) — тесты Web Push
    помечены для браузеров на Chromium, а не пропускаются по условию.
@@ -449,7 +460,8 @@ Opus по задачам» в конце файла.
     данные ручного прохода владельца (T-3308) сохраняются в `crm-work/stand-backup`; сбросы и пересборки стенда — с
     разрешения владельца (их делает Opus, не агент-исполнитель).
 12. **Пункты приёмки, которые приёмка Playwright не проходит**, проверяются серверными тестами и ручным проходом
-    T-4301: 9.7 (почтовый сервер недоступен) — остановкой службы стенда Opus по разрешению; 11.5 (выход в интернет
+    T-4301 (сама задача T-4301 — решение по задачам, как T-3301 в срезе 003: план называет Playwright и ручной проход
+    владельца, а пункты ниже требуют ручного прохода на стенде с остановкой служб). Перечень: 9.7 (почтовый сервер недоступен) — остановкой службы стенда Opus по разрешению; 11.5 (выход в интернет
     закрыт) — серверным тестом сетевых ошибок адаптеров и ручным проходом с остановленной `fakebots`; в приёмке
     недоступность Telegram и MAX задаёт `fakebots` ответом 500; 3.1 и 3.3 (письмо не доставлено после всех попыток —
     повторы почтового модуля идут около 22 часов) — только серверными тестами; нажатие на системное уведомление
@@ -457,6 +469,7 @@ Opus по задачам» в конце файла.
     проходы T-4301 и T-4307. Живые ответы настоящих Telegram и MAX — T-4307.
 13. **Нагрузка.** Класс locust с соединением `/ws/notify/` — в `backend/tests/load/locustfile.py` (T-4242); данные —
     заполнение среза 003 (`fill_tickets.py`); прогон — только на свободной машине и по согласию владельца (T-4304).
+    NFR-303: модульный тест письма проверяет постановку обходом, а задержку письма после срока меряет T-4304.
 14. **Склонение чисел.** «N уведомлений», «У вас N новых уведомлений» — по правилам русского языка (1 уведомление,
     2 уведомления, 5 уведомлений); тесты сводки и писем проверяют три формы.
 15. **Журнал не старше 3 лет (NFR-310)** проверяется так же, как в срезах 001 и 003: журнал только дописывается, и ни
@@ -518,10 +531,12 @@ Opus по задачам» в конце файла.
     `e2e_backdate`, `e2e_run_job` среза 003, это обвязка приёмки, а не механизм портала.
 34. **Разрешение на системные уведомления** (FR-320): на странице «Мои уведомления» кнопка «Разрешить уведомления
     браузера» видна всегда, пока браузер не дал и не запретил разрешение, — и при выключенном Web Push: push во
-    вкладке работает и без Web Push (FR-336, сценарий 5 п. 5). При включённом Web Push кнопка «Включить push на этом
-    устройстве» спрашивает разрешение и подписывает устройство. При загрузке страниц портал разрешения не спрашивает.
+    вкладке работает и без Web Push (FR-336, сценарий 5 п. 5). При включённом Web Push рядом видна и кнопка «Включить
+    push на этом устройстве» (пока у этого устройства нет подписки): она спрашивает разрешение, если его ещё нет, и
+    подписывает устройство; дав разрешение первой кнопкой, сотрудник может не подписывать устройство вовсе. При загрузке страниц портал разрешения не спрашивает.
 35. **Проверка соединения раз в 25 с** — константа `CHECK_INTERVAL` обработчика `NotifyConsumer`; помощник
-    соединения в тестах подменяет её малым значением, и тест ждёт ближайшей проверки, а не 25 секунд.
+    соединения в тестах подменяет её малым значением, и тест ждёт ближайшей проверки, а не 25 секунд; обработчик
+    читает константу при каждом ожидании (атрибут класса или модуля), а не один раз при подключении.
 36. **Задача T-4138** большая (18 пунктов): исполнитель проходит её двумя заходами — пункты 1–12 (тесты точек, прав,
     меню, событий, расписания) и 13–18 (внешние файлы, `make_dev_env`, `.env.example`, `conftest.py` приёмки,
     контракты). Разрешение владельца на каждую правку спрашивает Opus (оркестратор) с диффом; исполнитель правит
@@ -555,7 +570,7 @@ Opus по задачам» в конце файла.
 | FR-317 | T-4100, T-4108, T-4140, T-4144, T-4145, T-4151, T-4160 | T-4202, T-4208, T-4260 |
 | FR-318 | T-4100, T-4122, T-4123, T-4124, T-4140, T-4149, T-4160 | T-4200, T-4206, T-4216, T-4230, T-4260 |
 | FR-319 | T-4100, T-4123, T-4124, T-4149, T-4160 | T-4230, T-4260 |
-| FR-320 | T-4100, T-4122, T-4140, T-4144, T-4160 | T-4206, T-4216, T-4233, T-4260 |
+| FR-320 | T-4100, T-4122, T-4140, T-4144, T-4160 | T-4206, T-4216, T-4231, T-4233, T-4260 |
 | FR-321 | T-4100, T-4101, T-4102, T-4125, T-4143, T-4148, T-4160 | T-4204, T-4231, T-4260 |
 | FR-322 | T-4100, T-4102, T-4125, T-4143, T-4147, T-4160 | T-4204, T-4231, T-4260 |
 | FR-323 | T-4100, T-4110, T-4125, T-4126, T-4143, T-4146, T-4160 | T-4205, T-4231, T-4260 |
@@ -571,7 +586,7 @@ Opus по задачам» в конце файла.
 | FR-333 | T-4100, T-4111, T-4113, T-4119, T-4130, T-4146, T-4150, T-4151, T-4160 | T-4209, T-4240, T-4260 |
 | FR-334 | T-4100, T-4127, T-4138, T-4147, T-4160 | T-4203, T-4232, T-4260 |
 | FR-335 | T-4100, T-4127, T-4147, T-4160 | T-4203, T-4204, T-4232, T-4260 |
-| FR-336 | T-4100, T-4120, T-4125, T-4126, T-4127, T-4144, T-4145, T-4147, T-4160 | T-4204, T-4231, T-4232, T-4260 |
+| FR-336 | T-4100, T-4120, T-4125, T-4126, T-4127, T-4144, T-4145, T-4147, T-4160 | T-4204, T-4217, T-4231, T-4232, T-4260 |
 | FR-337 | T-4100, T-4127, T-4130, T-4147, T-4160 | T-4232, T-4240, T-4242, T-4260 |
 | FR-338 | T-4100, T-4128, T-4130, T-4147, T-4149, T-4160 | T-4214, T-4240, T-4260 |
 | FR-339 | T-4100, T-4118, T-4119, T-4128, T-4145, T-4160 | T-4213, T-4214, T-4260 |
