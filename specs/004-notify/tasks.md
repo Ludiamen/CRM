@@ -50,7 +50,7 @@ Opus по задачам» в конце файла.
 
 ## Этап 1 — подготовка
 
-- [ ] T-4001 [sonnet] зависимости среза (план: «Новые компоненты и лицензии», «Запуск» → «Зависимости»): в
+- [x] T-4001 [sonnet] зависимости среза (план: «Новые компоненты и лицензии», «Запуск» → «Зависимости»): в
   `backend/requirements.txt` — `channels==4.3.2`, `channels-redis==4.3.0`, `websockets==17.2`, `msgpack==1.2.3`,
   `asgiref==3.12.1` с комментарием-ссылкой на PLAN-004 (`redis==8.1.0` остаётся); в `backend/requirements-dev.txt`
   — `websocket-client==1.9.2`. Проверка: образ `crm-portal:local` пересобирается (Dockerfile ставит `requirements.txt`; пересборка стенда — с разрешения владельца, решение 11), тестовый контейнер пересобирает окружение (`deploy/run-tests.sh` по
@@ -59,7 +59,7 @@ Opus по задачам» в конце файла.
   библиотеки `websockets` он отвечал бы обычным HTTP, F1 Ф1) — backend/requirements.txt,
   backend/requirements-dev.txt; отчёт docs/reviews/TASKS-004.md, раздел «Подготовка: зависимости» — (NFR-301;
   план: «Новые компоненты и лицензии»)
-- [ ] T-4002 [sonnet] каркас ровно по блоку «Где живёт код» плана, ничего сверх: `apps/notify/` (`apps.py` с
+- [x] T-4002 [sonnet] каркас ровно по блоку «Где живёт код» плана, ничего сверх: `apps/notify/` (`apps.py` с
   меткой `notify`, пустые `models.py`, `tasks.py`, `extensions.py`, `audit_labels.py`, `stand.py`, `urls.py`,
   `consumers.py`, `routing.py` с пустым списком маршрутов, пакеты `views/`, `migrations/`, `management/commands/`,
   пакет `services/` с пустыми модулями из плана), `apps/integrations/telegram/`, `apps/integrations/max/`
@@ -72,21 +72,21 @@ Opus по задачам» в конце файла.
   перечня T-4138) — backend/apps/notify/, backend/apps/integrations/{telegram,max,webpush}/,
   backend/config/settings.py, backend/config/asgi.py — (план: «Где живёт код», «Запуск», «Сверка с конституцией»,
   стек-бэкенд)
-- [ ] T-4003 [P] [sonnet] расширение HTMX `ws` (план: «Новые компоненты и лицензии»): файл `dist/ws.min.js`
+- [x] T-4003 [P] [sonnet] расширение HTMX `ws` (план: «Новые компоненты и лицензии»): файл `dist/ws.min.js`
   пакета npm `htmx-ext-ws` 2.0.4 — как `backend/static/vendor/htmx-ext-ws-2.0.4.min.js`; раздел в
   `static/vendor/VERSIONS.md` (версия, файл в пакете, sha256, адрес пакета), файл лицензии `LICENSE-htmx-ext-ws`
   (0BSD из пакета); подключение в `templates/_assets.html` после htmx. Правка `tools/verify_vendor.py`,
   `tools/test_verify_vendor.py` и маски в `test_stack.py::test_vendor_assets_present_with_licenses` — в T-4138
   (с разрешения владельца по диффу); до неё `tools/test_verify_vendor.py::test_настоящий_vendor_чист` красный — это ожидаемо; если в пакете нет `dist/ws.min.js` или `package/LICENSE` — остановиться и сообщить Opus — backend/static/vendor/, backend/templates/_assets.html — (план: «Новые
   компоненты и лицензии»; инвариант «бесплатные-компоненты»)
-- [ ] T-4004 [P] [opus] корень Минцифры для адаптера MAX (план: «Новые компоненты и лицензии», «Telegram и MAX» →
+- [x] T-4004 [P] [opus] корень Минцифры для адаптера MAX (план: «Новые компоненты и лицензии», «Telegram и MAX» →
   доверие TLS; ADR-0011 п. 13): файл `backend/apps/integrations/max/certs/russian_trusted_root_ca.pem` — скачать с
   `https://gu-st.ru/content/Other/doc/russian_trusted_root_ca.cer`, проверить `openssl x509 -fingerprint -sha256`
   — ровно `D2:6D:2D:02:31:B7:C3:9F:92:CC:73:85:12:BA:54:10:35:19:E4:40:5D:68:B5:BD:70:3E:97:88:CA:8E:CF:31`,
   срок до 2032-02-27, самоподписан; рядом `SOURCE.md` (адрес, дата, отпечаток; сверку с gosuslugi.ru/crt делает
   владелец — T-4307). Не совпал отпечаток — остановиться и сообщить владельцу — отчёт docs/reviews/TASKS-004.md,
   раздел «Подготовка: корень Минцифры» — (план: «Новые компоненты и лицензии»)
-- [ ] T-4005 [sonnet] учебная служба ботов `fakebots` (план: «Запуск» → «Учебная служба ботов»; решение 4):
+- [x] T-4005 [sonnet] учебная служба ботов `fakebots` (план: «Запуск» → «Учебная служба ботов»; решение 4):
   `deploy/fakebots/server.py` на стандартной библиотеке Python, образ `python:3.12-slim-bookworm`, служба
   `fakebots` в `deploy/docker-compose.yml` только в профилях `dev` и `test`, порт внутри сети 8099. Telegram: пути
   `/bot<токен>/getMe`, `getUpdates` (ожидание до `timeout`, `offset`, `allowed_updates`), `sendMessage`,
@@ -98,7 +98,7 @@ Opus по задачам» в конце файла.
   `TELEGRAM_API_BASE=http://fakebots:8099`, `MAX_API_BASE=http://fakebots:8099/max` и тестовые токены. Проверка:
   служба поднимается, пример запросов из контейнера `test` проходит — deploy/fakebots/, deploy/docker-compose.yml
   — (FR-325, FR-332, FR-333; план: «Запуск», «Проверка»)
-- [ ] T-4006 [человек] прочитать раздел «Решения Opus по задачам» в конце этого файла и согласиться с ним; затем
+- [x] T-4006 [человек] прочитать раздел «Решения Opus по задачам» в конце этого файла и согласиться с ним; затем
   подписать TASKS-004 (`python3 tools/sdd.py подписать specs/004-notify/tasks.md --кто …`). Задачи подписываются
   до начала Этапа 2 — tasks.md: статус «утверждён» — (инвариант «спека-прежде-кода»)
 - [ ] T-4007 [P] [человек] боты общества к ручному проходу T-4307: MAX — бот на «Платформе MAX для партнёров» с

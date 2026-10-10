@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "apps.org",
     "apps.integrations.mail",
     "apps.servicedesk",
+    "apps.notify",
 ]
 # Встроенной админки Django нет: администрирование — свой раздел с проверкой
 # прав и журналом (PLAN-001, «Решения плана»).
@@ -127,6 +128,19 @@ RQ_QUEUES = {
     "files": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
     "inbox": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
     "maintenance": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
+    "notify": {"URL": VALKEY_URL, "DEFAULT_TIMEOUT": 120},
+}
+
+# Слой каналов для WebSocket (PLAN-004, «Запуск» → «Слой каналов»). Оба параметра хоста обязательны:
+# с redis==8.1.0 таймаут чтения 5 с рвёт бездействующие соединения, пул на 100 соединений кончается (F1 Ф4).
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [{"address": VALKEY_URL, "socket_timeout": 30, "max_connections": 300, "socket_connect_timeout": 2}],
+            "prefix": "crm-asgi",
+        },
+    },
 }
 
 # --- Сессии в базе (закрывать по одной), пароли argon2 -----------------------
@@ -215,3 +229,18 @@ IMAP_PASSWORD = env("IMAP_PASSWORD", default="")
 IMAP_FOLDER = env("IMAP_FOLDER", default="INBOX")
 IMAP_TIMEOUT = env.int("IMAP_TIMEOUT", default=30)
 SERVICEDESK_MAILBOX = env("SERVICEDESK_MAILBOX", default="")
+
+# --- Уведомления, боты и Web Push (PLAN-004, «Запуск» → «Переменные окружения») ---
+# Здесь только чтение переменных; пусто — канал выключен.
+
+TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN", default="")
+MAX_BOT_TOKEN = env("MAX_BOT_TOKEN", default="")
+VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
+VAPID_SUBJECT = env("VAPID_SUBJECT", default="")
+TELEGRAM_API_BASE = env("TELEGRAM_API_BASE", default="https://api.telegram.org")
+MAX_API_BASE = env("MAX_API_BASE", default="https://platform-api2.max.ru")
+WEBPUSH_ALLOWED_HOSTS = env.list(
+    "WEBPUSH_ALLOWED_HOSTS",
+    default=["fcm.googleapis.com", "jmt17.google.com", "*.notify.windows.com", "updates.push.services.mozilla.com"],
+)

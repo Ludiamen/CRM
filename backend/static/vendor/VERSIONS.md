@@ -31,6 +31,16 @@ Alpine и внешние адреса в Bootstrap и HTMX, сообщает, е
 |------|---------------|--------|
 | htmx-2.0.11.min.js | package/dist/htmx.min.js | d6fdc75f204e6bdefa99b69bf1e6d4ac69b8a364f77929f45c13476b4000f717 |
 
+## htmx-ext-ws 2.0.4
+
+- **Версия**: 2.0.4 (расширение HTMX `ws` для WebSocket; срез 004, задача T-4003)
+- **Лицензия**: 0BSD (`LICENSE-htmx-ext-ws`, взят из пакета)
+- **Пакет**: https://registry.npmjs.org/htmx-ext-ws/-/htmx-ext-ws-2.0.4.tgz
+
+| Файл | Файл в пакете | SHA256 |
+|------|---------------|--------|
+| htmx-ext-ws-2.0.4.min.js | package/dist/ws.min.js | 896afc2936ded7a56373edf16ce75b0fe9bf49c03d1f55aee9baa94cb87c8d3e |
+
 ## Alpine.js CSP 3.17.4
 
 - **Версия**: 3.17.4 (`@alpinejs/csp`, последняя в ветке 3.x на 2026-10-01)

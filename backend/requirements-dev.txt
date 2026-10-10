@@ -5,3 +5,5 @@ pytest-django==4.14.0
 pytest-playwright==0.9.0
 playwright==1.63.0
 locust==2.46.6
+# нагрузка среза 004
+websocket-client==1.9.2

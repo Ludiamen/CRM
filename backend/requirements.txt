@@ -23,3 +23,9 @@ defusedxml==0.7.1
 # Срез 003: клиент Valkey уже стоит как зависимость rq; закреплён, потому что открытая форма ловит его исключения
 # (redis.exceptions.RedisError, CONTRACT-003 6.19). Нового пакета в установке нет.
 redis==8.1.0
+# Срез 004 (PLAN-004, «Новые компоненты и лицензии»).
+channels==4.3.2
+channels-redis==4.3.0
+websockets==17.2
+msgpack==1.2.3
+asgiref==3.12.1

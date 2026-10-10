@@ -300,6 +300,25 @@ services:
     ports:
       - "127.0.0.1:31143:31143"
 
+  # Учебная служба ботов (PLAN-004, «Запуск»): только стенд и тесты, в установку не входит.
+  # Часть Bot API Telegram и MAX на стандартной библиотеке Python; служебные адреса /_test/…
+  # для тестов и приёмки. Порт 8099 внутри сети compose, на хосте — только 127.0.0.1.
+  # Токенов здесь нет: тесты задают их сами.
+  fakebots:
+    image: python:3.12-slim-bookworm
+    profiles: ["dev", "test"]
+    restart: unless-stopped
+    command: ["python", "-u", "/srv/server.py"]
+    volumes:
+      - ./fakebots:/srv:ro
+    ports:
+      - "127.0.0.1:8099:8099"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/_test/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   # Тесты: pytest + pytest-django на PostgreSQL этого же стенда.
   # Тестовая база test_crm создаётся и мигрируется под crm_owner, запросы теста
   # идут под crm_app. Valkey — база 15, не рабочая 0.
@@ -318,9 +337,13 @@ services:
         condition: service_healthy   # настоящий clamd для test_clamav_live и проверки фото
       dovecot:
         condition: service_started   # проверки здоровья у образа нет (нет оболочки)
+      fakebots:
+        condition: service_healthy   # учебная служба ботов (PLAN-004)
     env_file: .env
     environment:
       VALKEY_URL: redis://valkey:6379/15
+      TELEGRAM_API_BASE: http://fakebots:8099
+      MAX_API_BASE: http://fakebots:8099/max
       CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
       CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
       CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-120}"
