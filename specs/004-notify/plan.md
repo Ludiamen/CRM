@@ -1,7 +1,7 @@
 ---
 id: PLAN-004
 вид: план
-статус: черновик
+статус: на-проверке
 версия: 1
 зависит_от: SPEC-004, SPEC-003, SPEC-002, SPEC-001, TGT-ARCH, TGT-NFR, ADR-0010, ADR-0011, PLAN-001, PLAN-002, PLAN-003
 основан_на: SPEC-004 sha256:a4fc71988fc9d75de86aec36d3889bf6eb429ca696a576c52ecccb34e7fb439d
