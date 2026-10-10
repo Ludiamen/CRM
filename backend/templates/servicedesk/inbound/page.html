@@ -18,22 +18,22 @@
   </section>
   <form id="inbound-filter" data-form="inbound-filter" class="filter-bar card card-body mb-3" method="get" action="/servicedesk/inbound/">
     <div class="row g-2 align-items-end">
-      <div class="col-12 col-md-4">
+      <div class="col-12 col-md-6 col-xl-4">
         <label class="form-label small mb-1" for="id_outcome">Итог</label>
         <select class="form-select" id="id_outcome" name="outcome">
           <option value="">Любой</option>
           {% for item in outcome_choices %}<option value="{{ item.code }}"{% if item.selected %} selected{% endif %}>{{ item.title }}</option>{% endfor %}
         </select>
       </div>
-      <div class="col-6 col-md-2">
+      <div class="col-6 col-md-3 col-xl-2">
         <label class="form-label small mb-1" for="id_date_from">Получено с</label>
         {{ date_from_field }}
       </div>
-      <div class="col-6 col-md-2">
+      <div class="col-6 col-md-3 col-xl-2">
         <label class="form-label small mb-1" for="id_date_to">Получено по</label>
         {{ date_to_field }}
       </div>
-      <div class="col-12 col-md-4 d-flex gap-2 filter-actions">
+      <div class="col-12 col-xl-4 d-flex gap-2 filter-actions">
         <button class="btn btn-primary flex-fill" type="submit">Найти</button>
         <a class="btn btn-outline-secondary" href="/servicedesk/inbound/">Сбросить</a>
       </div>
