@@ -440,10 +440,11 @@ def _tasks():
 
 
 def _commit_callbacks():
+    """То же, что фикстура `django_capture_on_commit_callbacks(execute=True)`: исполняет и вложенные обработчики."""
     from django.db import DEFAULT_DB_ALIAS
-    from django.test.utils import CaptureOnCommitCallbacks
+    from django.test import TestCase
 
-    return CaptureOnCommitCallbacks(using=DEFAULT_DB_ALIAS, execute=True)
+    return TestCase.captureOnCommitCallbacks(using=DEFAULT_DB_ALIAS, execute=True)
 
 
 def run_tick() -> dict:
