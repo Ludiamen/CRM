@@ -24,6 +24,11 @@ NEW_JOBS = {
     "purge_requester_previews": ("maintenance", "30 23 * * *", 300),
     "purge_orphan_files": ("maintenance", "50 23 * * *", 600),
 }
+NOTIFY_JOBS = {
+    # имя: (очередь, интервал в секундах или None, строка cron по UTC или None, job_timeout); CONTRACT-004 § 1.3
+    "notify_tick": ("notify", 30, None, 120),
+    "notify_retention": ("maintenance", None, "40 23 * * *", 600),
+}
 # время по Москве (час, минута) у ночных заданий — из таблицы «Расписание» § 1
 MOSCOW_NIGHT = {
     "purge_inbound": (2, 10), "anonymize_tickets": (2, 20),
@@ -136,7 +141,7 @@ def top_volume_names() -> set[str]:
 
 
 def cron_registrations() -> list[dict]:
-    """Вызовы `register(...)` в config/cron.py (разбор дерева): функция, очередь, расписание, имя, job_timeout."""
+    """Вызовы `register(...)` в config/cron.py (разбор дерева): функция, очередь, расписание (`cron` или `interval`), имя, job_timeout."""
     tree = ast.parse((BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8"))
     constants = {node.targets[0].id: node.value.value for node in ast.walk(tree)
                  if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name)
@@ -156,7 +161,7 @@ def cron_registrations() -> list[dict]:
             function = first.id if isinstance(first, ast.Name) else getattr(first, "attr", None)
             keys = {kw.arg: value(kw.value) for kw in node.keywords}
             found.append({"function": function, "queue": keys.get("queue_name"), "cron": keys.get("cron"),
-                          "name": keys.get("name"), "job_timeout": keys.get("job_timeout"),
+                          "interval": keys.get("interval"), "name": keys.get("name"), "job_timeout": keys.get("job_timeout"),
                           "has_job_timeout": "job_timeout" in keys})
     return found
 
@@ -371,8 +376,9 @@ def test_clamav_timeout_120_in_all_services_and_settings_default():
 
 def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_minute():
     """FR-210, NFR-206: `config/cron.py` регистрирует восемь новых заданий (имя = функция из
-    `apps.servicedesk.tasks`) в очередях `inbox` и `maintenance`, не в `mail`; опрос ящика — каждую минуту; всего
-    четырнадцать вызовов `register`; `scheduler` — одна копия с `rq cron`."""
+    `apps.servicedesk.tasks`) в очередях `inbox` и `maintenance`, не в `mail`; опрос ящика — каждую минуту; два задания
+    среза 004 — `notify_tick` (очередь `notify`, `interval=30`, `job_timeout=120`) и `notify_retention` (`maintenance`,
+    `40 23 * * *`, 600); всего шестнадцать вызовов `register`; `scheduler` — одна копия с `rq cron`."""
     registered = cron_by_name()
     for name, (queue, cron, _timeout) in NEW_JOBS.items():
         assert name in registered, f"в cron.py нет задания {name}"
@@ -381,7 +387,14 @@ def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_min
         assert registered[name]["function"] == name, f"{name}: функция {registered[name]['function']}"
     assert registered["poll_mailbox"]["cron"] == "* * * * *"
     assert registered["poll_mailbox"]["queue"] == "inbox"
-    assert len(cron_registrations()) == 14, "шесть прежних и восемь новых"
+    for name, (queue, interval, cron, timeout) in NOTIFY_JOBS.items():
+        assert name in registered, f"в cron.py нет задания {name}"
+        assert registered[name]["function"] == name, f"{name}: функция {registered[name]['function']}"
+        assert registered[name]["queue"] == queue, f"{name}: очередь {registered[name]['queue']}"
+        assert registered[name]["interval"] == interval, f"{name}: interval={registered[name]['interval']!r}"
+        assert registered[name]["cron"] == cron, f"{name}: cron={registered[name]['cron']!r}"
+        assert registered[name]["job_timeout"] == timeout, f"{name}: job_timeout={registered[name]['job_timeout']!r}"
+    assert len(cron_registrations()) == 16, "шесть прежних, восемь среза 003 и два среза 004"
     source = (BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8")
     assert re.search(r"from apps\.servicedesk\.tasks import", source)
     scheduler = block("scheduler")

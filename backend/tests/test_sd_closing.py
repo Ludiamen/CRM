@@ -371,7 +371,7 @@ def test_close_event_has_status_and_resolution_text(django_capture_on_commit_cal
 
 
 def test_close_publishes_ticket_closed_to_bus_and_writes_journal(bus_spy, django_capture_on_commit_callbacks):
-    """FR-249: шина получает одно `servicedesk.ticket_closed` (номер, очередь, ответственный на момент закрытия);
+    """FR-249: шина получает одно `servicedesk.ticket_closed` (номер, очередь, ответственный на момент закрытия, `actor_id` закрывшего);
     журнал — `ticket.closed` (исполнитель, `status` до и после, текста решения нет, 9.2)."""
     bus_spy.listen("servicedesk.ticket_closed")
     queue = sd.make_queue()
@@ -383,7 +383,7 @@ def test_close_publishes_ticket_closed_to_bus_and_writes_journal(bus_spy, django
 
     calls = bus_spy.calls("servicedesk.ticket_closed")
     assert calls == [{"number": ticket.number, "queue_id": queue.unit_id,
-                      "assignee_before_id": user.pk, "assignee_after_id": user.pk}]
+                      "assignee_before_id": user.pk, "assignee_after_id": user.pk, "actor_id": user.pk}]
 
     (row,) = _journal("ticket.closed", ticket)
     assert row.actor_id == user.pk

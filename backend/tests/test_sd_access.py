@@ -524,16 +524,17 @@ def test_eligible_assignees_queue_people_plus_all_holders_without_dismissed():
 # --- права ---------------------------------------------------------------------------------------------
 
 def test_all_tickets_and_manage_rights_only_for_portal_admin_after_install():
-    """FR-233, FR-275: после установки оба права есть у «Администратора портала» (двенадцать кодов), у остальных нет."""
+    """FR-233, FR-275: после установки оба права есть у «Администратора портала» (тринадцать кодов), у остальных нет."""
     from apps.core.services import roles
+    from tests.support_notify import PERMISSIONS_004
 
     Permission, Role = model("core.Permission"), model("core.Role")
     assert Permission.objects.get(code="servicedesk.all").title == "Все заявки"
     assert Permission.objects.get(code="servicedesk.manage").title == "Настройка сервис-деска"
     admin = support.role_by_name(support.ADMIN_ROLE)
     assert set(roles.permission_codes(admin)) == set(
-        support.PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003)
-    assert len(roles.permission_codes(admin)) == 12
+        support.PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003 + PERMISSIONS_004)
+    assert len(roles.permission_codes(admin)) == 13
     for name in (support.MANAGER_ROLE, support.STAFF_ROLE):
         assert not set(roles.permission_codes(support.role_by_name(name))) & set(sd.PERMISSIONS_003), name
     holders = Role.objects.filter(permissions__code__in=sd.PERMISSIONS_003).distinct()

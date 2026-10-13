@@ -23,12 +23,14 @@ def test_seven_permissions_created_by_migration():
 
 
 def test_three_builtin_roles_with_initial_permissions():
-    """FR-015, FR-020, FR-118: три начальные роли; у администратора все двенадцать прав (срезы 001–003), у «Руководителя» и «Сотрудника ИТ» ровно `staff.view`."""
+    """FR-015, FR-020, FR-118: три начальные роли; у администратора все тринадцать прав (срезы 001–004), у «Руководителя» и «Сотрудника ИТ» ровно `staff.view`."""
+    from tests.support_notify import PERMISSIONS_004
+
     Role = model("core.Role")
     builtin = {r.name: r for r in Role.objects.filter(is_builtin=True)}
     assert set(builtin) == {support.ADMIN_ROLE, support.MANAGER_ROLE, support.STAFF_ROLE}
     assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(
-        PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003)
+        PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003 + PERMISSIONS_004)
     assert set(builtin[support.MANAGER_ROLE].permissions.values_list("code", flat=True)) == {"staff.view"}
     assert set(builtin[support.STAFF_ROLE].permissions.values_list("code", flat=True)) == {"staff.view"}
     employee = support.logged_in(support.make_employee(roles=[builtin[support.STAFF_ROLE]]))
@@ -111,17 +113,22 @@ def protected_table(victim, role):
         ("get", "/settings/portal/", "settings.portal"), ("post", "/settings/portal/", "settings.portal"),
         ("get", "/settings/mail-log/", "settings.portal"),
         ("get", "/settings/security/", "settings.security"), ("post", "/settings/security/", "settings.security"),
+        ("get", "/settings/notifications/", "notify.manage"), ("post", "/settings/notifications/", "notify.manage"),
     ]
 
 
 def test_every_protected_view_requires_permission_403():
     """FR-018: право проверяется на каждом представлении независимо от меню; без входа — на вход, без права — 403."""
+    from tests.support_notify import PERMISSIONS_004
+
     victim, spare_role = support.make_employee(), factories.make_role(name="Запасная")
     table = protected_table(victim, spare_role)
     anonymous = support.make_client(ip="198.51.100.140")
-    rest = {p: support.logged_in(make_with_permissions(*[q for q in PERMISSIONS if q != p]), ip="198.51.100.141")
-            for p in PERMISSIONS}
-    only = {p: support.logged_in(make_with_permissions(p), ip="198.51.100.142") for p in PERMISSIONS}
+    # `PERMISSIONS` — права среза 001; страница настроек уведомлений среза 004 стоит под `notify.manage`
+    permissions = PERMISSIONS + PERMISSIONS_004
+    rest = {p: support.logged_in(make_with_permissions(*[q for q in permissions if q != p]), ip="198.51.100.141")
+            for p in permissions}
+    only = {p: support.logged_in(make_with_permissions(p), ip="198.51.100.142") for p in permissions}
     for method, path, permission in table:
         label = f"{method.upper()} {path}"
         got = getattr(anonymous, method)(path)

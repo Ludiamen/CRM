@@ -20,10 +20,11 @@ from tests.support import model
 
 pytestmark = pytest.mark.django_db
 
-POINTS_13 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory", "card_sections",
-             "day_marks", "home_notices", "stand_reset", "unit_usage", "file_purposes", "mail_renderers", "login_links")
+POINTS_15 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory", "card_sections",
+             "day_marks", "home_notices", "stand_reset", "unit_usage", "file_purposes", "mail_renderers", "login_links",
+             "notification_kinds", "top_bar_items")
 SERVICEDESK_POINTS = ("menu_items", "unit_usage", "file_purposes", "mail_renderers", "login_links", "audit_labels",
-                      "card_sections", "stand_reset", "home_notices")
+                      "card_sections", "stand_reset", "home_notices", "notification_kinds")
 CORE_MENU_TITLES = ["Сотрудники", "Роли и права", "Журнал событий", "Настройки портала", "Безопасность и политика"]
 FOUR = ("servicedesk.ticket_created", "servicedesk.assignee_changed", "servicedesk.reply_received",
         "servicedesk.ticket_closed")
@@ -350,8 +351,10 @@ def test_move_unit_publishes_access_changed_with_former_upper_heads(bus, django_
 # --- FR-292: события servicedesk.* (§ 3.1, 6.13, дополнения 7 и 22) ---------------------------------------
 
 def test_servicedesk_events_carry_ticket_number_queue_and_assignees(bus, django_capture_on_commit_callbacks):
-    """FR-292: четыре константы `events` и ровно четыре ключа данных: `number`, `queue_id`, `assignee_before_id`,
-    `assignee_after_id`; у новой заявки `assignee_before_id` — `None`."""
+    """FR-292, FR-313: четыре константы `events`; у каждого события прежние ключи данных (`number`, `queue_id`,
+    `assignee_before_id`, `assignee_after_id`) и новые по событию (CONTRACT-004 § 4.2): `actor_id` и `channel` у
+    `ticket_created`; `actor_id` у `assignee_changed` и `ticket_closed`; `actor_id` (всегда `None`), `via`, `author_kind`,
+    `entry_id` у `reply_received`; у новой заявки `assignee_before_id` — `None`."""
     sd_events = _svc("events")
     assert (sd_events.TICKET_CREATED, sd_events.ASSIGNEE_CHANGED, sd_events.REPLY_RECEIVED, sd_events.TICKET_CLOSED) == FOUR
     bus.listen(*FOUR)
@@ -360,15 +363,21 @@ def test_servicedesk_events_carry_ticket_number_queue_and_assignees(bus, django_
     ticket = sd.make_ticket(queue=queue, kind="in_progress", assignee=assignee)
     base = {"number": ticket.number, "queue_id": ticket.queue_id}
     with django_capture_on_commit_callbacks(execute=True):
-        sd_events.ticket_created(ticket)
-        sd_events.assignee_changed(ticket, before_id=assignee.pk, after_id=other.pk)
-        sd_events.reply_received(ticket)
-        sd_events.ticket_closed(ticket)
-    assert bus.calls(FOUR[0]) == [{**base, "assignee_before_id": None, "assignee_after_id": assignee.pk}]
-    assert bus.calls(FOUR[1]) == [{**base, "assignee_before_id": assignee.pk, "assignee_after_id": other.pk}]
-    assert bus.calls(FOUR[2]) == [{**base, "assignee_before_id": assignee.pk, "assignee_after_id": assignee.pk}]
-    assert bus.calls(FOUR[3]) == [{**base, "assignee_before_id": assignee.pk, "assignee_after_id": assignee.pk}]
-    assert all(set(data) == EVENT_KEYS for _name, data in bus.all())
+        sd_events.ticket_created(ticket, actor_id=other.pk, channel="staff")
+        sd_events.assignee_changed(ticket, before_id=assignee.pk, after_id=other.pk, actor_id=other.pk)
+        sd_events.reply_received(ticket, via="appended", author_kind="requester", entry_id=4711)
+        sd_events.ticket_closed(ticket, actor_id=assignee.pk)
+    assert bus.calls(FOUR[0]) == [{**base, "assignee_before_id": None, "assignee_after_id": assignee.pk,
+                                   "actor_id": other.pk, "channel": "staff"}]
+    assert bus.calls(FOUR[1]) == [{**base, "assignee_before_id": assignee.pk, "assignee_after_id": other.pk,
+                                   "actor_id": other.pk}]
+    assert bus.calls(FOUR[2]) == [{**base, "assignee_before_id": assignee.pk, "assignee_after_id": assignee.pk,
+                                   "actor_id": None, "via": "appended", "author_kind": "requester", "entry_id": 4711}]
+    assert bus.calls(FOUR[3]) == [{**base, "assignee_before_id": assignee.pk, "assignee_after_id": assignee.pk,
+                                   "actor_id": assignee.pk}]
+    new_keys = {FOUR[0]: {"actor_id", "channel"}, FOUR[1]: {"actor_id"},
+                FOUR[2]: {"actor_id", "via", "author_kind", "entry_id"}, FOUR[3]: {"actor_id"}}
+    assert all(set(data) == EVENT_KEYS | new_keys[name] for name, data in bus.all())
     assert base["queue_id"] == queue.unit_id
 
 
@@ -387,43 +396,50 @@ def test_four_servicedesk_events_are_published_by_ticket_services(bus_spy, djang
                                  requester_email=email, category=category, inbound_id=sd.make_inbound().pk)
     ticket = model("servicedesk.Ticket").objects.get(pk=created.ticket.pk)
     base = {"number": ticket.number, "queue_id": queue.unit_id}
-    assert bus_spy.calls(FOUR[0]) == [{**base, "assignee_before_id": None, "assignee_after_id": first.pk}]
+    assert bus_spy.calls(FOUR[0]) == [{**base, "assignee_before_id": None, "assignee_after_id": first.pk,
+                                       "actor_id": None, "channel": "mail"}]
     assert bus_spy.calls(FOUR[1]) == [], "при создании шина получает только ticket_created (дополнение 7)"
 
     with django_capture_on_commit_callbacks(execute=True):
         assert assignment.assign(ticket, second, actor=second) is True
-    assert bus_spy.calls(FOUR[1]) == [{**base, "assignee_before_id": first.pk, "assignee_after_id": second.pk}]
+    assert bus_spy.calls(FOUR[1]) == [{**base, "assignee_before_id": first.pk, "assignee_after_id": second.pk,
+                                       "actor_id": second.pk}]
 
     ticket.refresh_from_db()
     with django_capture_on_commit_callbacks(execute=True):
         tickets.add_incoming(ticket, author_email=email, text="Добавляю подробности")
-    assert bus_spy.calls(FOUR[2]) == [{**base, "assignee_before_id": second.pk, "assignee_after_id": second.pk}]
+    entry = model("servicedesk.TicketEntry").objects.get(ticket=ticket, kind="incoming", text="Добавляю подробности")
+    assert bus_spy.calls(FOUR[2]) == [{**base, "assignee_before_id": second.pk, "assignee_after_id": second.pk,
+                                       "actor_id": None, "via": "appended", "author_kind": "requester",
+                                       "entry_id": entry.pk}]
 
     ticket.refresh_from_db()
     closed = model("servicedesk.Status").objects.get(kind="closed", is_default=True)
     with django_capture_on_commit_callbacks(execute=True):
         closing.close(ticket, closed, "Заменили картридж", actor=second)
-    assert bus_spy.calls(FOUR[3]) == [{**base, "assignee_before_id": second.pk, "assignee_after_id": second.pk}]
+    assert bus_spy.calls(FOUR[3]) == [{**base, "assignee_before_id": second.pk, "assignee_after_id": second.pk,
+                                       "actor_id": second.pk}]
     assert len(bus_spy.calls(FOUR[0])) == 1 and len(bus_spy.calls(FOUR[1])) == 1 and len(bus_spy.calls(FOUR[2])) == 1
 
 
 # --- FR-292: точки расширения и меню (§ 3.2) ------------------------------------------------------------
 
 def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_links():
-    """FR-292: `POINTS` — тринадцать имён в порядке контракта; `org` — только в девяти первых, `servicedesk` — в своих девяти
-    точках функциями `apps.servicedesk…`; зарегистрированное отдаёт то, что описано в контракте."""
+    """FR-292: `POINTS` — пятнадцать имён в порядке контракта; `org` — только в девяти первых, `servicedesk` — в своих десяти
+    точках (девять прежних и `notification_kinds`) функциями `apps.servicedesk…`; зарегистрированное отдаёт то, что описано
+    в контракте, в том числе ровно четыре вида уведомлений с кодами CONTRACT-004 § 3.2."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_13
+    assert tuple(extensions.POINTS) == POINTS_15
 
     def owned(point, prefix):
         return [f for f in extensions.registered(point) if getattr(f, "__module__", "").startswith(prefix)]
 
-    for point in POINTS_13[:9]:
+    for point in POINTS_15[:9]:
         assert owned(point, "apps.org"), f"org не зарегистрирован в точке {point}"
-    for point in POINTS_13[9:]:
+    for point in POINTS_15[9:]:
         assert not owned(point, "apps.org"), f"org не должен регистрироваться в точке {point}"
-    for point in POINTS_13:
+    for point in POINTS_15:
         if point in SERVICEDESK_POINTS:
             assert owned(point, "apps.servicedesk"), f"servicedesk не зарегистрирован в точке {point}"
         else:
@@ -448,6 +464,11 @@ def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_
     assert tuple(extensions.Rendered._fields) == ("body", "attachments")
 
     assert answers("login_links") == [{"url": "/request/", "title": "Подать заявку в ИТ-отдел"}]
+
+    kinds = answers("notification_kinds")
+    assert len(kinds) == 4 and all(isinstance(kind, extensions.NotificationKind) for kind in kinds)
+    assert sorted(kind.code for kind in kinds) == sorted((
+        "servicedesk.new_in_queue", "servicedesk.assigned", "servicedesk.requester_replied", "servicedesk.reply_failed"))
 
     menu = {item["title"]: item for item in answers("menu_items")}
     assert set(menu) == {"Заявки", "Сервис-деск"}
