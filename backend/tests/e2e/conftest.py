@@ -47,6 +47,12 @@ PROJECTS = ["chromium", "firefox", "edge"]
 # Chrome и Edge запускаются без --disable-background-networking: иначе подписка Web Push
 # (служба Google) не работает (CONTRACT-004 § 8.1, решение E23); круг firefox не меняется
 CHROMIUM_LAUNCH_ARGS = {"ignore_default_args": ["--disable-background-networking"]}
+# Круг chromium — полный Chromium (channel="chromium"), а не урезанная безголовая сборка: в ней
+# Notification.permission всегда "denied" (CONTRACT-004 § 8.1, дополнение 23)
+CHANNELS = {"chromium": "chromium", "edge": "msedge"}
+# Подписку Web Push браузер выдаёт только постоянному профилю (в обычном контексте — «permission
+# denied»), а сервис-воркер на самоподписанном сертификате стенда регистрируется только с этим флагом
+WEBPUSH_LAUNCH_ARGS = {**CHROMIUM_LAUNCH_ARGS, "args": ["--ignore-certificate-errors"]}
 
 os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")  # sync API Playwright + ORM в одном процессе
 
@@ -93,10 +99,8 @@ def browser(playwright, request):
     """Браузер проекта: chromium, firefox или Edge (пропуск, если Edge не установлен)."""
     name = request.param
     try:
-        if name == "edge":
-            instance = playwright.chromium.launch(channel="msedge", **CHROMIUM_LAUNCH_ARGS)
-        elif name == "chromium":
-            instance = playwright.chromium.launch(**CHROMIUM_LAUNCH_ARGS)
+        if name in CHANNELS:
+            instance = playwright.chromium.launch(channel=CHANNELS[name], **CHROMIUM_LAUNCH_ARGS)
         else:
             instance = getattr(playwright, name).launch()
     except PlaywrightError as e:
@@ -125,6 +129,27 @@ def browser_context_args(browser_context_args, portal_url):
         "locale": "ru-RU",
         "timezone_id": "Europe/Moscow",
     }
+
+
+@pytest.fixture
+def webpush_context(playwright, browser, browser_context_args, tmp_path_factory):
+    """Фабрика контекстов Web Push: каждый вызов — новый постоянный профиль браузера круга (chromium или
+    Edge) с настройками обычного контекста; закрываются после теста. Только для тестов с меткой webpush."""
+    opened = []
+
+    def make():
+        if browser.e2e_project not in CHANNELS:
+            raise RuntimeError("Web Push — только в кругах chromium и edge (метка webpush)")
+        context = playwright.chromium.launch_persistent_context(
+            str(tmp_path_factory.mktemp("webpush")), channel=CHANNELS[browser.e2e_project],
+            **WEBPUSH_LAUNCH_ARGS, **browser_context_args,
+        )
+        opened.append(context)
+        return context
+
+    yield make
+    for context in opened:
+        context.close()
 
 
 @pytest.fixture

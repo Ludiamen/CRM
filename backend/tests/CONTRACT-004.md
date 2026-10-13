@@ -1691,3 +1691,26 @@ B5 (2.1, 2.2, 6.9); пометки «вопрос X» в разделах 1-15 �
     (б) НХ-ответ отвязки (`/me/notifications/unbind/<канал>/`, § 13.2) флеш-сообщения не оставляет: `[role=status]`
     «Telegram отвязан.» — только у обычного POST после перенаправления. (в) Пункт 3: фикстуру `bots_on` берут перечисленные
     задачи, кроме тестов сброса стенда (пункт 21 (ж)). Затрагивает: T-4125, T-4126, T-4127, T-4129, T-4131.
+23. **Браузеры приёмки и Web Push** (2026-10-13, пробы Opus вне стенда на Playwright 1.63; правка `tests/e2e/conftest.py`
+    по T-4138 п. 17 — с разрешения владельца). Уточняет строку «Браузеры приёмки» § 8.1 и решение E23 («`helpers_notify`
+    своего запуска браузера не заводит» — остаётся: запуск — в conftest). (а) Круг `chromium` запускается как
+    `playwright.chromium.launch(channel="chromium", …)`: полный Chromium сборки Playwright в новом безголовом режиме.
+    Урезанная сборка `chromium-headless-shell`, которую Playwright берёт по умолчанию, всегда даёт
+    `Notification.permission == "denied"`. Круг `edge` — `channel="msedge"`, `firefox` — прежний; таблица `conftest.CHANNELS`.
+    (б) Подписку `pushManager.subscribe` браузер выдаёт только постоянному профилю. В контексте `browser.new_context()` она
+    всегда отказывает (`AbortError: Registration failed - permission denied`), даже когда разрешение выдано. Поэтому тест
+    Web Push (метка `webpush`, она же `helpers_notify.webpush_only`) берёт фикстуру `webpush_context` из conftest. Каждый
+    вызов `webpush_context()` даёт новый постоянный профиль браузера круга с настройками обычного контекста (`base_url`,
+    `ignore_https_errors`, `ru-RU`, `Europe/Moscow`) и флагами `WEBPUSH_LAUNCH_ARGS`: без
+    `--disable-background-networking` и с `--ignore-certificate-errors` (иначе сервис-воркер на самоподписанном сертификате
+    стенда не регистрируется: `SecurityError`). «Два устройства» — два вызова; «тот же браузер, другая учётная запись» —
+    один контекст: выход, затем вход другого сотрудника. Профили закрываются после теста. Вход — как обычно (страница
+    контекста, `helpers.login` или состояние сессии через `context.add_cookies`). (в) Системное уведомление во вкладке
+    (обёртка `Notification`, решение E22) проверяется в обычном контексте во всех трёх кругах:
+    `grant_permissions(["notifications"], origin=…)` в Firefox, полном Chromium и Edge даёт `granted` (проба), метка не
+    нужна. (г) Push при закрытой вкладке: в пробе push без полезной нагрузки дошёл до воркера постоянного профиля без
+    окна за 0,3–1,1 с (хосты `jmt17.google.com` у Chromium сборки Playwright и `*.notify.windows.com` у Edge, оба — 201
+    с первой попытки). `registration.getNotifications()` со страницы `/sw.js` того же контекста вернул уведомление
+    (вопросы 2–3 T-4140a закрыты). Google Chrome у свежего профиля один раз ответил 410 на первый push (как в
+    plan-probe §4), поэтому тест не шлёт push в первые секунды после подписки без нужды. Затрагивает: T-4140
+    (`helpers_notify`), T-4144, T-4150, T-4151.
