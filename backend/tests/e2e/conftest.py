@@ -44,6 +44,9 @@ from tests import factories
 PORTAL_URL = os.environ.get("E2E_PORTAL_URL", "https://127.0.0.1:8031/")
 COMPOSE_FILE = Path(__file__).resolve().parents[3] / "deploy" / "docker-compose.yml"
 PROJECTS = ["chromium", "firefox", "edge"]
+# Chrome и Edge запускаются без --disable-background-networking: иначе подписка Web Push
+# (служба Google) не работает (CONTRACT-004 § 8.1, решение E23); круг firefox не меняется
+CHROMIUM_LAUNCH_ARGS = {"ignore_default_args": ["--disable-background-networking"]}
 
 os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")  # sync API Playwright + ORM в одном процессе
 
@@ -51,11 +54,30 @@ os.environ.setdefault("DJANGO_ALLOW_ASYNC_UNSAFE", "true")  # sync API Playwrigh
 expect.set_options(timeout=15_000)
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "webpush: тест Web Push; выполняется только в кругах chromium и edge, в круге firefox снимается со сбора "
+        "(решение 8 задач среза 004)",
+    )
+
+
 @pytest.hookimpl(trylast=True)
-def pytest_collection_modifyitems(items):
+def pytest_collection_modifyitems(config, items):
     for item in items:
         if "/tests/e2e/" in str(item.fspath).replace("\\", "/"):
             item.add_marker(pytest.mark.e2e)
+
+    # тесты с меткой webpush в круге firefox не собираются (не пропускаются); порядок остальных не меняется
+    снятые = [
+        it for it in items
+        if it.get_closest_marker("webpush")
+        and getattr(getattr(it, "callspec", None), "params", {}).get("browser") == "firefox"
+    ]
+    if снятые:
+        config.hook.pytest_deselected(items=снятые)
+        номера = {id(it) for it in снятые}
+        items[:] = [it for it in items if id(it) not in номера]
 
     def rank(item):
         spec = getattr(item, "callspec", None)
@@ -72,7 +94,9 @@ def browser(playwright, request):
     name = request.param
     try:
         if name == "edge":
-            instance = playwright.chromium.launch(channel="msedge")
+            instance = playwright.chromium.launch(channel="msedge", **CHROMIUM_LAUNCH_ARGS)
+        elif name == "chromium":
+            instance = playwright.chromium.launch(**CHROMIUM_LAUNCH_ARGS)
         else:
             instance = getattr(playwright, name).launch()
     except PlaywrightError as e:

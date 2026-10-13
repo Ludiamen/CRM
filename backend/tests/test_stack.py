@@ -17,6 +17,7 @@ from tests.support import BACKEND_DIR, REPO_ROOT, repo_file
 SECRET_ENV_NAMES = {
     "DJANGO_SECRET_KEY", "FIELD_ENCRYPTION_KEYS", "BACKUP_CODE_PEPPER", "POSTGRES_PASSWORD",
     "CRM_OWNER_PASSWORD", "CRM_APP_PASSWORD", "SMTP_PASSWORD", "IMAP_PASSWORD",
+    "TELEGRAM_BOT_TOKEN", "MAX_BOT_TOKEN", "VAPID_PRIVATE_KEY",
 }
 PLAN_ENV_NAMES = SECRET_ENV_NAMES | {
     "DATABASE_URL", "DATABASE_MIGRATE_URL", "VALKEY_URL", "PORTAL_URL", "TRUSTED_PROXIES",
@@ -40,15 +41,16 @@ def test_project_layout_matches_plan():
 
 
 def test_vendor_assets_present_with_licenses():
-    """NFR-007: Bootstrap, HTMX и Alpine (CSP-сборка) лежат в static/vendor с лицензиями и сверенными хешами; CDN нет."""
+    """NFR-007: Bootstrap, HTMX, его расширение ws и Alpine (CSP-сборка) лежат в static/vendor с лицензиями и сверенными хешами; CDN нет."""
     vendor = BACKEND_DIR / "static" / "vendor"
     files = {
         "bootstrap css": next(vendor.glob("bootstrap-*.min.css")),
         "bootstrap js": next(vendor.glob("bootstrap-*.bundle.min.js")),
-        "htmx": next(vendor.glob("htmx-*.min.js")),
+        "htmx": next(vendor.glob("htmx-[0-9]*.min.js")),
+        "htmx ws": next(vendor.glob("htmx-ext-ws-*.min.js")),
         "alpine csp": next(vendor.glob("alpine-*.csp.min.js")),
     }
-    for licence in ("LICENSE-bootstrap", "LICENSE-htmx", "LICENSE-alpine"):
+    for licence in ("LICENSE-bootstrap", "LICENSE-htmx", "LICENSE-htmx-ext-ws", "LICENSE-alpine"):
         assert (vendor / licence).stat().st_size > 200, f"{licence} пуст"
     versions = (vendor / "VERSIONS.md").read_text(encoding="utf-8")
     assert re.search(r"Проверено:\s*\d{4}-\d{2}-\d{2}", versions), "в VERSIONS.md нет даты проверки"
@@ -62,7 +64,7 @@ def test_vendor_assets_present_with_licenses():
     templates = list((BACKEND_DIR / "templates").rglob("*.html"))
     assert templates, "шаблонов нет: статика ни на чём не подключена"
     combined = "\n".join(t.read_text(encoding="utf-8") for t in templates)
-    for prefix in ("vendor/bootstrap-", "vendor/htmx-", "vendor/alpine-"):
+    for prefix in ("vendor/bootstrap-", "vendor/htmx-", "vendor/htmx-ext-ws-", "vendor/alpine-"):
         assert prefix in combined, f"шаблоны не подключают {prefix}* (через {{% static %}})"
     for template in templates:
         assert not re.search(r"""(src|href)=["']https?://""", template.read_text(encoding="utf-8")), (

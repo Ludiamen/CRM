@@ -2,6 +2,7 @@
 подменяются ОБРАЗЕЦ и ЦЕЛЬ во временном каталоге."""
 import contextlib
 import io
+import re
 import stat
 import sys
 import tempfile
@@ -124,6 +125,73 @@ class MakeDevEnvTests(unittest.TestCase):
         self.assertEqual(строки[0], "IMAP_PASSWORD=")
         self.assertEqual([с for с in строки if с.startswith("IMAP_PASSWORD=")], ["IMAP_PASSWORD="])
         self.assertNotIn("IMAP_PASSWORD", вывод)
+
+    def test_stand_table_has_fakebots_addresses_and_bot_tokens_not_in_telegram_form(self):
+        # решение 21 задач среза 004; пара VAPID в таблицу не входит (её создаёт notify_vapid_keys)
+        стенд = make_dev_env.СТЕНД
+        self.assertEqual(стенд["TELEGRAM_API_BASE"], "http://fakebots:8099")
+        self.assertEqual(стенд["MAX_API_BASE"], "http://fakebots:8099/max")
+        токены = [стенд["TELEGRAM_BOT_TOKEN"], стенд["MAX_BOT_TOKEN"]]
+        self.assertNotEqual(токены[0], токены[1])
+        for токен in токены:
+            self.assertTrue(токен)
+            self.assertNotIn(":", токен)
+            self.assertIsNone(re.search(r"\d{8,10}:[A-Za-z0-9_-]{35}", токен))
+        for имя in ("VAPID_PRIVATE_KEY", "VAPID_PUBLIC_KEY"):
+            self.assertNotIn(имя, стенд)
+
+    def test_fresh_create_fills_empty_stand_names_from_example_in_place_and_keeps_vapid_empty(self):
+        self.образец.write_text(
+            ОБРАЗЕЦ_ТЕКСТ + "TELEGRAM_BOT_TOKEN=\nMAX_BOT_TOKEN=\nVAPID_PRIVATE_KEY=\n"
+            "# TELEGRAM_API_BASE=https://api.telegram.org\n# MAX_API_BASE=https://platform-api2.max.ru\n",
+            encoding="utf-8",
+        )
+        код, вывод = self.запуск([])
+        self.assertEqual(код, 0)
+        текст = self.цель.read_text(encoding="utf-8")
+        значения = self.значения()
+        for имя in ("TELEGRAM_BOT_TOKEN", "MAX_BOT_TOKEN", "TELEGRAM_API_BASE", "MAX_API_BASE"):
+            self.assertEqual(значения[имя], make_dev_env.СТЕНД[имя])
+            self.assertEqual(len(re.findall(rf"^{имя}=", текст, re.M)), 1, f"{имя}: имя повторено")
+        self.assertEqual(значения["VAPID_PRIVATE_KEY"], "")
+        self.assertEqual(len(re.findall(r"^VAPID_PRIVATE_KEY=", текст, re.M)), 1)
+        for имя in ("TELEGRAM_BOT_TOKEN", "MAX_BOT_TOKEN"):
+            self.assertNotIn(значения[имя], вывод)
+
+    def test_add_missing_replaces_empty_stand_names_in_place_one_line_per_name_and_keeps_other_lines(self):
+        старые = (
+            "TELEGRAM_BOT_TOKEN=\nMAX_API_BASE=\nIMAP_PASSWORD=\nVAPID_PRIVATE_KEY=\n"
+            "TELEGRAM_API_BASE=http://свой-адрес\n"
+        ).encode("utf-8")
+        self.цель.write_bytes(старые)
+        self.цель.chmod(0o600)
+        код, вывод = self.запуск(["--add-missing"])
+        self.assertEqual(код, 0)
+        строки = self.цель.read_text(encoding="utf-8").splitlines()
+        # замена на месте той же строки; остальные строки без изменений
+        for номер, имя in enumerate(("TELEGRAM_BOT_TOKEN", "MAX_API_BASE")):
+            self.assertEqual(строки[номер], имя + "=" + make_dev_env.СТЕНД[имя])
+        self.assertEqual(строки[2:5], ["IMAP_PASSWORD=", "VAPID_PRIVATE_KEY=", "TELEGRAM_API_BASE=http://свой-адрес"])
+        # ни одно имя не встречается дважды
+        имена = [м.group(1) for с in строки if (м := re.match(r"^([A-Za-z_][A-Za-z0-9_]*)=", с))]
+        self.assertEqual(len(имена), len(set(имена)), "имя повторено в файле")
+        for имя in ("TELEGRAM_BOT_TOKEN", "MAX_API_BASE"):
+            self.assertEqual(имена.count(имя), 1)
+        # отсутствовавшее имя стенда дописано в конец один раз
+        self.assertEqual(имена.count("MAX_BOT_TOKEN"), 1)
+        self.assertEqual(stat.S_IMODE(self.цель.stat().st_mode), 0o600)
+        for имя in ("TELEGRAM_BOT_TOKEN", "MAX_API_BASE", "MAX_BOT_TOKEN"):
+            self.assertIn(имя, вывод)
+        for имя in ("TELEGRAM_API_BASE", "IMAP_PASSWORD", "VAPID_PRIVATE_KEY"):
+            self.assertNotIn(имя, вывод)
+        for имя in ("TELEGRAM_BOT_TOKEN", "MAX_BOT_TOKEN"):
+            self.assertNotIn(make_dev_env.СТЕНД[имя], вывод)
+        # повторный запуск: имена уже с непустыми значениями, дописывать нечего
+        после = self.цель.read_bytes()
+        код, вывод = self.запуск(["--add-missing"])
+        self.assertEqual(код, 0)
+        self.assertEqual(self.цель.read_bytes(), после)
+        self.assertIn("нечего дописывать", вывод)
 
     def test_force_with_add_missing_is_refused(self):
         self.цель.write_text("A=1\n", encoding="utf-8")
