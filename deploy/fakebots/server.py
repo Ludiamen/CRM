@@ -300,8 +300,13 @@ def handle_test(verb, path, query, body):
         count = as_int(body.get("count"), 1)
         retry_after = as_int(body.get("retry_after"), 1)
         with STATE.cond:
-            STATE.fails.append({"channel": channel, "method": method, "status": status,
-                                "count": count, "retry_after": retry_after})
+            if count == 0:
+                # count=0 — снять заказанные сбои канала (метод "*" — все методы), остальное состояние не трогать
+                STATE.fails = [f for f in STATE.fails
+                               if not (f["channel"] == channel and method in ("*", f["method"]))]
+            else:
+                STATE.fails.append({"channel": channel, "method": method, "status": status,
+                                    "count": count, "retry_after": retry_after})
         return 200, {"ok": True}
     if path == "/_test/reset" and verb == "POST":
         STATE.reset()

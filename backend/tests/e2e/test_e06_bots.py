@@ -653,7 +653,9 @@ def test_e06_dismissal_removes_push_subscriptions_bindings_and_unused_codes_and_
         _dismiss(page, leaver.id)
         # п. 9: подписки, привязки и коды удалены
         after = _db_counts(leaver.email)
-        assert after == {"push": 0, "bindings": 0, "codes": 0, "unused_codes": 0}, after
+        # использованные коды уходят обходом хранения позже (§ 6.13, решение B4), увольнение удаляет неиспользованные
+        # (FR-340, дополнение 28 (б))
+        assert (after["push"], after["bindings"], after["unused_codes"]) == (0, 0, 0), after
         # п. 9: чаты уволенного свободны — другой сотрудник привязывает тот же чат Telegram без отказа «чат уже привязан»
         helpers_notify.bind_channel(taker.page, bots, "telegram", chat_tg)
         known_tg = len(helpers_notify.sent_to(bots, "telegram", chat_tg))

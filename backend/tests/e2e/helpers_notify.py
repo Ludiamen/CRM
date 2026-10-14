@@ -114,6 +114,13 @@ class FakeBots:
         self._call("POST", "/_test/fail", {"channel": self._channel(channel), "status": status, "method": method,
                                            "count": count, "retry_after": retry_after})
 
+    def clear_fails(self, channel: str, *, method: str = "*") -> None:
+        """`POST /_test/fail` с `count=0` (дополнение 28): снимает заказанные и ещё не израсходованные сбои канала
+        (`method="*"` — всех методов); события, отправленные сообщения и счётчики не трогает. Звать в `finally` теста,
+        который заказывал сбой, — иначе остаток заберут следующие тесты круга (сброс службы посреди круга запрещён)."""
+        self._call("POST", "/_test/fail", {"channel": self._channel(channel), "status": 500, "method": method,
+                                           "count": 0})
+
     def reset(self) -> None:
         """`POST /_test/reset`: события, отправленные сообщения, заказанные сбои и счётчики стираются."""
         self._call("POST", "/_test/reset")
