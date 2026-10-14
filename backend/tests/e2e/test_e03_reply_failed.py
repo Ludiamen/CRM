@@ -30,7 +30,8 @@ from tests.support_org import eicar_bytes
 from tests.support_servicedesk import build_mail, sample
 
 _FEED = "ol[data-feed]"
-CHECK_WAIT = 60.0  # с: проверку вложения делает настоящий clamd стенда (CONTRACT-003, 6.6)
+CHECK_WAIT = 180.0  # с: проверку вложения делает настоящий clamd стенда (CONTRACT-003, 6.6); запас — под нагрузкой
+# круга проверка шла дольше 60 с (красный прогон T-4160), отдельно — 4–8 с
 NOTE_WAIT = 30.0  # с: уведомление после записи события в ленту
 _RQ_CONN = "import redis; from django.conf import settings; r = redis.Redis.from_url(settings.VALKEY_URL); "
 
