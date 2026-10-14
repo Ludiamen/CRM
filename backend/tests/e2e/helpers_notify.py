@@ -16,7 +16,8 @@
 - письма уведомлений в Mailpit по поиску адреса получателя (§ 10.1, § 10.2): `find_mails`, `wait_template_mail`,
   `no_template_mail`, `wait_item_mail`, `no_item_mail`, `wait_digest_mail`, `no_digest_mail`, `open_link_in`;
 - каналы и привязки для тестов внешних каналов (§ 13.2, § 13.3, § 14.3, § 14.4, § 15.3): `channels_on` (администратор
-  включает Telegram, MAX, Web Push на время блока), `bind_channel` (привязка бота кодом через `fakebots`),
+  включает Telegram, MAX, Web Push на время блока), `channels_off` (выключает на время блока), `bind_channel`
+  (привязка бота кодом через `fakebots`, возвращает код),
   `enable_push_on_device` (подписка устройства на Web Push в постоянном профиле).
 
 Правила: код приложения (`apps.*`, `django`) и `tests.support_notify` не импортируются — тесты идут с хоста против
@@ -706,7 +707,29 @@ def channels_on(admin_page, *channels):
             _save_channels(admin_page, {c: False for c in to_switch})
 
 
-def bind_channel(page, bots: FakeBots, channel: str, chat_id, *, timeout: float = 120.0) -> None:
+@contextlib.contextmanager
+def channels_off(admin_page, *channels):
+    """Зеркально `channels_on`: администратор выключает каналы `channels` (из `telegram`, `max`, `webpush`) на время
+    блока `with`; на выходе (`finally`) переключатели, которые были включены, включаются снова. Уже выключенный канал не
+    трогается. Выключить канал можно всегда (§ 6.5); включение на выходе при незаданных ключах — `AssertionError` с
+    кодом отказа."""
+    wanted = list(dict.fromkeys(channels))
+    unknown = [c for c in wanted if c not in ADMIN_CHANNELS]
+    if unknown or not wanted:
+        raise ValueError(f"channels_off: нужны каналы из {ADMIN_CHANNELS}, получено {channels!r}")
+    form = _settings_form(admin_page)
+    before = {c: _channel_switch(form, c).is_checked() for c in wanted}
+    to_switch = [c for c in wanted if before[c]]
+    try:
+        if to_switch:
+            _save_channels(admin_page, {c: False for c in to_switch})
+        yield
+    finally:
+        if to_switch:
+            _save_channels(admin_page, {c: True for c in to_switch})
+
+
+def bind_channel(page, bots: FakeBots, channel: str, chat_id, *, timeout: float = 120.0) -> str:
     """Привязывает бота `channel` (`telegram` или `max`) к сотруднику страницы `page` кодом, как делает человек (§ 13.2,
     § 14.3, § 6.14, § 15.3): на `/me/notifications/` нажимает «Привязать» в `#notify-binding-<канал>`, читает
     `[data-bind-code]`, кладёт в `fakebots` события (Telegram: `/start` из личного чата, затем сообщение с кодом; MAX:
@@ -715,7 +738,8 @@ def bind_channel(page, bots: FakeBots, channel: str, chat_id, *, timeout: float 
     `from.id` и `user_id`); потом сообщения выбирают по нему (`sent_to`). Канал должен быть включён администратором
     (`channels_on`) и не привязан. Предел `timeout` — не меньше 120 с: цикл опроса выключенного канала спит `PAUSE_IDLE`
     = 60 с (§ 5.4), после включения канал начинает опрос не сразу. `fakebots()` внутри не сбрасывается: звать его до
-    привязки. Код в сообщениях ошибок не печатается."""
+    привязки. Возвращает использованный код (восемь цифр) — для проверок «старый код не принимается»; в сообщениях
+    ошибок код не печатается."""
     if channel not in BOT_CHANNELS:
         raise ValueError(f"канал {channel!r}: нужен один из {BOT_CHANNELS}")
     deadline = time.monotonic() + timeout
@@ -753,6 +777,7 @@ def bind_channel(page, bots: FakeBots, channel: str, chat_id, *, timeout: float 
         time.sleep(0.5)
     page.goto("/me/notifications/")
     expect(page.locator(f"#notify-binding-{channel}")).to_have_attribute("data-state", "bound", timeout=15_000)
+    return code
 
 
 def enable_push_on_device(page, *, timeout: float = 30.0) -> str:
