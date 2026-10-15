@@ -10,6 +10,7 @@ from django.contrib.auth.hashers import check_password
 from django.db import transaction
 from django.utils import timezone
 
+from apps.core import events
 from apps.core.models import PasswordHistory
 from apps.integrations.mail import services as mail
 
@@ -85,6 +86,7 @@ def change_password(user, current_password: str, new_password: str, *, request, 
         audit.record("password.changed", actor=user, object_type="user", object_id=user.pk,
                      after={"changed": True}, ip=ip)
         mail.send("password_changed", user.email, {"full_name": user.full_name}, related_user=user)
+        events.publish("core.password_changed", user_id=user.pk, actor_id=user.pk)
 
 
 def reset_password(user, new_password: str, *, link=None, ip=None) -> None:
@@ -105,6 +107,7 @@ def reset_password(user, new_password: str, *, link=None, ip=None) -> None:
         audit.record("sessions.closed", actor=user, object_type="user", object_id=user.pk,
                      after={"closed": closed}, ip=ip)
         mail.send("password_changed", user.email, {"full_name": user.full_name}, related_user=user)
+        events.publish("core.password_changed", user_id=user.pk, actor_id=user.pk)
 
 
 def changed_at(user):

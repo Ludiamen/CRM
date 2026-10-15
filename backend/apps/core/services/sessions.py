@@ -10,6 +10,7 @@ from django.contrib.auth import login, logout
 from django.contrib.sessions.models import Session
 from django.utils import timezone
 
+from apps.core import events
 from apps.core.models import UserSession
 
 from . import audit, security_settings
@@ -41,6 +42,30 @@ def is_limited(request) -> bool:
 def finish_limited(request) -> None:
     """Второй фактор подключён и коды подтверждены: ограничение снимается."""
     request.session.pop(LIMITED_KEY, None)
+
+
+def ws_state(session, user) -> str:
+    """Состояние соединения `/ws/notify/` по правилам `SessionGuardMiddleware` (CONTRACT-004, § 3.4).
+
+    Значения: `anonymous`, `session_missing`, `idle_expired`, `limited`, `password_expired`, `ok`.
+    Только читает: `touch` не зовёт, строку `UserSession` не меняет.
+    """
+    from . import passwords
+
+    if user is None or not getattr(user, "is_authenticated", False):
+        return "anonymous"
+    key = session.session_key
+    row = UserSession.objects.filter(session_key=key).first() if key else None
+    if row is None or row.user_id != user.pk:
+        return "session_missing"
+    minutes = session.get(IDLE_KEY) or security_settings.get().idle_timeout_minutes
+    if timezone.now() - row.last_activity > timedelta(minutes=minutes):
+        return "idle_expired"
+    if session.get(LIMITED_KEY):
+        return "limited"
+    if passwords.must_change(user, security_settings.get()):
+        return "password_expired"
+    return "ok"
 
 
 def idle_expired(session_row: UserSession, request) -> bool:
@@ -92,7 +117,10 @@ def keep_after_password_change(request, user) -> None:
 
 def logout_everywhere(request, user, *, ip=None) -> int:
     """«Выйти со всех устройств»: остальные сессии закрываются, текущая остаётся; событие — в журнал (FR-030)."""
+    other = UserSession.objects.filter(user=user).exclude(session_key=request.session.session_key)
+    device_ids = sorted(set(other.exclude(device__isnull=True).values_list("device_id", flat=True)))
     closed = close_all(user, except_key=request.session.session_key)
     audit.record("sessions.logout_everywhere", actor=user, object_type="user", object_id=user.pk,
                  after={"closed": closed}, ip=ip)
+    events.publish("core.logged_out", user_id=user.pk, device_ids=device_ids, reason="logout_everywhere")
     return closed

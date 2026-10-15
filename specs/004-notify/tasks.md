@@ -232,7 +232,7 @@ Opus по задачам» в конце файла.
 → развёртывание → зелёный прогон. После каждой задачи — весь серверный набор; регрессия срезов 001–003 —
 остановка и решение Opus.
 
-- [ ] T-4200 [sonnet] ядро (план: «Точки расширения ядра и шина событий», «Виды безопасности», «Колокольчик…» →
+- [x] T-4200 [sonnet] ядро (план: «Точки расширения ядра и шина событий», «Виды безопасности», «Колокольчик…» →
   «Соединение», «Web Push» → «Выход из портала»): `POINTS` + `notification_kinds`, `top_bar_items`; данные
   `NotificationKind`, `Draft`, `TopBarItem` в `apps/core/extensions.py`; `templates/base.html` выводит элементы
   `top_bar_items` в блоке `top-actions` перед ссылками профиля; `sessions.ws_state(session, user)` по правилам
@@ -244,7 +244,7 @@ Opus по задачам» в конце файла.
   (`mandatory`, только портал, тексты FR-316). Письма ядра не меняются — backend/apps/core/ (extensions.py,
   services/login.py, passwords.py, accounts.py, sessions.py), backend/templates/base.html — (FR-305, FR-313,
   FR-318, FR-324, FR-340)
-- [ ] T-4201 [sonnet] `org` (план: «Модель данных» → «Ядро и прежние модули»): `structure.direct_members(unit_id)`
+- [x] T-4201 [sonnet] `org` (план: «Модель данных» → «Ядро и прежние модули»): `structure.direct_members(unit_id)`
   — один запрос к членству узла без уволенных и приглашённых, кто ещё не вошёл; руководитель и заместитель узла
   входят своим членством — backend/apps/org/services/structure.py — (FR-308, FR-309)
 - [ ] T-4202 [sonnet] сервис-деск (план: «Шина событий», «События и получатели», «Колокольчик…» → «Прочитано»):
@@ -255,7 +255,7 @@ Opus по задачам» в конце файла.
   `apps/servicedesk/notify_kinds.py` — четыре вида (`events`, `build`, `available`, `still_relevant`,
   `external_text`, `default_channels`, порядок) и регистрация в точке `notification_kinds` —
   backend/apps/servicedesk/ — (FR-304, FR-307, FR-308…FR-317)
-- [ ] T-4203 [sonnet] модели `notify` и миграции (план: «Модель данных» → «Приложение `notify`»): все модели
+- [x] T-4203 [sonnet] модели `notify` и миграции (план: «Модель данных» → «Приложение `notify`»): все модели
   таблицы плана с ограничениями и индексами (в том числе частичные; «ровно одно из двух» у `Delivery`;
   `PushSubscription.device` — CASCADE); миграция данных: право `notify.manage` («Настройка уведомлений») у
   «Администратора портала» по образцу `servicedesk/0003_initial_data.py`, строка `NotifySettings` (15, 90, каналы
@@ -278,11 +278,11 @@ Opus по задачам» в конце файла.
   `object.viewed`, новое число в группу) — backend/apps/notify/services/{dispatch,live,reading}.py,
   backend/apps/notify/extensions.py — (FR-306, FR-307, FR-314, FR-315, FR-318, FR-320, FR-328, FR-329, FR-331,
   FR-345, NFR-301, NFR-304)
-- [ ] T-4207 [P] [sonnet] адаптер Web Push (план: «Web Push» → «Отправка», «Ответы push-сервиса»):
+- [x] T-4207 [P] [sonnet] адаптер Web Push (план: «Web Push» → «Отправка», «Ответы push-сервиса»):
   `crypto.encrypt` (aes128gcm одной записью), `crypto.vapid` (JWT ES256; «сейчас» берётся из `django.utils.timezone.now()`, не из `time.time()`; для `encrypt` — необязательные именованные параметры `salt` и `sender_private_key`, которыми тест подставляет значения приложения A RFC 8291; без них соль и ключ новые на каждый вызов), `client.send` (POST через `urllib`, без
   перенаправлений, таймаут 10 с, подменяемая отправка для тестов, код ответа и `Retry-After`) —
   backend/apps/integrations/webpush/ — (FR-324, FR-332, NFR-312)
-- [ ] T-4208 [P] [sonnet] адаптеры Telegram и MAX (план: «Telegram и MAX» → «Адаптеры»): методы, `urllib` с
+- [x] T-4208 [P] [sonnet] адаптеры Telegram и MAX (план: «Telegram и MAX» → «Адаптеры»): методы, `urllib` с
   таймаутами, отдельный `SSLContext` MAX с корнем Минцифры (системное хранилище не трогать), исключения
   `ChannelGone`, `RetryLater`, `BadRequest`, `BadToken` без адреса запроса, `html.escape`, пределы 4096 и 4000,
   кнопка-ссылка на страницу уведомлений — backend/apps/integrations/telegram/, backend/apps/integrations/max/ —

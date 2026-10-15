@@ -11,6 +11,7 @@ from django.db.models import Func, Q, Value
 from django.db.models.functions import Lower, Replace
 from django.utils import timezone
 
+from apps.core import events
 from apps.core.models import BackupCodeDevice, EncryptedTOTPDevice, KnownDevice, Role, User, UserState
 from apps.integrations.mail import services as mail
 
@@ -260,6 +261,7 @@ def dismiss(user: User, *, actor, ip=None) -> None:
         user.roles.clear()
         audit.record("user.dismissed", actor=actor, object_type="user", object_id=user.pk,
                      before={"state": previous, "roles": previous_roles}, after={"state": UserState.DISMISSED}, ip=ip)
+        events.publish("core.user_dismissed", user_id=user.pk, actor_id=actor.pk if actor else None)
 
 
 def rehire(user: User, *, actor, ip=None) -> None:
@@ -277,6 +279,7 @@ def rehire(user: User, *, actor, ip=None) -> None:
         user.roles.set([staff])
         audit.record("user.rehired", actor=actor, object_type="user", object_id=user.pk,
                      before={"state": UserState.DISMISSED}, after={"state": UserState.INVITED, "roles": [staff.name]}, ip=ip)
+        events.publish("core.user_rehired", user_id=user.pk, actor_id=actor.pk if actor else None)
         links.send_invitation(user, created_by=actor, ip=ip)
 
 
@@ -332,6 +335,7 @@ def reset_second_factor(user: User, *, actor, ip=None) -> None:
         audit.record("totp.reset", actor=actor, object_type="user", object_id=user.pk,
                      before={"devices": devices}, after={"devices": 0}, ip=ip)
         mail.send("second_factor_reset", user.email, {"full_name": user.full_name}, related_user=user)
+        events.publish("core.second_factor_reset", user_id=user.pk, actor_id=actor.pk if actor else None)
 
 
 def set_profile_in_activation(user: User, *, phone: str, contacts, ip=None) -> None:

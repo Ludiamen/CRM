@@ -287,3 +287,17 @@ def queue_people(unit_id: int) -> list[PersonRef]:
     ).exclude(user__state="dismissed").select_related("user")
     people = {m.user_id: m.user for m in found}
     return [_person_ref(p) for p in sorted(people.values(), key=lambda p: (p.full_name, p.pk))]
+
+
+def direct_members(unit_id: int) -> list[PersonRef]:
+    """Прямые участники узла: члены самого узла, без вложенных и вышестоящих (получатели уведомлений).
+
+    Руководитель и заместитель узла входят своим членством. Входят активные и заблокированные; уволенные и
+    приглашённые, кто ещё не вошёл, исключены. Без повторов, по `full_name`, затем `id`; несуществующий узел — `[]`.
+    Один запрос.
+    """
+    found = Membership.objects.filter(unit_id=unit_id).exclude(
+        user__state__in=["dismissed", "invited"]
+    ).select_related("user")
+    people = {m.user_id: m.user for m in found}
+    return [_person_ref(p) for p in sorted(people.values(), key=lambda p: (p.full_name, p.pk))]

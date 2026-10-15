@@ -1,4 +1,5 @@
 <!doctype html>
+{% load portal %}
 <html lang="ru">
 <head>
   <meta charset="utf-8">
@@ -12,6 +13,7 @@
     <header id="top-bar" class="app-top-bar">
       <a class="brand" href="/">{% include "_brand.html" %}</a>
       <div class="top-actions">
+        {% for item in top_bar %}{% top_bar_item item %}{% endfor %}
         <a class="top-link" href="/me/" title="Мой профиль">
           <span class="profile-initial" aria-hidden="true">{{ request.user.full_name|slice:":1"|upper }}</span>
           <span class="top-label profile-name">{{ request.user.full_name }}</span>

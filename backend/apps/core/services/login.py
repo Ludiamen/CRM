@@ -13,6 +13,7 @@ from django.contrib.auth import hashers
 from django.db import transaction
 from django.utils import timezone
 
+from apps.core import events
 from apps.core.models import LoginAttempt, LoginResult, User, UserSession, UserState
 from apps.integrations.mail import services as mail
 
@@ -167,6 +168,9 @@ def complete(request, user, *, ip: str, user_agent: str = "", device_key: str | 
         audit.record("login.success", actor=user, object_type="user", object_id=user.pk,
                      after={"via": "password" if limited else via}, ip=ip)
         if touched is not None and touched.is_new and known_before:
+            browser, platform = devices.parse_user_agent(user_agent)
+            events.publish("core.new_device", user_id=user.pk, browser=browser, platform=platform,
+                           at=timezone.now())
             _mail_new_device(user, ip, user_agent)
     return Completed(touched.raw_key if touched else (device_key or ""), bool(touched and touched.is_new))
 
@@ -189,6 +193,13 @@ def finish_limited(request, user, *, ip: str, user_agent: str = "", device_key: 
 def logout(request, *, ip: str | None = None) -> None:
     """Выход: событие в журнале, сессия закрыта."""
     user = request.user if request.user.is_authenticated else None
+    device_ids = []
+    if user is not None:
+        # устройство читается до `sessions.end`: оно удаляет запись сессии
+        device_id = UserSession.objects.filter(session_key=request.session.session_key).values_list(
+            "device_id", flat=True).first() if request.session.session_key else None
+        device_ids = [device_id] if device_id else []
     sessions.end(request)
     if user is not None:
         audit.record("logout", actor=user, object_type="user", object_id=user.pk, ip=ip)
+        events.publish("core.logged_out", user_id=user.pk, device_ids=device_ids, reason="logout")

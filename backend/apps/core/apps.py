@@ -8,4 +8,7 @@ class CoreConfig(AppConfig):
 
     def ready(self):
         # сигналы сброса кэша прав
+        from apps.core import extensions, notify_kinds
         from apps.core.services import permissions  # noqa: F401
+
+        extensions.register("notification_kinds", notify_kinds.notification_kinds)

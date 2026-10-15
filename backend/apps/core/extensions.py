@@ -9,9 +9,12 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Callable, NamedTuple
 
+from django.http import HttpRequest
+
 POINTS = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory",
           "card_sections", "day_marks", "home_notices", "stand_reset",
-          "unit_usage", "file_purposes", "mail_renderers", "login_links")
+          "unit_usage", "file_purposes", "mail_renderers", "login_links",
+          "notification_kinds", "top_bar_items")
 
 _registry: dict[str, list] = {point: [] for point in POINTS}
 
@@ -122,3 +125,49 @@ class Rendered(NamedTuple):
     """Готовое письмо: текст и вложения (имя и путь файла в томе `protected`)."""
     body: str
     attachments: list[tuple[str, pathlib.Path]]
+
+
+@dataclass(frozen=True)
+class Draft:
+    """Черновик уведомления: кому, строка текста, ссылка внутри портала, ссылка на объект для «прочитано»."""
+    user_id: int
+    text: str
+    url: str
+    object_ref: str = ""
+
+
+def _no_drafts(event: str, data: dict) -> list:
+    return []
+
+
+def _always(*args) -> bool:
+    return True
+
+
+@dataclass(frozen=True)
+class NotificationKind:
+    """Вид уведомления (PLAN-004, «Точки расширения ядра и шина событий»; CONTRACT-004, § 3.1).
+
+    `build(event, data)` возвращает список `Draft`; `available(user)` — показывать ли строку вида
+    сотруднику; `still_relevant(user_id, object_ref)` — проверка перед письмом и сводкой.
+    """
+    code: str
+    title: str
+    module: str
+    events: tuple[str, ...] = ()
+    build: Callable[[str, dict], list] = _no_drafts
+    external_text: str = ""
+    default_channels: tuple[str, ...] = ("portal",)
+    mandatory: bool = False
+    available: Callable = _always
+    still_relevant: Callable[[int, str], bool] = _always
+    order: int = 0
+
+
+@dataclass(frozen=True)
+class TopBarItem:
+    """Элемент верхней панели перед ссылками профиля: шаблон и контекст по запросу."""
+    key: str
+    order: int
+    template: str
+    context: Callable[[HttpRequest], dict]

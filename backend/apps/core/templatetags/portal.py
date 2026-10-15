@@ -9,6 +9,13 @@ from apps.core.services import audit_labels, audit_search
 register = template.Library()
 
 
+@register.simple_tag(takes_context=True)
+def top_bar_item(context, item):
+    """Выводит элемент точки `top_bar_items`: его шаблон с контекстом страницы и контекстом элемента."""
+    values = {**context.flatten(), **item["context"]}
+    return context.template.engine.get_template(item["template"]).render(context.new(values))
+
+
 @register.filter
 def pairs(value):
     """Словарь «было» или «стало» — список (название поля, значение) для вывода."""
