@@ -173,9 +173,33 @@ def _quarantined(page, number: int, name: str) -> None:
     return card
 
 
+_PAUSE = _RQ_CONN + """
+import time, django_rq
+from rq import suspension, Worker
+suspension.suspend(r, ttl=120)
+q = django_rq.get_queue('files')
+ws = [w for w in Worker.all(connection=q.connection) if 'files' in w.queue_names()]
+for _ in ws:
+    q.enqueue('os.getpid')
+end = time.monotonic() + 30
+states = []
+while time.monotonic() < end:
+    states = [(q.connection.hget(w.key, 'state') or b'').decode() for w in ws]  # не кэш объекта, а Valkey
+    if ws and all(s == 'suspended' for s in states):
+        break
+    time.sleep(0.5)
+print('PAUSED' if ws and all(s == 'suspended' for s in states) else 'NOT_PAUSED', len(ws))
+"""
+
+
 def _pause_jobs() -> None:
-    """Пауза RQ стенда (CONTRACT-004, доп. 26): обработчики не берут новые задания, ttl 120 с снимет паузу сам."""
-    helpers.stand_shell(_RQ_CONN + "from rq import suspension; suspension.suspend(r, ttl=120)")
+    """Пауза RQ стенда (CONTRACT-004, доп. 26): обработчики не берут новые задания, ttl 120 с снимет паузу сам.
+    RQ проверяет паузу только между заданиями: обработчик, уже ждущий задание (`BLPOP`), взял бы проверку файла
+    несмотря на паузу. Поэтому в очередь `files` ставится по пустому заданию на обработчик (`os.getpid`), и тест ждёт,
+    пока все обработчики очереди перейдут в состояние `suspended`."""
+    out = helpers.stand_shell(_PAUSE)
+    if not out.splitlines() or not out.splitlines()[-1].startswith("PAUSED"):
+        raise AssertionError(f"обработчики очереди files не встали на паузу за 30 с: {out.splitlines()[-1:]}")
 
 
 def _resume_jobs() -> None:
@@ -322,8 +346,8 @@ def test_e03_ticket_closed_during_attachment_check_gives_no_notification(admin_p
             dialog.locator("textarea[name=resolution]").fill(f"Решено {secrets.token_hex(3)}")
             # когда: задания стоят на паузе (проверка вложения не начнётся), ответ с чистым файлом ушёл на проверку,
             # заявку закрывают, и только затем пауза снимается (доп. 26)
-            _pause_jobs()
             try:
+                _pause_jobs()  # внутри try: при отказе паузы finally всё равно снимает её
                 _reply(page, number, f"Ответ {secrets.token_hex(3)} с файлом",
                        {"name": f"clean{secrets.token_hex(3)}.txt", "mimeType": "text/plain",
                         "buffer": b"clean text " + secrets.token_hex(64).encode()})
