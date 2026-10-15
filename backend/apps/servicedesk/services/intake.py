@@ -188,7 +188,7 @@ def _step_ticket(run):
         linked.refresh_from_db()
         run.entry = tickets.add_incoming(
             linked, author_email=parsed.sender, author_name=parsed.sender_name, text=parsed.text, at=at,
-            inbound_id=inbound.pk, cc=corporate_cc(parsed, linked.requester_email))
+            inbound_id=inbound.pk, cc=corporate_cc(parsed, linked.requester_email), via="reopened")
         run.ticket, run.outcome = linked, Outcome.REOPENED.value
     else:
         created = tickets.create(

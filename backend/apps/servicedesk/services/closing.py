@@ -62,7 +62,7 @@ def close(ticket, status, resolution, *, actor, ip=None) -> None:
             "status": status.name, "status_id": status.pk, "resolution": resolution})
         audit.record("ticket.closed", actor=actor, object_type="ticket", object_id=ticket.number,
                      before={"status": before.name}, after={"status": status.name}, ip=ip)
-        events.ticket_closed(ticket)
+        events.ticket_closed(ticket, actor_id=actor.pk if actor is not None else None)
         letters.send(ticket, "ticket.closed")
 
 
@@ -114,6 +114,7 @@ def reopen(ticket, *, actor, ip=None, via="manual") -> None:
         audit.record("ticket.reopened", actor=actor, object_type="ticket", object_id=ticket.number,
                      before={"status": before.name}, after={"status": status.name, "via": via}, ip=ip)
         letters.send(ticket, "ticket.reopened")
+        events.ticket_reopened(ticket, via=via, actor_id=actor.pk if actor is not None else None)
 
 
 def within_reopen_term(ticket) -> bool:
@@ -144,7 +145,7 @@ def autoclose_one(ticket_id, *, now=None) -> bool:
         replies.add_event(ticket, "autoclosed", data={"status": status.name, "status_id": status.pk, "days": days})
         audit.record("ticket.autoclosed", actor=None, object_type="ticket", object_id=ticket.number,
                      before={"status": before.name}, after={"status": status.name})
-        events.ticket_closed(ticket)
+        events.ticket_closed(ticket, actor_id=None)
         letters.send(ticket, "ticket.autoclosed")
     return True
 

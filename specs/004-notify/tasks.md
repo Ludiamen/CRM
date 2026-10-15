@@ -247,7 +247,7 @@ Opus по задачам» в конце файла.
 - [x] T-4201 [sonnet] `org` (план: «Модель данных» → «Ядро и прежние модули»): `structure.direct_members(unit_id)`
   — один запрос к членству узла без уволенных и приглашённых, кто ещё не вошёл; руководитель и заместитель узла
   входят своим членством — backend/apps/org/services/structure.py — (FR-308, FR-309)
-- [ ] T-4202 [sonnet] сервис-деск (план: «Шина событий», «События и получатели», «Колокольчик…» → «Прочитано»):
+- [x] T-4202 [sonnet] сервис-деск (план: «Шина событий», «События и получатели», «Колокольчик…» → «Прочитано»):
   поля событий (`actor_id` во всех прежних, `channel`, `via`, `author_kind`, `entry_id`); параметр `via` у
   `tickets.add_incoming` (`intake` передаёт `reopened` после `closing.reopen`); новые события `ticket_transferred`
   (`transfer._move`), `ticket_reopened` (в конце `closing.reopen`), `reply_not_sent` (`replies._not_sent`),
@@ -261,12 +261,12 @@ Opus по задачам» в конце файла.
   «Администратора портала» по образцу `servicedesk/0003_initial_data.py`, строка `NotifySettings` (15, 90, каналы
   выключены, `defaults` пусто) — backend/apps/notify/models.py, backend/apps/notify/migrations/ — (FR-301, FR-306,
   FR-334, FR-335)
-- [ ] T-4204 [sonnet] каталог, действующая таблица, настройки (план: «Каталог видов и каналы», «Администратор»):
+- [x] T-4204 [sonnet] каталог, действующая таблица, настройки (план: «Каталог видов и каналы», «Администратор»):
   `kinds.catalog()` (повтор кода — ошибка при старте), вид `notify.channel_unbound`; `prefs.effective(user)` и
   доступность каналов; `settings.update(*, actor, ip, **fields)` (пределы, `select_for_update`, журнал по
   изменённым полям), «ключи заданы» по переменным окружения — backend/apps/notify/services/{kinds,prefs,settings}.py
   — (FR-301…FR-305, FR-321, FR-322, FR-335, FR-336, FR-344)
-- [ ] T-4205 [sonnet] тихие часы (план: «Тихие часы и сводка»): `quiet.is_working`, `quiet.next_start` для трёх
+- [x] T-4205 [sonnet] тихие часы (план: «Тихие часы и сводка»): `quiet.is_working`, `quiet.next_start` для трёх
   вариантов (календарь — сервис `apps.org.services.calendar`; «свои часы» через полночь относятся ко дню начала;
   праздники не учитываются; конец интервала не входит — решение 32), проверка ввода `quiet.validate_own_hours`
   (решение 18) — backend/apps/notify/services/quiet.py — (FR-323, FR-329, NFR-307)

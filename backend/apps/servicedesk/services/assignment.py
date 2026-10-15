@@ -71,7 +71,8 @@ def _set_assignee(ticket, user, *, actor, ip=None) -> None:
             tickets.set_status(ticket, dictionaries.default_status(Status.Kind.IN_PROGRESS), actor=actor,
                                reason="assigned")
         letters.send(ticket, "ticket.assigned")
-    events.assignee_changed(ticket, before_id=before_id, after_id=user.pk)
+    events.assignee_changed(ticket, before_id=before_id, after_id=user.pk,
+                            actor_id=actor.pk if actor is not None else None)
 
 
 def clear_assignee(ticket, *, actor, reason: str, ip=None) -> bool:
@@ -93,7 +94,8 @@ def clear_assignee(ticket, *, actor, reason: str, ip=None) -> bool:
         audit.record("ticket.assignee_removed", actor=actor, object_type="ticket", object_id=ticket.number,
                      before={"assignee": before.full_name, "assignee_id": before.pk},
                      after={"assignee": "", "assignee_id": None, "reason": reason}, ip=ip)
-        events.assignee_changed(ticket, before_id=before.pk, after_id=None)
+        events.assignee_changed(ticket, before_id=before.pk, after_id=None,
+                                actor_id=actor.pk if actor is not None else None)
     return True
 
 

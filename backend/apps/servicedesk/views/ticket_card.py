@@ -23,7 +23,8 @@ from apps.core.views.common import flash, is_fragment, render_page
 from ..audit_labels import VALUES
 from ..models import (Attachment, Category, ClientUnit, Complexity, InboundMail, Priority, Status, Ticket, TicketEntry,
                       TicketParticipant)
-from ..services import access, assignment, attachments, closing, dictionaries, queues, replies, tickets, transfer
+from ..services import (access, assignment, attachments, closing, dictionaries, events, queues, replies, tickets,
+                        transfer)
 from ..services.errors import ServiceDeskError
 from ..services.letters import short_name
 
@@ -345,6 +346,7 @@ def ticket_card(request, number):
     """Карточка: НХ — слайдер, прямой адрес — страница; нет заявки или она не видна — 404."""
     ticket = tickets.get_for(request.user, number)
     layout = "slider" if is_fragment(request) else "page"
+    events.object_viewed(request.user, ticket)
     return _render_card(request, ticket, layout, panel=True)
 
 

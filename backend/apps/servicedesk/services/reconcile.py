@@ -37,7 +37,7 @@ def _reconcile_user(user_id: int) -> int:
             audit.record("ticket.assignee_removed", actor=None, object_type="ticket", object_id=str(ticket.number),
                          before={"assignee": user.full_name, "assignee_id": user.pk},
                          after={"assignee": "", "assignee_id": None, "reason": "not_participant"})
-            events.assignee_changed(ticket, before_id=user.pk, after_id=None)
+            events.assignee_changed(ticket, before_id=user.pk, after_id=None, actor_id=None)
             removed += 1
     return removed
 

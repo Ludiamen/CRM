@@ -23,7 +23,7 @@ def register_all() -> None:
     (сборка в2); `stand_reset` — T-3242: все точки зарегистрированы. Подписки на события живут не здесь, а в `services.events.register()`.
     """
     from apps.core import extensions
-    from apps.servicedesk import audit_labels, stand
+    from apps.servicedesk import audit_labels, notify_kinds, stand
     from apps.servicedesk.services import attachments, form, letters, listing, queues
     from apps.servicedesk.services import settings as sd_settings
 
@@ -36,3 +36,4 @@ def register_all() -> None:
     extensions.register("card_sections", card_sections)
     extensions.register("login_links", form.login_links)
     extensions.register("stand_reset", stand.stand_reset)
+    extensions.register("notification_kinds", notify_kinds.notification_kinds)

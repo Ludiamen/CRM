@@ -9,7 +9,7 @@ from apps.core.services import audit
 from apps.integrations.mail.models import MailMessage
 
 from ..models import Attachment, Status, Ticket, TicketEntry, TicketParticipant
-from . import access, attachments, dictionaries, letters, search, tickets
+from . import access, attachments, dictionaries, events, letters, search, tickets
 from .errors import ServiceDeskError
 
 MAX_TEXT = 50_000
@@ -155,6 +155,7 @@ def _not_sent(entry, ticket, reason: str, **extra) -> None:
     entry.send_state = TicketEntry.SendState.NOT_SENT
     entry.save(update_fields=["send_state"])
     add_event(ticket, "reply_not_sent", data={"reason": reason, "entry_id": entry.pk, **extra})
+    events.reply_not_sent(ticket, entry_id=entry.pk, reason=reason, author_id=entry.author_id)
 
 
 def on_files_checked(entry_id):
@@ -200,6 +201,7 @@ def on_mail_failed(*, mail_id, related_ref):
         add_event(ticket, "mail_failed", data=data)
         audit.record("ticket.mail_failed", actor=None, object_type="ticket", object_id=ticket.number, before={},
                      after={"mail_kind": mail_kind})
+        events.mail_failed(ticket, mail_kind=mail_kind, entry_id=entry.pk if entry is not None else None)
 
 
 def feed(ticket) -> list[FeedItem]:

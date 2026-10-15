@@ -384,5 +384,5 @@ def test_employee_without_settings_row_is_in_calendar_mode():
     assert _prefs_service().row_of(user.pk) is None
     assert quiet.is_working(None, at(MON, 12, 0)) is True
     assert quiet.is_working(None, at(SAT, 12, 0)) is False
-    assert quiet.next_start(None, at(SAT, 12, 0)) == at(MON, 9, 0)
+    assert quiet.next_start(None, at(SAT, 12, 0)) == at(MON + timedelta(days=7), 9, 0)
     assert not model("notify.UserNotifySettings").objects.filter(user=user).exists()

@@ -228,7 +228,8 @@ def create(*, channel, subject, text, requester_email, requester_name="", client
         search.index(ticket)
         after_hours = None if staff else _after_hours(timezone.now())
         letters.send(ticket, "ticket.confirmation", entry=entry, extra={"after_hours": after_hours})
-        events.ticket_created(ticket)
+        events.ticket_created(ticket, actor_id=created_by.pk if staff and created_by is not None else None,
+                              channel=channel)
     return Created(ticket=ticket, entry=entry, after_hours=after_hours)
 
 
@@ -273,8 +274,14 @@ def set_status_manual(ticket, status, *, actor, ip=None) -> bool:
         return set_status(ticket, status, actor=actor, reason="manual", ip=ip)
 
 
-def add_incoming(ticket, *, author_email, author_name="", text, at=None, inbound_id=None, cc=()) -> TicketEntry:
-    """Письмо заявителя или участника в открытой заявке: элемент `incoming`, участники из копии, «ждёт ответа» → «в работе»."""
+def add_incoming(ticket, *, author_email, author_name="", text, at=None, inbound_id=None, cc=(),
+                 via="appended") -> TicketEntry:
+    """Письмо заявителя или участника в открытой заявке: элемент `incoming`, участники из копии, «ждёт ответа» → «в работе».
+
+    `via` — `appended` (по умолчанию) или `reopened` (после `closing.reopen`); другое значение — `ValueError`.
+    """
+    if via not in ("appended", "reopened"):
+        raise ValueError(f"неизвестное значение via: {via}")
     moment = at or timezone.now()
     with transaction.atomic():
         _lock(ticket)
@@ -291,7 +298,8 @@ def add_incoming(ticket, *, author_email, author_name="", text, at=None, inbound
         if ticket.kind == Status.Kind.WAITING:
             set_status(ticket, dictionaries.default_status(Status.Kind.IN_PROGRESS), actor=None, reason="letter")
         search.index(ticket, entry)
-        events.reply_received(ticket)
+        author_kind = "requester" if entry.author_email == (ticket.requester_email or "").strip().lower() else "participant"
+        events.reply_received(ticket, via=via, author_kind=author_kind, entry_id=entry.pk)
     return entry
 
 

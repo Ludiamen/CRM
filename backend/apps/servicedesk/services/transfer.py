@@ -10,7 +10,7 @@ from django.db import transaction
 from apps.core.services import audit
 from apps.org.services.refs import UnitRef
 
-from . import access, assignment, queues, replies, tickets
+from . import access, assignment, events, queues, replies, tickets
 from .errors import ServiceDeskError
 
 REASON_LIMIT = 500
@@ -71,9 +71,11 @@ def _move(ticket, queue_id: int, *, actor, ip, reason_text, event_extra=None) ->
                  after={"queue": new_name, "queue_id": queue_id, "reason_given": bool(reason_text)}, ip=ip)
     ticket.refresh_from_db(fields=["queue", "assignee"])
     assignee = ticket.assignee
+    removed = False
     if assignee is not None and not access.is_participant(assignee, queue_id):
-        return assignment.clear_assignee(ticket, actor=actor, reason="queue_changed", ip=ip)
-    return False
+        removed = assignment.clear_assignee(ticket, actor=actor, reason="queue_changed", ip=ip)
+    events.ticket_transferred(ticket, from_queue_id=old_id, actor_id=actor.pk if actor is not None else None)
+    return removed
 
 
 def transfer(ticket, queue_id, *, reason="", actor, ip=None) -> TransferResult:
