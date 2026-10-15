@@ -428,6 +428,7 @@ def run_jobs(queue_name: str = "notify") -> int:
     queue = django_rq.get_queue(queue_name)
     worker = SimpleWorker([queue], connection=queue.connection)
     worker.work(burst=True)
+    worker.refresh()  # RQ 2.12: счётчики растут только в Valkey (hincrby)
     return worker.successful_job_count + worker.failed_job_count
 
 

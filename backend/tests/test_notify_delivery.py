@@ -479,7 +479,7 @@ def test_each_attempt_written_to_log_with_time_and_outcome_without_addresses_and
     first, second = notify.subscribe(other), notify.subscribe(other)
     push_row = _make("webpush", user=other, created_at=MOMENT)
     with notify.webpush_capture(by_endpoint={second.endpoint: "network"}):
-        assert _send(push_row) == "waiting"
+        assert _send(push_row) == "sent"  # § 6.9: хотя бы одна подписка удалась
     push_row = _fresh(push_row)
     assert [(entry["sub"], entry["outcome"]) for entry in push_row.log] == [(first.pk, "ok"), (second.pk, "retry")]
     assert (push_row.log[1]["code"], push_row.log[1]["reason"]) == (None, "network")
