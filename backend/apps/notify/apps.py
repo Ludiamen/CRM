@@ -7,9 +7,10 @@ class NotifyConfig(AppConfig):
     verbose_name = "Уведомления"
 
     def ready(self):
-        from apps.notify.extensions import register_all
+        from apps.notify.extensions import register_all, subscribe_bus
 
         register_all()
+        subscribe_bus()
         self.check_kinds()
 
     def check_kinds(self) -> None:

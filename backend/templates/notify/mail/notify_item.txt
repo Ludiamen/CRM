@@ -1,0 +1,7 @@
+{{ portal_name }}
+
+{{ text }}
+
+Открыть: {{ open_url }}
+
+Настроить уведомления: {{ settings_url }}
