@@ -252,3 +252,12 @@ full/; эталон регрессий — baseline-current.txt → послед
 контракт защиты не требует); R-4207-1/2 — импорт `Response` поднять на уровень модуля, свести транспорт Web Push к
 `channel.py`. Полный прогон: **1304 passed** (эталон T-4160 — 1243), регрессий 0; из 12 тестов перечня T-4138
 зелёные 4 (точки, права). Эталон — baseline-after-a1.txt.
+
+**Круг а2 (883235c):** T-4202 события и виды сервис-деска, T-4204 `kinds`/`prefs`/`settings` и `services/errors.py`
+(`NotifyError` — за T-4204, решение Opus), T-4205 `quiet`; сборка Opus — `apps/notify/extensions.py`
+(`notification_kinds`, `register_all()`) и `apps.py` (`ready()` → регистрации и `check_kinds()`, § 3.2). Проверки
+R-4202, R-4204, R-4205 — «годен»; правки Opus по мелочам: `quiet.next_start` возвращает момент по Москве (R-4205-2),
+поле отказа `own_incomplete` — `own_start` (R-4204-1). **Правка теста с разрешения владельца** (2026-10-15):
+test_notify_quiet.py::test_employee_without_settings_row_is_in_calendar_mode — ожидаемый понедельник после субботы
+20.06 — 22.06, а не 15.06 (ошибка теста, найдена проверкой R-4205). Полный прогон: **1410 passed**, регрессий 0; из
+перечня T-4138 красные 3 (страница администратора — T-4232, cron — T-4240). Эталон — baseline-after-a2.txt.
