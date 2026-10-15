@@ -236,8 +236,10 @@ def test_subscribed_device_is_listed_and_push_column_becomes_available(webpush_o
     """FR-324: после подписки устройство видно в списке `li[data-device]` (браузер, платформа, дата), `push.list_for`
     отдаёт его, а столбец `push` таблицы из недоступного (`no_subscriptions`) становится доступным."""
     from apps.notify.services import push
+    from tests import support_org, support_servicedesk
 
     user = support.make_employee()
+    support_org.make_member(user, support_servicedesk.make_queue().unit)  # строки таблицы — участнику (§ 4.3)
     browser = _Browser(user, ua=support.CHROME_UA)
     before = _tree(browser.page())
     cell = _find(before, "td", data_channel="push")

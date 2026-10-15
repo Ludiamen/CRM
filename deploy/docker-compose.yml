@@ -166,6 +166,38 @@ services:
       valkey:
         condition: service_healthy
 
+  # Уведомления (срез 004): очередь notify — отправка по каналам и обход каждые 30 секунд. Две копии: зависшая
+  # отправка одной не держит остальные. Тома protected нет: файлов рабочий процесс уведомлений не касается.
+  worker-notify:
+    image: crm-portal:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_MIGRATE_URL: ""
+    command: rq worker -c config.rq_settings notify  # без --with-scheduler: повторы ставит обход notify_tick (§ 12.1)
+    deploy:
+      replicas: 2
+    depends_on:
+      web:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
+  # Опрос ботов Telegram и MAX: ровно одна копия (второй опрашивающий получил бы от Telegram ответ 409).
+  # Порты наружу не открываются: боты опрашиваются, события на портал не приходят.
+  notify-poller:
+    image: crm-portal:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_MIGRATE_URL: ""
+    command: python manage.py notify_poll
+    depends_on:
+      web:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+
   # Резервные копии: crond в образе postgres:17-alpine запускает по crontab (01:30 по Москве)
   # скрипт backup.sh: дамп базы под владельцем схемы, архивы томов protected и media (только
   # чтение), удаление копий старше 14 дней. Каталог ./backup смонтирован только для чтения,

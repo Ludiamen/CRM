@@ -1,0 +1,19 @@
+<div id="notify-devices" class="mt-3">
+  <h3 class="h6">Устройства с push</h3>
+  {% if devices %}
+  <ul data-devices class="list-group">
+    {% for device in devices %}
+    <li data-device="{{ device.pk }}" class="list-group-item d-flex flex-wrap gap-2 align-items-baseline">
+      <span data-field="browser">{{ device.browser|default:"Браузер не определён" }}</span>
+      <span data-field="platform" class="text-muted">{{ device.platform|default:"платформа не определена" }}</span>
+      <time data-at="{{ device.created_at|date:'c' }}" class="text-muted small">{{ device.created_at|date:'d.m.Y H:i' }}</time>
+      <form data-form="device-delete" class="ms-auto" method="post" action="/me/notifications/push/{{ device.pk }}/delete/" hx-post="/me/notifications/push/{{ device.pk }}/delete/" hx-target="#notify-devices" hx-swap="outerHTML">{% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-sm" data-action="device-delete">Удалить</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p data-empty-state="devices" class="text-muted">Устройств с push пока нет</p>
+  {% endif %}
+</div>

@@ -6,10 +6,10 @@
 
 ## Шаг 1. Остановить службы
 
-Остановите службы, которые пишут в базу и тома: `web`, `worker`, `worker-mail`, `worker-inbox`, `scheduler`. Остановите и службу
+Остановите службы, которые пишут в базу и тома: `web`, `worker`, `worker-mail`, `worker-inbox`, `worker-notify`, `notify-poller`, `scheduler`. Остановите и службу
 `backup`: иначе ночная копия в 01:30 может снять полувосстановленную базу.
 
-    docker compose stop web worker worker-mail worker-inbox scheduler backup
+    docker compose stop web worker worker-mail worker-inbox worker-notify notify-poller scheduler backup
 
 База (`postgres`), `valkey` и остальные службы продолжают работать.
 
@@ -52,4 +52,10 @@
 
 Запустите остановленные службы, включая `backup`, и проверьте вход и список заявок:
 
-    docker compose up -d web worker worker-mail worker-inbox scheduler backup
+    docker compose up -d web worker worker-mail worker-inbox worker-notify notify-poller scheduler backup
+
+Уведомления после восстановления: файл `.env` восстановлением не меняется и в копию не входит. Токены ботов и ключи VAPID
+(`TELEGRAM_BOT_TOKEN`, `MAX_BOT_TOKEN`, `VAPID_PRIVATE_KEY`) лежат только в нём; перенесите их на новое место вместе с
+`.env` (значения в документе — `***`). Пару VAPID не выпускайте заново: подписки браузеров привязаны к прежнему открытому
+ключу. Очереди и присутствие в `valkey` восстановления не требуют; недоставленные уведомления `worker-notify` разберёт
+сам обходом доставок.

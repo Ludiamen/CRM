@@ -1,7 +1,7 @@
 <div class="p-2">
   {% if notes %}<ul data-bell-list class="list-unstyled mb-2">
     {% for note in notes %}<li data-notification="{{ note.pk }}" data-unread="{% if note.read_at %}0{% else %}1{% endif %}" class="mb-1">
-      <a href="/notifications/{{ note.pk }}/open/">{{ note.text }}</a>
+      <a data-field="text" data-open href="/notifications/{{ note.pk }}/open/">{{ note.text }}</a>
       <time data-at="{{ note.created_at|date:'c' }}" class="text-muted small">{{ note.created_at|date:'d.m.Y H:i' }}</time>
     </li>{% endfor %}
   </ul>{% else %}<div data-bell-list></div><p data-empty-state="bell" class="mb-2">У вас нет уведомлений</p>{% endif %}

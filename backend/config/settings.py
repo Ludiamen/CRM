@@ -179,6 +179,7 @@ CONTENT_SECURITY_POLICY = {
         "img-src": ["'self'", "data:"],
         "font-src": ["'self'"],
         "connect-src": ["'self'"],
+        "worker-src": ["'self'"],  # сервис-воркер Web Push (/sw.js)
         "object-src": ["'none'"],
         "base-uri": ["'self'"],
         "form-action": ["'self'"],

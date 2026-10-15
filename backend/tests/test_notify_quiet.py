@@ -332,8 +332,10 @@ def test_own_hours_event_outside_hours_holds_external_deliveries(
     assert notify.queued() == [], "в тихие часы ничего не ставится в очередь отправки"
     assert _row(user).digest_due_at == at(THU, 10, 0)
     clock.advance(minutes=delay + 1)  # срок письма наступил, но тихие часы ещё идут
-    with django_capture_on_commit_callbacks(execute=True):
-        importlib.import_module("apps.notify.services.mail").send_due()
+    with extensions.empty():  # вид теста должен быть в каталоге и при обходе
+        notify.register_kind(kind)
+        with django_capture_on_commit_callbacks(execute=True):
+            importlib.import_module("apps.notify.services.mail").send_due()
     email = model("notify.Delivery").objects.get(pk=by_channel["email"].pk)
     assert (email.state, email.due_at, email.mail_id) == ("held", None, None)
     assert _row(user).digest_due_at == at(THU, 10, 0)

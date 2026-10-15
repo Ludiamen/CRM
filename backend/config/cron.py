@@ -2,7 +2,7 @@
 
 Отдельный сервис `scheduler` запускает `rq cron config.cron`: модуль загружается им, а
 каждое зарегистрированное задание уходит в очередь и исполняется рабочим процессом.
-Очереди — `files`, `mail`, `maintenance` и `inbox` (`RQ_QUEUES` в `config/settings.py`); прежние ночные очистки идут через `mail`.
+Очереди — `files`, `mail`, `maintenance`, `inbox` и `notify` (`RQ_QUEUES` в `config/settings.py`); прежние ночные очистки идут через `mail`.
 Журнал событий не очищается никаким заданием: срок его хранения не меньше трёх лет.
 """
 import os
@@ -17,6 +17,7 @@ from rq.cron import register  # noqa: E402
 from apps.core.services.retention import (  # noqa: E402
     purge_expired_links, purge_expired_sessions, purge_login_history)
 from apps.core.tasks import purge_quarantine, requeue_pending_scans  # noqa: E402
+from apps.notify.tasks import notify_retention, notify_tick  # noqa: E402
 from apps.org.tasks import purge_previews  # noqa: E402
 from apps.servicedesk.tasks import (  # noqa: E402
     anonymize_tickets, autoclose, poll_mailbox, purge_inbound, purge_orphan_files,
@@ -47,3 +48,8 @@ register(anonymize_tickets, queue_name="maintenance", cron="20 23 * * *", name="
 register(purge_requester_previews, queue_name="maintenance", cron="30 23 * * *", name="purge_requester_previews",
          job_timeout=300)
 register(purge_orphan_files, queue_name="maintenance", cron="50 23 * * *", name="purge_orphan_files", job_timeout=600)
+
+# Уведомления (срез 004, T-4240). Обход доставок — каждые 30 секунд в очереди `notify` (её читает `worker-notify`);
+# ночное хранение — 23:40 по UTC (02:40 по Москве, после копии 01:30 и мимо заданий среза 003).
+register(notify_tick, queue_name="notify", interval=30, name="notify_tick", job_timeout=120)
+register(notify_retention, queue_name="maintenance", cron="40 23 * * *", name="notify_retention", job_timeout=600)

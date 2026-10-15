@@ -1,0 +1,64 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Мои уведомления{% endblock %}
+{% block content %}
+<div id="notify-prefs-root" data-notify-prefs>
+  <header class="page-head"><h1 class="page-title">Мои уведомления</h1></header>
+  <form data-form="notify-prefs" method="post" novalidate action="/me/notifications/" hx-post="/me/notifications/" hx-target="#notify-prefs-root" hx-swap="outerHTML">{% csrf_token %}
+    <input type="hidden" name="table" value="1">
+    <section class="card card-body mb-3">
+      <h2 class="h5">Каналы по видам уведомлений</h2>
+      <div data-narrow="cards" class="notify-table-wrap">
+        <table class="table table-sm align-middle grid-table" data-notify-table>
+          <thead><tr><th scope="col">Вид уведомления</th>{% for channel, title in channel_columns %}<th scope="col" data-channel="{{ channel }}">{{ title }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in rows %}
+            <tr data-notify-kind="{{ row.code }}">
+              <th scope="row"><span data-field="title">{{ row.title }}</span> <small class="text-muted" data-field="module">{{ row.module }}</small></th>
+              {% for cell in row.cells %}{% if cell.locked %}<td data-channel="portal" data-locked="1" data-label="{{ cell.label }}"><input class="form-check-input" type="checkbox" checked disabled aria-label="{{ row.title }}: {{ cell.label }}"></td>
+              {% else %}<td data-channel="{{ cell.channel }}" data-available="{% if cell.available %}1{% else %}0{% endif %}"{% if cell.channel != "email" %} data-reason="{{ cell.reason }}"{% endif %} data-label="{{ cell.label }}">{% if cell.has_box %}<input class="form-check-input" type="checkbox" name="cell" value="{{ cell.value }}"{% if cell.checked %} checked{% endif %} aria-label="{{ row.title }}: {{ cell.label }}">{% endif %}{% if cell.hint %} <span class="small text-muted" data-hint>{{ cell.hint }}</span>{% endif %}</td>
+              {% endif %}{% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tbody data-fixed-rows>
+            <tr data-notify-fixed="security"><th scope="row" colspan="6">Безопасность: всегда</th></tr>
+            <tr data-notify-fixed="channel_unbound"><th scope="row" colspan="6">Канал отвязан: всегда, только на портале</th></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card card-body mb-3">
+      <h2 class="h5">Тихие часы</h2>
+      <fieldset data-quiet>
+        <legend class="visually-hidden">Тихие часы</legend>
+        {% if error.field == "quiet_mode" %}<div class="text-danger" role="alert" data-error="quiet_mode" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+        {% for value, title in modes %}
+        <div class="form-check"><input class="form-check-input" type="radio" name="quiet_mode" id="id_quiet_{{ value }}" value="{{ value }}"{% if quiet.mode == value %} checked{% endif %}> <label class="form-check-label" for="id_quiet_{{ value }}">{{ title }}</label></div>
+        {% endfor %}
+        <div class="d-flex flex-wrap gap-3 mt-2">
+          {% for value, title, on in days %}<div class="form-check"><input class="form-check-input" type="checkbox" name="own_days" id="id_day_{{ value }}" value="{{ value }}"{% if on %} checked{% endif %}> <label class="form-check-label" for="id_day_{{ value }}">{{ title }}</label></div>{% endfor %}
+        </div>
+        {% if error.field == "own_days" %}<div class="text-danger" role="alert" data-error="own_days" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+        <div class="d-flex flex-wrap gap-3 align-items-center mt-2">
+          <div><label class="form-label" for="id_own_start">с</label> <input class="form-control form-control-sm d-inline-block w-auto" type="time" id="id_own_start" name="own_start" value="{{ quiet.start }}"></div>
+          <div><label class="form-label" for="id_own_end">до</label> <input class="form-control form-control-sm d-inline-block w-auto" type="time" id="id_own_end" name="own_end" value="{{ quiet.end }}"></div>
+        </div>
+        {% if error.field == "own_start" %}<div class="text-danger" role="alert" data-error="own_start" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+        {% if error.field == "own_end" %}<div class="text-danger" role="alert" data-error="own_end" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+      </fieldset>
+    </section>
+
+    <button type="submit" class="btn btn-primary mb-3" data-action="save-prefs">Сохранить</button>
+  </form>
+
+  {% include "notify/me/_push.html" %}
+
+  <section class="card card-body mb-3" data-section="bindings">
+    <h2 class="h5">Telegram и MAX</h2>
+    {% for block in bindings %}{% include "notify/me/_binding.html" with channel=block.channel title=block.title state=block.state oob=False error_code=block.error_code code=block.code expires_minutes=block.expires_minutes bot_link=block.bot_link %}{% endfor %}
+  </section>
+</div>
+<script src="{% static 'js/notify-push.js' %}" defer></script>
+{% endblock %}

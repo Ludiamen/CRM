@@ -1,0 +1,24 @@
+<div id="notify-binding-{{ channel }}" data-channel="{{ channel }}" data-state="{{ state }}" class="mb-3"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <h3 class="h6">{{ title }}</h3>
+  {% if state == "disabled" %}
+  <p data-disabled-text>Канал отключён администратором</p>
+  {% if error_code %}<div class="text-danger small" role="alert" data-error="channel" data-code="{{ error_code }}">Канал отключён администратором</div>{% endif %}
+  {% elif state == "bound" %}
+  <p data-bound class="mb-2">Привязан</p>
+  <form data-form="unbind" method="post" action="/me/notifications/unbind/{{ channel }}/" hx-post="/me/notifications/unbind/{{ channel }}/" hx-target="#notify-binding-{{ channel }}" hx-swap="outerHTML">{% csrf_token %}
+    <button type="submit" class="btn btn-outline-secondary btn-sm" data-action="unbind">Отвязать</button>
+  </form>
+  {% else %}
+  <form data-form="bind" method="post" action="/me/notifications/bind/{{ channel }}/" hx-post="/me/notifications/bind/{{ channel }}/" hx-target="#notify-binding-{{ channel }}" hx-swap="outerHTML">{% csrf_token %}
+    <button type="submit" class="btn btn-primary btn-sm" data-action="bind">Привязать</button>
+  </form>
+  {% endif %}
+  {% if code %}
+  <div class="mt-2" data-bind-result>
+    <p class="mb-1">Код: <strong data-bind-code>{{ code }}</strong></p>
+    <p class="mb-1 small text-muted" data-bind-expires>Код действует {{ expires_minutes }} минут</p>
+    {% if bot_link %}<a data-bot-link href="{{ bot_link }}" rel="noopener" target="_blank">Открыть бота {{ title }}</a>
+    {% else %}<p class="small text-muted mb-0" data-bot-link-hint>Ссылка появится, когда бот подключится</p>{% endif %}
+  </div>
+  {% endif %}
+</div>

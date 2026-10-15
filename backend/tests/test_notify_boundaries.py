@@ -238,9 +238,11 @@ def _fill_slice():
 
 def _fill_queues():
     import django_rq
+    from tests.support_notify import _commit_callbacks
 
-    django_rq.get_queue("notify").enqueue("time.time")
-    django_rq.get_queue("maintenance").enqueue("time.time")
+    with _commit_callbacks():  # django-rq 4.2 ставит задания после фиксации
+        django_rq.get_queue("notify").enqueue("time.time")
+        django_rq.get_queue("maintenance").enqueue("time.time")
 
 
 def _assert_slice_cleared(label: str):

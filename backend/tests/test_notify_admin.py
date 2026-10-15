@@ -315,8 +315,9 @@ def test_menu_item_notifications_visible_only_with_manage_permission():
     for client in (admin, holder):
         got = client.get("/me/")
         assert got.status_code == 200 and _menu_has_item(got)
-        item = [a for menu in _find(_doc(got), "nav", {"id": "main-menu"})
-                for a in _find(_doc(got), "a", {"href": URL}, within=menu)][0]
+        doc = _doc(got)
+        item = [a for menu in _find(doc, "nav", {"id": "main-menu"})
+                for a in _find(doc, "a", {"href": URL}, within=menu)][0]
         assert item.text == "Уведомления"
     got = outsider.get("/me/")
     assert got.status_code == 200 and not _menu_has_item(got)

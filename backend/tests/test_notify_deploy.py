@@ -428,6 +428,7 @@ def test_prod_nginx_has_location_ws_with_upgrade_timeouts_3600_and_buffering_off
     _check_ws_location("nginx.prod.conf")
 
 
+@pytest.mark.django_db
 def test_csp_has_worker_src_self():
     """NFR-305: политика CSP получает `worker-src 'self'` (сервис-воркер), `connect-src 'self'` остаётся; заголовок
     ответа содержит обе директивы."""

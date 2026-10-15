@@ -1,0 +1,10 @@
+<section data-section="push" data-web-push="{% if web_push_on %}on{% else %}off{% endif %}" class="card card-body mb-3">
+  <h2 class="h5">Push в браузере</h2>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <button type="button" class="btn btn-outline-primary btn-sm" data-action="push-permission">Разрешить уведомления браузера</button>
+    {% if web_push_on %}<button type="button" class="btn btn-primary btn-sm" data-action="push-subscribe" data-vapid-public="{{ vapid_public }}" data-subscribe-url="/me/notifications/push/" data-sw-url="/sw.js" data-device-subscribed="{{ device_subscribed }}">Включить push на этом устройстве</button>
+    {% else %}<p class="mb-0" data-push-disabled-text>Push при закрытой вкладке отключён администратором</p>{% endif %}
+  </div>
+  <p class="mt-2 mb-0 text-danger small" data-push-denied hidden>Браузер запретил уведомления для этого сайта. Разрешите их в настройках браузера (значок слева от адреса страницы) и обновите страницу</p>
+  {% include "notify/me/_devices.html" %}
+</section>

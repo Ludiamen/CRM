@@ -1,7 +1,7 @@
 """Обработчик соединения `/ws/notify/` (PLAN-004, «Колокольчик…» → «Соединение», «Что приходит по соединению»;
 CONTRACT-004, раздел 11).
 
-Кадры сервера — фрагменты HTML для расширения `ws` (`hx-swap-oob="true"`); значения экранирует `format_html`
+Кадры сервера — фрагменты HTML для расширения `ws` (`hx-swap-oob="true"`); значения экранирует шаблонизатор
 (NFR-311). Соединение не продлевает сессию: `sessions.touch` отсюда не зовётся. Обращения к базе — через
 `database_sync_to_async`, только при подключении, раз в `CHECK_INTERVAL` секунд и при сборке блока привязки;
 `close_old_connections` и закрытие соединения базы вручную здесь не вызываются (дополнение 17.2).
@@ -11,20 +11,16 @@ import logging
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
-from django.utils.html import format_html
 
 from apps.core.services import sessions
 
-from .services import binding as binding_service
 from .services import live
-from .services import settings as notify_settings
-from .views import pages
+from .views import me, pages
 
 log = logging.getLogger(__name__)
 
 CHECK_INTERVAL = 25   # секунд между проверками сессии и обновлениями присутствия (решение 35 задач)
 CLOSE_UNAUTHORIZED = 4401   # код закрытия: расширение `ws` после него не переподключается
-CHANNEL_TITLES = {"telegram": "Telegram", "max": "MAX"}
 
 
 def count_fragment(count: int) -> str:
@@ -38,24 +34,9 @@ def toast_fragment(toast: dict) -> str:
 
 
 def binding_fragment(channel: str, state: str) -> str:
-    """Блок привязки канала в состоянии `bound`, `unbound` или `disabled` (CONTRACT-004, 14.3)."""
-    title = CHANNEL_TITLES.get(channel, channel)
-    if state == "disabled":
-        body = format_html('<p data-disabled-text>{}</p>', "Канал отключён администратором")
-    elif state == "bound":
-        body = format_html(
-            '<p data-bound>{}</p><form data-form="unbind" method="post" action="/me/notifications/unbind/{}/" '
-            'hx-post="/me/notifications/unbind/{}/" hx-target="#notify-binding-{}" hx-swap="outerHTML">'
-            '<button type="submit" class="btn btn-outline-secondary btn-sm" data-action="unbind">{}</button></form>',
-            "Привязан", channel, channel, channel, "Отвязать")
-    else:
-        body = format_html(
-            '<form data-form="bind" method="post" action="/me/notifications/bind/{}/" '
-            'hx-post="/me/notifications/bind/{}/" hx-target="#notify-binding-{}" hx-swap="outerHTML">'
-            '<button type="submit" class="btn btn-primary btn-sm" data-action="bind">{}</button></form>',
-            channel, channel, channel, "Привязать")
-    return format_html('<div id="notify-binding-{}" hx-swap-oob="true" data-channel="{}" data-state="{}">'
-                       '<h3 class="h6">{}</h3>{}</div>', channel, channel, state, title, body)
+    """Блок привязки канала в состоянии `bound`, `unbound` или `disabled`: общий шаблон со страницей «Мои
+    уведомления» (CONTRACT-004, 14.3), в кадре с `hx-swap-oob`; кода привязки в кадре нет."""
+    return me.render_binding(channel, state, oob=True).strip()
 
 
 def _unread_count(user_id: int) -> int:
@@ -63,9 +44,7 @@ def _unread_count(user_id: int) -> int:
 
 
 def _binding_state(user_id: int, channel: str) -> str:
-    if not notify_settings.channel_on(channel):
-        return "disabled"
-    return "bound" if binding_service.get(user_id, channel) else "unbound"
+    return me.binding_state(user_id, channel)
 
 
 class NotifyConsumer(AsyncWebsocketConsumer):

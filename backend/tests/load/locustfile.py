@@ -19,9 +19,12 @@ import itertools
 import os
 import random
 import re
+import ssl
 import sys
 import threading
+import time
 
+import gevent
 from locust import HttpUser, between, events, task
 
 P95_LIMIT_MS = 500
@@ -263,5 +266,154 @@ def _check_sd_p95(environment, **_kwargs):
         over["POST /request/"] = post.get_response_time_percentile(0.95)
     if stats.total.num_failures or over:
         print(f"NFR-203 (срез 003) не выполнено: p95 выше {P95_LIMIT_MS} мс или нет замера {over}, "
+              f"ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1
+
+
+class NotifyUser(HttpUser):
+    """Срез 004 (T-4242, NFR-301, NFR-303, NFR-305): вошедший сотрудник держит открытое соединение `/ws/notify/` и листает
+    «Уведомления», колокольчик и «Мои уведомления»; параллельно идёт поток заявок около 30 в час (форма и письмо), который
+    порождает уведомления. Модель нагрузки та же (PLAN-001 версия 4); данные — `prepare_users.py`, `fill_tickets.py`,
+    `prepare_org.py`. Запуск только этого класса (Этап 4):
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+            --reset-stats --host https://127.0.0.1:8031 NotifyUser
+    (имя класса — в конце команды: без него locust запускает все классы файла и делит `-u` между ними)
+    Соединение — `websocket-client` в гринлете пользователя, куки сессии берутся из HTTP-клиента. Поток заявок один на весь
+    прогон: форма — LOAD_NOTIFY_FORM_PER_HOUR (по умолчанию 15), письмо через `APPEND` — LOAD_NOTIFY_MAIL_PER_HOUR (по
+    умолчанию 15) при заданных LOAD_IMAP_HOST, LOAD_IMAP_USER, LOAD_IMAP_PASSWORD (без них письма не шлются). Задержка
+    доставки числа — время от последней заявки до кадра соединения, записывается как запрос `WS bell frame` (p95 не больше
+    2 с; оценка приблизительная: заявки идут вперемешку с кадрами других причин). Память процессов web до и после прогона
+    снимает человек (`docker stats`)."""
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+    _stream_started = False
+    _last_ticket_at = 0.0
+
+    def on_start(self):
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        form = self.client.get("/request/", name="setup /request/").text
+        self.category = (re.findall(r'<option[^>]*\bvalue="(\d+)"', form.split('name="category"', 1)[-1]) or [""])[0]
+        self.socket = None
+        self._connect()
+        with _lock:
+            if not NotifyUser._stream_started:
+                NotifyUser._stream_started = True
+                gevent.spawn(self._ticket_stream)
+
+    def on_stop(self):
+        if self.socket is not None:
+            self.socket.close()
+
+    def _connect(self):
+        """Соединение `/ws/notify/` с куками HTTP-клиента; кадры читает гринлет пользователя."""
+        import websocket
+
+        cookies = "; ".join(f"{name}={value}" for name, value in self.client.cookies.items())
+        scheme = "wss" if self.host.startswith("https") else "ws"
+        url = f"{scheme}://{self.host.split('://', 1)[1]}/ws/notify/"
+        started = time.monotonic()
+        try:
+            self.socket = websocket.create_connection(url, header=[f"Cookie: {cookies}", f"Origin: {self.host}"],
+                                                      sslopt={"cert_reqs": ssl.CERT_NONE}, timeout=60)
+            self.environment.events.request.fire(request_type="WS", name="/ws/notify/ connect", exception=None,
+                                                 response_time=(time.monotonic() - started) * 1000, response_length=0)
+            gevent.spawn(self._read_frames)
+        except Exception as error:
+            self.environment.events.request.fire(request_type="WS", name="/ws/notify/ connect", exception=error,
+                                                 response_time=(time.monotonic() - started) * 1000, response_length=0)
+
+    def _read_frames(self):
+        sock = self.socket
+        while sock is not None and sock.connected:
+            try:
+                frame = sock.recv()
+            except Exception:
+                return
+            late = time.monotonic() - NotifyUser._last_ticket_at
+            if frame and NotifyUser._last_ticket_at and late < 10:
+                self.environment.events.request.fire(request_type="WS", name="WS bell frame", exception=None,
+                                                     response_time=late * 1000, response_length=len(frame))
+
+    def _ticket_stream(self):
+        """Поток заявок: форма и письмо, всего около 30 в час, на весь прогон."""
+        per_hour = int(os.environ.get("LOAD_NOTIFY_FORM_PER_HOUR", "15")), int(os.environ.get("LOAD_NOTIFY_MAIL_PER_HOUR", "15"))
+        total = max(1, sum(per_hour))
+        while True:
+            gevent.sleep(random.expovariate(total / 3600))
+            use_mail = random.random() < per_hour[1] / total
+            try:
+                if use_mail and os.environ.get("LOAD_IMAP_HOST"):
+                    self._append_mail()
+                else:
+                    self._post_request()
+            except Exception as error:
+                self.environment.events.request.fire(request_type="POST", name="ticket stream", exception=error,
+                                                     response_time=0, response_length=0)
+
+    def _post_request(self):
+        self.client.get("/request/", name="GET /request/")
+        token = self.client.cookies.get("csrftoken", "")
+        data = {"email": f"load-notify-{random.randrange(10**9)}@client.example", "name": "Заявитель Нагрузка",
+                "client_unit": "", "category": self.category, "subject": "Не печатает принтер",
+                "text": "Нагрузочная заявка для уведомлений", "consent": "on", "csrfmiddlewaretoken": token}
+        NotifyUser._last_ticket_at = time.monotonic()
+        with self.client.post("/request/", data=data, headers={"Referer": self.host + "/request/"}, name="POST /request/",
+                              allow_redirects=True, catch_response=True) as response:
+            if response.status_code >= 400 or not response.url.endswith("/request/done/"):
+                response.failure(f"/request/: {response.status_code}, заявка не принята")
+
+    def _append_mail(self):
+        """Письмо заявителя в ящик через IMAP `APPEND`; пароль берётся из окружения и никуда не пишется."""
+        import imaplib
+        from email.message import EmailMessage
+
+        message = EmailMessage()
+        message["From"] = f"load-notify-{random.randrange(10**9)}@client.example"
+        message["To"] = os.environ.get("LOAD_IMAP_USER", "")
+        message["Subject"] = "Не печатает принтер"
+        message["Message-ID"] = f"<load-notify-{random.randrange(10**12)}@client.example>"
+        message.set_content("Нагрузочное письмо для уведомлений")
+        NotifyUser._last_ticket_at = time.monotonic()
+        with imaplib.IMAP4_SSL(os.environ["LOAD_IMAP_HOST"]) as conn:
+            conn.login(os.environ["LOAD_IMAP_USER"], os.environ["LOAD_IMAP_PASSWORD"])
+            conn.append("INBOX", None, None, message.as_bytes())
+
+    @task(3)
+    def notifications_page(self):
+        self.client.get("/notifications/", name="/notifications/")
+
+    @task(3)
+    def bell(self):
+        self.client.get("/notifications/bell/", headers={"HX-Request": "true"}, name="/notifications/bell/")
+
+    @task(2)
+    def my_notifications(self):
+        self.client.get("/me/notifications/", name="/me/notifications/")
+
+
+NOTIFY_PAGES = ("/notifications/", "/notifications/bell/", "/me/notifications/")
+BELL_LIMIT_MS = 2000
+
+
+@events.quitting.add_listener
+def _check_notify_p95(environment, **_kwargs):
+    """NFR-305 для страниц среза 004: p95 каждой не больше 500 мс; NFR-301: p95 кадра числа не больше 2 с; ни одной ошибки."""
+    if NotifyUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    for name in NOTIFY_PAGES:
+        entry = stats.entries.get((name, "GET"))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > P95_LIMIT_MS:
+            over[name] = p95
+    frame = stats.entries.get(("WS bell frame", "WS"))
+    if frame and frame.num_requests and frame.get_response_time_percentile(0.95) > BELL_LIMIT_MS:
+        over["WS bell frame"] = frame.get_response_time_percentile(0.95)
+    if stats.total.num_failures or over:
+        print(f"NFR-301/305 (срез 004) не выполнено: p95 выше предела или нет замера {over}, "
               f"ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1

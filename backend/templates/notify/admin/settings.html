@@ -1,0 +1,62 @@
+{% extends layout %}
+{% block title %}Настройки уведомлений{% endblock %}
+{% block content %}
+<div data-notify-settings>
+  <header class="page-head"><h1 class="page-title">Настройки уведомлений</h1></header>
+  <form method="post" action="/settings/notifications/" data-form="notify-settings" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="channels" value="1">
+    <input type="hidden" name="limits" value="1">
+    <input type="hidden" name="defaults_present" value="1">
+    {% for block in blocks %}
+    <section class="card card-body mb-3" data-channel-block="{{ block.channel }}">
+      <h2 class="h5">{{ block.title }}</h2>
+      <div class="form-check form-switch mb-2">
+        <input class="form-check-input" type="checkbox" role="switch" id="id_{{ block.flag }}" name="{{ block.flag }}" value="1"{% if block.enabled %} checked{% endif %}>
+        <label class="form-check-label" for="id_{{ block.flag }}">Канал включён</label>
+      </div>
+      {% if error.field == block.flag %}<div class="alert alert-danger" role="alert" data-error="{{ block.flag }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+      <p class="mb-1">Ключи: <span data-keys="{{ block.keys }}">{% if block.keys == "set" %}ключи заданы{% else %}ключи не заданы{% endif %}</span></p>
+      {% if block.has_bot and block.bot_name %}<p class="mb-1">Бот: <span data-bot-name>{{ block.bot_name }}</span></p>{% endif %}
+      {% if block.error %}<p class="mb-0 text-danger" data-channel-error data-code="{{ block.error.code }}">Последняя ошибка: {{ block.error.text }}
+        {% if block.error.at %}<time data-at="{{ block.error.at|date:'c' }}">{{ block.error.at|date:'d.m.Y H:i' }}</time>{% endif %}</p>{% endif %}
+    </section>
+    {% endfor %}
+
+    <section class="card card-body mb-3">
+      <h2 class="h5">Значения по умолчанию</h2>
+      {% if error.field == "defaults" %}<div class="alert alert-danger" role="alert" data-error="defaults" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+      <div data-narrow="cards">
+        <table class="table table-sm align-middle grid-table" data-defaults-table>
+          <thead><tr><th scope="col">Вид уведомления</th>{% for channel, title in cell_titles %}<th scope="col">{{ title }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in rows %}
+            <tr data-notify-kind="{{ row.code }}">
+              <th scope="row">{{ row.title }}</th>
+              {% for cell in row.cells %}<td data-channel="{{ cell.channel }}" data-label="{{ cell.title }}"><input class="form-check-input" type="checkbox" name="cell" value="{{ cell.value }}" aria-label="{{ row.title }}: {{ cell.title }}"{% if cell.checked %} checked{% endif %}></td>{% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card card-body mb-3">
+      <h2 class="h5">Сроки</h2>
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label" for="id_email_delay_minutes">Срок письма, минут</label>
+          <input class="form-control" id="id_email_delay_minutes" name="email_delay_minutes" type="number" value="{{ limits.email_delay_minutes }}">
+          {% if error.field == "email_delay_minutes" %}<div class="text-danger" role="alert" data-error="email_delay_minutes" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label" for="id_retention_days">Срок хранения, дней</label>
+          <input class="form-control" id="id_retention_days" name="retention_days" type="number" value="{{ limits.retention_days }}">
+          {% if error.field == "retention_days" %}<div class="text-danger" role="alert" data-error="retention_days" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+        </div>
+      </div>
+    </section>
+    <button type="submit" class="btn btn-primary" data-action="save-settings">Сохранить</button>
+  </form>
+</div>
+{% endblock %}

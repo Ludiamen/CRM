@@ -332,29 +332,29 @@ Opus по задачам» в конце файла.
   `top_bar_items` (шаблон с `hx-ext="ws" ws-connect="/ws/notify/"`, `#notify-count` и `#notify-toast`, «99+», иконка `icons/bell.html` (новый файл `backend/templates/icons/bell.html`), `<script defer>` на `js/notify.js` в этом же шаблоне; фрагмент колокольчика — последние 10, «Все уведомления», «Настройки»); отказы на запрос
   HTMX — 200 с фрагментом; тексты — через экранирование шаблонизатора — backend/apps/notify/views/,
   backend/templates/notify/ — (FR-307, FR-318, FR-319, FR-324, FR-342, NFR-308, NFR-311)
-- [ ] T-4231 [sonnet] «Мои уведомления» (план: «Личные настройки», «Web Push» → «Подписка»): страница
+- [x] T-4231 [sonnet] «Мои уведомления» (план: «Личные настройки», «Web Push» → «Подписка»): страница
   `/me/notifications/` (таблица с карточками на узкой ширине, тихие часы, устройства, привязки с обновлением блока
   по соединению), `static/js/notify-push.js` (кнопка «Разрешить уведомления браузера», пока разрешения нет, — и при выключенном Web Push, решение 34; разрешение по кнопке, регистрация `/sw.js`, подписка, отправка JSON,
   блокировка столбца до разрешения), раздел в карточке профиля только своей (`card_sections`) —
   backend/apps/notify/views/, backend/static/js/notify-push.js — (FR-320, FR-321…FR-326, FR-336, FR-341, FR-342,
   NFR-308)
-- [ ] T-4232 [sonnet] страница администратора (план: «Администратор»): `/settings/notifications/` под
+- [x] T-4232 [sonnet] страница администратора (план: «Администратор»): `/settings/notifications/` под
   `notify.manage`, пункт меню «Уведомления» (`menu_items`), каналы с «ключи заданы / не заданы», именем бота и
   статусом ошибки, значения по умолчанию, сроки — backend/apps/notify/views/ — (FR-334…FR-337, NFR-308)
-- [ ] T-4233 [sonnet] системное уведомление во вкладке (план: «Что приходит по соединению»): `static/js/notify.js`
+- [x] T-4233 [sonnet] системное уведомление во вкладке (план: «Что приходит по соединению»): `static/js/notify.js`
   слушает вставку `#notify-toast` и показывает уведомление браузера при `data-show="1"` и разрешении; нажатие —
   `open`; без встроенного кода (CSP) — backend/static/js/notify.js — (FR-320, FR-329)
-- [ ] T-4240 [sonnet] развёртывание (план: «Запуск», «Восстановление из копии»): службы `worker-notify` (две копии) и
+- [x] T-4240 [sonnet] развёртывание (план: «Запуск», «Восстановление из копии»): службы `worker-notify` (две копии) и
   `notify-poller` (одна) по образцу `worker-inbox`; `config/cron.py` — `notify_tick` (`interval=30`, `notify`,
   `job_timeout` 120) и `notify_retention` (`40 23 * * *`, `maintenance`, 600); переменные (уже в `config/settings.py` с T-4002) в
   `deploy/.env.example` (секреты пустыми), значения стенда в `tools/make_dev_env.py`; CSP `worker-src 'self'`;
   `deploy/RESTORE.md` — новые службы в шагах остановки и запуска, оговорка о `.env` — deploy/docker-compose.yml,
   backend/config/cron.py, backend/config/settings.py, deploy/.env.example, tools/make_dev_env.py, deploy/RESTORE.md
   — (FR-333, FR-337, FR-338, NFR-309)
-- [ ] T-4241 [P] [sonnet] nginx (план: «Запуск» → nginx): `location /ws/` в `deploy/nginx.conf` и
+- [x] T-4241 [P] [sonnet] nginx (план: «Запуск» → nginx): `location /ws/` в `deploy/nginx.conf` и
   `deploy/nginx.prod.conf` с повтором директив прокси, `proxy_read_timeout 3600s`, `proxy_send_timeout 3600s`,
   `proxy_buffering off` — deploy/nginx.conf, deploy/nginx.prod.conf — (NFR-301, NFR-305)
-- [ ] T-4242 [sonnet] стенд, ключи и нагрузка (план: «Проход в браузере», «Скорость», «Запуск»): точка
+- [x] T-4242 [sonnet] стенд, ключи и нагрузка (план: «Проход в браузере», «Скорость», «Запуск»): точка
   `stand_reset` `notify` (данные среза, присутствие в Valkey, курсоры, сброс `fakebots`); команды `e2e_notify_tick` (режимы `--shift N`, `--age-codes M`, `--age-days D`, `--retention`) и
   `e2e_notify_fill` (только `E2E_STAND=1`, решение 33) и `notify_vapid_keys`; класс locust с соединением `/ws/notify/`
   (`websocket-client`, куки из HTTP-клиента), запросами страниц `/notifications/`, `/notifications/bell/`, `/me/notifications/` и порождением заявок письмом и формой (около 30 в час; получатель с открытым соединением) и замером доставки числа на колокольчик в
