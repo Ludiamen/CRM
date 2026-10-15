@@ -18,27 +18,23 @@ from apps.core.services import sessions
 from .services import binding as binding_service
 from .services import live
 from .services import settings as notify_settings
+from .views import pages
 
 log = logging.getLogger(__name__)
 
 CHECK_INTERVAL = 25   # секунд между проверками сессии и обновлениями присутствия (решение 35 задач)
 CLOSE_UNAUTHORIZED = 4401   # код закрытия: расширение `ws` после него не переподключается
-MAX_SHOWN = 99
 CHANNEL_TITLES = {"telegram": "Telegram", "max": "MAX"}
 
 
 def count_fragment(count: int) -> str:
-    """Фрагмент числа непрочитанных: `data-count` — точное число, текст — «99+» выше 99, при нуле класс `d-none`."""
-    shown = f"{MAX_SHOWN}+" if count > MAX_SHOWN else str(count)
-    return format_html('<span id="notify-count" hx-swap-oob="true" class="badge{}" data-count="{}">{}</span>',
-                       " d-none" if count == 0 else "", count, shown)
+    """Фрагмент числа непрочитанных: общий шаблон с колокольчиком страницы, в кадре с `hx-swap-oob` (T-4230)."""
+    return pages.render_count(count, oob=True).strip()
 
 
 def toast_fragment(toast: dict) -> str:
-    """Фрагмент системного уведомления: пустой элемент со значениями в атрибутах."""
-    return format_html('<div id="notify-toast" hx-swap-oob="true" data-text="{}" data-url="{}" data-tag="{}" '
-                       'data-show="{}"></div>', toast.get("text", ""), toast.get("url", ""), toast.get("tag", ""),
-                       "1" if toast.get("show") else "0")
+    """Фрагмент системного уведомления: пустой элемент со значениями в атрибутах (общий шаблон с колокольчиком)."""
+    return pages.render_toast(toast, oob=True).strip()
 
 
 def binding_fragment(channel: str, state: str) -> str:

@@ -1,0 +1,31 @@
+{% extends layout %}
+{% block title %}Уведомления{% endblock %}
+{% block content %}
+<div data-notify-list>
+  <header class="page-head"><h1 class="page-title">Уведомления</h1></header>
+  <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+    <nav data-notify-filter aria-label="Фильтр" class="d-flex gap-2">
+      <a data-filter="all" href="/notifications/"{% if filter_value != "unread" %} aria-current="true"{% endif %}>Все</a>
+      <a data-filter="unread" href="/notifications/?f=unread"{% if filter_value == "unread" %} aria-current="true"{% endif %}>Непрочитанные</a>
+    </nav>
+    {% if page.paginator.count %}<form data-form="read-all" method="post" action="/notifications/read-all/" hx-post="/notifications/read-all/">{% csrf_token %}
+      <input type="hidden" name="f" value="{{ filter_value }}">
+      <button type="submit" class="btn btn-outline-primary btn-sm" data-action="read-all">Прочитать все</button>
+    </form>{% endif %}
+  </div>
+  {% if page.paginator.count %}
+  <ul data-notifications class="list-group mb-3">
+    {% for note in page.object_list %}{% include "notify/_row.html" %}{% endfor %}
+  </ul>
+  {% else %}
+  <p data-empty-state="notifications">{% if filter_value == "unread" %}Непрочитанных уведомлений нет{% else %}У вас нет уведомлений{% endif %}</p>
+  {% endif %}
+  {% if page.paginator.num_pages > 1 %}
+  <nav data-pager class="pager d-flex flex-wrap gap-3 align-items-center" aria-label="Страницы">
+    {% if page.has_previous %}<a data-page-prev href="/notifications/?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.previous_page_number }}">Назад</a>{% endif %}
+    <span data-page-current>{{ page.number }}</span>
+    {% if page.has_next %}<a data-page-next href="/notifications/?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.next_page_number }}">Вперёд</a>{% endif %}
+  </nav>
+  {% endif %}
+</div>
+{% endblock %}

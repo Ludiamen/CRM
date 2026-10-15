@@ -326,7 +326,7 @@ Opus по задачам» в конце файла.
   шаг опроса T-4213 в цикле, курсор в `BotState` после пачки, 409 у Telegram — пауза 30 с и `last_error`,
   `deleteWebhook` при первом старте Telegram, имя бота при каждом старте цикла, завершение по SIGTERM после текущего
   ответа — backend/apps/notify/management/commands/notify_poll.py — (FR-325, FR-332, FR-336, FR-344)
-- [ ] T-4230 [sonnet] маршруты и страницы (план: «Контракты», «Колокольчик…»): `config/urls.py`,
+- [x] T-4230 [sonnet] маршруты и страницы (план: «Контракты», «Колокольчик…»): `config/urls.py`,
   `apps/notify/urls.py`; «Уведомления» (50, фильтр, «Прочитать все», пусто), фрагмент колокольчика, `open`, `read`,
   `read-all`, `/sw.js` (без входа: `login_required` нет; шаблон сервис-воркера: `push`, `notificationclick` только своего источника); колокольчик в
   `top_bar_items` (шаблон с `hx-ext="ws" ws-connect="/ws/notify/"`, `#notify-count` и `#notify-toast`, «99+», иконка `icons/bell.html` (новый файл `backend/templates/icons/bell.html`), `<script defer>` на `js/notify.js` в этом же шаблоне; фрагмент колокольчика — последние 10, «Все уведомления», «Настройки»); отказы на запрос

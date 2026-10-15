@@ -2,7 +2,7 @@
 from apps.core import events, extensions
 from apps.notify.notify_kinds import notification_kinds  # вид «Канал отвязан» (CONTRACT-004 § 3.2)
 
-__all__ = ["notification_kinds", "register_all", "subscribe_bus"]
+__all__ = ["notification_kinds", "register_all", "subscribe_bus", "top_bar_items"]
 
 
 def register_all() -> None:
@@ -14,6 +14,15 @@ def register_all() -> None:
     extensions.register("notification_kinds", notification_kinds)
     extensions.register("audit_labels", audit_labels.audit_labels)  # подписи журнала (T-4215, CONTRACT-004 § 9)
     extensions.register("mail_renderers", mail.renderers)  # письма notify.item и notify.digest (T-4210, § 10)
+    extensions.register("top_bar_items", top_bar_items)  # колокольчик в верхней панели (T-4230, § 14.1)
+
+
+def top_bar_items() -> list:
+    """Колокольчик: один элемент верхней панели перед ссылками профиля."""
+    from apps.notify.views import pages
+
+    return [extensions.TopBarItem(key="notify-bell", order=10, template="notify/bell.html",
+                                  context=pages.top_bar_context)]
 
 
 def subscribe_bus() -> None:

@@ -1,0 +1,9 @@
+{% load static %}<div id="notify-bell" data-bell data-ws="connecting" class="position-relative" hx-ext="ws" ws-connect="/ws/notify/">
+  <button type="button" class="top-link top-button" data-bell-toggle aria-label="Уведомления" title="Уведомления" hx-get="/notifications/bell/" hx-trigger="click" hx-target="#notify-bell-panel" hx-swap="innerHTML">
+    <span class="menu-icon" aria-hidden="true">{% include "icons/bell.html" %}</span>
+    {% include "notify/_count.html" with count=bell_count shown=bell_shown oob=False %}
+  </button>
+  {% include "notify/_toast.html" with text="" url="" tag="" show="0" oob=False %}
+  <div id="notify-bell-panel" data-bell-panel class="position-absolute end-0 mt-1 bg-white text-body border rounded shadow-sm"></div>
+  <script src="{% static 'js/notify.js' %}" defer></script>
+</div>

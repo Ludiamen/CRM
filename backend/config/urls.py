@@ -5,6 +5,7 @@ urlpatterns = [
     path("", include("apps.core.urls")),
     path("", include("apps.org.urls")),
     path("", include("apps.servicedesk.urls")),
+    path("", include("apps.notify.urls")),
 ]
 
 handler403 = "apps.core.views.pages.forbidden"
