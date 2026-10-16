@@ -71,7 +71,7 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .brand:hover { color: #fff; }
 .brand img { width: 32px; height: 32px; border-radius: 8px; object-fit: contain; flex: 0 0 auto; background: #fff; }
 .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.top-actions { display: flex; align-items: center; gap: 0.15rem; min-width: 0; }
+.top-actions { display: flex; align-items: center; gap: 0.15rem; flex: 0 0 auto; }
 .top-actions form { margin: 0; }
 .top-link {
   display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.6rem; border: 0; border-radius: 0.5rem;

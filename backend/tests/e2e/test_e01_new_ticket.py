@@ -18,6 +18,7 @@ import json
 import re
 import secrets
 import time
+from email.header import Header
 
 from playwright.sync_api import expect
 
@@ -115,9 +116,16 @@ def _prefs(page, *, email: bool = True) -> None:
 
 
 def _send_mail(subject: str, word: str) -> None:
-    """Письмо заявителя в ящик заявок и сразу разбор: заявка создана в очереди по умолчанию, без ответственного."""
-    helpers_sd.deliver(build_mail(from_addr=helpers_sd.requester_email(), to=[MAILBOX], subject=subject,
-                                  text=f"Нужна помощь {word}", message_id=f"<{secrets.token_hex(8)}@client.test>"))
+    """Письмо заявителя в ящик заявок и сразу разбор: заявка создана в очереди по умолчанию, без ответственного.
+    Тема записывается заново через `email.header.Header`: генератор `policy.default` при переносе длинной нелатинской
+    темы выносит пробел между словами RFC 2047, и при чтении он теряется (T-4260)."""
+    raw = build_mail(from_addr=helpers_sd.requester_email(), to=[MAILBOX], subject=subject,
+                     text=f"Нужна помощь {word}", message_id=f"<{secrets.token_hex(8)}@client.test>")
+    head, sep, body = raw.partition(b"\r\n\r\n")
+    folded = Header(subject, "utf-8", header_name="Subject").encode(linesep="\r\n")
+    head = re.sub(rb"(?im)^Subject:[^\r\n]*(?:\r\n[ \t][^\r\n]*)*",
+                  lambda _: b"Subject: " + folded.encode("ascii"), head)
+    helpers_sd.deliver(head + sep + body)
 
 
 def _new_mail(title: str = "Не работает принтер") -> tuple:
@@ -588,7 +596,9 @@ def test_e01_actor_who_created_or_transferred_ticket_gets_nothing_others_get_not
         # п. 7: коллега получил уведомление о переданной заявке, передавший — нет (у него одно, из первой очереди)
         _wait_plus(tab_colleague, base_colleague, 2)
         _expect_text(tab_colleague, word_move, _text_new(number_move, second_name, subject_move))
-        assert helpers_notify.bell_count(tab_actor) == base_actor + 1
+        # открытие карточки при передаче отметило его уведомление по заявке прочитанным (§ 6.8, T-4124): нового
+        # непрочитанного нет — число исходное
+        assert helpers_notify.bell_count(tab_actor) == base_actor
         assert _row_texts(tab_actor, word_move) == [_norm(_text_new(number_move, first_name, subject_move))]
 
 
@@ -697,8 +707,8 @@ def test_e01_subject_over_100_chars_cut_on_portal_and_email_and_external_channel
     queue_id, queue_name = _queue(page)
     _members(page, queue_id, [member], tag)
     word = _word()
-    subject = f"{word} " + "Длинная тема заявки " * 7
-    subject = subject.strip()
+    # хвост темы (после 99-го знака) неповторим: иначе «хвоста нет» не проверить — тема из повторов (T-4260)
+    subject = f"{word} " + "Длинная тема заявки " * 7 + f"конец {word}"
     assert 100 < len(subject) <= 255 and subject[98] != " " and subject == _norm(subject)
     cut = subject[:99] + "…"
     bots = helpers_notify.fakebots()  # без сброса: сообщения своего теста — по своему chat_id

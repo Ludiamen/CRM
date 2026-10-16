@@ -171,9 +171,33 @@ def _bound(page, bots, channel: str, chat, channels=("telegram",)) -> None:
     _prefs(page, list(channels))
 
 
+_PAUSE = _RQ_CONN + """
+import time, django_rq
+from rq import suspension, Worker
+suspension.suspend(r, ttl=120)
+q = django_rq.get_queue('notify')
+ws = [w for w in Worker.all(connection=q.connection) if 'notify' in w.queue_names()]
+for _ in ws:
+    q.enqueue('os.getpid')
+end = time.monotonic() + 30
+states = []
+while time.monotonic() < end:
+    states = [(q.connection.hget(w.key, 'state') or b'').decode() for w in ws]  # не кэш объекта, а Valkey
+    if ws and all(s == 'suspended' for s in states):
+        break
+    time.sleep(0.5)
+print('PAUSED' if ws and all(s == 'suspended' for s in states) else 'NOT_PAUSED', len(ws))
+"""
+
+
 def _pause_jobs() -> None:
-    """Пауза RQ стенда (CONTRACT-004, доп. 26): обработчики не берут новые задания, ttl 120 с снимет паузу сам."""
-    helpers.stand_shell(_RQ_CONN + "from rq import suspension; suspension.suspend(r, ttl=120)")
+    """Пауза RQ стенда (CONTRACT-004, доп. 26): обработчики не берут новые задания, ttl 120 с снимет паузу сам.
+    RQ проверяет паузу только между заданиями: обработчик, уже ждущий задание (`BLPOP`), взял бы отправку несмотря на
+    паузу. Поэтому в очередь `notify` ставится по пустому заданию на обработчик (`os.getpid`), и тест ждёт, пока все
+    обработчики очереди перейдут в состояние `suspended` (как в e03; T-4260)."""
+    out = helpers.stand_shell(_PAUSE)
+    if not out.splitlines() or not out.splitlines()[-1].startswith("PAUSED"):
+        raise AssertionError(f"обработчики очереди notify не встали на паузу за 30 с: {out.splitlines()[-1:]}")
 
 
 def _resume_jobs() -> None:

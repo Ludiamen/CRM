@@ -1,5 +1,5 @@
 <li data-notification="{{ note.pk }}" data-unread="{% if note.read_at %}0{% else %}1{% endif %}" class="list-group-item d-flex flex-wrap gap-2 align-items-baseline">
-  <a data-field="text" data-open href="/notifications/{{ note.pk }}/open/" class="flex-grow-1">{{ note.text }}</a>
+  <span data-field="text" class="flex-grow-1"><a data-open href="/notifications/{{ note.pk }}/open/">{{ note.text }}</a></span>
   <span data-field="kind" class="text-muted small">{{ note.kind_title }}</span>
   <time data-at="{{ note.created_at|date:'c' }}" class="text-muted small">{{ note.created_at|date:'d.m.Y H:i' }}</time>
   {% if not note.read_at %}<span data-unread-mark class="badge text-bg-primary">новое</span>

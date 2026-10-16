@@ -764,6 +764,12 @@ def bind_channel(page, bots: FakeBots, channel: str, chat_id, *, timeout: float 
     if not re.fullmatch(r"\d{8}", code):
         raise AssertionError(f"код привязки {channel} не из восьми цифр")
     chat = int(chat_id)
+
+    def _replies() -> int:
+        return len([m for m in sent_to(bots, channel, chat) if BOUND_REPLY[channel] in (m.get("text") or "")])
+
+    # чат мог быть привязан раньше (освободившийся чат уволенного): ждём только новый ответ (T-4260)
+    known = _replies()
     if channel == "telegram":
         chat_ref = {"id": chat, "type": "private"}
         bots.put_telegram([
@@ -777,7 +783,7 @@ def bind_channel(page, bots: FakeBots, channel: str, chat_id, *, timeout: float 
              "message": {"sender": {"user_id": chat}, "recipient": {"chat_id": chat, "chat_type": "dialog"},
                          "body": {"text": code}}},
         ])
-    while not [m for m in sent_to(bots, channel, chat) if BOUND_REPLY[channel] in (m.get("text") or "")]:
+    while _replies() <= known:
         if time.monotonic() >= deadline:
             raise AssertionError(f"бот {channel} не ответил «{BOUND_REPLY[channel]} …» за {timeout:.0f} с "
                                  f"(получено сообщений в чат: {len(sent_to(bots, channel, chat))})")
@@ -810,12 +816,13 @@ def enable_push_on_device(page, *, timeout: float = 30.0) -> str:
     except PlaywrightTimeout:
         raise AssertionError(f"подписка устройства не отправлена на портал за {timeout:.0f} с") from None
     response = info.value
-    body = response.json() if response.status in (200, 400) else {}
-    if response.status != 200 or body.get("ok") is not True or "id" not in body:
-        raise AssertionError(f"портал не сохранил подписку: статус {response.status}, код {body.get('code')!r}")
-    device = str(body["id"])
-    if device in known:
-        raise AssertionError("портал вернул номер уже известной подписки")
+    # Тело ответа не читаем: после успешной отправки скрипт перезагружает страницу, и Chromium тела ответа ушедшей
+    # страницы не отдаёт — Response.json() ждёт без предела (T-4260). Номер подписки — новая строка списка устройств.
+    if response.status != 200:
+        raise AssertionError(f"портал не сохранил подписку: статус {response.status}")
     page.goto("/me/notifications/")
-    expect(page.locator(f'ul[data-devices] li[data-device="{device}"]')).to_have_count(1)
-    return device
+    added = [item for item in page.eval_on_selector_all(devices, "nodes => nodes.map(n => n.dataset.device)")
+             if item not in known]
+    if len(added) != 1:
+        raise AssertionError(f"после подписки новых устройств в списке {len(added)}, ожидалось одно")
+    return added[0]

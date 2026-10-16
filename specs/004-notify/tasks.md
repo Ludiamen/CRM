@@ -360,7 +360,7 @@ Opus по задачам» в конце файла.
   (`websocket-client`, куки из HTTP-клиента), запросами страниц `/notifications/`, `/notifications/bell/`, `/me/notifications/` и порождением заявок письмом и формой (около 30 в час; получатель с открытым соединением) и замером доставки числа на колокольчик в
   `backend/tests/load/locustfile.py` — backend/apps/notify/stand.py, backend/apps/notify/management/commands/,
   backend/tests/load/locustfile.py — (NFR-301, NFR-305, FR-337)
-- [ ] T-4260 [sonnet] зелёный прогон по областям: довести до зелёного T-4101…T-4151 и весь набор срезов 001–003
+- [x] T-4260 [sonnet] зелёный прогон по областям: довести до зелёного T-4101…T-4151 и весь набор срезов 001–003
   (после T-4138); перед приёмкой Opus создаёт пару VAPID стенда командой `notify_vapid_keys` (T-4242), дописывает её
   в `deploy/.env` без вывода значений и перезапускает службы (решение 21); каждое падение — причина в отчёте; тесты не
   ослабляются — docs/reviews/TASKS-004.md, раздел

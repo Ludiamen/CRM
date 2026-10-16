@@ -532,6 +532,9 @@ def test_e09_security_event_in_quiet_hours_core_mail_not_delayed_and_not_in_dige
         number = helpers_sd.ticket_number_by_subject(page, word)
         text = f"Новая заявка #{number} в очереди «{queue_name}»: {subject}"
         assert any(_norm(text) == r["text"] for r in _list(other)), text
+        # срок письма наступает в тихие часы: обход переводит доставку в held и ставит срок сводки (FR-327, FR-330;
+        # решение C1)
+        helpers_notify.tick(shift=121)
         assert helpers_notify.no_item_mail(mailpit, member.email, wait=3)
         # когда: начало рабочего времени — режим «Без тихих часов»; накопленное уходит сводкой сразу
         _no_quiet_hours(other)
