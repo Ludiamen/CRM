@@ -316,7 +316,8 @@ class NotifyUser(HttpUser):
         url = f"{scheme}://{self.host.split('://', 1)[1]}/ws/notify/"
         started = time.monotonic()
         try:
-            self.socket = websocket.create_connection(url, header=[f"Cookie: {cookies}", f"Origin: {self.host}"],
+            # Origin — параметром: библиотека ставит свой заголовок, второй даёт 400 (T-4304)
+            self.socket = websocket.create_connection(url, header=[f"Cookie: {cookies}"], origin=self.host,
                                                       sslopt={"cert_reqs": ssl.CERT_NONE}, timeout=60)
             self.environment.events.request.fire(request_type="WS", name="/ws/notify/ connect", exception=None,
                                                  response_time=(time.monotonic() - started) * 1000, response_length=0)
