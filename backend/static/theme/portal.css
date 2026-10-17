@@ -252,6 +252,9 @@ body { background: var(--portal-surface); color: var(--portal-text); }
   .grid-table tbody td { display: block; border: 0; padding: 0.1rem 0.5rem; }
   .grid-table tbody td[data-cell="photo"] { float: left; padding-right: 0.75rem; }
   .grid-table tbody td[data-cell="name"] { font-weight: 600; }
+  /* срез 004: таблицы «вид × канал» — у галочки на карточке подпись канала (заголовки столбцов скрыты; T-4301) */
+  .grid-table[data-notify-table] tbody td[data-label]::before,
+  .grid-table[data-defaults-table] tbody td[data-label]::before { content: attr(data-label); display: inline-block; min-width: 9rem; color: #5b6472; }
 }
 
 /* T-2234: карточка сотрудника и «Мой профиль» — шапка с фото и вкладки «Профиль» / «Безопасность» (UX-09) */
@@ -455,4 +458,11 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .inbound-table td[data-cell="subject"] { overflow-wrap: anywhere; }
 @media (max-width: 575.98px) {
   .mailbox-fields { grid-template-columns: 1fr; }
+}
+
+/* --- панель колокольчика (срез 004, T-4301): ширина, поверх содержимого, пустая — не рисуется --- */
+.bell-panel { width: 22rem; max-width: calc(100vw - 1rem); z-index: 1030; max-height: calc(100vh - var(--top-bar-height) - 1rem); overflow-y: auto; }
+.bell-panel:empty { display: none; }
+@media (max-width: 575.98px) {
+  .bell-panel { position: fixed !important; top: var(--top-bar-height); left: 0.5rem !important; right: 0.5rem !important; width: auto; max-width: none; }
 }

@@ -387,6 +387,32 @@ def test_disabled_or_tokenless_channel_shows_disabled_text_without_buttons(bots_
 
 # --- журнал (FR-341) -------------------------------------------------------------------------------------
 
+def test_own_hours_saved_then_all_days_removed_rejected_and_previous_days_kept():
+    """FR-323, § 13.2: сотрудник сохранил свои часы пн-ср 20:00-08:00, затем отправил форму без отмеченных дней —
+    отказ `own_no_days` у поля `own_days` (200 той же страницы), надписи «сохранено» нет, прежние дни и время на месте,
+    записи журнала не прибавилось."""
+    user = _queue_member()
+    client = support.logged_in(user)
+    response = client.post(ME, {"quiet_mode": "own", "own_days": ["0", "1", "2"], "own_start": "20:00",
+                                "own_end": "08:00"})
+    assert response.status_code == 302 and response["Location"] == ME
+    assert "Настройки уведомлений сохранены" in _body(client.get(ME))   # сообщение показано и израсходовано
+    row_model = model("notify.UserNotifySettings")
+    assert row_model.objects.get(user=user).own_days == [0, 1, 2]
+    journal = len(_events("notify.user_settings_changed", user))
+    assert journal == 1
+
+    response = client.post(ME, {"quiet_mode": "own", "own_start": "20:00", "own_end": "08:00"})
+    assert response.status_code == 200, "отказ — та же страница, не перенаправление"
+    error = _page(response).find(None, **{"data-error": "own_days", "data-code": "own_no_days"})
+    assert error is not None and error.text(), "нет отказа own_no_days у поля own_days"
+    assert "Настройки уведомлений сохранены" not in _body(response)
+    row = row_model.objects.get(user=user)
+    assert row.own_days == [0, 1, 2] and row.quiet_mode == "own"
+    assert row.own_start == clock_time(20, 0) and row.own_end == clock_time(8, 0)
+    assert len(_events("notify.user_settings_changed", user)) == journal
+
+
 def test_audit_records_changed_cells_and_quiet_hours_as_before_after_in_russian():
     """FR-341: сохранение таблицы — одна запись `notify.user_settings_changed` от сотрудника с `ip` запроса: в `cells`
     только изменённый вид (название вида, внешние каналы в порядке каталога, без `portal`), тихие часы — отдельной

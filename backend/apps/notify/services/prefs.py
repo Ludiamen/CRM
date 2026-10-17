@@ -176,9 +176,9 @@ def save(user, *, table=None, quiet_mode=None, own_days=None, own_start=None, ow
         new_mode, new_days, new_start, new_end = old_mode, old_days, old_start, old_end
         if quiet_mode is not None:
             new_mode = quiet_mode
-        if new_mode == "own" and (quiet_mode is not None or own_days or own_start not in (None, "")
+        if new_mode == "own" and (quiet_mode is not None or own_days is not None or own_start not in (None, "")
                                   or own_end not in (None, "")):
-            if own_days:
+            if own_days is not None:  # пустой список — «ни одного дня» (отказ own_no_days), None — не передано
                 new_days = _days(own_days)
             start, end = _time(own_start, "own_start"), _time(own_end, "own_end")
             new_start = start if start is not None else old_start

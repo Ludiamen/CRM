@@ -4,6 +4,6 @@
     {% include "notify/_count.html" with count=bell_count shown=bell_shown oob=False %}
   </button>
   {% include "notify/_toast.html" with text="" url="" tag="" show="0" oob=False %}
-  <div id="notify-bell-panel" data-bell-panel class="position-absolute end-0 mt-1 bg-white text-body border rounded shadow-sm"></div>
+  <div id="notify-bell-panel" data-bell-panel class="bell-panel position-absolute end-0 mt-1 bg-white text-body border rounded shadow-sm"></div>
   <script src="{% static 'js/notify.js' %}" defer></script>
 </div>
