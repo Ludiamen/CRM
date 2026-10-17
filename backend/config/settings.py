@@ -76,6 +76,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "apps.core.middleware.SessionGuardMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    # последним: process_exception вызывается в обратном порядке, этот слой отвечает первым (поток запроса)
+    "apps.core.middleware.ErrorResponseInRequestThreadMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"

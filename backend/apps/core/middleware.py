@@ -2,7 +2,9 @@
 import re
 from urllib.parse import urlencode
 
+from django.core.handlers.exception import response_for_exception
 from django.http import HttpResponse, HttpResponseRedirect
+from django.urls import Resolver404, resolve
 
 from apps.core.models import UserSession
 from apps.core.services import clientip, passwords, security_settings, sessions
@@ -18,6 +20,45 @@ PUBLIC_PREFIXES = ("/static/", "/media/", "/health/")
 # Выдача фото сотрудника — единственная страница среза 002, которую браузеру разрешено держать в кэше (решение 5):
 # сопоставление точное по образцу маршрута, а не по префиксу `/staff/`
 PHOTO_PATH = re.compile(r"/staff/\d+/photo/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:512|96)/")
+
+
+class ErrorResponseInRequestThreadMiddleware:
+    """Страницу ошибки представления рисует поток запроса, а не поток общего пула (срез 004, пул соединений).
+
+    Без этого `convert_exception_to_response` строит страницу ошибки в потоке `thread_sensitive=False`, которому
+    нужно своё соединение базы, пока поток запроса держит своё: при числе одновременных ошибок не меньше размера
+    пула страницы ошибок ждут тайм-аута пула. Django вызывает `process_exception` в потоке запроса
+    (`thread_sensitive=True`) — там ответ строится на уже открытом соединении. Ответ тот же, что у Django
+    (`response_for_exception`: обработчики 400/403/404/500, `got_request_exception`, журнал, DEBUG-страницы).
+    Стоит последним в `MIDDLEWARE`: `process_exception` вызывается в обратном порядке списка, значит первым.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # Адреса нет: `Resolver404` поднимается в `resolve_request` до `process_exception`, и страницу ошибки
+        # Django рисовал бы в потоке пула. Разбираем адрес здесь заранее (цена ничтожна; `resolver_match`
+        # ставит сам Django). `CommonMiddleware` (APPEND_SLASH) видит этот 404 в `process_response`, как раньше.
+        try:
+            resolve(request.path_info, urlconf=getattr(request, "urlconf", None))
+        except Resolver404 as exc:
+            return self._response(request, exc)
+        return self.get_response(request)
+
+    def process_exception(self, request, exception):
+        return self._response(request, exception)
+
+    @staticmethod
+    def _response(request, exception):
+        try:
+            # поднимаем исключение заново, чтобы sys.exc_info() работал (журнал, DEBUG); в трассировке журнала
+            # появляется строка этого `raise`
+            raise exception
+        except Exception:  # noqa: BLE001
+            return response_for_exception(request, exception)
+        finally:
+            del exception  # без цикла «исключение → трассировка → этот кадр → исключение»
 
 
 class ClientIPMiddleware:

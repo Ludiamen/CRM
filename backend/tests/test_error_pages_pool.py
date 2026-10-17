@@ -83,3 +83,121 @@ def test_handlers_registered():
     from config import urls
     assert urls.handler400.endswith("pages.bad_request")
     assert urls.handler404.endswith("pages.not_found")
+
+
+# --- Слой ErrorResponseInRequestThreadMiddleware: страница ошибки представления строится в потоке запроса ---
+from django.core.exceptions import PermissionDenied  # noqa: E402
+from django.http import Http404  # noqa: E402
+from django.urls import path  # noqa: E402
+
+
+def _raise_404(request):
+    raise Http404("нет")
+
+
+def _raise_403(request):
+    raise PermissionDenied("нельзя")
+
+
+def _raise_500(request):
+    raise RuntimeError("сбой")
+
+
+urlpatterns = [
+    path("t404/", _raise_404),
+    path("t403/", _raise_403),
+    path("t500/", _raise_500),
+]
+handler400 = "apps.core.views.pages.bad_request"
+handler403 = "apps.core.views.pages.forbidden"
+handler404 = "apps.core.views.pages.not_found"
+handler500 = "apps.core.views.pages.server_error"
+
+
+def test_middleware_is_registered_last():
+    from django.conf import settings
+    assert settings.MIDDLEWARE[-1] == "apps.core.middleware.ErrorResponseInRequestThreadMiddleware"
+
+
+@pytest.mark.parametrize("url,status", [("/t404/", 404), ("/t403/", 403), ("/t500/", 500)])
+def test_view_exception_page_built_by_process_exception(client, settings, monkeypatch, url, status):
+    from apps.core import middleware
+    settings.ROOT_URLCONF = __name__
+    calls = []
+    original = middleware.response_for_exception
+
+    def spy(request, exc):
+        calls.append(type(exc))
+        return original(request, exc)
+
+    monkeypatch.setattr(middleware, "response_for_exception", spy)
+    client.raise_request_exception = False
+    response = client.get(url)
+    assert response.status_code == status
+    assert len(calls) == 1
+    if status != 500:  # страница 500 — простой текст по замыслу server_error
+        assert b"<html" in response.content.lower()
+        assert "HX-Request" in response["Vary"]
+    assert response["Cache-Control"] == "no-store"
+
+
+@pytest.mark.parametrize("url,handler", [("/t404/", pages.not_found), ("/t403/", pages.forbidden)])
+def test_error_page_same_as_handler(client, settings, url, handler):
+    """Вид страницы прежний: тело совпадает с тем, что отдаёт обработчик ошибок напрямую."""
+    from django.contrib.auth.models import AnonymousUser
+    settings.ROOT_URLCONF = __name__
+    response = client.get(url)
+    request = RequestFactory().get(url)
+    request.user = AnonymousUser()
+    request.session = {}
+    direct = handler(request, None)
+    assert response.status_code == direct.status_code
+    assert response.content == direct.content
+
+
+def test_server_error_signal_and_log_once(client, settings, caplog):
+    from django.core.signals import got_request_exception
+    settings.ROOT_URLCONF = __name__
+    got = []
+    receiver = lambda sender, **kw: got.append(1)  # noqa: E731
+    got_request_exception.connect(receiver)
+    try:
+        client.raise_request_exception = False
+        with caplog.at_level("ERROR", logger="django.request"):
+            response = client.get("/t500/")
+    finally:
+        got_request_exception.disconnect(receiver)
+    assert response.status_code == 500
+    assert len(got) == 1
+    assert len([r for r in caplog.records if r.name == "django.request" and r.levelname == "ERROR"]) == 1
+
+
+# --- Resolver404: страница «адреса нет» тоже строится слоем, в потоке запроса ---
+def test_unresolved_path_page_built_by_layer(client, monkeypatch):
+    from django.contrib.auth.models import AnonymousUser
+    from apps.core import middleware
+    calls = []
+    original = middleware.response_for_exception
+    monkeypatch.setattr(middleware, "response_for_exception",
+                        lambda request, exc: calls.append(type(exc).__name__) or original(request, exc))
+    response = client.get("/нет-такого-адреса/")
+    assert response.status_code == 404
+    assert calls == ["Resolver404"]
+    request = RequestFactory().get("/x/")
+    request.user = AnonymousUser()
+    request.session = {}
+    assert response.content == pages.not_found(request, None).content
+
+
+def test_missing_slash_still_redirects(client):
+    response = client.get("/notifications")
+    assert response.status_code in (301, 302)
+    assert response["Location"].endswith("/notifications/")
+
+
+def test_existing_path_untouched_by_layer(client, monkeypatch):
+    from apps.core import middleware
+    calls = []
+    monkeypatch.setattr(middleware, "response_for_exception", lambda r, e: calls.append(1))
+    client.get("/login/")
+    assert calls == []
