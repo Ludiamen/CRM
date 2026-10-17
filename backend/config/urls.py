@@ -8,6 +8,7 @@ urlpatterns = [
     path("", include("apps.notify.urls")),
 ]
 
+handler400 = "apps.core.views.pages.bad_request"
 handler403 = "apps.core.views.pages.forbidden"
 handler404 = "apps.core.views.pages.not_found"
 handler500 = "apps.core.views.pages.server_error"
