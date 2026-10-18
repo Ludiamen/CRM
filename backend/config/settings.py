@@ -53,6 +53,8 @@ INSTALLED_APPS = [
     "apps.integrations.mail",
     "apps.servicedesk",
     "apps.notify",
+    "apps.knowledge",
+    "apps.search",
 ]
 # Встроенной админки Django нет: администрирование — свой раздел с проверкой
 # прав и журналом (PLAN-001, «Решения плана»).

@@ -29,3 +29,7 @@ channels-redis==4.3.0
 websockets==17.2
 msgpack==1.2.3
 asgiref==3.12.1
+# Срез 005 (PLAN-005, «Новые компоненты и лицензии»).
+markdown-it-py==4.2.0
+mdurl==0.1.2
+nh3==0.3.7
