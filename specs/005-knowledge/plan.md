@@ -1,7 +1,7 @@
 ---
 id: PLAN-005
 вид: план
-статус: черновик
+статус: на-проверке
 версия: 1
 зависит_от: SPEC-005, SPEC-004, SPEC-003, SPEC-002, SPEC-001, TGT-ARCH, TGT-NFR, ADR-0003, ADR-0012, PLAN-001, PLAN-002, PLAN-003, PLAN-004
 основан_на: SPEC-005 sha256:aeebe929e48ee735954b77790151150323f871d41bd04e16dabbac80186b40da
