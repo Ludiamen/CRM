@@ -7,14 +7,17 @@
 import pathlib
 from contextlib import contextmanager
 from dataclasses import dataclass, field
-from typing import Callable, NamedTuple
+from typing import TYPE_CHECKING, Callable, Literal, NamedTuple
 
 from django.http import HttpRequest
+
+if TYPE_CHECKING:
+    from apps.core.models import User
 
 POINTS = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory",
           "card_sections", "day_marks", "home_notices", "stand_reset",
           "unit_usage", "file_purposes", "mail_renderers", "login_links",
-          "notification_kinds", "top_bar_items")
+          "notification_kinds", "top_bar_items", "search_providers", "ticket_card_parts")
 
 _registry: dict[str, list] = {point: [] for point in POINTS}
 
@@ -162,6 +165,7 @@ class NotificationKind:
     available: Callable = _always
     still_relevant: Callable[[int, str], bool] = _always
     order: int = 0
+    coalesce: bool = False
 
 
 @dataclass(frozen=True)
@@ -171,3 +175,60 @@ class TopBarItem:
     order: int
     template: str
     context: Callable[[HttpRequest], dict]
+
+
+@dataclass(frozen=True)
+class ParsedQuery:
+    """Разобранный запрос поиска (PLAN-005, «Сквозной поиск»): слова, номер, строка `to_tsquery`, подсказка.
+
+    `hint` — `""` (разбор удался), `"short"` или `"long"`; разбор делает `search.parse`.
+    """
+    words: list[str]
+    number: int | None = None
+    raw: str = ""
+    hint: str = ""
+
+
+@dataclass(frozen=True)
+class SearchRow:
+    """Строка выдачи поиска; непустой `template` — свой шаблон строки с контекстом `context`."""
+    title: str
+    subtitle: str
+    url: str
+    template: str = ""
+    context: dict | None = None
+
+
+@dataclass(frozen=True)
+class SearchProvider:
+    """Группа выдачи поиска (PLAN-005, FR-445).
+
+    `search(user, parsed, limit, offset)` — строки группы; `count(user, parsed)` — `(число, больше_потолка)`;
+    `available(user)` — показывать ли группу сотруднику.
+    """
+    key: str
+    title: str
+    order: int
+    search: Callable[["User", ParsedQuery, int, int], list[SearchRow]]
+    count: Callable[["User", ParsedQuery], tuple[int, bool]]
+    available: Callable[["User"], bool]
+
+
+@dataclass(frozen=True)
+class TicketRef:
+    """Заявка для частей карточки: номер и признаки, нужные модулю, без модели `Ticket`."""
+    number: int
+    closed: bool
+    has_resolution: bool
+
+
+@dataclass(frozen=True)
+class TicketCardPart:
+    """Часть карточки заявки (PLAN-005, FR-432): раздел, кнопка закрытой заявки или инструмент комментария.
+
+    `render(request, ticket_ref)` возвращает фрагмент HTML или `None` (пустую строку) — «ничего».
+    """
+    key: str
+    kind: Literal["section", "closed_action", "comment_tool"]
+    order: int
+    render: Callable[[HttpRequest, TicketRef], str | None]

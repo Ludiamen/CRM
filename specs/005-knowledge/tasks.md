@@ -182,13 +182,13 @@ Opus по задачам» в конце файла.
 поиск → развёртывание → зелёный прогон. После каждой задачи — весь серверный набор; регрессия срезов 001–004 —
 остановка и решение Opus.
 
-- [ ] T-5200 [sonnet] ядро: точки и записи (план: «Точки расширения ядра и шина событий», «Модель данных» → «Ядро и
+- [x] T-5200 [sonnet] ядро: точки и записи (план: «Точки расширения ядра и шина событий», «Модель данных» → «Ядро и
   прежние модули»): `POINTS` + `search_providers`, `ticket_card_parts` в конце; записи `SearchProvider`, `ParsedQuery`,
   `SearchRow`, `TicketCardPart`, `TicketRef`; поле `NotificationKind.coalesce: bool = False`; модель `core.Comment` и
   значение `StoredFile.Purpose.KNOWLEDGE` одной миграцией 0008; служба `core/services/comments.py`; тег шаблона
   `{% person_name %}` с «(уволен)» — backend/apps/core/ (extensions.py, models/, migrations/0008_*, services/comments.py,
   templatetags/) — (FR-426, FR-445, FR-432, FR-435, FR-401)
-- [ ] T-5201 [sonnet] ядро: проверки загрузки и выдача файла (план: «Вложения и картинки; проверки файлов в ядре»):
+- [x] T-5201 [sonnet] ядро: проверки загрузки и выдача файла (план: «Вложения и картинки; проверки файлов в ядре»):
   `core/services/uploads.py` (`is_executable`, `is_encrypted_archive`, `reject_reason`, `detect_image` с перехватом
   `DecompressionBombError`, `store` с `owner` пусто, `move(stored, status, signature="") -> list`, исключение `ImageTooLarge` для картинки-«бомбы» — решение 42),
   `core/services/file_response.py` (скачивание и показ картинки); `servicedesk/services/attachments.py` — реэкспорт
@@ -216,7 +216,7 @@ Opus по задачам» в конце файла.
   — право `staff.view`, `to_tsvector('russian', name)`, порядок `name, id`, путь — названия предков одним запросом на
   страницу, адрес `/structure/<id>/`; регистрация (порядок 40) — backend/apps/org/services/search_provider.py,
   backend/apps/org/extensions.py — (FR-441, FR-443, FR-444, FR-445)
-- [ ] T-5206 [sonnet] модели `knowledge` и миграции (план: «Модель данных» → «Приложение `knowledge`»): все модели таблицы
+- [x] T-5206 [sonnet] модели `knowledge` и миграции (план: «Модель данных» → «Приложение `knowledge`»): все модели таблицы
   плана с ограничениями и индексами (`UniqueConstraint(Lower("name"), "parent", nulls_distinct=False)` — поле позиционно;
   проверки `depth` и «`trash` ⇔ `deleted_at`»; GIN на двух векторах); миграция данных `knowledge 0002`: права
   `knowledge.edit` и `knowledge.manage`, выдача встроенным ролям по названию (`filter().first()`), рубрика «Общее»,
@@ -224,7 +224,7 @@ Opus по задачам» в конце файла.
   `unseed`. Первым делом миграция применяется на PostgreSQL 17 тестового контейнера; если
   ограничение рубрики не создаётся — остановиться, запасной ход плана (`name_key`) решает Opus — backend/apps/knowledge/
   (models.py, migrations/) — (FR-401, FR-406, FR-410, FR-418, FR-419, FR-422, FR-429, FR-437, FR-417)
-- [ ] T-5207 [sonnet] рендер и ПДн (план: «Рендер Markdown и безопасный вывод», «Защита от ПДн»): `services/render.py`
+- [x] T-5207 [sonnet] рендер и ПДн (план: «Рендер Markdown и безопасный вывод», «Защита от ПДн»): `services/render.py`
   (markdown-it-py, `validateLink`, правила `link_open` и `image` для `att:N`, классы выравнивания, `kb-scroll`,
   `maxNesting`, nh3 с фильтром атрибутов, `plain` до 100 000), `services/pdn.py` (`find` по токенам с переводами строк,
   `mask_plain`, `mask_resolution`), команда `kb_rerender` — backend/apps/knowledge/services/render.py, pdn.py,

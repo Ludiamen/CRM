@@ -519,8 +519,8 @@ def test_access_matrix_foreign_draft():
     kb.add_version(draft, text="Вторая версия")
     file_row = kb.attach_file(draft, "схема.png")
     for who in (kb.as_reader(), kb.as_editor()):
-        for path in kb.article_pages(draft) + [f"/kb/{draft.pk}/files/{file_row.pk}/",
-                                               f"/kb/{draft.pk}/images/{file_row.pk}/"]:
+        for path in list(kb.article_pages(draft)) + [f"/kb/{draft.pk}/files/{file_row.pk}/",
+                                                     f"/kb/{draft.pk}/images/{file_row.pk}/"]:
             assert who.client.get(path).status_code == 404, path
         _run_actions(who, draft, 404)
         comment = who.client.post(f"/kb/{draft.pk}/comments/", {"text": "Комментарий"})

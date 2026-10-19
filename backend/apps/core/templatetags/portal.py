@@ -3,6 +3,7 @@
 Названия живут в `services/audit_labels.py` (общие для страницы и выгрузки CSV); здесь — только фильтры.
 """
 from django import template
+from django.utils.html import format_html
 
 from apps.core.services import audit_labels, audit_search
 
@@ -38,3 +39,13 @@ def side_pairs(event, side):
 def object_label(kind, object_id=""):
     """Вид объекта по-русски: «сотрудник № 1»; незнакомый вид показывается как есть."""
     return audit_labels.object_label(kind, object_id)
+
+
+@register.simple_tag
+def person_name(user):
+    """Подпись сотрудника: ФИО; у уволенного — «ФИО (уволен)» в `span[data-dismissed]` (F3 Ф12)."""
+    if user is None:
+        return ""
+    if user.state == "dismissed":
+        return format_html('<span data-dismissed="true">{} (уволен)</span>', user.full_name)
+    return format_html("{}", user.full_name)
