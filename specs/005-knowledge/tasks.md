@@ -195,24 +195,24 @@ Opus по задачам» в конце файла.
   прежних имён, `reason_of` переводит коды ядра, пределы и коды сервис-деска прежние; подмены прежних имён в тестах
   среза 003 продолжают действовать (решение 6). Тесты вложений среза 003 зелёные без правок — backend/apps/core/services/,
   backend/apps/servicedesk/services/attachments.py — (FR-424, NFR-411)
-- [ ] T-5202 [sonnet] ядро: поставщик «Сотрудники» (план: «Сквозной поиск» → «Сотрудники», поставщики):
+- [x] T-5202 [sonnet] ядро: поставщик «Сотрудники» (план: «Сквозной поиск» → «Сотрудники», поставщики):
   `core/services/staff_search.py` — право `staff.view`, `state = active`, вектор полей `SEARCH_FIELDS` в запросе (почта
   целиком и частями, телефоны как есть и цифрами), отбрасывание стоп-слов одним запросом `numnode`, условие записи
   `staff_directory.search(слово)` с приведением «ё» → «е», порядок `full_name, pk`, строка с колонкой `unit` и фото;
   регистрация в `search_providers` (порядок 30) в `apps/core/apps.py: ready()`, как `notification_kinds` ядра —
   backend/apps/core/services/staff_search.py, backend/apps/core/apps.py — (FR-441, FR-443, FR-444, FR-445)
-- [ ] T-5203 [sonnet] `notify`: склейка (план: «Уведомления базы знаний» → «Правка `notify`»): в `dispatch.create` для
+- [x] T-5203 [sonnet] `notify`: склейка (план: «Уведомления базы знаний» → «Правка `notify`»): в `dispatch.create` для
   вида с `coalesce` — замки `pg_advisory_xact_lock(hashtextextended('<user_id>:<код>:<object_ref>', 0))` одним проходом
   до цикла по возрастанию ключа, пропуск черновика при непрочитанном того же вида и объекта, `held_users` по возрастанию
   `user_id`; виды без `coalesce` не меняются — backend/apps/notify/services/dispatch.py — (FR-435)
-- [ ] T-5204 [sonnet] сервис-деск (план: «Связь с заявками и карточка заявки», «Сквозной поиск» → поставщики):
+- [x] T-5204 [sonnet] сервис-деск (план: «Связь с заявками и карточка заявки», «Сквозной поиск» → поставщики):
   `services/public.py` (`ticket_brief`, `briefs` — только видимые, без данных заявителя); вызов точки
   `ticket_card_parts` в `ticket_card._context` и в `_card.html` (`section` после блока «Вложения» независимо от вложений,
   `closed_action` рядом с «Открыть заново», `comment_tool` под полем внутреннего комментария; исключение записи — в журнал
   приложения, карточка без части); поставщик «Заявки» `services/search_provider.py` (номер — отдельным запросом первым,
   смещение без него, `count` с потолком 1001) и регистрация (порядок 10) — backend/apps/servicedesk/ — (FR-427, FR-429,
   FR-432, FR-433, FR-441, FR-444, FR-445)
-- [ ] T-5205 [P] [sonnet] `org`: поставщик «Подразделения» (план: «Сквозной поиск» → поставщики): `services/search_provider.py`
+- [x] T-5205 [P] [sonnet] `org`: поставщик «Подразделения» (план: «Сквозной поиск» → поставщики): `services/search_provider.py`
   — право `staff.view`, `to_tsvector('russian', name)`, порядок `name, id`, путь — названия предков одним запросом на
   страницу, адрес `/structure/<id>/`; регистрация (порядок 40) — backend/apps/org/services/search_provider.py,
   backend/apps/org/extensions.py — (FR-441, FR-443, FR-444, FR-445)

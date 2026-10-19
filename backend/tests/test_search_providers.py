@@ -259,14 +259,17 @@ def _twenty_five_with_number_row(queue):
 
 
 def test_ticket_number_row_sits_above_twenty_main_rows_on_first_page():
-    """FR-442, FR-443: на первой странице строка по номеру стоит над двадцатью основными строками сверх `limit`
-    (21 строка), основные — по номеру вниз."""
+    """FR-442, FR-443: на первой странице строка по номеру (`pinned=True`) стоит над основными строками сверх `limit`;
+    основных поставщик выбирает `limit + 1` (раздел 17 пп. 49, 73: лишнюю отрезает сборка) — 22 строки, основные —
+    по номеру вниз."""
     queue = sd.make_queue()
     target, main = _twenty_five_with_number_row(queue)
-    numbers = _ticket_numbers(_rows(_holder(), "tickets", str(target.number), limit=20, offset=0))
-    assert len(numbers) == 21
+    rows = _rows(_holder(), "tickets", str(target.number), limit=20, offset=0)
+    numbers = _ticket_numbers(rows)
+    assert len(numbers) == 22
     assert numbers[0] == target.number
-    assert numbers[1:] == main[:20]
+    assert numbers[1:] == main[:21]
+    assert [row.pinned for row in rows] == [True] + [False] * 21
 
 
 def test_ticket_show_more_keeps_number_row_out_and_loses_no_row():
@@ -279,7 +282,8 @@ def test_ticket_show_more_keeps_number_row_out_and_loses_no_row():
     second = _ticket_numbers(_rows(viewer, "tickets", str(target.number), limit=20, offset=20))
     assert target.number not in second
     assert second == main[20:]
-    assert first[1:] + second == main and len(set(first + second)) == 26
+    # на странице один сборка показывает строку по номеру и 20 основных (раздел 17 пп. 49, 73)
+    assert first[1:21] + second == main and len(set(first + second)) == 26
 
 
 def test_ticket_count_capped_at_1001_shows_1000_plus():
@@ -487,7 +491,8 @@ def test_article_offset_crosses_step_boundary_without_loss_or_repeat(clock):
     for size in (1, 2, 3, 4):
         paged = []
         for offset in range(0, 8, size):
-            paged += _article_ids(_rows(reader, "articles", "монитор", limit=size, offset=offset))
+            # поставщик выбирает `limit + 1` строк (раздел 17 п. 49) — на страницу идут первые `size`
+            paged += _article_ids(_rows(reader, "articles", "монитор", limit=size, offset=offset))[:size]
         assert paged == full, size
 
 

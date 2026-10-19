@@ -115,6 +115,7 @@
         <input type="hidden" name="layout" value="{{ card_layout }}">
         <button class="btn btn-primary btn-sm" type="submit" data-action="ticket-reopen">Открыть заново</button>
       </form>
+      {% for part in card_parts.closed_action %}{{ part }}{% endfor %}
     </div>
     {% endif %}
 
@@ -147,6 +148,7 @@
       {% endif %}
     </section>
     {% endif %}
+    {% for part in card_parts.section %}{{ part }}{% endfor %}
   </div>
 
   <div class="ticket-card-feed" data-card-feed>
@@ -173,6 +175,7 @@
       <label class="form-label small mb-1">Внутренний комментарий
         <textarea class="form-control" name="text" rows="2"></textarea>
       </label>
+      {% for part in card_parts.comment_tool %}{{ part }}{% endfor %}
       <button class="btn btn-outline-primary btn-sm" type="submit">Добавить комментарий</button>
     </form>
 

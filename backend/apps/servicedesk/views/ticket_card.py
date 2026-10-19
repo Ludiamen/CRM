@@ -9,14 +9,18 @@
 Число запросов карточки не зависит от длины ленты: лента — `replies.feed` (не больше двух запросов), вложения — один
 запрос на заявку и раскладка по элементам в Python.
 """
+import logging
 import re
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
+from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_http_methods
 
+from apps.core import extensions
 from apps.core.models import StoredFile
 from apps.core.views.common import flash, is_fragment, render_page
 
@@ -35,6 +39,9 @@ SEND_LABELS = dict(TicketEntry.SendState.choices)
 MAIL_LABELS = {"queued": "в очереди", "sent": "отправлено", "failed": "не доставлено"}
 NONE_TEXT = "не задано"
 _DIGITS = re.compile(r"[0-9]{1,18}")
+CARD_PART_KINDS = ("section", "closed_action", "comment_tool")
+
+log = logging.getLogger("apps.servicedesk")
 
 get_user = get_user_model
 
@@ -214,6 +221,35 @@ def _queue_name(ticket) -> str:
     return Ticket.objects.select_related("queue").get(pk=ticket.pk).queue.name
 
 
+def _card_parts(request, ticket) -> dict:
+    """Части карточки от записей точки `ticket_card_parts` (FR-432), по видам и в порядке `order`.
+
+    Часть — фрагмент в оболочке `<div data-card-part data-part-kind>`; `None` и пустая строка — части нет. Исключение
+    записи пишется в журнал приложения (ключ записи и класс исключения, без текста) и часть пропускается.
+    """
+    parts = {kind: [] for kind in CARD_PART_KINDS}
+    records = []
+    for func in extensions.registered("ticket_card_parts"):
+        try:
+            records.extend(func())
+        except Exception as error:  # noqa: BLE001 — сбой чужой регистрации тоже не роняет карточку
+            log.error("Записи частей карточки заявки не получены: %s", type(error).__name__)
+    if not records:
+        return parts
+    ref = extensions.TicketRef(number=ticket.number, closed=_closed(ticket),
+                               has_resolution=bool(ticket.resolution.strip()))
+    for record in sorted(records, key=lambda item: item.order):
+        try:
+            html = record.render(request, ref)
+        except Exception as error:  # noqa: BLE001 — сбой чужой части не должен ронять карточку
+            log.error("Часть карточки заявки %s не выведена: %s", record.key, type(error).__name__)
+            continue
+        if html and record.kind in parts:
+            parts[record.kind].append(format_html('<div data-card-part="{}" data-part-kind="{}">{}</div>',
+                                                  record.key, record.kind, mark_safe(html)))
+    return parts
+
+
 def _context(request, ticket, layout: str, *, alert=None, dialog=None, reply_text: str = "") -> dict:
     """Всё, что нужно разметке карточки; заявка перечитывается одним запросом со связями."""
     user = request.user
@@ -238,6 +274,7 @@ def _context(request, ticket, layout: str, *, alert=None, dialog=None, reply_tex
         "statuses": [{"id": s.pk, "name": s.name, "selected": s.pk == ticket.status_id}
                      for s in dictionaries.manual_statuses()] if open_ticket else [],
         "consent": ticket.consent_at,
+        "card_parts": _card_parts(request, ticket),
     })
     return context
 

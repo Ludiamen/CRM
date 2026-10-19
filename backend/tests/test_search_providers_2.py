@@ -195,8 +195,9 @@ def test_staff_ordered_by_full_name():
     assert [r.title for r in rows] == ["Абрамов Борис", "Мышкин Глеб", "Мышкин Глеб", "Яблоков Антон"]
     assert [r.url for r in rows] == [f"/staff/{p.pk}/" for p in (abramov, twin_first, twin_second, yablokov)]
     assert _provider("staff").count(viewer, _parsed("грузчик")) == (4, False)
+    # поставщик выбирает `limit + 1` строк (раздел 17 п. 49): limit=2, offset=1 — три строки со второй
     assert [r.title for r in _provider("staff").search(viewer, _parsed("грузчик"), 2, 1)] == [
-        "Мышкин Глеб", "Мышкин Глеб"]
+        "Мышкин Глеб", "Мышкин Глеб", "Яблоков Антон"]
 
 
 def test_staff_without_org_uses_core_fields_only():

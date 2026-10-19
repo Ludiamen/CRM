@@ -191,12 +191,14 @@ class ParsedQuery:
 
 @dataclass(frozen=True)
 class SearchRow:
-    """Строка выдачи поиска; непустой `template` — свой шаблон строки с контекстом `context`."""
+    """Строка выдачи поиска; непустой `template` — свой шаблон строки с контекстом `context`; `pinned` — строка над
+    основными (строка заявки по номеру), в `limit` и `offset` не считается (CONTRACT-005, раздел 17 п. 73)."""
     title: str
     subtitle: str
     url: str
     template: str = ""
     context: dict | None = None
+    pinned: bool = False
 
 
 @dataclass(frozen=True)

@@ -12,7 +12,7 @@ def menu_items() -> list[dict]:
 
 
 def register_all() -> None:
-    """Регистрирует функции `org` в девяти точках ядра (вызывается из `OrgConfig.ready()`).
+    """Регистрирует функции `org` в девяти точках среза 002 и в `search_providers` (вызывается из `OrgConfig.ready()`).
 
     Регистрации добавляют задачи (функции точек — обычные функции модулей `apps.org…`):
     `home_notices` — T-2219; `role_sources` и `role_usage` — T-2213; `audit_labels` — T-2221;
@@ -21,7 +21,7 @@ def register_all() -> None:
     """
     from apps.core import extensions
     from apps.org import audit_labels, card, directory, stand
-    from apps.org.services import calendar, unit_roles
+    from apps.org.services import calendar, search_provider, unit_roles
 
     extensions.register("home_notices", calendar.calendar_notices)
     extensions.register("role_sources", unit_roles.role_sources)
@@ -32,3 +32,4 @@ def register_all() -> None:
     extensions.register("card_sections", card.card_sections)
     extensions.register("day_marks", calendar.month_marks)
     extensions.register("stand_reset", stand.stand_reset)
+    extensions.register("search_providers", search_provider.search_providers)

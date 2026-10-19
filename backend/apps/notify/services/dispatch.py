@@ -9,7 +9,7 @@ import logging
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import connection, transaction
 from django.utils import timezone
 
 from ..models import Delivery, Notification, UserNotifySettings
@@ -59,6 +59,23 @@ def _toast_show(kind, user_id: int, working: bool) -> bool:
     return "push" in prefs.channels_for(user_id, kind)
 
 
+def coalesce_key(user_id: int, kind_code: str, object_ref: str) -> str:
+    """Ключ замка склейки: `'<user_id>:<код вида>:<object_ref>'` (PLAN-005, «Правка `notify`»; CONTRACT-005, 4.1)."""
+    return f"{user_id}:{kind_code}:{object_ref}"
+
+
+def _lock_coalesce(kind, drafts, states) -> None:
+    """Транзакционные замки склейки одним проходом, по возрастанию строки ключа.
+
+    Хэш считает база (`hashtextextended`): `hash()` Python в каждом процессе свой. Единый порядок взятия исключает
+    взаимную блокировку двух событий об одной статье; замки живут до конца транзакции `create`."""
+    keys = {coalesce_key(d.user_id, kind.code, d.object_ref)
+            for d in drafts if d.object_ref and states.get(d.user_id) in RECIPIENT_STATES}
+    with connection.cursor() as cursor:
+        for key in sorted(keys):
+            cursor.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", [key])
+
+
 def create(kind_code: str, drafts) -> list[int]:
     """Записи и доставки по черновикам; номера записей в порядке создания. Неизвестный вид — `NotifyError`."""
     kind = kinds.get(kind_code)
@@ -75,9 +92,14 @@ def create(kind_code: str, drafts) -> list[int]:
     immediate: list[int] = []
     with transaction.atomic():
         held_users: list[int] = []
+        if kind.coalesce:
+            _lock_coalesce(kind, drafts, states)
         for draft in drafts:
             state = states.get(draft.user_id)
             if state not in RECIPIENT_STATES:
+                continue
+            if kind.coalesce and draft.object_ref and Notification.objects.filter(
+                    user_id=draft.user_id, kind=kind.code, object_ref=draft.object_ref, read_at__isnull=True).exists():
                 continue
             note = Notification.objects.create(user_id=draft.user_id, kind=kind.code, text=draft.text, url=draft.url,
                                                object_ref=draft.object_ref, created_at=now)
@@ -91,7 +113,7 @@ def create(kind_code: str, drafts) -> list[int]:
                 working = _external(kind, draft.user_id, note, now, delay, immediate, held_users)
             toasts[draft.user_id] = {"text": note.text, "url": f"/notifications/{note.pk}/open/", "tag": f"n-{note.pk}",
                                      "show": _toast_show(kind, draft.user_id, working)}
-        for user_id in dict.fromkeys(held_users):
+        for user_id in (sorted(set(held_users)) if kind.coalesce else dict.fromkeys(held_users)):
             plan_digest(user_id)
         if recipients:
             transaction.on_commit(lambda: _after_commit(recipients, toasts, immediate))
