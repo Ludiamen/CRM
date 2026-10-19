@@ -1,0 +1,177 @@
+<!-- snapshot:open -->
+<a class="slider-backdrop" href="/tickets/" aria-label="Закрыть панель" tabindex="-0"></a>
+<section class="slider-panel" role="dialog" aria-labelledby="slider-title" tabindex="-0">
+<header class="slider-header">
+<h0 id="slider-title">Заявка № 0</h0>
+<a class="slider-close" data-slider-close href="/tickets/" aria-label="Закрыть">&times;</a>
+</header>
+<div class="slider-body">
+<div class="ticket-card" data-ticket-card data-number="0" data-kind="new" data-layout="slider">
+<div class="ticket-card-fields" data-card-fields>
+<div class="card-fields">
+<div class="card-field" data-field="number"><span class="card-field-label" data-field-label>Номер</span> <span class="card-field-value">#0</span></div>
+<div class="card-field" data-field="subject"><span class="card-field-label" data-field-label>Тема</span> <span class="card-field-value">Не работает принтер</span></div>
+<div class="card-field" data-field="status"><span class="card-field-label" data-field-label>Статус</span> <span class="card-field-value">Новая</span></div>
+<div class="card-field" data-field="queue"><span class="card-field-label" data-field-label>Очередь</span> <span class="card-field-value">Отдел поддержки</span></div>
+<div class="card-field" data-empty="true" data-field="category"><span class="card-field-label" data-field-label>Категория</span> <span class="card-field-value">не заполнено</span></div>
+<div class="card-field" data-field="priority"><span class="card-field-label" data-field-label>Критичность</span> <span class="card-field-value">Средняя</span></div>
+<div class="card-field" data-empty="true" data-field="complexity"><span class="card-field-label" data-field-label>Сложность</span> <span class="card-field-value">не заполнено</span></div>
+<div class="card-field" data-empty="true" data-field="client-unit"><span class="card-field-label" data-field-label>Подразделение заявителя</span> <span class="card-field-value">не заполнено</span></div>
+<div class="card-field" data-field="source"><span class="card-field-label" data-field-label>Источник</span> <span class="card-field-value">Почта</span></div>
+<div class="card-field" data-field="requester"><span class="card-field-label" data-field-label>Заявитель</span> <span class="card-field-value">Заявитель Тестов</span></div>
+<div class="card-field" data-empty="false" data-field="requester-name"><span class="card-field-label" data-field-label>ФИО заявителя</span> <span class="card-field-value">Заявитель Тестов</span></div>
+<div class="card-field" data-field="requester-email"><span class="card-field-label" data-field-label>Почта заявителя</span> <span class="card-field-value">zayavitel@example.test</span></div>
+<div class="card-field" data-empty="true" data-field="assignee"><span class="card-field-label" data-field-label>Ответственный</span> <span class="card-field-value">не назначен</span></div>
+<div class="card-field" data-field="created"><span class="card-field-label" data-field-label>Создана</span> <span class="card-field-value"><time data-at="0-0-0T0:0:0+0:0">0.0.0 0:0</time></span></div>
+</div>
+<div class="card-actions">
+<form class="card-form" data-form="ticket-take" method="post" action="/tickets/0/take/" hx-post="/tickets/0/take/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+<input type="hidden" name="csrfmiddlewaretoken" value="">
+<input type="hidden" name="layout" value="slider">
+<button class="btn btn-primary btn-sm" type="submit" data-action="ticket-take">Взять себе</button>
+</form>
+<form class="card-form" data-form="ticket-assign" method="post" action="/tickets/0/assign/" hx-post="/tickets/0/assign/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+<input type="hidden" name="csrfmiddlewaretoken" value="">
+<input type="hidden" name="layout" value="slider">
+<label class="form-label small mb-0">Назначить ответственного
+<input class="form-control form-control-sm" type="search" name="q" autocomplete="off" placeholder="Начало имени" hx-get="/tickets/0/assignees/" hx-trigger="input changed delay:0ms, search" hx-target="#candidates-0" hx-swap="innerHTML">
+</label>
+<div class="candidates" id="candidates-0" data-candidates></div>
+<button class="btn btn-outline-primary btn-sm" type="submit">Назначить</button>
+</form>
+<p class="card-links">
+<a data-action="ticket-transfer" href="/tickets/0/transfer/" hx-get="/tickets/0/transfer/" hx-vals='{"layout": "slider"}' hx-target="#dialog-root" hx-swap="innerHTML">Передать в очередь</a>
+<a data-action="ticket-close" href="/tickets/0/close/" hx-get="/tickets/0/close/" hx-vals='{"layout": "slider"}' hx-target="#dialog-root" hx-swap="innerHTML">Закрыть заявку</a>
+</p>
+<form class="card-form" data-form="ticket-category" method="post" action="/tickets/0/category/" hx-post="/tickets/0/category/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+<input type="hidden" name="csrfmiddlewaretoken" value="">
+<input type="hidden" name="layout" value="slider">
+<label class="form-label small mb-0">Категория
+<select class="form-select form-select-sm" name="category">
+<option value="">Выберите категорию</option>
+<option value="0">Другое</option>
+</select>
+</label>
+<button class="btn btn-outline-primary btn-sm" type="submit">Сменить категорию</button>
+</form>
+<form class="card-form" data-form="ticket-fields" method="post" action="/tickets/0/fields/" hx-post="/tickets/0/fields/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+<input type="hidden" name="csrfmiddlewaretoken" value="">
+<input type="hidden" name="layout" value="slider">
+<label class="form-label small mb-0">Критичность
+<select class="form-select form-select-sm" name="priority">
+<option value="0">Низкая</option><option value="0" selected>Средняя</option><option value="0">Высокая</option>
+</select>
+</label>
+<label class="form-label small mb-0">Сложность
+<select class="form-select form-select-sm" name="complexity">
+<option value="" selected>Не задана</option>
+<option value="0">Лёгкий</option><option value="0">Средний</option><option value="0">Высокий</option>
+</select>
+</label>
+<label class="form-label small mb-0">Подразделение заявителя
+<select class="form-select form-select-sm" name="client_unit">
+<option value="" selected>Не задано</option>
+</select>
+</label>
+<label class="form-label small mb-0">ФИО заявителя
+<input class="form-control form-control-sm" type="text" name="requester_name" value="Заявитель Тестов" maxlength="0" autocomplete="off">
+</label>
+<div class="d-flex flex-wrap gap-0">
+<button class="btn btn-primary btn-sm" type="submit">Сохранить</button>
+<button class="btn btn-outline-secondary btn-sm" type="submit" name="save_to_record" value="0">Сохранить и в записи заявителя</button>
+</div>
+</form>
+<form class="card-form" data-form="ticket-status" method="post" action="/tickets/0/status/" hx-post="/tickets/0/status/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+<input type="hidden" name="csrfmiddlewaretoken" value="">
+<input type="hidden" name="layout" value="slider">
+<label class="form-label small mb-0">Статус
+<select class="form-select form-select-sm" name="status">
+<option value="">Выберите статус</option>
+<option value="0">В работе</option><option value="0">Ждёт ответа заявителя</option>
+</select>
+</label>
+<button class="btn btn-outline-primary btn-sm" type="submit">Сменить статус</button>
+</form>
+</div>
+</div>
+<div class="ticket-card-feed" data-card-feed>
+<form class="card-form" data-form="ticket-reply" method="post" action="/tickets/0/reply/" enctype="multipart/form-data" hx-post="/tickets/0/reply/" hx-encoding="multipart/form-data" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+<input type="hidden" name="csrfmiddlewaretoken" value="">
+<input type="hidden" name="layout" value="slider">
+<label class="form-label small mb-0">Ответ заявителю
+<textarea class="form-control" name="text" rows="0"></textarea>
+</label>
+<label class="form-label small mb-0">Файлы
+<input class="form-control form-control-sm" type="file" name="files" multiple>
+</label>
+<div class="form-check mb-0">
+<input class="form-check-input" type="checkbox" name="wait" value="0" id="reply_wait_0">
+<label class="form-check-label" for="reply_wait_0">Ждём ответа заявителя</label>
+</div>
+<button class="btn btn-primary btn-sm" type="submit">Отправить ответ</button>
+</form>
+<form class="card-form" data-form="ticket-comment" method="post" action="/tickets/0/comment/" hx-post="/tickets/0/comment/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+<input type="hidden" name="csrfmiddlewaretoken" value="">
+<input type="hidden" name="layout" value="slider">
+<label class="form-label small mb-0">Внутренний комментарий
+<textarea class="form-control" name="text" rows="0"></textarea>
+</label>
+<button class="btn btn-outline-primary btn-sm" type="submit">Добавить комментарий</button>
+</form>
+<ol class="feed" data-feed>
+</ol>
+</div>
+</div>
+</div>
+</section>
+<!-- snapshot:closed -->
+<a class="slider-backdrop" href="/tickets/" aria-label="Закрыть панель" tabindex="-0"></a>
+<section class="slider-panel" role="dialog" aria-labelledby="slider-title" tabindex="-0">
+<header class="slider-header">
+<h0 id="slider-title">Заявка № 0</h0>
+<a class="slider-close" data-slider-close href="/tickets/" aria-label="Закрыть">&times;</a>
+</header>
+<div class="slider-body">
+<div class="ticket-card" data-ticket-card data-number="0" data-kind="closed" data-layout="slider">
+<div class="ticket-card-fields" data-card-fields>
+<div class="card-fields">
+<div class="card-field" data-field="number"><span class="card-field-label" data-field-label>Номер</span> <span class="card-field-value">#0</span></div>
+<div class="card-field" data-field="subject"><span class="card-field-label" data-field-label>Тема</span> <span class="card-field-value">Не работает сканер</span></div>
+<div class="card-field" data-field="status"><span class="card-field-label" data-field-label>Статус</span> <span class="card-field-value">Решена</span></div>
+<div class="card-field" data-field="queue"><span class="card-field-label" data-field-label>Очередь</span> <span class="card-field-value">Отдел поддержки</span></div>
+<div class="card-field" data-empty="true" data-field="category"><span class="card-field-label" data-field-label>Категория</span> <span class="card-field-value">не заполнено</span></div>
+<div class="card-field" data-field="priority"><span class="card-field-label" data-field-label>Критичность</span> <span class="card-field-value">Средняя</span></div>
+<div class="card-field" data-empty="true" data-field="complexity"><span class="card-field-label" data-field-label>Сложность</span> <span class="card-field-value">не заполнено</span></div>
+<div class="card-field" data-empty="true" data-field="client-unit"><span class="card-field-label" data-field-label>Подразделение заявителя</span> <span class="card-field-value">не заполнено</span></div>
+<div class="card-field" data-field="source"><span class="card-field-label" data-field-label>Источник</span> <span class="card-field-value">Почта</span></div>
+<div class="card-field" data-field="requester"><span class="card-field-label" data-field-label>Заявитель</span> <span class="card-field-value">Заявитель Тестов</span></div>
+<div class="card-field" data-empty="false" data-field="requester-name"><span class="card-field-label" data-field-label>ФИО заявителя</span> <span class="card-field-value">Заявитель Тестов</span></div>
+<div class="card-field" data-field="requester-email"><span class="card-field-label" data-field-label>Почта заявителя</span> <span class="card-field-value">zayavitel@example.test</span></div>
+<div class="card-field" data-empty="true" data-field="assignee"><span class="card-field-label" data-field-label>Ответственный</span> <span class="card-field-value">не назначен</span></div>
+<div class="card-field" data-field="created"><span class="card-field-label" data-field-label>Создана</span> <span class="card-field-value"><time data-at="0-0-0T0:0:0+0:0">0.0.0 0:0</time></span></div>
+<div class="card-field" data-empty="true" data-field="closed-by"><span class="card-field-label" data-field-label>Закрытие</span> <span class="card-field-value">не заполнено</span></div>
+<div class="card-field" data-field="resolution"><span class="card-field-label" data-field-label>Решение</span> <span class="card-field-value">Заменили картридж</span></div>
+</div>
+<div class="card-actions">
+<form class="card-form" data-form="ticket-reopen" method="post" action="/tickets/0/reopen/" hx-post="/tickets/0/reopen/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+<input type="hidden" name="csrfmiddlewaretoken" value="">
+<input type="hidden" name="layout" value="slider">
+<button class="btn btn-primary btn-sm" type="submit" data-action="ticket-reopen">Открыть заново</button>
+</form>
+</div>
+</div>
+<div class="ticket-card-feed" data-card-feed>
+<form class="card-form" data-form="ticket-comment" method="post" action="/tickets/0/comment/" hx-post="/tickets/0/comment/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+<input type="hidden" name="csrfmiddlewaretoken" value="">
+<input type="hidden" name="layout" value="slider">
+<label class="form-label small mb-0">Внутренний комментарий
+<textarea class="form-control" name="text" rows="0"></textarea>
+</label>
+<button class="btn btn-outline-primary btn-sm" type="submit">Добавить комментарий</button>
+</form>
+<ol class="feed" data-feed>
+</ol>
+</div>
+</div>
+</div>
+</section>

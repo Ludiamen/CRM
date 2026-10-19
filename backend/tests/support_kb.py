@@ -151,11 +151,14 @@ def set_vectors(article) -> None:
     Конфигурация `russian`, как в разделе 9.4; у черновика и статьи в корзине векторы остаются `NULL`."""
     Article = support.model("knowledge.Article")
     tags = " ".join(article.tags.values_list("name", flat=True))
-    head = "setweight(to_tsvector('russian', %s), 'A') || setweight(to_tsvector('russian', %s), 'B')"
+    # Готовая строка запроса без подстановки в текст SQL (инвариант «sql-только-параметры»)
+    assert Article._meta.db_table == "knowledge_article"
     with connection.cursor() as cursor:
         cursor.execute(
-            f"UPDATE {Article._meta.db_table} SET search_head = {head}, "
-            f"search_full = {head} || setweight(to_tsvector('russian', left(%s, 100000)), 'C') WHERE id = %s",
+            "UPDATE knowledge_article SET "
+            "search_head = setweight(to_tsvector('russian', %s), 'A') || setweight(to_tsvector('russian', %s), 'B'), "
+            "search_full = setweight(to_tsvector('russian', %s), 'A') || setweight(to_tsvector('russian', %s), 'B') "
+            "|| setweight(to_tsvector('russian', left(%s, 100000)), 'C') WHERE id = %s",
             [article.title, tags, article.title, tags, article.plain, article.pk])
     article.refresh_from_db(fields=["search_head", "search_full"])
 
