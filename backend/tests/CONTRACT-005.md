@@ -34,9 +34,11 @@ T-5140). В колонке «Тесты» стоят задачи T-51NN или 
 - всё, что идёт «после фиксации» (события шины, постановка проверки файла, стирание файла с диска),
   проверяется внутри `with django_capture_on_commit_callbacks(execute=True):` (решение 18 задач; фикстура
   подключается параметром теста);
-- гонки (решение 18 задач) — два потока и `pytest.mark.django_db(transaction=True)`; помощник `support_kb`
-  даёт запуск двух потоков с общей точкой ожидания (`threading.Barrier`); таблицы среза очищаются в конце
-  теста; `transaction=True` берут только тесты гонок;
+- гонки (решение 18 задач с поправкой Opus, раздел 16): `django_db(transaction=True)` в проекте не работает
+  (`tests/conftest.py`: сброс таблиц требует прав владельца), а второй поток не видит незафиксированных данных теста;
+  поэтому гонки проверяются без потоков — последовательно (второй вызов с прежним `base_version` получает отказ),
+  ограничениями базы и по SQL через помощники `support_kb` на `CaptureQueriesContext`: `sql_of`, `assert_for_update`,
+  `assert_skip_locked`, `advisory_locks` (порядок и вид замков `pg_advisory_xact_lock[_shared]`);
 - ClamAV (решения 6 и 30 задач): тесты подменяют проверку строкой `apps.integrations.clamav.services.scan`
   (`monkeypatch.setattr("apps.integrations.clamav.services.scan", fake)`); подмен `monkeypatch` на
   `attachments` нет, на `uploads` — только одна точка подмены `uploads.write_file` (раздел 5.8, решение Opus по B-10); почему подмена строкой работает — раздел 1.2;
@@ -436,7 +438,7 @@ T-5140). В колонке «Тесты» стоят задачи T-51NN или 
 | Занятый замок предпросмотра | фикстура ставит в Valkey ключ `kb:preview:<user_id>` (клиент — тот же, что `apps/core/services/valkey.py`) на 10 секунд; никакой код подменять не надо | T-5102 |
 | Сбой версии при первом сохранении (а) | `monkeypatch.setattr("apps.knowledge.services.articles._create_version", …)` (решение Opus по З21) | T-5103 test_first_save_rolls_back_article_when_version_creation_fails |
 | Сбой рендера при предпросмотре (б) | представление вызывает `render.render` атрибутом модуля; тест подменяет `apps.knowledge.services.render.render` | T-5102 test_preview_lock_is_released_when_render_raises |
-| Замок строки статьи, занятый другой транзакцией (в) | помощник `support_kb.hold_article_lock(article_id)`: второе соединение в отдельном потоке держит замок строки | T-5108 test_nightly_skips_article_locked_by_another_transaction_skip_locked |
+| Замок строки статьи, занятый другой транзакцией (в) | без второго соединения (раздел 16): тест проверяет, что выборка статьи ночной очисткой идёт `SELECT … FOR UPDATE SKIP LOCKED` (`support_kb.assert_skip_locked`), и что после выборки повторно проверяются состояние и срок | T-5108 test_nightly_skips_article_locked_by_another_transaction_skip_locked |
 | Выключена только запись `staff_directory` (г) | помощник `support_kb.without_registrations("staff_directory")`; прочие регистрации остаются | T-5127 test_staff_without_org_uses_core_fields_only |
 | «Модуль выключен» | снятие регистраций `knowledge` из реестра точек на время теста (раздел 3.1); `INSTALLED_APPS` не перезагружается | T-5127, T-5130 |
 | Сбой записи файла при вложении (решение 41) | `uploads.store` пишет файл через функцию модуля `uploads.write_file(path, data)`; тест подменяет `apps.core.services.uploads.write_file` функцией, которая поднимает `OSError` (решение Opus по B-10: запрет решения 30 касается прежних тестов среза 003, а не новой точки подмены) | T-5114 test_attach_storage_write_error_keeps_article_and_shows_message_not_500 |
@@ -1165,3 +1167,13 @@ CONTRACT-004 в разделе 12 уточнял прежние, так здес
 - З13 — `uploads.write_file(path, data)` назван у `store` (3.5); единственная точка подмены на `uploads` — шапка и 5.8 согласованы.
 - З21 — сбой версии подменяется в `apps.knowledge.services.articles._create_version`; рендер предпросмотра, замок строки и выключение записи `staff_directory` — по строкам 5.8.
 - З22 — снимок `tests/fixtures/ticket_card_slice003.html` снимает T-5119 до правки `_card.html`.
+
+### Поправка Opus к решению 18 задач (гонки без потоков), 2026-10-19
+Решение 18 TASKS-005 («два потока с `django_db(transaction=True)`») невыполнимо в проекте: `tests/conftest.py` создаёт
+базу под владельцем, а тесты идут под ролью приложения, поэтому `transaction=True` не работает (тот же вывод — в
+CONTRACT-004), а второй поток со своим соединением не видит незафиксированных данных теста. Тесты гонок среза 005
+пишутся так: последовательные вызовы (устаревшая `base_version`, повторное нажатие), ограничения базы (уникальность
+(`article`, `number`)), и проверка SQL помощниками `support_kb` (`FOR UPDATE`, `SKIP LOCKED`, порядок и вид advisory-замков
+по строке ключа). Имена тестов не меняются; «две одновременные …» в имени теста читается как «два вызова, которые
+пересеклись бы во времени», и тест доказывает механизм, который это исключает. Отступление записывается в отчёт
+TASKS-005 (как отступления среза 004).
