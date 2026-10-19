@@ -115,3 +115,37 @@ TASKS-004.
 5. Проверки: все службы работают (здоровые, где есть проверка); `/login/` — 200; `fakebots` `/_test/health` — ok;
    ClamAV — PONG, `ClamAV 1.4.6/28157` (сигнатуры от 2026-10-18); сбор приёмки — 1624 из 1648 (24 теста Web Push сняты
    в круге firefox).
+
+### Красный прогон (T-5160) — 2026-10-19…20
+Разрешения владельца на сбросы стенда и перезапуск RQ-воркеров после переезда — `crm-work/slice005/owner-answers-2026-10-19-stand.md`.
+Файлы — `crm-work/slice005/stage2/red/` (run.sh, chain.sh, run-left.sh, classify.py; server.txt, server-reasons.txt,
+chromium.xml, classify-chromium.txt, rest-partial-1.txt, rest-left.xml, classify-rest-left.txt, e10-recheck.txt). Круг
+firefox+edge прерван паузой владельца (переезд) на 340 из 1074 и догнан с 341-го теста (ответ владельца 4); первые 340 разобраны
+по выводу `-q` против списка ids-rest.txt.
+
+**Сервер** (служба `test`, 24 мин): 1889 passed, 606 failed.
+- Срезы 001–004: красные ровно 26 тестов перечня T-5138 — по той же причине, что и новые: кода среза нет (нет двух точек
+  расширения, прав `knowledge.*`, пункта меню, трёх видов уведомлений и поля `coalesce`, задания `purge_trash`, location
+  `/kb/<N>/files/`). Остальные зелёные, в том числе тесты «Условно» анализа влияния (У1–У9: `test_sd_boundaries.py` без
+  `servicedesk`, `test_shell.py`, `test_sd_stand_restore.py`, `test_notify_audit.py` и др.).
+- Срез 005: 586 тестов. 580 красные по отсутствию кода — модели `knowledge.*` и `core.Comment` «ещё не реализованы» (цепочка
+  `LookupError` → `RuntimeError` → `KeyError` фабрики; 274), нет функций и модулей служб (`search.parse`, `core.services.uploads`,
+  `comments`, `knowledge.services.render/pdn/articles/tags/settings`, `servicedesk.services.public`, `knowledge.stand`), нет точки
+  `search_providers` и записи `SearchProvider`, нет поля `NotificationKind.coalesce`, видов и прав, маршрутов (404), шаблонов,
+  location nginx, команд `e2e_kb_*`; ошибок самих тестов нет (сводка причин — server-reasons.txt). Зелёные до кода — 6, и это
+  верно: они проверяют то, что уже есть после Этапа 1 и срезов 001–004 (`test_kb_deploy`: пины зависимостей, лицензии,
+  `INSTALLED_APPS`; `test_kb_boundaries`/`test_kb_tickets`: ядро, `org`, `servicedesk` не импортируют `knowledge`;
+  `test_core_uploads`: пределы сервис-деска 10 файлов и 50 МБ не изменились).
+
+**Приёмка** (1624 узла из 1648; 24 теста Web Push сняты в круге firefox):
+- chromium (4 ч 24 мин): срезы 001–004 — зелёные, кроме 4 тестов перечня T-5138 (`test_e04` ×3: строк 4, ждут 7; `test_e12`:
+  нет видов `knowledge.*` в каталоге) — причина та же, что у новых. Срез 005: 165 красные (страницы `/kb/`, `/search/` — 404;
+  нет зацепок `data-kb-*`, строки поиска в шапке, пункта меню, прав и видов), 1 зелёный до кода — `test_k06_ticket_internal_comments_stay_feed_records_and_cannot_be_edited_or_deleted`
+  (поведение ленты заявки есть со среза 003; тест закрепляет, что срез 005 его не меняет).
+- firefox+edge: срезы 001–004 — красные только 8 тестов перечня T-5138 (те же 4 в двух кругах) и один нестабильный:
+  `test_e10_nightly_job_deletes_notifications_older_than_retention_and_ticket_history_stays[firefox]` упал в первой части круга,
+  повтор 2026-10-20 — зелёный (e10-recheck.txt; в chromium и edge зелёный); 2 xfail — наблюдения решения 26 среза 004
+  (настоящий push-сервис в круге edge не ответил 404/410). Срез 005: 330 красные по тем же причинам, 2 зелёные — тот же `test_k06` (firefox, edge).
+
+**Эталон для регрессии Этапа 3:** зелёные сейчас тесты срезов 001–004 (сервер 1889 − 6 новых зелёных; приёмка — всё вне перечня
+T-5138) должны остаться зелёными после каждой задачи; 6 серверных и 3 приёмочных теста среза 005, зелёных до кода, — тоже.
