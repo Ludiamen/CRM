@@ -471,7 +471,8 @@ def test_author_who_is_also_subscriber_gets_single_my_article_changed(django_cap
 
 def test_subscription_on_rubric_and_on_subrubric_gives_one_notification(django_capture_on_commit_callbacks, caplog):
     """FR-435, FR-437: подписка на рубрику и на её подрубрику даёт подписчику одно уведомление
-    `rubric_subscription` при публикации статьи в подрубрике."""
+    `rubric_subscription` при публикации статьи в подрубрике; рубрика в тексте — ближайшая к статье подписка («VPN»,
+    раздел 17 п. 51 контракта)."""
     tree = kb.rubric_tree({"Сети": {"VPN": {}}})
     author, manager, subscriber = kb.as_editor().user, kb.as_manager().user, support.make_employee()
     draft = kb.make_draft(author=author, rubric=tree["VPN"])
@@ -479,12 +480,13 @@ def test_subscription_on_rubric_and_on_subrubric_gives_one_notification(django_c
     kb.subscribe(subscriber, tree["VPN"])
     _publish(manager, draft, django_capture_on_commit_callbacks)
     assert _got() == _want((subscriber, SUBSCRIPTION))
+    assert _notes(SUBSCRIPTION, subscriber).get().text.startswith("Статья в рубрике «VPN»: ")
     _no_bus_errors(caplog)
 
 
 def test_publish_notifies_rubric_subscriber_but_not_the_actor(django_capture_on_commit_callbacks, caplog):
     """FR-434, FR-435, FR-437: публикация уведомляет подписчика рубрики статьи, но не того, кто опубликовал, даже
-    если он сам подписан; текст — по рубрике самой статьи."""
+    если он сам подписан; текст — по рубрике подписки (здесь она же рубрика статьи)."""
     rubric = kb.make_rubric("Почта")
     author, manager, subscriber = kb.as_editor().user, kb.as_manager().user, support.make_employee()
     draft = kb.make_draft(author=author, rubric=rubric, title="Как настроить ящик")
@@ -502,7 +504,8 @@ def test_change_of_published_article_notifies_subscriber_of_ancestor_rubric_but_
         django_capture_on_commit_callbacks, caplog):
     """FR-434, FR-435: правка опубликованной статьи в подрубрике уведомляет подписчика рубрики-предка
     (`rubric_subscription`); автор, подписанный на ту же рубрику-предка, получает только `my_article_changed`;
-    сохранивший не получает ничего."""
+    сохранивший не получает ничего; рубрика в тексте подписчика — та, на которую он подписан («Сети», раздел 17 п. 51
+    контракта)."""
     tree = kb.rubric_tree({"Сети": {"VPN": {}}})
     author, editor, subscriber = kb.as_editor().user, kb.as_editor().user, support.make_employee()
     article = kb.make_published(author=author, rubric=tree["VPN"])
@@ -511,6 +514,7 @@ def test_change_of_published_article_notifies_subscriber_of_ancestor_rubric_but_
     kb.subscribe(editor, tree["Сети"])
     _save(editor, article, django_capture_on_commit_callbacks)
     assert _got() == _want((author, CHANGED), (subscriber, SUBSCRIPTION))
+    assert _notes(SUBSCRIPTION, subscriber).get().text.startswith("Статья в рубрике «Сети»: ")
     _no_bus_errors(caplog)
 
 

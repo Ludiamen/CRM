@@ -250,10 +250,12 @@ def test_portal_and_mail_texts_for_changed_kind_match_fr436_verbatim():
 
 
 def test_portal_and_mail_texts_for_rubric_subscription_kind_match_fr436_verbatim():
-    """FR-436: «Статья в рубрике «{рубрика}»: {заголовок}» — одинаков для публикации и изменения; рубрика — самой
-    статьи, а не подписанного предка (подписка на «Инфраструктура», статья в «Сети»)."""
+    """FR-436: «Статья в рубрике «{рубрика}»: {заголовок}» — одинаков для публикации и изменения; рубрика — та, через
+    подписку на которую пришло уведомление (раздел 17 п. 51 контракта, отменяет B-15; сценарий 9 п. 6 спеки): подписчик
+    «Инфраструктура» при статье в «Сети» видит «Инфраструктура»; текст строится на каждого получателя отдельно —
+    подписчик самой «Сети» видит «Сети»."""
     scene = _scene(title="Настройка VPN", rubric_name="Сети", parent_name="Инфраструктура")
-    expected = "Статья в рубрике «Сети»: Настройка VPN"
+    expected = "Статья в рубрике «Инфраструктура»: Настройка VPN"
 
     published = _draft(scene, SUBSCRIPTION, "knowledge.article_published")
     assert published.user_id == scene.fan.pk
@@ -262,7 +264,13 @@ def test_portal_and_mail_texts_for_rubric_subscription_kind_match_fr436_verbatim
     changed = _draft(scene, SUBSCRIPTION, "knowledge.article_changed")
     assert changed.user_id == scene.fan.pk
     assert changed.text == expected
-    assert "Инфраструктура" not in changed.text
+    assert "Сети" not in changed.text
+
+    near = support.make_employee(full_name="Нина Ближняя")
+    kb.subscribe(near, scene.rubric)
+    for event in ("knowledge.article_published", "knowledge.article_changed"):
+        texts = {draft.user_id: draft.text for draft in _drafts(scene, SUBSCRIPTION, event)}
+        assert texts == {scene.fan.pk: expected, near.pk: "Статья в рубрике «Сети»: Настройка VPN"}, event
 
 
 # --- внешние каналы (FR-436) --------------------------------------------------------------------------------
