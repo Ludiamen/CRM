@@ -40,6 +40,16 @@ KINDS = (  # § 3.2: код, название, порядок каталога; 
     (REPLY_FAILED, "Ответ заявителю не ушёл"),
 )
 MODULE = "Сервис-деск"
+RUBRIC = "knowledge.rubric_subscription"
+# срез 005: сотрудник из приёмки заведён с ролью «Сотрудник ИТ» (`knowledge.edit`, CONTRACT-005 3.6), поэтому в таблице
+# у участника очереди ещё три строки модуля «База знаний» (7.2: два вида — по `knowledge.edit`/`manage` или автору, «по подписке» — всем)
+KB_KINDS = (
+    ("knowledge.comment_on_my_article", "Новый комментарий к моей статье"),
+    ("knowledge.my_article_changed", "Мою статью изменили"),
+    (RUBRIC, "Статья в рубрике по подписке"),
+)
+KB_MODULE = "База знаний"
+ROWS = KINDS + KB_KINDS  # строки таблицы участника очереди в порядке каталога
 COLUMNS = ("На портале", "Почта", "Push в браузере", "Telegram", "MAX")  # § 15.5
 CHANNEL_ORDER = ["portal", "email", "push", "telegram", "max"]  # § 14.3
 SAVED = "Настройки уведомлений сохранены."  # § 15.4
@@ -257,15 +267,15 @@ def test_e04_my_notifications_table_shows_kinds_with_module_five_channel_columns
     expect(table.locator("th[data-channel]")).to_have_text(list(COLUMNS))
     heads = table.locator("th[data-channel]").evaluate_all("els => els.map(e => e.dataset.channel)")
     assert heads == CHANNEL_ORDER, heads
-    # п. 1: строки — виды сервис-деска в порядке каталога, у каждой название и модуль
+    # п. 1: строки — четыре вида сервис-деска и три вида базы знаний в порядке каталога, у каждой название и модуль
     rows = table.locator("tr[data-notify-kind]")
-    expect(rows).to_have_count(len(KINDS))
+    expect(rows).to_have_count(len(ROWS))
     codes = rows.evaluate_all("els => els.map(e => e.dataset.notifyKind)")
-    assert codes == [code for code, _title in KINDS], codes
-    for code, title in KINDS:
+    assert codes == [code for code, _title in ROWS], codes
+    for code, title in ROWS:
         row = table.locator(f'tr[data-notify-kind="{code}"]')
         expect(row.locator('[data-field="title"]')).to_have_text(title)
-        expect(row.locator('[data-field="module"]')).to_have_text(MODULE)
+        expect(row.locator('[data-field="module"]')).to_have_text(KB_MODULE if code.startswith("knowledge.") else MODULE)
         cells = row.locator("td[data-channel]")
         expect(cells).to_have_count(5)
         assert cells.evaluate_all("els => els.map(e => e.dataset.channel)") == CHANNEL_ORDER
@@ -333,7 +343,7 @@ def test_e04_unlinked_telegram_column_disabled_with_hint_and_push_column_disable
         tab.goto("/me/notifications/")
         table = tab.locator("table[data-notify-table]")
         expect(table).to_be_visible()
-        expect(table.locator("tr[data-notify-kind]")).to_have_count(len(KINDS))
+        expect(table.locator("tr[data-notify-kind]")).to_have_count(len(ROWS))
         for code, _title in KINDS:
             row = table.locator(f'tr[data-notify-kind="{code}"]')
             # п. 3: Telegram и MAX не привязаны — ячейки недоступны, флажка нет, подсказка «Привяжите …»
@@ -557,7 +567,7 @@ def test_e04_page_at_360px_width_has_no_horizontal_scroll(admin_page, employee, 
     tag = _tag()
     member = _staff(employee, tag, 1)
     queue_id, _name = _queue(page)
-    _members(page, queue_id, [member], tag)  # таблица с четырьмя строками — самый широкий случай
+    _members(page, queue_id, [member], tag)  # таблица с семью строками (четыре вида сервис-деска и три вида базы знаний) — самый широкий случай
     context = new_context(viewport={"width": 360, "height": 800}, storage_state=helpers_notify.session_state(member))
     narrow = context.new_page()
     narrow.goto("/me/notifications/")
@@ -566,7 +576,7 @@ def test_e04_page_at_360px_width_has_no_horizontal_scroll(admin_page, employee, 
     expect(narrow.locator('[data-section="push"]')).to_be_visible()
     narrow.wait_for_load_state("load")
     expect(narrow.locator('[data-narrow="cards"]').first).to_be_visible()
-    expect(narrow.locator("tr[data-notify-kind]")).to_have_count(len(KINDS))
+    expect(narrow.locator("tr[data-notify-kind]")).to_have_count(len(ROWS))
     # п. 9: горизонтальной прокрутки страницы нет
     assert helpers.no_horizontal_scroll(narrow), "на ширине 360 px появилась горизонтальная прокрутка"
 

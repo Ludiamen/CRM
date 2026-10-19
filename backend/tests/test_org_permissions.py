@@ -126,29 +126,36 @@ def unit_role_event(unit):
 # --- FR-118: права и их начальное распределение ----------------------------------------------
 
 def test_three_new_permissions_and_initial_distribution():
-    """FR-118, FR-275: всего тринадцать прав срезов 001–004 с русскими названиями; «Администратор портала» имеет все; «Руководитель» и «Сотрудник ИТ» —
-    только `staff.view`; `org.manage` и `calendar.manage` — только у администратора; набор меняется в интерфейсе без кода."""
+    """FR-118, FR-275: всего пятнадцать прав срезов 001–005 с русскими названиями; «Администратор портала» имеет все; «Руководитель» —
+    только `staff.view`; «Сотрудник ИТ» — `staff.view` и `knowledge.edit`; `org.manage`, `calendar.manage` и `knowledge.manage` —
+    только у администратора, `knowledge.edit` — у администратора и «Сотрудника ИТ»; набор меняется в интерфейсе без кода."""
+    from tests.support_kb import PERMISSIONS_005, TITLES_005
     from tests.support_notify import PERMISSIONS_004, TITLES_004
 
     Permission, Role = model("core.Permission"), model("core.Role")
     titles = dict(Permission.objects.values_list("code", "title"))
-    assert set(titles) == set(ALL_PERMISSIONS) | set(sd.PERMISSIONS_003) | set(PERMISSIONS_004), (
-        "ожидалось семь прав среза 001, три среза 002, два среза 003 и одно среза 004")
-    for code, title in {**NEW_PERMISSIONS, **TITLES_003, **TITLES_004}.items():
+    assert set(titles) == set(ALL_PERMISSIONS) | set(sd.PERMISSIONS_003) | set(PERMISSIONS_004) | set(PERMISSIONS_005), (
+        "ожидалось семь прав среза 001, три среза 002, два среза 003, одно среза 004 и два среза 005")
+    for code, title in {**NEW_PERMISSIONS, **TITLES_003, **TITLES_004, **TITLES_005}.items():
         assert titles[code] == title, code
     assert all(re.search("[а-яА-Я]", title) for title in titles.values())
     builtin = {r.name: set(r.permissions.values_list("code", flat=True)) for r in Role.objects.filter(is_builtin=True)}
-    assert builtin[support.ADMIN_ROLE] == set(ALL_PERMISSIONS) | set(sd.PERMISSIONS_003) | set(PERMISSIONS_004)
+    assert builtin[support.ADMIN_ROLE] == (
+        set(ALL_PERMISSIONS) | set(sd.PERMISSIONS_003) | set(PERMISSIONS_004) | set(PERMISSIONS_005))
     assert builtin[support.MANAGER_ROLE] == {"staff.view"}
-    assert builtin[support.STAFF_ROLE] == {"staff.view"}
-    holders = {code: sorted(name for name, codes in builtin.items() if code in codes) for code in NEW_PERMISSIONS}
+    assert builtin[support.STAFF_ROLE] == {"staff.view", "knowledge.edit"}
+    holders = {code: sorted(name for name, codes in builtin.items() if code in codes)
+               for code in tuple(NEW_PERMISSIONS) + PERMISSIONS_005}
     assert holders["org.manage"] == [support.ADMIN_ROLE] and holders["calendar.manage"] == [support.ADMIN_ROLE]
+    assert holders["knowledge.manage"] == [support.ADMIN_ROLE]
+    assert holders["knowledge.edit"] == sorted([support.ADMIN_ROLE, support.STAFF_ROLE])
     assert len(holders["staff.view"]) == 3
     admin = support.logged_in(support.make_admin())
-    created = admin.post("/roles/new/", {"name": "Организатор", "permissions": ["org.manage", "calendar.manage"]})
+    created = admin.post("/roles/new/", {"name": "Организатор", "permissions": [
+        "org.manage", "calendar.manage", "knowledge.edit", "knowledge.manage"]})
     assert created.status_code == 302
     assert set(Role.objects.get(name="Организатор").permissions.values_list("code", flat=True)) == {
-        "org.manage", "calendar.manage"}
+        "org.manage", "calendar.manage", "knowledge.edit", "knowledge.manage"}
 
 
 def test_staff_list_and_card_open_with_staff_view_or_accounts_manage():
@@ -638,8 +645,8 @@ def test_every_slice_view_requires_declared_permission_403():
 
 def test_menu_staff_structure_calendar_items_by_permission():
     """FR-123: пункты «Сотрудники», «Структура», «Календарь» — по правам (`staff.view` или `accounts.manage`; `staff.view`;
-    `staff.view` или `calendar.manage`); у пункта ключи `url`, `title`, `icon`, `order` (и `badge` только у «Заявок»), порядок 5, 10…60, 62, 65, 70
-    (62 — «Уведомления», `notify.manage`, срез 004);
+    `staff.view` или `calendar.manage`); у пункта ключи `url`, `title`, `icon`, `order` (и `badge` только у «Заявок»), порядок 5, 7, 10…60, 62, 65, 70
+    (7 — «База знаний», `/kb/`, без прав и без `badge`, срез 005; 62 — «Уведомления», `notify.manage`, срез 004);
     разметка меню совпадает с `menu_for`; недоступное скрыто."""
     from apps.core.services import permissions
 
@@ -667,11 +674,11 @@ def test_menu_staff_structure_calendar_items_by_permission():
         assert "/roles/" not in urls(user) and "/audit/" not in urls(user)
 
     items = permissions.menu_for(support.make_admin())
-    assert [i["url"] for i in items] == ["/tickets/", "/staff/", "/structure/", "/calendar/", "/roles/", "/audit/",
+    assert [i["url"] for i in items] == ["/tickets/", "/kb/", "/staff/", "/structure/", "/calendar/", "/roles/", "/audit/",
                                          "/settings/portal/", "/settings/notifications/", "/servicedesk/",
                                          "/settings/security/"]
-    assert [i["order"] for i in items] == [5, 10, 20, 30, 40, 50, 60, 62, 65, 70]
-    assert [i["title"] for i in items] == ["Заявки", "Сотрудники", "Структура", "Календарь", "Роли и права",
+    assert [i["order"] for i in items] == [5, 7, 10, 20, 30, 40, 50, 60, 62, 65, 70]
+    assert [i["title"] for i in items] == ["Заявки", "База знаний", "Сотрудники", "Структура", "Календарь", "Роли и права",
                                            "Журнал событий", "Настройки портала", "Уведомления", "Сервис-деск",
                                            "Безопасность и политика"]
     # `badge` есть только у «Заявок» (CONTRACT-003 § 3.2); у остальных ровно четыре ключа

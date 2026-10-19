@@ -153,7 +153,7 @@ def test_colleague_found_within_10_seconds(admin_page, employee):
     for what, query in (("часть ФИО", f"олков{tag}"), ("часть должности", f"етролог{tag}"), ("номер", number)):
         started = time.monotonic()
         page.goto("/staff/")
-        field = page.locator("input[name=q]")
+        field = page.locator("form#staff-filter input[name=q]")  # область формы списка: в шапке тоже есть `name=q` (срез 005)
         field.fill(query)
         field.press("Enter")
         page.wait_for_url(re.compile(r"[?&]q="))  # запрос поиска применился

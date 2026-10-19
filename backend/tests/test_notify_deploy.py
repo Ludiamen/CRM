@@ -316,9 +316,9 @@ def test_rq_queues_include_notify():
 
 def test_cron_notify_tick_interval_30_queue_notify_timeout_120():
     """FR-333: `config/cron.py` регистрирует `notify_tick` (функция `apps.notify.tasks.notify_tick`): очередь `notify`,
-    `interval=30` без строки `cron`, `job_timeout=120`; всего в файле шестнадцать вызовов `register` (§ 1.3, § 12.3)."""
+    `interval=30` без строки `cron`, `job_timeout=120`; всего в файле семнадцать вызовов `register` (§ 1.3, § 12.3; `purge_trash` среза 005 — семнадцатый)."""
     registrations = cron_registrations()
-    assert len(registrations) == 16, f"вызовов register {len(registrations)}, ожидается 16 (14 прежних и 2 среза 004)"
+    assert len(registrations) == 17, f"вызовов register {len(registrations)}, ожидается 17 (14 прежних, 2 среза 004 и 1 среза 005)"
     item = cron_by_name().get("notify_tick")
     assert item, "нет задания notify_tick"
     assert item["target"] == "apps.notify.tasks.notify_tick", f"функция задания: {item['target']}"
@@ -346,12 +346,12 @@ def test_cron_notify_retention_at_23_40_utc_queue_maintenance_timeout_600():
 # --- настройки ------------------------------------------------------------------------------------------------------
 
 def test_notify_is_last_in_installed_apps():
-    """FR-301: `apps.notify` — последний элемент `INSTALLED_APPS`, сразу после `apps.servicedesk`."""
+    """FR-301, CONTRACT-005 (решение 3): `apps.notify` стоит сразу после `apps.servicedesk`; за ним — `apps.knowledge`,
+    затем `apps.search` — последний элемент `INSTALLED_APPS`. Имя теста прежнее (TASKS-004, T-4130)."""
     from django.conf import settings
 
     apps = list(settings.INSTALLED_APPS)
-    assert apps[-1] == "apps.notify"
-    assert apps[-2] == "apps.servicedesk"
+    assert apps[-4:] == ["apps.servicedesk", "apps.notify", "apps.knowledge", "apps.search"]
 
 
 def test_asgi_has_protocol_type_router_origin_validator_and_session_auth():

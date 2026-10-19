@@ -42,11 +42,24 @@ KINDS = (  # § 3.2: код, название; модуль у всех четы
     ("servicedesk.reply_failed", "Ответ заявителю не ушёл"),
 )
 MODULE = "Сервис-деск"
+KB_MODULE = "База знаний"
+RUBRIC = "knowledge.rubric_subscription"
+# срез 005: сотрудник заведён с ролью «Сотрудник ИТ» (`knowledge.edit`), поэтому в таблице «Мои уведомления» у участника
+# очереди семь строк: четыре сервис-деска и три базы знаний; у администратора в таблице умолчаний — те же семь
+KB_KINDS = (
+    ("knowledge.comment_on_my_article", "Новый комментарий к моей статье"),
+    ("knowledge.my_article_changed", "Мою статью изменили"),
+    (RUBRIC, "Статья в рубрике по подписке"),
+)
 EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mandatory, внешний текст)
     NEW_IN_QUEUE: ("Новая заявка в моей очереди", MODULE, False, "Новая заявка в вашей очереди"),
     ASSIGNED: ("Мне назначили заявку", MODULE, False, "Вам назначена заявка"),
     "servicedesk.requester_replied": ("Заявитель ответил", MODULE, False, "Заявитель ответил по вашей заявке"),
     "servicedesk.reply_failed": ("Ответ заявителю не ушёл", MODULE, False, "Ответ заявителю не ушёл"),
+    "knowledge.comment_on_my_article": ("Новый комментарий к моей статье", KB_MODULE, False,
+                                        "Новый комментарий к вашей статье"),
+    "knowledge.my_article_changed": ("Мою статью изменили", KB_MODULE, False, "Вашу статью изменили"),
+    RUBRIC: ("Статья в рубрике по подписке", KB_MODULE, False, "Новая статья в рубрике по подписке"),
     "core.new_device": ("Вход с нового устройства", "Ядро", True, ""),
     "core.password_changed": ("Пароль изменён", "Ядро", True, ""),
     "core.second_factor_reset": ("Второй фактор сброшен", "Ядро", True, ""),
@@ -905,23 +918,24 @@ def test_e12_catalog_shows_four_service_desk_kinds_three_security_kinds_and_chan
         assert catalog.get(code) == expected, (code, catalog.get(code))
     assert set(catalog) == set(EXPECTED_CATALOG), sorted(set(catalog) ^ set(EXPECTED_CATALOG))
     assert len([c for c in catalog if c.startswith("servicedesk.")]) == 4
+    assert len([c for c in catalog if c.startswith("knowledge.")]) == 3
     assert sorted(c for c in catalog if c.startswith("core.")) == [
         "core.new_device", "core.password_changed", "core.second_factor_reset"]
-    # таблица «Мои уведомления»: четыре вида сервис-деска и две сводные строки
+    # таблица «Мои уведомления»: четыре вида сервис-деска, три вида базы знаний и две сводные строки
     member.page.goto("/me/notifications/")
-    for code, title in KINDS:
+    for code, title in KINDS + KB_KINDS:
         row = member.page.locator(f'table[data-notify-table] tr[data-notify-kind="{code}"]')
         expect(row).to_have_count(1)
         expect(row.locator('[data-field="title"]')).to_have_text(title)
-        expect(row.locator('[data-field="module"]')).to_have_text(MODULE)
-    # видимый результат: ровно четыре вида сервис-деска, видов безопасности и «Канал отвязан» среди строк видов нет
-    expect(member.page.locator("table[data-notify-table] tr[data-notify-kind]")).to_have_count(len(KINDS))
+        expect(row.locator('[data-field="module"]')).to_have_text(KB_MODULE if code.startswith("knowledge.") else MODULE)
+    # видимый результат: четыре вида сервис-деска и три вида базы знаний; видов безопасности и «Канал отвязан» среди строк видов нет
+    expect(member.page.locator("table[data-notify-table] tr[data-notify-kind]")).to_have_count(len(KINDS) + len(KB_KINDS))
     expect(member.page.locator('table[data-notify-table] tr[data-notify-kind^="core."], '
                                'table[data-notify-table] tr[data-notify-kind^="notify."]')).to_have_count(0)
-    # страница администратора: те же четыре вида (§ 14.4: все виды, кроме обязательных)
+    # страница администратора: все не обязательные виды — четыре сервис-деска и три базы знаний (§ 14.4)
     page.goto("/settings/notifications/")
-    expect(page.locator("table[data-defaults-table] tr[data-notify-kind]")).to_have_count(len(KINDS))
-    for code, _title in KINDS:
+    expect(page.locator("table[data-defaults-table] tr[data-notify-kind]")).to_have_count(len(KINDS) + len(KB_KINDS))
+    for code, _title in KINDS + KB_KINDS:
         expect(page.locator(f'table[data-defaults-table] tr[data-notify-kind="{code}"]')).to_have_count(1)
     expect(member.page.locator('tr[data-notify-fixed="security"]')).to_contain_text(FIXED_SECURITY)
     expect(member.page.locator('tr[data-notify-fixed="channel_unbound"]')).to_contain_text(FIXED_UNBOUND)

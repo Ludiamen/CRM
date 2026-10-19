@@ -29,6 +29,10 @@ NOTIFY_JOBS = {
     "notify_tick": ("notify", 30, None, 120),
     "notify_retention": ("maintenance", None, "40 23 * * *", 600),
 }
+KNOWLEDGE_JOBS = {
+    # имя: (очередь, интервал в секундах или None, строка cron по UTC или None, job_timeout); CONTRACT-005, раздел 1.2
+    "purge_trash": ("maintenance", None, "45 23 * * *", 600),
+}
 # время по Москве (час, минута) у ночных заданий — из таблицы «Расписание» § 1
 MOSCOW_NIGHT = {
     "purge_inbound": (2, 10), "anonymize_tickets": (2, 20),
@@ -201,6 +205,7 @@ REQUEST_LOCATION = r"=\s+/request/"
 TICKETS_LOCATION = r"~\s+\^/tickets/\(new/\|\[0-9\]\+/reply/\)\$"
 ATTACHMENTS_LOCATION = r"/protected/attachments/"
 INBOUND_LOCATION = r"/protected/inbound/"
+KB_FILES_LOCATION = r"~\s+\^/kb/\[0-9\]\+/files/\$"
 
 
 def _check_form_location(name: str, header: str) -> None:
@@ -378,7 +383,7 @@ def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_min
     """FR-210, NFR-206: `config/cron.py` регистрирует восемь новых заданий (имя = функция из
     `apps.servicedesk.tasks`) в очередях `inbox` и `maintenance`, не в `mail`; опрос ящика — каждую минуту; два задания
     среза 004 — `notify_tick` (очередь `notify`, `interval=30`, `job_timeout=120`) и `notify_retention` (`maintenance`,
-    `40 23 * * *`, 600); всего шестнадцать вызовов `register`; `scheduler` — одна копия с `rq cron`."""
+    `40 23 * * *`, 600); задание среза 005 — `purge_trash` (`maintenance`, `45 23 * * *`, 600); всего семнадцать вызовов `register`; `scheduler` — одна копия с `rq cron`."""
     registered = cron_by_name()
     for name, (queue, cron, _timeout) in NEW_JOBS.items():
         assert name in registered, f"в cron.py нет задания {name}"
@@ -387,14 +392,14 @@ def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_min
         assert registered[name]["function"] == name, f"{name}: функция {registered[name]['function']}"
     assert registered["poll_mailbox"]["cron"] == "* * * * *"
     assert registered["poll_mailbox"]["queue"] == "inbox"
-    for name, (queue, interval, cron, timeout) in NOTIFY_JOBS.items():
+    for name, (queue, interval, cron, timeout) in {**NOTIFY_JOBS, **KNOWLEDGE_JOBS}.items():
         assert name in registered, f"в cron.py нет задания {name}"
         assert registered[name]["function"] == name, f"{name}: функция {registered[name]['function']}"
         assert registered[name]["queue"] == queue, f"{name}: очередь {registered[name]['queue']}"
         assert registered[name]["interval"] == interval, f"{name}: interval={registered[name]['interval']!r}"
         assert registered[name]["cron"] == cron, f"{name}: cron={registered[name]['cron']!r}"
         assert registered[name]["job_timeout"] == timeout, f"{name}: job_timeout={registered[name]['job_timeout']!r}"
-    assert len(cron_registrations()) == 16, "шесть прежних, восемь среза 003 и два среза 004"
+    assert len(cron_registrations()) == 17, "шесть прежних, восемь среза 003, два среза 004 и один среза 005"
     source = (BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8")
     assert re.search(r"from apps\.servicedesk\.tasks import", source)
     scheduler = block("scheduler")
@@ -460,6 +465,13 @@ def test_nginx_executor_forms_regex_location_has_55m_and_repeats_proxy_directive
 
 
 @pytest.mark.parametrize("name", ["nginx.conf", "nginx.prod.conf"])
+def test_nginx_knowledge_files_regex_location_has_55m_and_repeats_proxy_directives(name):
+    """NFR-206, CONTRACT-005: `location ~ ^/kb/[0-9]+/files/$` — `55m` и повторённые proxy-директивы из `location /`
+    (загрузка файлов статьи базы знаний)."""
+    _check_form_location(name, KB_FILES_LOCATION)
+
+
+@pytest.mark.parametrize("name", ["nginx.conf", "nginx.prod.conf"])
 def test_nginx_protected_attachments_and_inbound_internal_with_octet_stream_and_nosniff(name):
     """NFR-206: перед `location /protected/` — `/protected/attachments/` и `/protected/inbound/` с `internal;`,
     своим `alias`, `default_type application/octet-stream;` и `nosniff`; общий `/protected/` для фото не изменён."""
@@ -491,17 +503,17 @@ def test_nginx_protected_attachment_locations_have_no_cache_control(name):
 
 
 def test_nginx_prod_config_matches_dev_for_new_locations():
-    """NFR-206: в `nginx.prod.conf` те же четыре новых `location` и те же директивы, что в `nginx.conf`, кроме значения
+    """NFR-206: в `nginx.prod.conf` те же пять новых `location` (четыре среза 003 и `/kb/<N>/files/` среза 005) и те же директивы, что в `nginx.conf`, кроме значения
     `X-Forwarded-Proto` (`$scheme` в dev, `$portal_proto` в prod); `location /` — образец."""
     dev, prod = nginx_text("nginx.conf"), nginx_text("nginx.prod.conf")
 
     def normal(items):
         return sorted(d for d in items if not d.startswith("proxy_set_header X-Forwarded-Proto"))
 
-    for header in (REQUEST_LOCATION, TICKETS_LOCATION, ATTACHMENTS_LOCATION, INBOUND_LOCATION, r"/"):
+    for header in (REQUEST_LOCATION, TICKETS_LOCATION, KB_FILES_LOCATION, ATTACHMENTS_LOCATION, INBOUND_LOCATION, r"/"):
         assert normal(directives(location_body(dev, header))) == normal(directives(location_body(prod, header))), header
     for text, value in ((dev, "$scheme"), (prod, "$portal_proto")):
-        for header in (REQUEST_LOCATION, TICKETS_LOCATION):
+        for header in (REQUEST_LOCATION, TICKETS_LOCATION, KB_FILES_LOCATION):
             assert f"proxy_set_header X-Forwarded-Proto {value}" in directives(location_body(text, header))
 
 

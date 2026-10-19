@@ -66,21 +66,25 @@ def test_core_without_registered_extensions_behaves_as_slice_001(no_extensions):
 
 
 def test_org_registers_all_nine_extension_points():
-    """FR-120, FR-122, FR-123: `POINTS` — девять имён среза 002, четыре среза 003 и два среза 004 (всего пятнадцать); `org` при запуске регистрирует по функции в каждой из девяти точек среза 002 и не регистрируется в двух точках среза 004; неизвестная точка — `ValueError`, повтор той же функции не дублируется, `empty()` очищает и возвращает прежнее, `clear()` очищает все точки."""
+    """FR-120, FR-122, FR-123: `POINTS` — девять имён среза 002, четыре среза 003, два среза 004 и два среза 005 (всего семнадцать); `org` при запуске регистрирует по функции в каждой из девяти точек среза 002, в `search_providers` («Подразделения») и не регистрируется в двух точках среза 004 и в `ticket_card_parts`; неизвестная точка — `ValueError`, повтор той же функции не дублируется, `empty()` очищает и возвращает прежнее, `clear()` очищает все точки."""
     from apps.core import extensions
+    from tests.support_kb import POINTS_005
     from tests.support_notify import POINTS_004
 
-    assert tuple(extensions.POINTS) == POINTS + POINTS_003 + POINTS_004
-    all_points = POINTS + POINTS_003 + POINTS_004
+    assert tuple(extensions.POINTS) == POINTS + POINTS_003 + POINTS_004 + POINTS_005
+    all_points = POINTS + POINTS_003 + POINTS_004 + POINTS_005
     for point in POINTS:
         funcs = extensions.registered(point)
         # в реестре могут быть и функции ядра; от `org` нужна хотя бы одна обычная функция модуля apps.org (доп. 39)
         org_funcs = [f for f in funcs
                      if getattr(f, "__module__", "").startswith("apps.org") and not isinstance(f, functools.partial)]
         assert org_funcs, f"org не зарегистрировал обычную функцию модуля apps.org в точке {point} (доп. 39)"
-    for point in POINTS_004:
+    for point in POINTS_004 + ("ticket_card_parts",):
         org_funcs = [f for f in extensions.registered(point) if getattr(f, "__module__", "").startswith("apps.org")]
-        assert not org_funcs, f"org не должен регистрироваться в точке {point} среза 004"
+        assert not org_funcs, f"org не должен регистрироваться в точке {point} среза 004 и в ticket_card_parts"
+    org_search = [f for f in extensions.registered("search_providers")
+                  if getattr(f, "__module__", "").startswith("apps.org") and not isinstance(f, functools.partial)]
+    assert len(org_search) == 1, "org регистрирует ровно одну обычную функцию в search_providers («Подразделения»)"
     with pytest.raises(ValueError):
         extensions.register("no_such_point", lambda: None)
     with pytest.raises(ValueError):
@@ -96,7 +100,7 @@ def test_org_registers_all_nine_extension_points():
             extensions.register(point, before[point][0])
         assert all(extensions.registered(point) for point in POINTS)
         extensions.clear()
-        assert all(extensions.registered(point) == [] for point in all_points), "clear() очищает все пятнадцать точек"
+        assert all(extensions.registered(point) == [] for point in all_points), "clear() очищает все семнадцать точек"
     # `stand_reset`: здесь проверяется только регистрация; очистку данных модуля проверяет стенд (T-2242)
     assert {point: extensions.registered(point) for point in all_points} == before
 

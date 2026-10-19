@@ -1,6 +1,6 @@
 """T-4101: каталог видов уведомлений и пять каналов (FR-301…FR-306, FR-321, FR-344). Сценарии 1, 3 и 4 спеки среза 004.
 
-Восемь видов трёх модулей (таблица контракта § 3.2), сборка каталога из точки `notification_kinds` при каждом вызове,
+Одиннадцать видов четырёх модулей (таблица контракта § 3.2 и CONTRACT-005, раздел 7.2), сборка каталога из точки `notification_kinds` при каждом вызове,
 повтор кода как отказ запуска, пять каналов и один столбец push, портал всегда включён, обязательные виды, запись
 `Notification`. Код среза на уровне модуля не импортируется: имена берутся внутри тестов (CONTRACT-004, шапка).
 """
@@ -30,6 +30,14 @@ TABLE = [
      ("servicedesk.reply_received",), "Заявитель ответил по вашей заявке"),
     ("servicedesk.reply_failed", "Ответ заявителю не ушёл", "Сервис-деск", 40, False, ALL_CHANNELS,
      ("servicedesk.reply_not_sent", "servicedesk.mail_failed"), "Ответ заявителю не ушёл"),
+    # виды модуля «База знаний» (CONTRACT-005, раздел 7.2): order 50–52 (решение 25), каналы «На портале» и «Почта»
+    ("knowledge.comment_on_my_article", "Новый комментарий к моей статье", "База знаний", 50, False,
+     ("portal", "email"), ("knowledge.comment_added",), "Новый комментарий к вашей статье"),
+    ("knowledge.my_article_changed", "Мою статью изменили", "База знаний", 51, False,
+     ("portal", "email"), ("knowledge.article_changed",), "Вашу статью изменили"),
+    ("knowledge.rubric_subscription", "Статья в рубрике по подписке", "База знаний", 52, False,
+     ("portal", "email"), ("knowledge.article_published", "knowledge.article_changed"),
+     "Новая статья в рубрике по подписке"),
     ("core.new_device", "Вход с нового устройства", "Ядро", 110, True, ("portal",), ("core.new_device",), ""),
     ("core.password_changed", "Пароль изменён", "Ядро", 120, True, ("portal",), ("core.password_changed",), ""),
     ("core.second_factor_reset", "Второй фактор сброшен", "Ядро", 130, True, ("portal",),
@@ -92,14 +100,15 @@ def _register_core_and_notify():
 # --- каталог: состав ---------------------------------------------------------------------------------
 
 def test_catalog_contains_eight_kinds_from_three_modules():
-    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно восемь видов, в порядке таблицы, из модулей «Сервис-деск»,
-    «Ядро» и «Уведомления»."""
+    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно одиннадцать видов, по `order` (сервис-деск 10–40, база знаний 50–52,
+    ядро 110–130, уведомления 200), из модулей «Сервис-деск», «База знаний», «Ядро» и «Уведомления»."""
     catalog = _kinds().catalog()
     assert [kind.code for kind in catalog] == [row[0] for row in TABLE]
-    assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления"}
+    assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления", "База знаний"}
     assert [kind.module for kind in catalog].count("Сервис-деск") == 4
     assert [kind.module for kind in catalog].count("Ядро") == 3
     assert [kind.module for kind in catalog].count("Уведомления") == 1
+    assert [kind.module for kind in catalog].count("База знаний") == 3
 
 
 def test_catalog_kind_codes_titles_and_modules_match_plan_table():
@@ -131,7 +140,7 @@ def test_kind_has_code_title_module_default_channels_mandatory_and_order():
     extensions = _ext()
     names = [field.name for field in dataclasses.fields(extensions.NotificationKind)]
     assert names == ["code", "title", "module", "events", "build", "external_text", "default_channels", "mandatory",
-                     "available", "still_relevant", "order"]
+                     "available", "still_relevant", "order", "coalesce"]
     bare = extensions.NotificationKind(code="t.bare", title="Голый", module="Тест")
     assert bare.events == ()
     assert bare.build("any.event", {}) == []
@@ -141,6 +150,7 @@ def test_kind_has_code_title_module_default_channels_mandatory_and_order():
     assert bare.available(object()) is True
     assert bare.still_relevant(1, "x:1") is True
     assert bare.order == 0
+    assert bare.coalesce is False
     with pytest.raises(dataclasses.FrozenInstanceError):
         bare.code = "t.other"
     with extensions.empty():
@@ -304,7 +314,10 @@ def test_portal_channel_is_always_on_for_every_kind():
     _mod("apps.notify.services.settings").update(actor=admin, defaults=defaults)
     user = _queue_member()
     table = prefs.effective(user)
-    assert [row.kind.code for row in table.rows] == [row[0] for row in TABLE if not row[4]]
+    by_code = _by_code(kinds.catalog())
+    expected = [row[0] for row in TABLE if not row[4] and by_code[row[0]].available(user)]
+    assert [row.kind.code for row in table.rows] == expected
+    assert "servicedesk.new_in_queue" in expected and "knowledge.rubric_subscription" in expected
     for row in table.rows:
         assert row.cells["portal"] is True, row.kind.code
         assert row.cells["email"] is False, row.kind.code

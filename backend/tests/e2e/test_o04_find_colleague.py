@@ -118,7 +118,7 @@ def test_o04_list_search_and_unit_filter_with_nested(admin_page, employee):
 
     def search(text: str) -> None:
         page.goto("/staff/")
-        field = page.locator("input[name=q]")
+        field = page.locator("form#staff-filter input[name=q]")  # область формы списка: в шапке тоже есть `name=q` (срез 005)
         field.fill(text)
         field.press("Enter")
 
@@ -134,7 +134,7 @@ def test_o04_list_search_and_unit_filter_with_nested(admin_page, employee):
 
     # п. 4: фильтр «Подразделение: Сеть» (вместе с вложенными) на выборке по метке теста
     page.goto("/staff/")
-    field = page.locator("input[name=q]")
+    field = page.locator("form#staff-filter input[name=q]")  # область формы списка: в шапке тоже есть `name=q` (срез 005)
     field.fill(tag)
     field.press("Enter")
     _only_rows(page, [emails[s] for s, _ in plan])

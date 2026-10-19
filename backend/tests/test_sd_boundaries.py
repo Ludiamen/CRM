@@ -20,11 +20,12 @@ from tests.support import model
 
 pytestmark = pytest.mark.django_db
 
-POINTS_15 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory", "card_sections",
+POINTS_17 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory", "card_sections",
              "day_marks", "home_notices", "stand_reset", "unit_usage", "file_purposes", "mail_renderers", "login_links",
-             "notification_kinds", "top_bar_items")
+             "notification_kinds", "top_bar_items", "search_providers", "ticket_card_parts")
+# `ticket_card_parts` servicedesk не регистрирует: её регистрирует knowledge, а servicedesk только вызывает (решение 26)
 SERVICEDESK_POINTS = ("menu_items", "unit_usage", "file_purposes", "mail_renderers", "login_links", "audit_labels",
-                      "card_sections", "stand_reset", "home_notices", "notification_kinds")
+                      "card_sections", "stand_reset", "home_notices", "notification_kinds", "search_providers")
 CORE_MENU_TITLES = ["Сотрудники", "Роли и права", "Журнал событий", "Настройки портала", "Безопасность и политика"]
 FOUR = ("servicedesk.ticket_created", "servicedesk.assignee_changed", "servicedesk.reply_received",
         "servicedesk.ticket_closed")
@@ -425,21 +426,23 @@ def test_four_servicedesk_events_are_published_by_ticket_services(bus_spy, djang
 # --- FR-292: точки расширения и меню (§ 3.2) ------------------------------------------------------------
 
 def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_links():
-    """FR-292: `POINTS` — пятнадцать имён в порядке контракта; `org` — только в девяти первых, `servicedesk` — в своих десяти
-    точках (девять прежних и `notification_kinds`) функциями `apps.servicedesk…`; зарегистрированное отдаёт то, что описано
+    """FR-292: `POINTS` — семнадцать имён в порядке контракта; `org` — в девяти первых и в `search_providers`, `servicedesk` — в своих
+    одиннадцати точках (девять прежних, `notification_kinds` и `search_providers`) функциями `apps.servicedesk…`; зарегистрированное отдаёт то, что описано
     в контракте, в том числе ровно четыре вида уведомлений с кодами CONTRACT-004 § 3.2."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_15
+    assert tuple(extensions.POINTS) == POINTS_17
 
     def owned(point, prefix):
         return [f for f in extensions.registered(point) if getattr(f, "__module__", "").startswith(prefix)]
 
-    for point in POINTS_15[:9]:
+    for point in POINTS_17[:9]:
         assert owned(point, "apps.org"), f"org не зарегистрирован в точке {point}"
-    for point in POINTS_15[9:]:
+    for point in POINTS_17[9:15]:
         assert not owned(point, "apps.org"), f"org не должен регистрироваться в точке {point}"
-    for point in POINTS_15:
+    assert not owned("ticket_card_parts", "apps.org"), "org не должен регистрироваться в точке ticket_card_parts"
+    assert len(owned("search_providers", "apps.org")) == 1, "org не зарегистрирован в точке search_providers"
+    for point in POINTS_17:
         if point in SERVICEDESK_POINTS:
             assert owned(point, "apps.servicedesk"), f"servicedesk не зарегистрирован в точке {point}"
         else:
@@ -469,6 +472,10 @@ def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_
     assert len(kinds) == 4 and all(isinstance(kind, extensions.NotificationKind) for kind in kinds)
     assert sorted(kind.code for kind in kinds) == sorted((
         "servicedesk.new_in_queue", "servicedesk.assigned", "servicedesk.requester_replied", "servicedesk.reply_failed"))
+
+    found = answers("search_providers")
+    assert [(p.key, p.title, p.order) for p in found] == [("tickets", "Заявки", 10)]
+    assert isinstance(found[0], extensions.SearchProvider)
 
     menu = {item["title"]: item for item in answers("menu_items")}
     assert set(menu) == {"Заявки", "Сервис-деск"}

@@ -27,12 +27,14 @@ ASSIGNED = "servicedesk.assigned"
 REPLIED = "servicedesk.requester_replied"
 FAILED = "servicedesk.reply_failed"
 SD_CODES = [NEW_IN_QUEUE, ASSIGNED, REPLIED, FAILED]
+RUBRIC = "knowledge.rubric_subscription"   # пятая строка таблицы: вид доступен всем (срез 005, CONTRACT-005, п. 52 раздела 17)
 OTHER_SD_CODES = [ASSIGNED, REPLIED, FAILED]
 TITLES = {
     NEW_IN_QUEUE: "Новая заявка в моей очереди",
     ASSIGNED: "Мне назначили заявку",
     REPLIED: "Заявитель ответил",
     FAILED: "Ответ заявителю не ушёл",
+    RUBRIC: "Статья в рубрике по подписке",
 }
 SECURITY_CODES = ["core.new_device", "core.password_changed", "core.second_factor_reset"]
 PAGE = "/me/notifications/"
@@ -221,14 +223,15 @@ def test_effective_table_rows_are_available_non_mandatory_kinds_in_order():
     prefs = _svc("prefs")
     user, _ = _queue_member()
     table = prefs.effective(user)
-    assert [row.kind.code for row in table.rows] == SD_CODES
+    assert [row.kind.code for row in table.rows] == SD_CODES + ["knowledge.rubric_subscription"]
     expected = [kind.code for kind in _svc("kinds").catalog() if not kind.mandatory and kind.available(user)]
     assert [row.kind.code for row in table.rows] == expected
     for row in table.rows:
         assert list(row.cells) == list(CHANNELS)
         assert row.cells["portal"] is True
     outsider = support.make_employee()
-    assert prefs.effective(outsider).rows == []
+    assert [row.kind.code for row in prefs.effective(outsider).rows] == ["knowledge.rubric_subscription"], (
+        "посторонний видит одну строку: вид «по подписке» доступен всем")
 
 
 def test_effective_table_excludes_security_kinds_and_channel_unbound():
@@ -296,7 +299,7 @@ def test_available_other_sd_kinds_false_without_tickets_menu_item():
     for user in (outsider, in_unmarked):
         for code in SD_CODES:
             assert catalog[code].available(user) is False, code
-        assert _svc("prefs").effective(user).rows == []
+        assert [row.kind.code for row in _svc("prefs").effective(user).rows] == ["knowledge.rubric_subscription"]
 
 
 # --- какие значения действуют (FR-322) --------------------------------------------------------------
@@ -323,7 +326,7 @@ def test_effective_uses_own_matrix_after_first_save():
     assert cells[ASSIGNED]["push"] is True and cells[ASSIGNED]["email"] is False
     assert cells[ASSIGNED]["portal"] is True
     matrix = _row_of(user).matrix
-    assert set(matrix) == set(SD_CODES)
+    assert set(matrix) == set(SD_CODES) | {RUBRIC}
     assert "push" in matrix[ASSIGNED] and "email" not in matrix[ASSIGNED]
     assert all("portal" not in channels for channels in matrix.values())
 
@@ -468,7 +471,7 @@ def test_my_notifications_page_has_five_channel_columns_portal_checked_and_fixed
     assert [head.attrs["data-channel"] for head in heads] == list(CHANNELS)
     assert [head.text for head in heads] == [HEADERS[channel] for channel in CHANNELS]
     rows = _kind_rows(root)
-    assert list(rows) == SD_CODES
+    assert list(rows) == SD_CODES + [RUBRIC]
     for row in rows.values():
         cells = row.find_all("td", {"data-channel": True})
         assert [cell.attrs["data-channel"] for cell in cells] == list(CHANNELS)
@@ -485,7 +488,7 @@ def test_my_notifications_page_rows_show_kind_title_and_module():
     user, _ = _queue_member()
     for code, row in _kind_rows(_page(user)).items():
         assert row.one(None, {"data-field": "title"}).text == TITLES[code]
-        assert row.one(None, {"data-field": "module"}).text == "Сервис-деск"
+        assert row.one(None, {"data-field": "module"}).text == ("База знаний" if code == RUBRIC else "Сервис-деск")
 
 
 def test_my_notifications_page_push_is_one_column_for_both_push_kinds():
@@ -499,7 +502,7 @@ def test_my_notifications_page_push_is_one_column_for_both_push_kinds():
         assert len(row.find_all("td", {"data-channel": "push"})) == 1
         assert len(row.find_all("td", {"data-channel": True})) == 5
     values = [box.attrs.get("value", "") for box in table.find_all("input", {"name": "cell"})]
-    assert sorted(value.split(":", 1)[1] for value in values if value.endswith(":push")) == ["push"] * 4
+    assert sorted(value.split(":", 1)[1] for value in values if value.endswith(":push")) == ["push"] * 5
     assert not [value for value in values if value.endswith(":webpush")]
 
 
@@ -541,7 +544,7 @@ def test_my_notifications_page_push_column_carries_permission_hint_and_script_ho
 
     def check(root, available, reason, hint):
         assert len(root.find_all("button", {"data-action": "push-permission"})) == 1
-        assert len(push_cells(root)) == 4
+        assert len(push_cells(root)) == 5
         for code, cell in push_cells(root).items():
             assert cell.attrs.get("data-available") == available
             assert cell.attrs.get("data-reason", "") == reason
