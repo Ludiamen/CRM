@@ -129,7 +129,8 @@ def _scenario(bots):
     user = _member()
     table = _current_table(user)
     flipped = {code: list(channels) for code, channels in table.items()}
-    first = sorted(flipped)[0]
+    # срез 005: первым по алфавиту стал вид базы знаний только с «Почтой» — берём вид сервис-деска
+    first = sorted(code for code in flipped if code.startswith("servicedesk."))[0]
     flipped[first] = [c for c in flipped[first] if c != "email"] or ["email"]
     assert prefs.save(user, table=flipped, ip=IP) is True
     assert prefs.save(user, quiet_mode="own", own_days=[0, 1, 2], own_start=time(22, 0), own_end=time(7, 0),

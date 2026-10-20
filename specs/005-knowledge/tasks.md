@@ -235,7 +235,7 @@ Opus по задачам» в конце файла.
   (`purge_trash`: порции, `skip_locked`, сбои, теги под исключительным замком; задание `tasks.purge_trash` лишь вызывает
   её), `settings.py` (срок 7–365), журнал; других заданий хранения нет (FR-448) — backend/apps/knowledge/services/,
   backend/apps/knowledge/tasks.py — (FR-401, FR-404, FR-407…FR-417, FR-447, FR-448, FR-449, NFR-410, NFR-411)
-- [ ] T-5209 [sonnet] рубрики, теги, подписки (план: «Рубрики, теги, главная», «Уведомления базы знаний» → «Подписка»):
+- [x] T-5209 [sonnet] рубрики, теги, подписки (план: «Рубрики, теги, главная», «Уведомления базы знаний» → «Подписка»):
   `rubrics.py` (замок дерева, глубина, «Общее», журнал), `tags.py`, `subscriptions.py`, подписчик `core.user_dismissed` в
   `apps.py: ready()` — backend/apps/knowledge/services/, backend/apps/knowledge/apps.py — (FR-418, FR-419, FR-420, FR-437,
   FR-438)
@@ -258,7 +258,7 @@ Opus по задачам» в конце файла.
   `static/js/kb-link.js` — backend/apps/knowledge/services/links.py, views/, backend/templates/knowledge/,
   backend/static/js/kb-link.js, backend/apps/knowledge/extensions.py, backend/apps/knowledge/urls.py,
   backend/templates/_assets.html — (FR-427, FR-428, FR-429, FR-430, FR-432, FR-433)
-- [ ] T-5213 [sonnet] виды уведомлений (план: «Уведомления базы знаний»): `notify_kinds.py` (три вида, `build` с
+- [x] T-5213 [sonnet] виды уведомлений (план: «Уведомления базы знаний»): `notify_kinds.py` (три вида, `build` с
   правилом «одно событие — одно уведомление», `available`, `still_relevant`, тексты с обрезкой до 100, `external_text`,
   `coalesce`, `order` 50–52) и регистрация в `notification_kinds` — backend/apps/knowledge/notify_kinds.py,
   backend/apps/knowledge/extensions.py — (FR-433, FR-434, FR-435, FR-436, FR-437)
