@@ -474,6 +474,8 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .kb-body th, .kb-body td { border: 1px solid var(--portal-border, #dee2e6); padding: 0.25rem 0.5rem; }
 .kb-body pre { margin: 0; }
 .kb-scroll { max-width: 100%; overflow-x: auto; }
+/* у `pre` Bootstrap своя прокрутка (`overflow: auto`) — прокручивается обёртка `kb-scroll` (контракт 6.1) */
+.kb-scroll pre { overflow: visible; }
 .kb-al-left { text-align: left; }
 .kb-al-center { text-align: center; }
 .kb-al-right { text-align: right; }
@@ -546,4 +548,6 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 .search-row[data-selected="true"] a { color: #0b3a8a; }
 @media (max-width: 575.98px) {
   .search-popup { position: fixed !important; top: var(--top-bar-height); left: 0.5rem !important; right: 0.5rem !important; width: auto; max-width: none; }
+  .app-top-bar [data-search-bar] { width: 6.5rem; min-width: 0; margin-right: 0.25rem !important; }
+  .app-top-bar [data-search-bar] input { width: 100%; }
 }

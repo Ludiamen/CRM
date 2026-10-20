@@ -38,7 +38,7 @@
     </div>
     <div data-kb-panel="text">
       <label class="visually-hidden" for="kb-text">Текст статьи</label>
-      <textarea class="form-control kb-textarea" id="kb-text" name="text" rows="18">{{ values.text }}</textarea>
+      <textarea class="form-control kb-textarea" id="kb-text" name="text" rows="18" spellcheck="false">{{ values.text }}</textarea>
       {% if errors.text %}<div class="invalid-feedback d-block" data-error="text" data-code="{{ errors.text.code }}">{{ errors.text.text }}</div>{% endif %}
     </div>
     <div data-kb-panel="preview" hidden></div>

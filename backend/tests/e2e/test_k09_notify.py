@@ -411,7 +411,9 @@ def test_k09_my_notifications_shows_three_kb_kinds_per_channel_for_editor_or_aut
     expect(_cell(editor.page, KIND_COMMENT, "email")).not_to_be_checked()
     expect(_cell(editor.page, KIND_CHANGED, "email")).to_be_checked()
     expect(_cell(editor.page, KIND_RUBRIC, "email")).to_be_checked()
-    expect(_cell(editor.page, KIND_COMMENT, "portal")).to_be_checked()
+    # «На портале» закреплён: флажок отмечен и недоступен, без `name`/`value` (CONTRACT-004 14.3)
+    expect(editor.page.locator(f'table[data-notify-table] tr[data-notify-kind="{KIND_COMMENT}"] '
+                               'td[data-channel="portal"][data-locked="1"] input[type=checkbox]')).to_be_checked()
     # п. 7: автор хотя бы одной статьи, потерявший право, по-прежнему видит три вида
     _rubric_id, rubric = _rubric(admin_page)
     author = _editor(employee, "Автор")
@@ -588,7 +590,9 @@ def test_k09_fresh_install_defaults_portal_and_mail_on_for_three_kinds_and_admin
         expect(portal.locator("input[type=checkbox]")).to_be_checked()
         expect(_cell(editor.page, code, "email")).to_be_checked()
         for channel in ("push", "telegram", "max"):
-            expect(_cell(editor.page, code, channel)).not_to_be_checked()
+            # у выключенного канала флажка нет (ячейка `data-available="0"`, CONTRACT-004) — отмеченных быть не должно
+            cell = editor.page.locator(f'table[data-notify-table] tr[data-notify-kind="{code}"] td[data-channel="{channel}"]')
+            expect(cell.locator("input:checked")).to_have_count(0)
     try:
         # п. 13: администратор меняет значение данными (снимает «Почту» у «Нового комментария»)
         admin_set_comment_email(not original_state)

@@ -44,9 +44,9 @@ def not_found(request):
 def list_response(request, queryset, page_template: str, context: dict):
     """Порция списка: `PAGE_SIZE` строк с `offset`; «Показать ещё» — если есть следующая порция."""
     offset = offset_of(request)
-    rows = list(queryset.select_related("rubric")[offset:offset + PAGE_SIZE + 1])
+    rows = list(queryset.select_related("rubric").prefetch_related("tags")[offset:offset + PAGE_SIZE + 1])
     more = len(rows) > PAGE_SIZE
-    context = {**context, "rows": rows[:PAGE_SIZE], "next_offset": offset + PAGE_SIZE if more else None,
+    context = {**context, "show_tags": True, "rows": rows[:PAGE_SIZE], "next_offset": offset + PAGE_SIZE if more else None,
                "more_path": request.path, "more_query": context.get("more_query", "")}
     if is_fragment(request) and "offset" in request.GET:
         return fragment_response(request, "knowledge/_list_rows.html", context)

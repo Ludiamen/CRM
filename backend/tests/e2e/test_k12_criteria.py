@@ -487,7 +487,10 @@ def test_k12_preview_of_ordinary_200000_chars_text_is_shown_within_one_second(ad
     def measure() -> float:
         # свежая форма на каждый замер: прежний предпросмотр не должен подменить новый
         open_new_article(page)
-        article_form(page).locator("textarea[name=text]").fill(text)
+        # одно присвоение и событие `input`: `fill` 200 000 знаков на стенде идёт 35–50 с и упирается в свой предел
+        # (замер — время предпросмотра, а не ввода)
+        article_form(page).locator("textarea[name=text]").evaluate(
+            "(el, v) => { el.value = v; el.dispatchEvent(new Event('input', {bubbles: true})); }", text)
         started = time.perf_counter()
         with page.expect_response(lambda r: "/kb/preview/" in r.url, timeout=20_000) as info:
             page.locator('button[data-kb-tab="preview"]').click()

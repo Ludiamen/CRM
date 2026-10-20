@@ -4,6 +4,7 @@
 (function () {
   var TAG_DELAY = 250;
   var tagTimer = null;
+  var pendingImage = null; /* номера картинок до щелчка «Картинка»: новая строка после загрузки получит вставку */
 
   function area(scope) {
     var form = scope.closest ? scope.closest('form[data-form="kb-article"]') : null;
@@ -81,6 +82,14 @@
     }
   }
 
+  function knownImageIds() {
+    var ids = [];
+    document.querySelectorAll('[data-kb-files] li[data-file-id]').forEach(function (row) {
+      if (row.getAttribute('data-image')) { ids.push(row.getAttribute('data-file-id')); }
+    });
+    return ids;
+  }
+
   function showTab(root, name) {
     root.querySelectorAll('[data-kb-panel]').forEach(function (panel) {
       panel.hidden = panel.getAttribute('data-kb-panel') !== name;
@@ -125,7 +134,15 @@
     if (md && !md.disabled) {
       var field = area(md);
       if (!field) { return; }
-      if (md.getAttribute('data-md') === 'image') { pickImage(field); } else { applyMarkdown(md.getAttribute('data-md'), field); }
+      if (md.getAttribute('data-md') === 'image') {
+        var pic = document.querySelector('form[data-form="kb-attach"] input[name="file"]');
+        if (pic) {
+          pendingImage = {ids: knownImageIds()};
+          pic.click();
+        } else {
+          pickImage(field);
+        }
+      } else { applyMarkdown(md.getAttribute('data-md'), field); }
       return;
     }
     var tab = target.closest('button[data-kb-tab]');
@@ -136,6 +153,7 @@
     var attach = target.closest('button[data-action="kb-attach"]');
     if (attach && !attach.disabled) {
       var file = document.querySelector('form[data-form="kb-attach"] input[name="file"]');
+      pendingImage = null;
       if (file) { file.click(); }
       return;
     }
@@ -166,6 +184,22 @@
     if (elt && elt.getAttribute && elt.getAttribute('data-kb-tab') === 'preview') {
       showTab(elt.closest('[data-kb-editor]'), 'preview');
     }
+  });
+
+  /* После загрузки картинки список вложений заменён целиком: в текст идёт `![имя](att:N)` для новой строки-картинки. */
+  document.addEventListener('htmx:afterSwap', function () {
+    if (!pendingImage) { return; }
+    var rows = document.querySelectorAll('[data-kb-files] li[data-file-id]');
+    for (var i = 0; i < rows.length; i++) {
+      var id = rows[i].getAttribute('data-file-id');
+      if (rows[i].getAttribute('data-image') && pendingImage.ids.indexOf(id) < 0) {
+        var text = area(document.body);
+        var nameNode = rows[i].querySelector('[data-field="name"]');
+        if (text && nameNode) { insertText(text, attachmentMarkup(nameNode, true)); }
+        break;
+      }
+    }
+    pendingImage = null;
   });
 
   document.addEventListener('input', function (event) {

@@ -345,7 +345,8 @@ def test_k01_published_article_has_no_return_to_draft_button(admin_page, employe
     # п. 9: в форме правки
     open_edit(page, article_id)
     expect(page.get_by_text("Вернуть в черновик")).to_have_count(0)
-    expect(page.get_by_role("button", name="Вернуть")).to_have_count(0)
+    # точное имя: без exact под «Вернуть» попадает «Свернуть меню» (aria-label кнопки меню)
+    expect(page.get_by_role("button", name="Вернуть", exact=True)).to_have_count(0)
 
 
 def test_k01_text_over_200000_chars_or_title_over_200_chars_is_refused_with_limit_shown(admin_page, employee):

@@ -6,6 +6,7 @@
 import pathlib
 
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.shortcuts import render
 from django.views.decorators.http import require_POST
@@ -65,6 +66,8 @@ def _gone_response(request, article_id):
 def file_attach(request, article_id):
     upload = request.FILES.get("file")
     if upload is None:
+        if not access.can_edit(request.user):
+            raise PermissionDenied
         return HttpResponseBadRequest("Файл не передан")
     try:
         file_service.attach(request.user, article_id, upload)

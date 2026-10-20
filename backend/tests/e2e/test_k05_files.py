@@ -116,7 +116,9 @@ def _encrypted_zip() -> bytes:
 
 def _executable() -> bytes:
     """Начало исполняемого файла Windows (PE): по содержимому это программа, что бы ни говорило имя."""
-    return b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00" + b"\x00" * 48 + b"This program cannot be run in DOS mode.\r\n" + b"\x00" * 256
+    # e_lfanew (0x3C) указывает на подпись `PE\0\0` в 0x40 — так её ищет проверка ядра (CONTRACT-005 3.5: PE)
+    return (b"MZ\x90\x00\x03\x00\x00\x00\x04\x00\x00\x00\xff\xff\x00\x00" + b"\x00" * 44 + b"\x40\x00\x00\x00"
+            + b"PE\x00\x00" + b"\x00" * 20 + b"This program cannot be run in DOS mode.\r\n" + b"\x00" * 256)
 
 
 def _file_state_fresh(page, article_id, file_id) -> str:

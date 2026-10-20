@@ -551,8 +551,9 @@ def test_e05_two_devices_removing_one_stops_push_to_it_and_other_still_gets_push
         _new_mail("Не работает монитор")
         shown = helpers_notify.wait_service_worker_notifications(second, count=1, timeout=PUSH_WAIT)
         assert _titles(shown) == [EXTERNAL_SUBJECT], _titles(shown)
-        assert helpers_notify.no_service_worker_notifications(first, observe=8), "push пришёл на удалённое устройство"
+        # сразу, до 8 с наблюдения за первым: Chromium убирает показанное уведомление примерно через 9 с
         assert len(helpers_notify.service_worker_notifications(second)) == 1
+        assert helpers_notify.no_service_worker_notifications(first, observe=8), "push пришёл на удалённое устройство"
         assert helpers_notify.service_worker_notifications(first) == []
 
 
