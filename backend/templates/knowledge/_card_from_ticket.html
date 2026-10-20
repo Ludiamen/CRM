@@ -1,0 +1,5 @@
+{# Кнопка закрытой заявки «Статья из решения» (FR-427) #}
+<form class="card-form" data-form="kb-from-ticket" method="post" action="/kb/from-ticket/{{ ticket_number }}/" hx-post="/kb/from-ticket/{{ ticket_number }}/" hx-target="closest [data-card-part]" hx-swap="outerHTML">
+  {% csrf_token %}
+  <button class="btn btn-outline-primary btn-sm" type="submit" data-action="kb-from-ticket">Статья из решения</button>
+</form>

@@ -1,0 +1,6 @@
+{# Блок комментариев под опубликованной статьёй (11.5); параметры: article, comment_rows #}
+<section id="comments" class="kb-comments" data-kb-comments>
+  <h2 class="h5">Комментарии</h2>
+  <ul class="list-unstyled" data-kb-comment-list>{% for row in comment_rows %}{% include "knowledge/_comment_row.html" %}{% endfor %}</ul>
+  {% include "knowledge/_comment_form.html" with text="" error=None oob=False %}
+</section>

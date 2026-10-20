@@ -239,7 +239,7 @@ Opus по задачам» в конце файла.
   `rubrics.py` (замок дерева, глубина, «Общее», журнал), `tags.py`, `subscriptions.py`, подписчик `core.user_dismissed` в
   `apps.py: ready()` — backend/apps/knowledge/services/, backend/apps/knowledge/apps.py — (FR-418, FR-419, FR-420, FR-437,
   FR-438)
-- [ ] T-5210 [sonnet] файлы статьи (план: «Вложения и картинки…», «Как статья ссылается на вложение»): `files.py`
+- [x] T-5210 [sonnet] файлы статьи (план: «Вложения и картинки…», «Как статья ссылается на вложение»): `files.py`
   (`attach`, `remove`), запись `FilePurpose("knowledge")` с веткой `Heuristics.Encrypted.*`, представления
   `/kb/<id>/files/…` и `/kb/<id>/images/N/` с заглушками SVG из статики; ошибка записи файла — отказ с сообщением, статья
   цела (решение 41); картинка-«бомба» — отказ (решение 42). Первым делом — проверка типа картинки при
@@ -247,12 +247,12 @@ Opus по задачам» в конце файла.
   `location`) решает Opus; подключение адресов `knowledge` в `config/urls.py` — здесь — backend/apps/knowledge/services/files.py,
   views/, static/, backend/apps/knowledge/extensions.py, backend/apps/knowledge/urls.py, backend/config/urls.py —
   (FR-422, FR-423, NFR-404, NFR-411)
-- [ ] T-5211 [sonnet] комментарии и журнал (план: «Комментарии», «Журнал»): представления комментариев поверх
+- [x] T-5211 [sonnet] комментарии и журнал (план: «Комментарии», «Журнал»): представления комментариев поверх
   `core.comments` (добавить, удалить, журнал чужого), шаблоны блока комментариев; события шины `knowledge.*` после
   фиксации; `audit_labels.py` (действия, два вида объекта, подписи ключей `before`/`after`, в том числе `by_term`) —
   backend/apps/knowledge/views/, backend/templates/knowledge/, backend/apps/knowledge/audit_labels.py,
   backend/apps/knowledge/extensions.py, backend/apps/knowledge/urls.py — (FR-425, FR-426, FR-438)
-- [ ] T-5212 [sonnet] связь с заявками (план: «Связь с заявками и карточка заявки»): `links.py` (привязка и отвязка с
+- [x] T-5212 [sonnet] связь с заявками (план: «Связь с заявками и карточка заявки»): `links.py` (привязка и отвязка с
   проверкой `ticket_brief`, «Статья из решения» под замком, связанные заявки страницы статьи), записи `ticket_card_parts`
   (раздел «Статьи», кнопка «Статья из решения», инструмент «Ссылка на статью») и их шаблоны, подсказка `/kb/pick/`,
   `static/js/kb-link.js` — backend/apps/knowledge/services/links.py, views/, backend/templates/knowledge/,
@@ -281,7 +281,7 @@ Opus по задачам» в конце файла.
 - [ ] T-5216 [sonnet] скрипт строки поиска (план: «Строка поиска»): `static/js/search.js` (стрелки, Enter, Esc со
   `stopPropagation` раньше обработчика `htmx-glue.js`, закрытие по щелчку вне, `maxlength`), подключение в
   `_assets.html` — backend/static/js/search.js, backend/templates/_assets.html — (FR-440)
-- [ ] T-5217 [sonnet] поставщик «Статьи» (план: «Статьи — два шага»): `knowledge/services/search.py` (шаг 1 по
+- [x] T-5217 [sonnet] поставщик «Статьи» (план: «Статьи — два шага»): `knowledge/services/search.py` (шаг 1 по
   `search_head` с рангом, шаг 2 по `search_full` без совпадения в малом векторе, потолок 300, порядок по `updated_at`,
   граница шагов при `offset`, `count` «N+»), регистрация в `search_providers` (порядок 20) —
   backend/apps/knowledge/services/search.py, backend/apps/knowledge/extensions.py — (FR-441, FR-443, FR-444, FR-445,

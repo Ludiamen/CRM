@@ -302,7 +302,12 @@ def store(data: bytes, name: str, purpose: str) -> StoredFile:
     stored = StoredFile.objects.create(
         purpose=purpose, owner=None, size=len(data), sha256=hashlib.sha256(data).hexdigest(),
         content_type=f"image/{image_format}" if image_format else "application/octet-stream")
-    write_file(files.attachment_path(stored), data)
+    path = files.attachment_path(stored)
+    try:
+        write_file(path, data)
+    except OSError:
+        files.remove_paths([path])  # частично записанный файл без строки (она откатывается) не оставляем
+        raise
     core_tasks.enqueue_scan(stored.pk)
     return stored
 

@@ -1,0 +1,5 @@
+{# Подсказка статей: с `ticket` — строки с кнопкой привязки, без — строки для вставки ссылки (без ссылок и кнопок внутри) #}
+<ul class="card-list kb-pick" data-kb-pick-results>
+  {% for item in articles %}<li data-article-id="{{ item.pk }}" data-title="{{ item.title }}" data-url="{{ item.url }}"{% if not ticket %} tabindex="0"{% endif %}>{{ item.title }}{% if ticket %} <button class="btn btn-outline-primary btn-sm" type="button" data-action="kb-link-add" data-article-id="{{ item.pk }}" hx-post="/kb/links/" hx-vals='{"article": {{ item.pk }}, "ticket": {{ ticket }}}' hx-target="closest [data-card-part]" hx-swap="outerHTML">Привязать статью</button>{% endif %}</li>
+  {% endfor %}
+</ul>

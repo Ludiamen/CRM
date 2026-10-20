@@ -1,0 +1,6 @@
+{% extends layout %}
+{% block title %}Комментарий{% endblock %}
+{% block content %}
+{% if gone %}<div class="alert alert-danger" role="alert" data-code="article_gone">Статья удалена</div>
+{% else %}{% include "knowledge/_comment_form.html" with oob=False %}{% endif %}
+{% endblock %}

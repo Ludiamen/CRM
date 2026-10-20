@@ -6,6 +6,7 @@ urlpatterns = [
     path("", include("apps.org.urls")),
     path("", include("apps.servicedesk.urls")),
     path("", include("apps.notify.urls")),
+    path("", include("apps.knowledge.urls")),
 ]
 
 handler400 = "apps.core.views.pages.bad_request"

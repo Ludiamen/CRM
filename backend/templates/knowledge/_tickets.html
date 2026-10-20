@@ -1,0 +1,10 @@
+{# Связанные заявки на странице статьи (FR-429): `items` — список `TicketLinkView` от `links.tickets_for`; пустой — блока нет #}
+{% if items %}
+<section class="kb-tickets" data-kb-tickets>
+  <h3 class="h6">Связанные заявки</h3>
+  <ul class="card-list">
+    {% for item in items %}<li data-ticket-number="{{ item.link.ticket_number }}"><a href="/tickets/{{ item.link.ticket_number }}/">#{{ item.link.ticket_number }} {{ item.brief.subject }}</a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

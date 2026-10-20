@@ -1,0 +1,20 @@
+{% comment %}Список вложений статьи `[data-kb-files]` (CONTRACT-005, 11.4). Контекст: article, files (ArticleFile со строкой file), editable (кнопки правки), file_error (code, text или None). Подключают страница правки и страница статьи.{% endcomment %}
+<div data-kb-files>
+  {% if file_error %}<p role="alert" class="form-error" data-code="{{ file_error.code }}">{{ file_error.text }}</p>{% endif %}
+  <ul class="kb-files">
+    {% for item in files %}
+    <li data-file-id="{{ item.pk }}" data-file-state="{{ item.file.status }}" data-image="{{ item.image_format }}">
+      {% if item.file.status == "clean" %}<a data-action="kb-download" href="/kb/{{ article.pk }}/files/{{ item.pk }}/" data-field="name">{{ item.name }}</a>{% else %}<span data-field="name">{{ item.name }}</span>{% endif %}
+      <span data-field="size">{{ item.file.size|filesizeformat }}</span>
+      <span data-field="state">{% if item.file.status == "pending" %}проверяется{% elif item.file.status == "quarantine" %}в карантине{% endif %}</span>
+      {% if editable %}
+      {% if item.file.status != "quarantine" %}<button type="button" data-action="kb-insert-link" data-insert="[{{ item.name }}](att:{{ item.pk }})">Вставить ссылку</button>{% endif %}
+      {% if item.image_format and item.file.status == "clean" %}<button type="button" data-action="kb-insert-image" data-insert="![{{ item.name }}](att:{{ item.pk }})">Картинка</button>{% endif %}
+      <form class="inline-form" method="post" action="/kb/{{ article.pk }}/files/{{ item.pk }}/delete/" hx-post="/kb/{{ article.pk }}/files/{{ item.pk }}/delete/" hx-target="[data-kb-files]" hx-swap="outerHTML">{% csrf_token %}
+        <button type="submit" data-action="kb-file-delete">Удалить</button>
+      </form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>

@@ -20,7 +20,7 @@ from apps.core.services import audit, comments
 from apps.core.services import files as core_files
 
 from ..models import Article, ArticleFile, ArticleVersion, Rubric, Tag
-from . import ArticleError, VersionConflict, access, pdn, render, vectors
+from . import ArticleError, VersionConflict, access, files, pdn, render, vectors
 from . import tags as tag_service
 
 logger = logging.getLogger(__name__)
@@ -123,12 +123,6 @@ def same_as_current(article: Article, title: str, text: str, rubric_id: int, tag
             and tag_names_of(article) == sorted(set(tag_names)))
 
 
-def _files_map(article: Article) -> dict:
-    """`{номер вложения: (имя, формат картинки)}` для `render.render`."""
-    return {pk: (name, image_format) for pk, name, image_format
-            in ArticleFile.objects.filter(article=article).values_list("pk", "name", "image_format")}
-
-
 def _lock_tags_shared() -> None:
     """Разделяемый замок тегов: ночная очистка тегов (исключительный замок) дождётся конца сохранения."""
     with connection.cursor() as cursor:
@@ -150,7 +144,7 @@ def write_edit(article: Article, user, *, title: str, text: str, rubric: Rubric,
     (его даёт `publish`), а не `changed`.
     """
     now = timezone.now()
-    rendered = render.render(text, _files_map(article), article.pk)
+    rendered = render.render(text, files.files_map(article), article.pk)
     _lock_tags_shared()
     tag_objects = [Tag.objects.get_or_create(name=name)[0] for name in tag_names]
     article.title, article.text, article.html, article.plain = title, text, rendered.html, rendered.plain

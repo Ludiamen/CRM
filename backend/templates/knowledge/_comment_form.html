@@ -1,0 +1,7 @@
+{# Форма комментария (11.5); параметры: article_id, text (введённое), error (code, message), oob #}
+<form id="kb-comment-form" class="kb-comment-form" data-form="kb-comment" method="post" action="/kb/{{ article_id }}/comments/" hx-post="/kb/{{ article_id }}/comments/" hx-target="[data-kb-comment-list]" hx-swap="beforeend"{% if oob %} hx-swap-oob="true"{% endif %}>
+  {% csrf_token %}
+  <textarea name="text" class="form-control" rows="3" maxlength="4000" aria-label="Комментарий">{{ text }}</textarea>
+  {% if error %}<div class="text-danger small" data-error="text" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+  <button type="submit" class="btn btn-primary mt-2" data-action="kb-comment-add">Отправить</button>
+</form>
