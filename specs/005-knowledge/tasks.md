@@ -262,7 +262,7 @@ Opus по задачам» в конце файла.
   правилом «одно событие — одно уведомление», `available`, `still_relevant`, тексты с обрезкой до 100, `external_text`,
   `coalesce`, `order` 50–52) и регистрация в `notification_kinds` — backend/apps/knowledge/notify_kinds.py,
   backend/apps/knowledge/extensions.py — (FR-433, FR-434, FR-435, FR-436, FR-437)
-- [ ] T-5214 [sonnet] страницы статьи и редактор (план: «Контракты», «Создание, сохранение и публикация», «История…»,
+- [x] T-5214 [sonnet] страницы статьи и редактор (план: «Контракты», «Создание, сохранение и публикация», «История…»,
   «Права и видимость», «Рендер Markdown…»): представления и шаблоны статьи, новой статьи, правки, публикации, истории,
   сравнения, версии, восстановления и удаления версии, действий корзины над одной статьёй (в корзину, вернуть, удалить
   навсегда); декоратор `ArticleGone` → 410 ответом представления для GET страниц; отказы POST — 200 с сообщением (решение
@@ -273,7 +273,7 @@ Opus по задачам» в конце файла.
   backend/static/js/kb-editor.js, backend/static/theme/portal.css, backend/apps/knowledge/urls.py,
   backend/apps/knowledge/extensions.py, backend/templates/_assets.html — (FR-401…FR-417, FR-431, FR-449, NFR-402, NFR-403,
   NFR-405, NFR-406, NFR-409)
-- [ ] T-5215 [sonnet] приложение поиска (план: «Сквозной поиск» → разбор, сборка, адреса): `search/parse.py`,
+- [x] T-5215 [sonnet] приложение поиска (план: «Сквозной поиск» → разбор, сборка, адреса): `search/parse.py`,
   `search/services.py` (опрос поставщиков, ошибка поставщика — в журнал только ключ и класс исключения), представления
   `/search/popup/`, `/search/`, `/search/count/`, `/search/more/`, шаблоны, строка `TopBarItem(order=5, context=…)` —
   backend/apps/search/, backend/templates/search/, backend/config/urls.py — (FR-439, FR-440, FR-442, FR-443, FR-446,

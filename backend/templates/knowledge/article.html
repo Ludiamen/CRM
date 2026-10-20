@@ -1,0 +1,47 @@
+{% extends layout %}
+{% load portal %}
+{% block title %}{{ article.title }}{% endblock %}
+{% block content %}
+<div data-kb-page="article" class="kb-page">
+  <article data-article-id="{{ article.pk }}" data-article-state="{{ article.state }}" class="kb-article">
+    <div class="page-head">
+      <h1 class="page-title" data-field="title">{{ article.title }}</h1>
+    </div>
+    {% if in_trash %}
+    <p class="kb-trash-line"><span class="badge text-bg-secondary" data-kb-trash-mark>В корзине</span>{% if article.deleted_by %} <span data-field="deleted-by">Удалил: {% person_name article.deleted_by %}</span>{% endif %}{% if article.deleted_at %} <time data-at="{{ article.deleted_at|date:'c' }}" datetime="{{ article.deleted_at|date:'c' }}">{{ article.deleted_at|date:'d.m.Y H:i' }}</time>{% endif %}</p>
+    {% elif article.state == "draft" %}
+    <p><span class="badge text-bg-warning" data-field="state">Черновик</span></p>
+    {% endif %}
+    <p class="kb-meta small text-muted">
+      <span data-field="rubric">{% for item in rubric_path %}<a href="/kb/rubrics/{{ item.id }}/">{{ item.name }}</a>{% if not forloop.last %} / {% endif %}{% endfor %}</span>
+      {% for name in tag_names %}<a class="badge text-bg-light" data-tag="{{ name }}" href="/kb/tags/?name={{ name|urlencode:'' }}">{{ name }}</a> {% endfor %}
+    </p>
+    <p class="kb-meta small text-muted">
+      <span data-field="author">Автор: {% person_name article.author %}</span>
+      <span data-field="updated">изменено <time data-at="{{ article.updated_at|date:'c' }}" datetime="{{ article.updated_at|date:'c' }}">{{ article.updated_at|date:'d.m.Y H:i' }}</time>, {% person_name article.updated_by %}</span>
+    </p>
+    <div class="d-flex flex-wrap gap-2 mb-3 kb-article-actions">
+      {% if can_change %}<a class="btn btn-outline-primary btn-sm" data-action="kb-edit" href="/kb/{{ article.pk }}/edit/">Править</a>{% endif %}
+      {% if can_publish %}{% include "knowledge/_publish_form.html" %}{% endif %}
+      <a class="btn btn-outline-secondary btn-sm" data-action="kb-history" href="/kb/{{ article.pk }}/history/">История</a>
+      {% if can_manage and not in_trash %}
+      <form data-form="kb-trash" method="post" action="/kb/{{ article.pk }}/trash/" hx-post="/kb/{{ article.pk }}/trash/" hx-confirm="Перенести статью в корзину?" hx-target="this" hx-swap="outerHTML">{% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-sm" data-action="kb-trash">В корзину</button>
+      </form>
+      {% endif %}
+      {% if can_manage and in_trash %}
+      <form data-form="kb-restore" method="post" action="/kb/{{ article.pk }}/restore/" hx-post="/kb/{{ article.pk }}/restore/" hx-target="this" hx-swap="outerHTML">{% csrf_token %}
+        <button type="submit" class="btn btn-outline-primary btn-sm" data-action="kb-restore">Вернуть</button>
+      </form>
+      <form data-form="kb-purge" method="post" action="/kb/{{ article.pk }}/purge/" hx-post="/kb/{{ article.pk }}/purge/" hx-confirm="Удалить статью навсегда? Это нельзя отменить." hx-target="this" hx-swap="outerHTML">{% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-sm" data-action="kb-purge">Удалить навсегда</button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="kb-body" data-field="body">{{ article.html|safe }}</div>
+  </article>
+  {% if not in_trash and files %}{% include "knowledge/_files.html" %}{% endif %}
+  {% if not in_trash %}{% include "knowledge/_tickets.html" with items=tickets %}{% endif %}
+  {% if article.state == "published" %}{% include "knowledge/_comments.html" %}{% endif %}
+</div>
+{% endblock %}

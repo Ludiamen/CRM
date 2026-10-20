@@ -1,0 +1,13 @@
+{% comment %}Форма «Восстановить эту версию»; «Изменений нет» и предупреждение ПДн (11.3, 11.6). Контекст: article, version, pdn, notice.{% endcomment %}
+<form data-form="kb-version-restore" method="post" action="/kb/{{ article.pk }}/versions/{{ version.number }}/restore/" hx-post="/kb/{{ article.pk }}/versions/{{ version.number }}/restore/" hx-target="this" hx-swap="outerHTML">{% csrf_token %}
+  {% if notice %}<div class="alert alert-info" data-kb-notice="no-changes">Изменений нет</div>{% endif %}
+  {% if pdn %}
+  <div class="alert alert-warning kb-pdn" data-kb-pdn>
+    <p class="mb-1">В этой версии найдены персональные данные. Проверьте, что они здесь нужны.</p>
+    <ul>{% for item in pdn %}<li data-pdn-item>{{ item }}</li>{% endfor %}</ul>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-action="kb-pdn-back">Вернуться к правке</button>
+    <button type="submit" class="btn btn-warning btn-sm" data-action="kb-pdn-confirm" name="confirm_pdn" value="1">Сохранить всё равно</button>
+  </div>
+  {% endif %}
+  <button type="submit" class="btn btn-outline-primary" data-action="kb-restore-version">Восстановить эту версию</button>
+</form>

@@ -1,0 +1,8 @@
+{% extends layout %}
+{% block title %}Действие не выполнено{% endblock %}
+{% block content %}
+<div data-kb-page="refused" class="kb-page">
+  {% include "knowledge/_alert.html" %}
+  <a class="btn btn-outline-secondary" href="{{ back }}">Назад</a>
+</div>
+{% endblock %}

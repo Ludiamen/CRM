@@ -1,0 +1,1 @@
+<li data-search-row class="search-row py-1">{% if row.template %}{% include row.template with row=row ctx=row.context %}{% else %}{% include "search/rows/_default.html" %}{% endif %}</li>

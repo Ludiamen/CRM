@@ -1,0 +1,40 @@
+{% extends layout %}
+{% block title %}Сравнение версий{% endblock %}
+{% block content %}
+<div data-kb-page="compare" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title">Сравнение версий: {{ article.title }}</h1>
+    <a class="btn btn-outline-secondary" href="/kb/{{ article.pk }}/history/">К истории</a>
+  </div>
+  {% if hint == "pick-two" %}<p class="text-muted" data-kb-hint="pick-two">Отметьте две версии</p>
+  {% elif hint == "deleted" %}<p class="text-muted" data-kb-hint="deleted">Версия удалена</p>
+  {% elif comparison %}
+  <div class="kb-diff" data-kb-diff>
+    <p class="small text-muted">Было: версия {{ comparison.old }}. Стало: версия {{ comparison.new }}.</p>
+    {% for field in comparison.fields %}
+    <div class="kb-diff-field" data-kb-diff-field="{{ field.name }}">
+      <span class="kb-diff-label">{% if field.name == "title" %}Заголовок{% elif field.name == "rubric" %}Рубрика{% else %}Теги{% endif %}:</span>
+      <span class="kb-diff-before" data-side="before">{{ field.before }}</span> →
+      <span class="kb-diff-after" data-side="after">{{ field.after }}</span>
+    </div>
+    {% endfor %}
+    <div class="kb-diff-lines">
+      {% for block in blocks %}
+      {% if block.fold %}
+      <details data-kb-fold><summary>Показать {{ block.count }} строк</summary>
+        {% for line in block.lines %}<div class="kb-diff-same">{{ line.text }}</div>
+        {% endfor %}
+      </details>
+      {% else %}
+      {% for line in block.lines %}{% if line.kind == "add" %}<div class="kb-diff-add">+ {{ line.text }}</div>
+      {% elif line.kind == "del" %}<div class="kb-diff-del">− <del>{{ line.text }}</del></div>
+      {% else %}<div class="kb-diff-same">{{ line.text }}</div>
+      {% endif %}{% endfor %}
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% if comparison.more %}<p class="text-muted" data-kb-diff-more>Ещё {{ comparison.more }} изменений не показано</p>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -541,7 +541,8 @@ def test_search_vectors_are_empty_for_draft_and_computed_at_publication():
             return bool(cursor.fetchone()[0])
 
     assert matches("search_head", "принтер:*") and matches("search_full", "принтер:*"), "заголовок"
-    assert matches("search_head", "печат:*") and matches("search_full", "печат:*"), "тег"
+    # слово целиком: русский стеммер даёт для «печать» лексему `печа`, запрос нормализуется тем же словарём
+    assert matches("search_head", "печать:*") and matches("search_full", "печать:*"), "тег"
     assert matches("search_full", "драйвер:*") and not matches("search_head", "драйвер:*"), "текст только в full"
 
 

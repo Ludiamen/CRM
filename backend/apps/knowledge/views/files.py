@@ -48,7 +48,10 @@ def _list_response(request, article, *, code: str = "", status: int = 200):
         return response
     if not code:
         return HttpResponseRedirect(f"/kb/{article.pk}/edit/")
-    return render_page(request, "knowledge/edit.html", {**context, "page": "edit"}, status=status)
+    from . import articles as article_views  # локально: модуль страниц статьи сам зовёт службы файлов (T-5214)
+
+    return render_page(request, "knowledge/edit.html", article_views.edit_context(request, article, extra=context),
+                       status=status)
 
 
 def _gone_response(request, article_id):

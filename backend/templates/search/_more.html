@@ -1,0 +1,2 @@
+{# Порция «Показать ещё»: строки группы (в <ul> страницы) и новая кнопка; кнопка подменяет себя (outerHTML) #}
+{% include "search/_rows.html" %}{% if group.has_more %}{% include "search/_more_button.html" %}{% endif %}

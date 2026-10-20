@@ -1,0 +1,71 @@
+{% comment %}Форма новой статьи и правки `form[data-form="kb-article"]` (11.3). Контекст: article (None у новой), values, rubric_options, base_version, errors, alert, conflict, notice, pdn, pdn_action, can_publish.{% endcomment %}
+<form data-form="kb-article" class="kb-form" method="post" action="{% if article %}/kb/{{ article.pk }}/edit/{% else %}/kb/new/{% endif %}" hx-post="{% if article %}/kb/{{ article.pk }}/edit/{% else %}/kb/new/{% endif %}" hx-target="this" hx-swap="outerHTML">{% csrf_token %}
+  {% if article %}<input type="hidden" name="base_version" value="{{ base_version }}">{% endif %}
+  <input type="hidden" name="confirm_pdn" value="">
+  {% if conflict %}<div class="alert alert-danger" role="alert" data-code="stale_version">Статью уже изменил {{ conflict.who }} в {{ conflict.when|date:"H:i" }}. <a data-action="kb-compare-link" href="/kb/{{ article.pk }}/compare/?v={{ conflict.base_version }}&amp;v={{ conflict.current_version }}">Сравнить версии</a></div>{% endif %}
+  {% if alert %}<div class="alert alert-danger" role="alert" data-code="{{ alert.code }}">{{ alert.text }}</div>{% endif %}
+  {% if notice %}<div class="alert alert-info" data-kb-notice="no-changes">Изменений нет</div>{% endif %}
+  <div class="mb-3">
+    <label class="form-label" for="kb-title">Заголовок</label>
+    <input type="text" class="form-control" id="kb-title" name="title" value="{{ values.title }}" autocomplete="off">
+    {% if errors.title %}<div class="invalid-feedback d-block" data-error="title" data-code="{{ errors.title.code }}">{{ errors.title.text }}</div>{% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="kb-rubric">Рубрика</label>
+    <select class="form-select" id="kb-rubric" name="rubric">
+      <option value="">— выберите рубрику —</option>
+      {% for option in rubric_options %}<option value="{{ option.id }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
+    </select>
+    {% if errors.rubric %}<div class="invalid-feedback d-block" data-error="rubric" data-code="{{ errors.rubric.code }}">{{ errors.rubric.text }}</div>{% endif %}
+  </div>
+  <div class="mb-3" data-kb-editor>
+    <div class="kb-toolbar" data-kb-toolbar role="toolbar" aria-label="Разметка">
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-md="bold" title="Жирный"><b>Ж</b></button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-md="italic" title="Курсив"><i>К</i></button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-md="heading" title="Заголовок">Заг.</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-md="list" title="Список">• Список</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-md="olist" title="Нумерованный список">1. Список</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-md="code" title="Код">Код</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-md="link" title="Ссылка">Ссылка</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-md="table" title="Таблица">Таблица</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-md="image"{% if not article %} disabled title="Сохраните черновик"{% else %} title="Вставить картинку из вложений"{% endif %}>Картинка</button>
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-action="kb-attach"{% if not article %} disabled title="Сохраните черновик"{% else %} title="Вложить файл"{% endif %}>Вложить</button>
+      {% if not article %}<span class="small text-muted" data-kb-hint="save-draft">Сохраните черновик</span>{% endif %}
+    </div>
+    <div class="kb-tabs" role="tablist">
+      <button type="button" class="btn btn-sm btn-primary" data-kb-tab="text">Текст</button>
+      <button type="button" class="btn btn-sm btn-outline-primary" data-kb-tab="preview" hx-post="/kb/preview/" hx-sync="this:replace" hx-target="[data-kb-panel=preview]" hx-swap="innerHTML" hx-include="[name=text]"{% if article %} hx-vals='{"article": "{{ article.pk }}"}'{% endif %}>Предпросмотр</button>
+    </div>
+    <div data-kb-panel="text">
+      <label class="visually-hidden" for="kb-text">Текст статьи</label>
+      <textarea class="form-control kb-textarea" id="kb-text" name="text" rows="18">{{ values.text }}</textarea>
+      {% if errors.text %}<div class="invalid-feedback d-block" data-error="text" data-code="{{ errors.text.code }}">{{ errors.text.text }}</div>{% endif %}
+    </div>
+    <div data-kb-panel="preview" hidden></div>
+  </div>
+  <div class="mb-3 kb-tags-field">
+    <label class="form-label" for="kb-tags">Теги (через запятую)</label>
+    <input type="text" class="form-control" id="kb-tags" name="tags" value="{{ values.tags }}" autocomplete="off">
+    <ul class="list-unstyled kb-tag-suggest" data-kb-tag-suggest></ul>
+    {% if errors.tags %}<div class="invalid-feedback d-block" data-error="tags" data-code="{{ errors.tags.code }}">{{ errors.tags.text }}</div>{% endif %}
+  </div>
+  <div class="mb-3">
+    <label class="form-label" for="kb-comment">Комментарий к правке</label>
+    <input type="text" class="form-control" id="kb-comment" name="comment" value="{{ values.comment }}" autocomplete="off">
+    {% if errors.comment %}<div class="invalid-feedback d-block" data-error="comment" data-code="{{ errors.comment.code }}">{{ errors.comment.text }}</div>{% endif %}
+  </div>
+  {% if pdn %}
+  <input type="hidden" name="action" value="{{ pdn_action }}">
+  <div class="alert alert-warning kb-pdn" data-kb-pdn>
+    <p class="mb-1">В статье найдены персональные данные. Проверьте, что они здесь нужны.</p>
+    <ul>{% for item in pdn %}<li data-pdn-item>{{ item }}</li>{% endfor %}</ul>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-action="kb-pdn-back">Вернуться к правке</button>
+    <button type="submit" class="btn btn-warning btn-sm" data-action="kb-pdn-confirm" name="confirm_pdn" value="1">{% if pdn_action == "publish" %}Опубликовать всё равно{% else %}Сохранить всё равно{% endif %}</button>
+  </div>
+  {% endif %}
+  <div class="d-flex flex-wrap gap-2 kb-form-actions">
+    <button type="submit" class="btn btn-primary" data-action="kb-save" name="action" value="save">{% if article %}Сохранить{% else %}Сохранить черновик{% endif %}</button>
+    {% if can_publish %}<button type="submit" class="btn btn-success" data-action="kb-publish" name="action" value="publish">Опубликовать</button>{% endif %}
+    {% if article %}<a class="btn btn-outline-secondary" href="/kb/{{ article.pk }}/">К статье</a>{% else %}<a class="btn btn-outline-secondary" href="/kb/">Отмена</a>{% endif %}
+  </div>
+</form>

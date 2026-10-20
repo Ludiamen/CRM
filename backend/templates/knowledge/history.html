@@ -1,0 +1,29 @@
+{% extends layout %}
+{% load portal %}
+{% block title %}История статьи{% endblock %}
+{% block content %}
+<div data-kb-page="history" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title">История: {{ article.title }}</h1>
+    <a class="btn btn-outline-secondary" href="/kb/{{ article.pk }}/">К статье</a>
+  </div>
+  <form data-form="kb-compare" method="get" action="/kb/{{ article.pk }}/compare/">
+    <div class="table-wrap">
+      <table class="table table-sm align-middle kb-history">
+        <thead><tr><th scope="col"></th><th scope="col">№</th><th scope="col">Когда и кто</th><th scope="col">Комментарий</th></tr></thead>
+        <tbody>
+          {% for item in versions %}
+          <tr data-version="{{ item.number }}">
+            <td><input type="checkbox" name="v" value="{{ item.number }}" aria-label="Версия {{ item.number }}"></td>
+            <td><a data-action="kb-version-open" href="/kb/{{ article.pk }}/versions/{{ item.number }}/">Версия {{ item.number }}</a></td>
+            <td><time data-at="{{ item.created_at|date:'c' }}" datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'d.m.Y H:i' }}</time> <span data-field="author">{% person_name item.author %}</span></td>
+            <td data-field="comment">{{ item.comment }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <button type="submit" class="btn btn-primary" data-action="kb-compare">Сравнить выбранные версии</button>
+  </form>
+</div>
+{% endblock %}

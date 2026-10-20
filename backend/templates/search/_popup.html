@@ -1,0 +1,5 @@
+{# Окно выдачи: корень [data-search-popup] заменяется целиком (hx-swap=outerHTML); без групп — скрыт #}
+<div id="search-popup" data-search-popup class="search-popup position-absolute start-0 mt-1 bg-white text-body border rounded shadow-sm"{% if not groups %} hidden{% endif %}>
+  {% for group in groups %}{% include "search/_group.html" with page=False %}{% endfor %}
+  {% if groups %}<div class="p-2 border-top"><a data-action="search-all" href="/search/?q={{ q_url }}">Все результаты</a></div>{% endif %}
+</div>

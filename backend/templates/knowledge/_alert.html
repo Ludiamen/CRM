@@ -1,0 +1,2 @@
+{% comment %}Общий отказ действия (10.1): `alert` — code и text; `conflict` — кто и когда сохранил (устаревшая версия); `article_id` — для ссылки на сравнение.{% endcomment %}
+<div class="alert alert-danger" role="alert" data-code="{{ alert.code }}">{% if conflict %}Статью уже изменил {{ conflict.who }} в {{ conflict.when|date:"H:i" }}. <a data-action="kb-compare-link" href="/kb/{{ article_id }}/compare/?v={{ conflict.base_version }}&amp;v={{ conflict.current_version }}">Сравнить версии</a>{% else %}{{ alert.text }}{% endif %}</div>

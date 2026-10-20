@@ -2,7 +2,7 @@
 <li class="kb-comment" data-comment-id="{{ row.comment.pk }}">
   {% if row.photo_url %}<img class="person-photo" data-field="photo" src="{{ row.photo_url }}" alt="" width="40" height="40">{% else %}<span class="person-photo person-initials" data-field="photo-placeholder" data-initials="{{ row.initials }}">{{ row.initials }}</span>{% endif %}
   <div class="kb-comment-body">
-    <div class="kb-comment-head"><span data-field="author">{% person_name row.comment.author %}</span> <time data-at="{{ row.comment.created_at|date:'c' }}">{{ row.comment.created_at|date:'d.m.Y H:i' }}</time></div>
+    <div class="kb-comment-head"><span data-field="author">{% person_name row.comment.author %}</span> <time data-at="{{ row.comment.created_at|date:'c' }}" datetime="{{ row.comment.created_at|date:'c' }}">{{ row.comment.created_at|date:'d.m.Y H:i' }}</time></div>
     <div class="kb-comment-text" data-field="text">{{ row.comment.text|linebreaksbr }}</div>
   </div>
   {% if row.can_delete %}<form method="post" action="/kb/comments/{{ row.comment.pk }}/delete/" hx-post="/kb/comments/{{ row.comment.pk }}/delete/" hx-target="closest li" hx-swap="outerHTML">

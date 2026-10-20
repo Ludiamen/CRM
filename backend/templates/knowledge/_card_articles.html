@@ -5,7 +5,7 @@
   <ul class="card-list">
     {% for row in rows %}<li data-link-id="{{ row.pk }}" data-article-id="{{ row.article_id }}">
       <a data-field="title" href="/kb/{{ row.article_id }}/">{{ row.article.title }}</a>{% if row.article.state == "draft" %} <span class="badge text-bg-secondary" data-field="state">черновик</span>{% endif %}
-      <span class="text-muted small">привязал: <span data-field="linked-by">{% person_name row.linked_by %}</span>, <time data-at="{{ row.linked_at|date:'c' }}">{{ row.linked_at|date:'d.m.Y H:i' }}</time></span>
+      <span class="text-muted small">привязал: <span data-field="linked-by">{% person_name row.linked_by %}</span>, <time data-at="{{ row.linked_at|date:'c' }}" datetime="{{ row.linked_at|date:'c' }}">{{ row.linked_at|date:'d.m.Y H:i' }}</time></span>
       {% if can_edit %}<button class="btn btn-link btn-sm" type="button" data-action="kb-unlink" hx-post="/kb/links/{{ row.pk }}/delete/" hx-target="closest [data-card-part]" hx-swap="outerHTML">Отвязать</button>{% endif %}
     </li>
     {% endfor %}

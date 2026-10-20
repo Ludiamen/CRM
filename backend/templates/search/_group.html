@@ -1,0 +1,6 @@
+{# Группа выдачи: заголовок, на странице — число группы, строки, кнопка «Показать ещё» (параметры: group, page, q_url) #}
+<section data-search-group="{{ group.key }}" class="p-2">
+  <h2 data-field="title" class="h6 mb-1">{{ group.title }}{% if page %} <span data-search-count class="text-muted small" hx-get="/search/count/?q={{ q_url }}&amp;group={{ group.key }}" hx-trigger="load" hx-swap="innerHTML"></span>{% endif %}</h2>
+  <ul class="list-unstyled mb-0">{% include "search/_rows.html" %}{% if page and group.has_more %}{% include "search/_more_button.html" %}{% endif %}</ul>
+  
+</section>

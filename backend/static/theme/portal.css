@@ -466,3 +466,43 @@ body { background: var(--portal-surface); color: var(--portal-text); }
 @media (max-width: 575.98px) {
   .bell-panel { position: fixed !important; top: var(--top-bar-height); left: 0.5rem !important; right: 0.5rem !important; width: auto; max-width: none; }
 }
+
+/* --- база знаний (срез 005, T-5214): статья, редактор, сравнение версий --- */
+.kb-body { overflow-wrap: break-word; }
+.kb-body img { max-width: 100%; height: auto; }
+.kb-body table { border-collapse: collapse; margin: 0.5rem 0; }
+.kb-body th, .kb-body td { border: 1px solid var(--portal-border, #dee2e6); padding: 0.25rem 0.5rem; }
+.kb-body pre { margin: 0; }
+.kb-scroll { max-width: 100%; overflow-x: auto; }
+.kb-al-left { text-align: left; }
+.kb-al-center { text-align: center; }
+.kb-al-right { text-align: right; }
+.kb-noimg { color: #5b6472; font-style: italic; }
+.kb-toolbar { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; margin-bottom: 0.5rem; }
+.kb-tabs { display: flex; gap: 0.25rem; margin-bottom: 0.5rem; }
+.kb-textarea { font-family: var(--bs-font-monospace, monospace); min-height: 16rem; }
+.kb-tag-suggest { margin: 0.25rem 0 0; }
+.kb-tag-suggest li { display: inline-block; margin: 0 0.25rem 0.25rem 0; padding: 0.1rem 0.5rem; border: 1px solid var(--portal-border, #dee2e6); border-radius: 0.75rem; cursor: pointer; }
+.kb-files li { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; padding: 0.25rem 0; }
+.kb-diff { overflow-x: auto; font-family: var(--bs-font-monospace, monospace); font-size: 0.875rem; }
+.kb-diff-same, .kb-diff-add, .kb-diff-del { white-space: pre-wrap; overflow-wrap: anywhere; padding: 0 0.5rem; }
+.kb-diff-add { background: #e6f4ea; color: #14532d; }
+.kb-diff-del { background: #fdecea; color: #7f1d1d; }
+.kb-diff-field { margin-bottom: 0.5rem; overflow-wrap: anywhere; }
+.kb-diff details > summary { cursor: pointer; color: #5b6472; padding: 0 0.5rem; }
+.kb-history td[data-field="comment"] { overflow-wrap: anywhere; }
+.kb-pdn ul { margin-bottom: 0.5rem; overflow-wrap: anywhere; }
+.kb-form textarea, .kb-form input, .kb-form select { max-width: 100%; }
+@media (max-width: 575.98px) {
+  .kb-toolbar .btn, .kb-form-actions .btn, .kb-article-actions .btn { flex: 1 1 auto; }
+  .kb-form-actions { flex-direction: column; }
+  .kb-history thead { display: none; }
+  .kb-history tbody tr { display: block; border-bottom: 1px solid var(--portal-border, #dee2e6); padding: 0.4rem 0; }
+  .kb-history tbody td { display: block; border: 0; padding: 0.1rem 0.5rem; }
+}
+@media (max-width: 360px) {
+  .kb-toolbar { gap: 0.15rem; }
+  .kb-toolbar .btn { padding: 0.15rem 0.35rem; font-size: 0.8rem; }
+  .kb-body th, .kb-body td { padding: 0.15rem 0.3rem; }
+  .kb-textarea { min-height: 12rem; }
+}

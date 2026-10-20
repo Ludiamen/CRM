@@ -1,0 +1,4 @@
+{% comment %}Содержимое панели предпросмотра (11.3): html (готовый вывод), либо busy (замок занят), либо error (текст слишком длинный). Без role (решение 16).{% endcomment %}
+{% if busy %}<div class="text-muted" data-kb-preview-busy>Предпросмотр уже готовится</div>
+{% elif error %}<div class="invalid-feedback d-block" data-error="text" data-code="{{ error.code }}">{{ error.text }}</div>
+{% else %}<div class="kb-body" data-kb-preview>{{ html|safe }}</div>{% endif %}

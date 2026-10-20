@@ -1,0 +1,7 @@
+{# Строка сотрудника: фото или заглушка, ФИО, должность, подразделение (контекст поставщика: unit, photo) #}
+<a href="{{ row.url }}" class="d-flex align-items-center gap-2 text-decoration-none">
+  {% if ctx.photo %}<img src="{{ ctx.photo }}" alt="" width="32" height="32" class="rounded-circle" loading="lazy">{% else %}<span class="profile-initial" aria-hidden="true">{{ row.title|slice:":1"|upper }}</span>{% endif %}
+  <span><span data-field="title">{{ row.title }}</span>
+  <span data-field="subtitle" class="text-muted small">{{ row.subtitle }}</span>
+  {% if ctx.unit %}<span data-field="unit" class="text-muted small">{{ ctx.unit|safe }}</span>{% endif %}</span>
+</a>

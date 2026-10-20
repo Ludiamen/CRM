@@ -4,6 +4,8 @@ from django.urls import path
 from apps.knowledge.views import files as file_views
 from apps.knowledge.views import comments as comment_views
 from apps.knowledge.views import links as link_views
+from apps.knowledge.views import articles as article_views
+from apps.knowledge.views import history as history_views
 
 app_name = "knowledge"
 
@@ -21,4 +23,18 @@ urlpatterns = [
     path("kb/links/", link_views.link_add, name="link_add"),
     path("kb/links/<int:link_id>/delete/", link_views.link_delete, name="link_delete"),
     path("kb/from-ticket/<int:number>/", link_views.from_ticket, name="from_ticket"),
+    # Страницы статьи, редактор, история и корзина над одной статьёй (T-5214)
+    path("kb/new/", article_views.new, name="new"),
+    path("kb/preview/", article_views.preview, name="preview"),
+    path("kb/<int:article_id>/", article_views.article, name="article"),
+    path("kb/<int:article_id>/edit/", article_views.edit, name="edit"),
+    path("kb/<int:article_id>/publish/", article_views.publish, name="publish"),
+    path("kb/<int:article_id>/trash/", article_views.article_trash, name="article_trash"),
+    path("kb/<int:article_id>/restore/", article_views.article_restore, name="article_restore"),
+    path("kb/<int:article_id>/purge/", article_views.article_purge, name="article_purge"),
+    path("kb/<int:article_id>/history/", history_views.history, name="history"),
+    path("kb/<int:article_id>/compare/", history_views.compare, name="compare"),
+    path("kb/<int:article_id>/versions/<int:number>/", history_views.version, name="version"),
+    path("kb/<int:article_id>/versions/<int:number>/restore/", history_views.version_restore, name="version_restore"),
+    path("kb/<int:article_id>/versions/<int:number>/delete/", history_views.version_delete, name="version_delete"),
 ]

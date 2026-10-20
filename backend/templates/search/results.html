@@ -1,0 +1,10 @@
+{% extends layout %}
+{% block title %}Поиск{% endblock %}
+{% block content %}
+<div data-search-page>
+  <h1 class="page-title">Результаты поиска</h1>
+  {% if hint %}<p data-search-hint="{{ hint }}" class="text-muted">{{ hint_text }}</p>
+  {% elif not groups %}<p data-empty-state="search" class="text-muted">Ничего не найдено</p>{% endif %}
+  {% for group in groups %}{% include "search/_group.html" with page=True %}{% endfor %}
+</div>
+{% endblock %}

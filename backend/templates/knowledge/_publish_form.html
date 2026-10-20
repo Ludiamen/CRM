@@ -1,0 +1,13 @@
+{% comment %}Форма «Опубликовать» на странице черновика; при предупреждении ПДн — список найденного и две кнопки (11.3). Контекст: article, pdn, pdn_action.{% endcomment %}
+<form data-form="kb-publish" class="d-inline-block" method="post" action="/kb/{{ article.pk }}/publish/" hx-post="/kb/{{ article.pk }}/publish/" hx-target="this" hx-swap="outerHTML">{% csrf_token %}
+  <input type="hidden" name="base_version" value="{{ article.version_no }}">
+  {% if pdn %}
+  <div class="alert alert-warning kb-pdn" data-kb-pdn>
+    <p class="mb-1">В статье найдены персональные данные. Проверьте, что они здесь нужны.</p>
+    <ul>{% for item in pdn %}<li data-pdn-item>{{ item }}</li>{% endfor %}</ul>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-action="kb-pdn-back">Вернуться к правке</button>
+    <button type="submit" class="btn btn-warning btn-sm" data-action="kb-pdn-confirm" name="confirm_pdn" value="1">Опубликовать всё равно</button>
+  </div>
+  {% endif %}
+  <button type="submit" class="btn btn-success" data-action="kb-publish">Опубликовать</button>
+</form>

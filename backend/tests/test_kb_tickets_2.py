@@ -556,7 +556,7 @@ def test_article_page_lists_only_tickets_visible_to_viewer():
     assert link.attrs["href"] == f"/tickets/{mine.number}/" and link.text() == f"#{mine.number} Принтер на втором этаже"
     assert "Закупка серверов" not in response.content.decode("utf-8")
     holder = support.make_with_permissions("servicedesk.all")
-    page = support.logged_in(holder).client.get(f"/kb/{article.pk}/")
+    page = support.logged_in(holder).get(f"/kb/{article.pk}/")
     both = q(q1(tree(page), None, data_kb_tickets=True), "li", data_ticket_number=True)
     assert [row.attrs["data-ticket-number"] for row in both] == [str(mine.number), str(other.number)]
     views = _links().tickets_for(viewer.user, article)

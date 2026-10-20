@@ -1,0 +1,27 @@
+{% extends layout %}
+{% load portal %}
+{% block title %}Версия {{ version.number }}{% endblock %}
+{% block content %}
+<div data-kb-page="version" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title" data-field="title">{{ version.title }}</h1>
+  </div>
+  <p class="small text-muted">Версия {{ version.number }} статьи
+    <a href="/kb/{{ article.pk }}/">«{{ article.title }}»</a>:
+    <time data-at="{{ version.created_at|date:'c' }}" datetime="{{ version.created_at|date:'c' }}">{{ version.created_at|date:'d.m.Y H:i' }}</time>, {% person_name version.author %}</p>
+  <p class="kb-meta small text-muted">
+    <span data-field="rubric">{{ version.rubric_name }}</span>
+    {% for name in version.tags %}<a class="badge text-bg-light" data-tag="{{ name }}" href="/kb/tags/?name={{ name|urlencode:'' }}">{{ name }}</a> {% endfor %}
+  </p>
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="/kb/{{ article.pk }}/history/">К истории</a>
+    {% if can_restore %}{% include "knowledge/_restore_form.html" %}{% endif %}
+    {% if can_delete %}
+    <form data-form="kb-version-delete" method="post" action="/kb/{{ article.pk }}/versions/{{ version.number }}/delete/" hx-post="/kb/{{ article.pk }}/versions/{{ version.number }}/delete/" hx-confirm="Удалить версию {{ version.number }}?" hx-target="this" hx-swap="outerHTML">{% csrf_token %}
+      <button type="submit" class="btn btn-outline-danger btn-sm" data-action="kb-delete-version">Удалить версию</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="kb-body" data-field="body">{{ version.html|safe }}</div>
+</div>
+{% endblock %}

@@ -185,7 +185,8 @@ def test_version_view_buttons_follow_can_change_trash_state_and_current_version_
     trashed.refresh_from_db()
     # статья в корзине (п. 34 раздела 17): ни «Восстановить эту версию», ни «Удалить версию» — даже управляющему
     assert buttons(manager, 1, trashed) == (False, False)
-    assert buttons(editor, 1, trashed) == (False, False)
+    # не-управляющему страница версии статьи в корзине — 410 (контракт 10.3)
+    assert editor.client.get(_version_url(trashed, 1)).status_code == 410
 
 
 # --- восстановление версии -------------------------------------------------------------------------

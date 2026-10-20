@@ -1,0 +1,20 @@
+{% extends layout %}
+{% block title %}{% if article %}Правка статьи{% else %}Новая статья{% endif %}{% endblock %}
+{% block content %}
+<div data-kb-page="{{ page }}" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title">{% if article %}Правка статьи{% else %}Новая статья{% endif %}</h1>
+  </div>
+  {% include "knowledge/_form.html" %}
+  {% if article and article.state != "trash" or file_error %}
+  <section class="kb-attachments mt-4">
+    <h2 class="h6">Вложения</h2>
+    {% if article.state != "trash" %}<form data-form="kb-attach" method="post" action="/kb/{{ article.pk }}/files/" enctype="multipart/form-data" hx-post="/kb/{{ article.pk }}/files/" hx-encoding="multipart/form-data" hx-trigger="change" hx-target="[data-kb-files]" hx-swap="outerHTML">{% csrf_token %}
+      <label class="visually-hidden" for="kb-file">Файл</label>
+      <input type="file" class="form-control form-control-sm" id="kb-file" name="file">
+    </form>{% endif %}
+    {% include "knowledge/_files.html" %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

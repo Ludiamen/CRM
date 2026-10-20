@@ -333,7 +333,8 @@ def purge(article: Article, actor, by_term: bool = False) -> None:
     """
     with transaction.atomic():
         current = Article.objects.select_for_update().filter(pk=article.pk).first()
-        if current is None:
+        # под замком: статью, которую успели вернуть из корзины, не удаляем (гонка с «Вернуть», R-5214-3)
+        if current is None or current.state != Article.State.TRASH:
             return
         number, title = current.pk, current.title
         comments.delete_for(f"knowledge.article:{number}")
