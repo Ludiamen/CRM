@@ -1,0 +1,11 @@
+<form data-form="kb-rubric-new" class="kb-rubric-new" method="post" action="/kb/rubrics/new/" hx-post="/kb/rubrics/new/" hx-target="this" hx-swap="outerHTML">{% csrf_token %}
+  <div class="kb-rubric-fields">
+    <input class="form-control form-control-sm" type="text" name="name" value="{{ new_form.name }}" placeholder="Название рубрики" aria-label="Название новой рубрики">
+    <select class="form-select form-select-sm" name="parent" aria-label="Родитель новой рубрики">
+      <option value="">В корень</option>
+      {% for option in all_options %}<option value="{{ option.id }}"{% if option.id|stringformat:"s" == new_form.parent %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary btn-sm" data-action="kb-rubric-create">Создать</button>
+  </div>
+  {% if new_form.error %}<div class="text-danger small" data-error="{{ new_form.error.field }}" data-code="{{ new_form.error.code }}">{{ new_form.error.text }}</div>{% endif %}
+</form>

@@ -511,6 +511,7 @@ def test_trash_page_lists_title_rubric_deletion_date_and_who_deleted_newest_firs
     clock.advance(hours=3)
     newer = kb.make_trashed(title="Удалена позже", author=author, deleted_by=second_by)
 
+    manager = kb.as_manager()  # после сдвига часов на 3 ч прежняя сессия простаивает — вход заново
     root, _ = _page(manager, "/kb/trash/")
     assert q(root, data_empty_state="kb-trash") == []
     table = q1(root, data_kb_trash_list=True)

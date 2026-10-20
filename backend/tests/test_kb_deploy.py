@@ -436,7 +436,8 @@ def test_article_files_live_in_protected_volume_and_backup_script_is_unchanged(p
         internal = re.findall(r"location\s+(\S+)\s*\{", text)
         assert [item for item in internal if item.startswith("/protected/")] == \
             ["/protected/attachments/", "/protected/inbound/", "/protected/"], f"{name}: набор внутренних location изменён"
-    compose = uncommented(deploy_text("docker-compose.yml"))
+    # `uncommented` склеивает строки без завершающего перевода — без него последний том не попал бы в выборку
+    compose = uncommented(deploy_text("docker-compose.yml")) + "\n"
     volumes = re.search(r"^volumes:\s*\n((?:  \S.*\n)+)", compose, re.M)
     assert volumes
     assert re.findall(r"^  ([A-Za-z0-9_-]+):", volumes.group(1), re.M) == [

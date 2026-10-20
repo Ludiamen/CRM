@@ -1,0 +1,3 @@
+<form data-form="kb-subscribe" class="d-inline-block" method="post" action="/kb/rubrics/{{ rubric.pk }}/subscribe/" hx-post="/kb/rubrics/{{ rubric.pk }}/subscribe/" hx-target="this" hx-swap="outerHTML">{% csrf_token %}
+  <button type="submit" class="btn {% if subscribed %}btn-outline-secondary{% else %}btn-primary{% endif %} btn-sm" data-action="kb-subscribe" data-subscribed="{% if subscribed %}true{% else %}false{% endif %}">{% if subscribed %}Отписаться{% else %}Подписаться{% endif %}</button>
+</form>

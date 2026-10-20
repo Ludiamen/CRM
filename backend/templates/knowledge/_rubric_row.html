@@ -1,0 +1,25 @@
+{% comment %}Строка рубрики с тремя формами; ошибка — только у отправленной формы этой строки (`row_error`).{% endcomment %}
+{% with err=row_error %}
+<li data-rubric-id="{{ row.rubric.pk }}" data-depth="{{ row.depth }}" class="kb-rubric-row kb-depth-{{ row.depth }}">
+  <span data-field="name">{{ row.rubric.name }}</span>
+  <div class="kb-rubric-actions">
+    <form data-form="kb-rubric-rename" method="post" action="/kb/rubrics/{{ row.rubric.pk }}/rename/" hx-post="/kb/rubrics/{{ row.rubric.pk }}/rename/" hx-target="closest li" hx-swap="outerHTML">{% csrf_token %}
+      <input class="form-control form-control-sm" type="text" name="name" value="{% if err.id == row.rubric.pk and err.kind == 'rename' %}{{ err.values.name }}{% else %}{{ row.rubric.name }}{% endif %}" aria-label="Новое название">
+      <button type="submit" class="btn btn-outline-primary btn-sm" data-action="kb-rubric-rename">Переименовать</button>
+      {% if err.id == row.rubric.pk and err.kind == 'rename' %}<div class="text-danger small" data-error="{{ err.field }}" data-code="{{ err.code }}">{{ err.text }}</div>{% endif %}
+    </form>
+    <form data-form="kb-rubric-move" method="post" action="/kb/rubrics/{{ row.rubric.pk }}/move/" hx-post="/kb/rubrics/{{ row.rubric.pk }}/move/" hx-target="closest li" hx-swap="outerHTML">{% csrf_token %}
+      <select class="form-select form-select-sm" name="parent" aria-label="Перенести под">
+        <option value=""{% if not row.rubric.parent_id %} selected{% endif %}>В корень</option>
+        {% for option in row.options %}<option value="{{ option.id }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="btn btn-outline-primary btn-sm" data-action="kb-rubric-move">Перенести</button>
+      {% if err.id == row.rubric.pk and err.kind == 'move' %}<div class="text-danger small" data-error="{{ err.field }}" data-code="{{ err.code }}">{{ err.text }}</div>{% endif %}
+    </form>
+    <form data-form="kb-rubric-delete" method="post" action="/kb/rubrics/{{ row.rubric.pk }}/delete/" hx-post="/kb/rubrics/{{ row.rubric.pk }}/delete/" hx-confirm="Удалить рубрику?" hx-target="closest li" hx-swap="outerHTML">{% csrf_token %}
+      <button type="submit" class="btn btn-outline-danger btn-sm" data-action="kb-rubric-delete">Удалить</button>
+    </form>
+  </div>
+  {% if err.id == row.rubric.pk and err.kind == 'delete' %}<div class="alert alert-danger py-1 px-2 mb-0 mt-1" role="alert" data-code="{{ err.code }}">{{ err.text }}</div>{% endif %}
+</li>
+{% endwith %}

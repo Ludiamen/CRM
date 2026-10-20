@@ -1,6 +1,12 @@
 """Регистрации базы знаний в точках расширения ядра (срез 005)."""
 
 
+def menu_items() -> list[dict]:
+    """Пункт меню «База знаний»: каждому вошедшему, без права и без `badge`, `order` 7 (решение 10 задач)."""
+    return [{"permissions": (), "url": "/kb/", "title": "База знаний", "icon": "icons/journal.html",
+             "order": 7, "visible": lambda user: True}]
+
+
 def register_all() -> None:
     """Регистрирует функции `knowledge` в точках ядра (вызывается из `KnowledgeConfig.ready()`).
 
@@ -26,3 +32,9 @@ def register_all() -> None:
     from apps.knowledge.views import links as link_views  # части карточки заявки (T-5212)
 
     extensions.register("ticket_card_parts", link_views.ticket_card_parts)
+
+    extensions.register("menu_items", menu_items)  # пункт меню (T-5218)
+
+    from apps.knowledge import stand  # сброс стенда (T-5242, решение 27 задач)
+
+    extensions.register("stand_reset", stand.stand_reset)

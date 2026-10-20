@@ -58,12 +58,22 @@ class _Dom(HTMLParser):
 
 
 def _dom(response) -> list:
+    """Узлы ответа; разбор один на ответ, чтобы узлы разных вызовов сравнивались по `is` (`_inside`)."""
+    cached = getattr(response, "_kb_test_dom", None)
+    if cached is not None:
+        return cached
     parser = _Dom()
     parser.feed(response.content.decode())
     parser.close()
     for node in parser.nodes:
         node.text = "".join(node.parts)
+    response._kb_test_dom = parser.nodes
     return parser.nodes
+
+
+def _tag_nodes(response) -> list:
+    """Узлы с `data-tag`, кроме тоста уведомлений среза 004 (`#notify-toast` есть на каждой странице портала)."""
+    return [n for n in _dom(response) if "data-tag" in n.attrs and n.attrs.get("id") != "notify-toast"]
 
 
 def _find(response, tag: str | None = None, **attrs) -> list:
@@ -461,16 +471,15 @@ def test_no_tag_cloud_on_home_or_tag_page():
 
     home = reader.client.get("/kb/")
     assert home.status_code == 200
-    assert not [n for n in _dom(home) if "data-tag" in n.attrs]
+    assert not _tag_nodes(home)
     assert "/kb/tags/?name=" not in home.content.decode()
     assert "облако тегов" not in _text(home).lower()
 
     page = _tag_page(reader, "vpn")
     assert page.status_code == 200
-    for node in _dom(page):
-        if "data-tag" in node.attrs:
-            assert any(a.tag == "li" and "data-article-id" in a.attrs for a in node.ancestors), \
-                "ссылка на тег вне строки статьи — это облако"
+    for node in _tag_nodes(page):
+        assert any(a.tag == "li" and "data-article-id" in a.attrs for a in node.ancestors), \
+            "ссылка на тег вне строки статьи — это облако"
     assert "одинокий" not in page.content.decode(), "тег чужой статьи не показывается на странице тега"
 
 
@@ -565,7 +574,7 @@ def test_home_new_and_changed_10_by_updated_at(clock):
                for n in _dom(response) if _inside(n, first))
     assert any(n.tag == "time" and "data-at" in n.attrs for n in _dom(response) if _inside(n, first))
     assert "Новые и изменённые" in _text(response)
-    assert not [n for n in _dom(response) if "data-tag" in n.attrs], "теги в строках главной не показываются (п. 43)"
+    assert not _tag_nodes(response), "теги в строках главной не показываются (п. 43)"
 
     clock.advance(minutes=10)
     kb.add_version(made[0], author=author, text="Свежая правка")
@@ -636,7 +645,7 @@ def test_home_manager_sees_all_drafts_and_trash_link():
     assert sorted(_ids(_rows(response, "data-kb-my-drafts"))) == [drafts[2].pk], \
         "управляющий видит и «Мои черновики» (свои), и «Черновики» (все) — п. 14"
     assert published.pk not in listed and trashed.pk not in listed
-    assert not [n for n in _dom(response) if "data-tag" in n.attrs], "теги в строках черновиков главной не показываются (п. 43)"
+    assert not _tag_nodes(response), "теги в строках черновиков главной не показываются (п. 43)"
     trash = _find(response, "a", data_action="kb-trash-link")
     assert trash and trash[0].attrs["href"] == "/kb/trash/"
     assert _find(response, "a", data_action="kb-new-article")

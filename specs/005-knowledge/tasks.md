@@ -278,7 +278,7 @@ Opus по задачам» в конце файла.
   `/search/popup/`, `/search/`, `/search/count/`, `/search/more/`, шаблоны, строка `TopBarItem(order=5, context=…)` —
   backend/apps/search/, backend/templates/search/, backend/config/urls.py — (FR-439, FR-440, FR-442, FR-443, FR-446,
   NFR-408)
-- [ ] T-5216 [sonnet] скрипт строки поиска (план: «Строка поиска»): `static/js/search.js` (стрелки, Enter, Esc со
+- [x] T-5216 [sonnet] скрипт строки поиска (план: «Строка поиска»): `static/js/search.js` (стрелки, Enter, Esc со
   `stopPropagation` раньше обработчика `htmx-glue.js`, закрытие по щелчку вне, `maxlength`), подключение в
   `_assets.html` — backend/static/js/search.js, backend/templates/_assets.html — (FR-440)
 - [x] T-5217 [sonnet] поставщик «Статьи» (план: «Статьи — два шага»): `knowledge/services/search.py` (шаг 1 по
@@ -286,18 +286,18 @@ Opus по задачам» в конце файла.
   граница шагов при `offset`, `count` «N+»), регистрация в `search_providers` (порядок 20) —
   backend/apps/knowledge/services/search.py, backend/apps/knowledge/extensions.py — (FR-441, FR-443, FR-444, FR-445,
   FR-447, NFR-401)
-- [ ] T-5218 [sonnet] страницы навигации и управления (план: «Рубрики, теги, главная», «Корзина и ночная очистка»,
+- [x] T-5218 [sonnet] страницы навигации и управления (план: «Рубрики, теги, главная», «Корзина и ночная очистка»,
   «Контракты»): главная, страница рубрики с подпиской, страница тега и подсказка тегов, список корзины, срок корзины,
   управление рубриками (отдельные адреса создать, переименовать, перенести, удалить); пункт меню `menu_items` (`order` 7,
   без `badge`); склонение числа статей (решение 15); стили страниц; 360 px — backend/apps/knowledge/views/,
   backend/templates/knowledge/, backend/static/theme/portal.css, backend/apps/knowledge/urls.py,
   backend/apps/knowledge/extensions.py — (FR-405, FR-416, FR-417, FR-418, FR-419, FR-420, FR-421, FR-437, NFR-402, NFR-406,
   NFR-409)
-- [ ] T-5240 [sonnet] развёртывание (план: «Запуск»): `config/cron.py` — `purge_trash` (`45 23 * * *`, `maintenance`,
+- [x] T-5240 [sonnet] развёртывание (план: «Запуск»): `config/cron.py` — `purge_trash` (`45 23 * * *`, `maintenance`,
   `job_timeout=600`); `location ~ ^/kb/[0-9]+/files/$` в `deploy/nginx.conf` и `deploy/nginx.prod.conf` (`55m`, повтор
   proxy-директив); перезапуск `scheduler` при обновлении — в отчёте «Стенд», `RESTORE.md` и `backup.sh` не правятся (план:
   «Запуск») — backend/config/cron.py, deploy/nginx.conf, deploy/nginx.prod.conf — (FR-417, FR-422, NFR-413)
-- [ ] T-5242 [sonnet] стенд и нагрузка (план: «Проверка» → «Проход в браузере», «Скорость»): точка `stand_reset`
+- [x] T-5242 [sonnet] стенд и нагрузка (план: «Проверка» → «Проход в браузере», «Скорость»): точка `stand_reset`
   `knowledge` (данные среза, комментарии с префиксом, файлы статей, «Общее» и права обратно); команды
   `e2e_kb_trash_shift --days N` и `e2e_kb_purge` (только `E2E_STAND=1`); `backend/tests/load/fill_articles.py` (5 000
   статей из словаря настоящих слов, теги, рубрики) и класс `KnowledgeUser` в `backend/tests/load/locustfile.py` (главная,

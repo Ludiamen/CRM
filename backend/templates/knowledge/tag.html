@@ -1,0 +1,13 @@
+{% extends layout %}
+{% block title %}Тег {{ tag_name }}{% endblock %}
+{% block content %}
+<div data-kb-page="tag" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title">Тег: {{ tag_name }}</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="/kb/">База знаний</a>
+  </div>
+  <ul class="list-unstyled kb-list" data-kb-list>
+    {% include "knowledge/_list_rows.html" %}
+  </ul>
+</div>
+{% endblock %}

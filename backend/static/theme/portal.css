@@ -65,7 +65,7 @@ body { background: var(--portal-surface); color: var(--portal-text); }
   padding: 0 1rem;
   background: var(--portal-navy-900); color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  position: sticky; top: 0; z-index: 1020;
+  position: sticky; top: 0; z-index: 1050; /* выше слайдера карточки (1040): окно выдачи поиска лежит поверх него; ниже диалога (1060) */
 }
 .brand { display: inline-flex; align-items: center; gap: 0.6rem; color: inherit; text-decoration: none; font-weight: 600; min-width: 0; }
 .brand:hover { color: #fff; }
@@ -505,4 +505,45 @@ body { background: var(--portal-surface); color: var(--portal-text); }
   .kb-toolbar .btn { padding: 0.15rem 0.35rem; font-size: 0.8rem; }
   .kb-body th, .kb-body td { padding: 0.15rem 0.3rem; }
   .kb-textarea { min-height: 12rem; }
+}
+
+/* Навигация и управление базой знаний (T-5218) */
+.kb-home-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem 2rem; }
+@media (min-width: 768px) { .kb-home-grid { grid-template-columns: minmax(14rem, 1fr) minmax(0, 2fr); } }
+.kb-section { margin-bottom: 1.25rem; }
+.kb-tree-row, .kb-rubric-row { padding: 0.2rem 0; overflow-wrap: anywhere; }
+.kb-depth-2 { padding-left: 1.25rem; }
+.kb-depth-3 { padding-left: 2.5rem; }
+.kb-row { padding: 0.25rem 0; overflow-wrap: anywhere; border-bottom: 1px solid var(--portal-border, #dee2e6); }
+.kb-more { padding: 0.5rem 0; }
+.kb-empty { padding: 1rem; margin-bottom: 1rem; border: 1px dashed var(--portal-border, #dee2e6); border-radius: 0.5rem; }
+.kb-rubric-new { margin-bottom: 1rem; }
+.kb-rubric-fields, .kb-rubric-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: flex-start; }
+.kb-rubric-fields .form-control, .kb-rubric-fields .form-select { flex: 1 1 12rem; width: auto; min-width: 0; }
+.kb-rubric-actions { margin-top: 0.25rem; }
+.kb-rubric-actions form { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; max-width: 100%; }
+.kb-rubric-actions .form-control, .kb-rubric-actions .form-select { width: 12rem; max-width: 100%; }
+.kb-rubric-row { border-bottom: 1px solid var(--portal-border, #dee2e6); }
+.kb-settings { max-width: 28rem; }
+.kb-trash td { overflow-wrap: anywhere; }
+@media (max-width: 575.98px) {
+  .kb-trash thead { display: none; }
+  .kb-trash tbody tr { display: block; border-bottom: 1px solid var(--portal-border, #dee2e6); padding: 0.4rem 0; }
+  .kb-trash tbody td { display: block; border: 0; padding: 0.1rem 0.5rem; }
+  .kb-trash tbody td[data-label]::before { content: attr(data-label) ": "; color: #5b6472; }
+  .kb-rubric-actions form, .kb-rubric-actions .form-control, .kb-rubric-actions .form-select { width: 100%; }
+  .kb-rubric-actions .btn { flex: 1 1 auto; }
+  .kb-depth-2 { padding-left: 0.75rem; }
+  .kb-depth-3 { padding-left: 1.5rem; }
+}
+
+/* Окно выдачи поиска (R-5215-2): под строкой, выше содержимого страницы и слайдера карточки */
+.search-popup { z-index: 1055; width: 28rem; max-width: calc(100vw - 1rem); max-height: calc(100vh - var(--top-bar-height) - 1rem); overflow-x: hidden; overflow-y: auto; }
+.search-row { overflow-wrap: anywhere; padding-left: 0.5rem; padding-right: 0.5rem; border-left: 3px solid transparent; }
+.search-row a { overflow-wrap: anywhere; }
+/* Выбранная стрелками строка (ставит search.js): фон и обводка с контрастным текстом */
+.search-row[data-selected="true"] { background: #e7efff; border-left-color: #0d4fb3; outline: 1px solid #0d4fb3; outline-offset: -1px; color: #0b1f44; }
+.search-row[data-selected="true"] a { color: #0b3a8a; }
+@media (max-width: 575.98px) {
+  .search-popup { position: fixed !important; top: var(--top-bar-height); left: 0.5rem !important; right: 0.5rem !important; width: auto; max-width: none; }
 }

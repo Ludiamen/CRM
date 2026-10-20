@@ -418,3 +418,113 @@ def _check_notify_p95(environment, **_kwargs):
         print(f"NFR-301/305 (срез 004) не выполнено: p95 выше предела или нет замера {over}, "
               f"ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1
+
+
+class KnowledgeUser(HttpUser):
+    """Срез 005 (T-5242, NFR-401, NFR-402, NFR-412): вошедший сотрудник листает базу знаний — главную, рубрику, статью,
+    историю и сравнение версий, добавляет комментарий, набирает слово в строке поиска (всплывающая выдача), открывает
+    страницу результатов и подсчёт групп на частых, редких и смешанных словах. Модель нагрузки та же (PLAN-001
+    версия 4); данные — `prepare_users.py` и `fill_articles.py` (5 000 статей, 60 рубрик, 200 тегов). Часть учёток — без прав
+    базы знаний и без «Все заявки» (строка `creds.csv` с четвёртым столбцом `plain`, C-15): им выдача отфильтрована, ошибок
+    быть не должно; без таких строк класс работает как прежние (все учётки — администраторы). Запуск только этого класса
+    (Этап 4, T-5304; только на свободной машине и по согласию владельца):
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+            --reset-stats --host https://127.0.0.1:8031 KnowledgeUser
+    (имя класса — в конце команды: без него locust запускает все классы файла и делит `-u` между ними)
+    Номера статей и рубрик берутся из разметки главной (`data-article-id`, `data-rubric-id`). Слова поиска —
+    LOAD_KB_FREQUENT, LOAD_KB_RARE, LOAD_KB_MIXED (по умолчанию слова словаря `fill_articles.py`). Пределы: p95 страниц
+    не больше 500 мс (`P95_LIMIT_MS`), `/search/…` — 1000 мс, ошибок нет."""
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        self.client.verify = False
+        row = _next_credentials()
+        self.email, self.password, self.key = row[:3]
+        self.plain = len(row) > 3 and row[3] == "plain"  # учётка без прав базы знаний
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        home = self.client.get("/kb/", name="setup /kb/").text
+        self.articles = sorted(set(re.findall(r'data-article-id="(\d+)"', home))) or ["1"]
+        self.rubrics = sorted(set(re.findall(r'data-rubric-id="(\d+)"', home))) or ["1"]
+        self.words = {
+            "frequent": os.environ.get("LOAD_KB_FREQUENT", "принтер"),
+            "rare": os.environ.get("LOAD_KB_RARE", "гарнитура"),
+            "mixed": os.environ.get("LOAD_KB_MIXED", "принтер сертификат"),
+        }
+
+    def _query(self) -> str:
+        return random.choice(list(self.words.values()))
+
+    @task(4)
+    def home(self):
+        self.client.get("/kb/", name="/kb/")
+
+    @task(3)
+    def rubric(self):
+        self.client.get(f"/kb/rubrics/{random.choice(self.rubrics)}/", name="/kb/rubrics/<n>/")
+
+    @task(5)
+    def article(self):
+        self.client.get(f"/kb/{random.choice(self.articles)}/", name="/kb/<n>/")
+
+    @task(2)
+    def history(self):
+        self.client.get(f"/kb/{random.choice(self.articles)}/history/", name="/kb/<n>/history/")
+
+    @task(2)
+    def compare(self):
+        self.client.get(f"/kb/{random.choice(self.articles)}/compare/?v=1&v=2", name="/kb/<n>/compare/")
+
+    @task(1)
+    def comment(self):
+        number = random.choice(self.articles)
+        token = self.client.cookies.get("csrftoken", "")
+        with self.client.post(f"/kb/{number}/comments/", data={"text": "Нагрузочный комментарий", "csrfmiddlewaretoken": token},
+                              headers={"Referer": self.host + f"/kb/{number}/", "HX-Request": "true"},
+                              name="POST /kb/<n>/comments/", catch_response=True) as response:
+            if response.status_code >= 500:
+                response.failure(f"/kb/<n>/comments/: {response.status_code}")
+            else:  # ожидаемый отказ 4xx (права, черновик) — ответ сайта, не сбой
+                response.success()
+
+    @task(4)
+    def popup(self):
+        self.client.get("/search/popup/", params={"q": self._query()}, headers={"HX-Request": "true"},
+                        name="/search/popup/")
+
+    @task(3)
+    def results(self):
+        self.client.get("/search/", params={"q": self._query()}, name="/search/?q")
+
+    @task(3)
+    def count(self):
+        self.client.get("/search/count/", params={"q": self._query(), "group": "articles"},
+                        headers={"HX-Request": "true"}, name="/search/count/")
+
+
+KB_PAGES = ("/kb/", "/kb/rubrics/<n>/", "/kb/<n>/", "/kb/<n>/history/", "/kb/<n>/compare/")
+KB_SEARCH_PAGES = ("/search/popup/", "/search/?q", "/search/count/")
+SEARCH_LIMIT_MS = 1000
+
+
+@events.quitting.add_listener
+def _check_kb_p95(environment, **_kwargs):
+    """NFR-401/402 для страниц среза 005: p95 страниц не больше 500 мс, `/search/…` — не больше 1000 мс; ни одной ошибки."""
+    if KnowledgeUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    for names, limit in ((KB_PAGES, P95_LIMIT_MS), (KB_SEARCH_PAGES, SEARCH_LIMIT_MS)):
+        for name in names:
+            entry = stats.entries.get((name, "GET"))
+            p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+            if p95 is None or p95 > limit:
+                over[name] = p95
+    post = stats.entries.get(("POST /kb/<n>/comments/", "POST"))
+    if post and post.num_requests and post.get_response_time_percentile(0.95) > P95_LIMIT_MS:
+        over["POST /kb/<n>/comments/"] = post.get_response_time_percentile(0.95)
+    if stats.total.num_failures or over:
+        print(f"NFR-401/402 (срез 005) не выполнено: p95 выше предела или нет замера {over}, "
+              f"ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1

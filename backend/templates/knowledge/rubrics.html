@@ -1,0 +1,14 @@
+{% extends layout %}
+{% block title %}Рубрики базы знаний{% endblock %}
+{% block content %}
+<div data-kb-page="rubrics" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title">Рубрики</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="/kb/">База знаний</a>
+  </div>
+  {% include "knowledge/_rubric_new.html" %}
+  <ul class="list-unstyled kb-rubrics" data-kb-rubrics>
+    {% for row in rows %}{% include "knowledge/_rubric_row.html" %}{% endfor %}
+  </ul>
+</div>
+{% endblock %}

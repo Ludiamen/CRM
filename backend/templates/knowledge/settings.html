@@ -1,0 +1,16 @@
+{% extends layout %}
+{% block title %}Срок корзины{% endblock %}
+{% block content %}
+<div data-kb-page="settings" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title">Срок корзины</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="/kb/">База знаний</a>
+  </div>
+  <form data-form="kb-settings" class="kb-form kb-settings" method="post" action="/kb/settings/">{% csrf_token %}
+    <label class="form-label" for="kb-trash-days">Статья в корзине хранится, суток (от 7 до 365)</label>
+    <input id="kb-trash-days" class="form-control" type="number" name="trash_days" value="{{ value }}" inputmode="numeric">
+    {% if error %}<div class="text-danger small" data-error="trash_days" data-code="{{ error.code }}">{{ error.text }}</div>{% endif %}
+    <div class="mt-3"><button type="submit" class="btn btn-primary" data-action="kb-settings-save">Сохранить</button></div>
+  </form>
+</div>
+{% endblock %}

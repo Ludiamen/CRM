@@ -1,0 +1,10 @@
+{% load portal %}
+{% for article in rows %}
+<tr data-article-id="{{ article.pk }}">
+  <td data-label="Статья"><a data-field="title" href="/kb/{{ article.pk }}/">{{ article.title }}</a></td>
+  <td data-label="Рубрика"><span data-field="rubric">{{ article.rubric.name }}</span></td>
+  <td data-label="Удалена"><time data-at="{{ article.deleted_at|date:'c' }}" datetime="{{ article.deleted_at|date:'c' }}">{{ article.deleted_at|date:'d.m.Y H:i' }}</time></td>
+  <td data-label="Удалил"><span data-field="deleted-by">{% if article.deleted_by %}{% person_name article.deleted_by %}{% endif %}</span></td>
+</tr>
+{% endfor %}
+{% if next_offset %}<tr class="kb-more"><td colspan="4"><button type="button" class="btn btn-outline-secondary btn-sm" data-action="more" data-next-offset="{{ next_offset }}" hx-get="/kb/trash/?offset={{ next_offset }}" hx-target="closest tr" hx-swap="outerHTML">Показать ещё</button></td></tr>{% endif %}

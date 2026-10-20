@@ -1,0 +1,20 @@
+{% extends layout %}
+{% block title %}Корзина базы знаний{% endblock %}
+{% block content %}
+<div data-kb-page="trash" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title">Корзина</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="/kb/">База знаний</a>
+  </div>
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="table table-sm align-middle kb-trash" data-kb-trash-list>
+      <thead><tr><th scope="col">Статья</th><th scope="col">Рубрика</th><th scope="col">Удалена</th><th scope="col">Удалил</th></tr></thead>
+      <tbody>{% include "knowledge/_trash_rows.html" %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="kb-empty" data-empty-state="kb-trash"><p>Корзина пуста</p></div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -3,6 +3,7 @@
 
 Имена кода среза 005 импортируются внутри тестов; разметку разбирает `html.parser`, элементы ищутся по зацепкам
 `data-*` (CONTRACT-005, раздел 11.7). Отказы формы — 200 с `[data-error][data-code]` (раздел 10.1)."""
+import functools
 import json
 from html.parser import HTMLParser
 
@@ -66,11 +67,17 @@ def _inside(el, ancestor) -> bool:
     return False
 
 
+@functools.lru_cache(maxsize=16)
+def _elements(html: str) -> tuple:
+    """Разбор один на текст страницы: узлы разных вызовов `find` сравниваются по `is` (`_inside`)."""
+    return tuple(_Doc(html).elements)
+
+
 def find(response_or_html, tag: str | None = None, **attrs) -> list:
     """Элементы по тегу и атрибутам (`data_code="x"` → `data-code="x"`; `True` — атрибут есть)."""
     html = response_or_html if isinstance(response_or_html, str) else response_or_html.content.decode()
     want = {k.replace("_", "-"): v for k, v in attrs.items()}
-    return [el for el in _Doc(html).elements
+    return [el for el in _elements(html)
             if (tag is None or el.tag == tag)
             and all((k in el.attrs) if v is True else el.attrs.get(k) == v for k, v in want.items())]
 

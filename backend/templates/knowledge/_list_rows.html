@@ -1,0 +1,3 @@
+{% comment %}Строки списка статей рубрики и тега и кнопка «Показать ещё» (11.1, 11.2). Контекст: rows, next_offset, more_path, more_query.{% endcomment %}
+{% for article in rows %}{% include "knowledge/_article_row.html" %}{% endfor %}
+{% if next_offset %}<li class="kb-more"><button type="button" class="btn btn-outline-secondary btn-sm" data-action="more" data-next-offset="{{ next_offset }}" hx-get="{{ more_path }}?{{ more_query }}offset={{ next_offset }}" hx-target="closest li" hx-swap="outerHTML">Показать ещё</button></li>{% endif %}

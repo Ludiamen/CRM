@@ -6,6 +6,8 @@ from apps.knowledge.views import comments as comment_views
 from apps.knowledge.views import links as link_views
 from apps.knowledge.views import articles as article_views
 from apps.knowledge.views import history as history_views
+from apps.knowledge.views import management as management_views
+from apps.knowledge.views import navigation as navigation_views
 
 app_name = "knowledge"
 
@@ -37,4 +39,17 @@ urlpatterns = [
     path("kb/<int:article_id>/versions/<int:number>/", history_views.version, name="version"),
     path("kb/<int:article_id>/versions/<int:number>/restore/", history_views.version_restore, name="version_restore"),
     path("kb/<int:article_id>/versions/<int:number>/delete/", history_views.version_delete, name="version_delete"),
+    # Главная, рубрики, теги, корзина, срок корзины (T-5218)
+    path("kb/", navigation_views.home, name="home"),
+    path("kb/rubrics/", management_views.rubrics_page, name="rubrics"),
+    path("kb/rubrics/new/", management_views.rubric_new, name="rubric_new"),
+    path("kb/rubrics/<int:rubric_id>/", navigation_views.rubric_page, name="rubric_page"),
+    path("kb/rubrics/<int:rubric_id>/rename/", management_views.rubric_rename, name="rubric_rename"),
+    path("kb/rubrics/<int:rubric_id>/move/", management_views.rubric_move, name="rubric_move"),
+    path("kb/rubrics/<int:rubric_id>/delete/", management_views.rubric_delete, name="rubric_delete"),
+    path("kb/rubrics/<int:rubric_id>/subscribe/", navigation_views.rubric_subscribe, name="rubric_subscribe"),
+    path("kb/tags/", navigation_views.tag_page, name="tag_page"),
+    path("kb/tags/suggest/", navigation_views.tag_suggest, name="tag_suggest"),
+    path("kb/trash/", management_views.trash_list, name="trash_list"),
+    path("kb/settings/", management_views.settings, name="settings"),
 ]

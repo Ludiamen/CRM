@@ -335,7 +335,7 @@ def test_anonymous_redirected_to_login_on_all_kb_urls():
              ("/kb/preview/", {"text": "Текст"}), ("/kb/links/", {"article": published.pk, "ticket": 4101}),
              (f"/kb/links/{link.pk}/delete/", {}), ("/kb/from-ticket/4101/", {}),
              (f"/kb/comments/{comment.pk}/delete/", {}), (f"/kb/rubrics/{rubric.pk}/subscribe/", {})]
-    posts += _rubric_posts(rubric)
+    posts += [(path, data) for _name, path, data in _rubric_posts(rubric)]  # тройки → пары (путь, поля)
     for article in (published, draft, trashed, None):
         number = article.pk if article is not None else missing
         base = f"/kb/{number}/"

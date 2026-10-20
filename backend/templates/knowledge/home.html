@@ -1,0 +1,57 @@
+{% extends layout %}
+{% block title %}База знаний{% endblock %}
+{% block content %}
+<div data-kb-page="home" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title">База знаний</h1>
+    <div class="d-flex flex-wrap gap-2">
+      {% if can_edit %}<a class="btn btn-primary btn-sm" data-action="kb-new-article" href="/kb/new/">Новая статья</a>{% endif %}
+      {% if can_manage %}
+      <a class="btn btn-outline-secondary btn-sm" data-action="kb-trash-link" href="/kb/trash/">Корзина</a>
+      <a class="btn btn-outline-secondary btn-sm" data-action="kb-rubrics-link" href="/kb/rubrics/">Рубрики</a>
+      <a class="btn btn-outline-secondary btn-sm" data-action="kb-settings-link" href="/kb/settings/">Срок корзины</a>
+      {% endif %}
+    </div>
+  </div>
+  {% if empty %}
+  <div class="kb-empty" data-empty-state="kb">
+    <p>В базе знаний пока нет статей.</p>
+    {% if can_edit %}<a data-action="kb-new-article" href="/kb/new/">Новая статья</a>{% endif %}
+  </div>
+  {% endif %}
+  <div class="kb-home-grid">
+    <section class="kb-section">
+      <h2 class="h5">Рубрики</h2>
+      <ul class="list-unstyled kb-tree" data-kb-tree>
+        {% for item in tree %}<li data-rubric-id="{{ item.rubric.pk }}" data-depth="{{ item.depth }}" class="kb-tree-row kb-depth-{{ item.depth }}"><a data-field="name" href="/kb/rubrics/{{ item.rubric.pk }}/">{{ item.rubric.name }}</a> <span class="small text-muted" data-field="count">{{ item.count_text }}</span></li>{% endfor %}
+      </ul>
+    </section>
+    <div class="kb-column">
+      {% if not empty %}
+      <section class="kb-section">
+        <h2 class="h5">Новые и изменённые</h2>
+        <ul class="list-unstyled kb-list" data-kb-new-and-changed>
+          {% for article in new_and_changed %}{% include "knowledge/_article_row.html" %}{% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+      {% if my_drafts is not None %}
+      <section class="kb-section">
+        <h2 class="h5">Мои черновики</h2>
+        <ul class="list-unstyled kb-list" data-kb-my-drafts>
+          {% for article in my_drafts %}{% include "knowledge/_article_row.html" %}{% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+      {% if all_drafts is not None %}
+      <section class="kb-section">
+        <h2 class="h5">Черновики</h2>
+        <ul class="list-unstyled kb-list" data-kb-all-drafts>
+          {% for article in all_drafts %}{% include "knowledge/_article_row.html" %}{% endfor %}
+        </ul>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

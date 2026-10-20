@@ -5,7 +5,9 @@
 Записи нагрузки прежних прогонов (`load-…@example.org`) берутся снова — с новым паролем и ключом,
 их сессии закрываются; недостающие до N создаются. Так повторные прогоны не раздувают список
 сотрудников (PLAN-001 версия 4). Работает ТОЛЬКО при E2E_STAND=1 (как e2e_reset_stand); данные
-стенда убирает следующий сброс приёмки. Каталог tests в образ не входит, поэтому скрипт подаётся
+стенда убирает следующий сброс приёмки. Режим `LOAD_PLAIN=N` (срез 005, C-15): ещё N сотрудников `load-plain-…@example.org` с
+ролью без прав (без базы знаний и без «Все заявки»), их строки в `creds.csv` имеют четвёртый столбец `plain`; без переменной
+вывод прежний. Каталог tests в образ не входит, поэтому скрипт подаётся
 на вход shell:
 
     docker compose -f deploy/docker-compose.yml --profile dev exec -T -e LOAD_USERS=100 standtools \
@@ -22,6 +24,7 @@ from apps.core.models import EncryptedTOTPDevice, Role, User, UserSession
 from apps.core.services import crypto, sessions
 
 ADMIN_ROLE = "Администратор портала"
+PLAIN_ROLE = "Руководитель"  # встроенная роль: есть `staff.view`, нет прав базы знаний и «Все заявки» (роли «Сотрудник» в портале нет)
 
 if os.environ.get("E2E_STAND") != "1":
     sys.exit("Скрипт работает только на стенде приёмочных проходов (E2E_STAND=1); ничего не изменено.")
@@ -32,7 +35,7 @@ run = secrets.token_hex(3)
 rows = []
 with transaction.atomic():
     reused = list(User.objects.filter(email__startswith="load-", email__endswith="@example.org", state="active")
-                  .order_by("email")[:count])
+                  .exclude(email__startswith="load-plain-").order_by("email")[:count])
     sessions.close(UserSession.objects.filter(user__in=reused))
     for user in reused:
         password = secrets.token_urlsafe(18)
@@ -55,4 +58,24 @@ with transaction.atomic():
                                            key_encrypted=crypto.encrypt(key), step=30, digits=6,
                                            tolerance=1, last_t=-1)
         rows.append(f"{user.email},{password},{key.hex()}")
+plain_count = int(os.environ.get("LOAD_PLAIN", "0"))
+if plain_count:
+    plain_role = Role.objects.get(name=PLAIN_ROLE)
+    with transaction.atomic():
+        plain_reused = list(User.objects.filter(email__startswith="load-plain-", email__endswith="@example.org",
+                                                state="active").order_by("email")[:plain_count])
+        sessions.close(UserSession.objects.filter(user__in=plain_reused))
+        for i in range(plain_count - len(plain_reused)):
+            plain_reused.append(User(email=f"load-plain-{run}-{i:03d}@example.org", full_name=f"Нагрузка без прав {i:03d}",
+                                     state="active", activated_at=timezone.now()))
+        for user in plain_reused:
+            password = secrets.token_urlsafe(18)
+            key = os.urandom(20)
+            user.set_password(password)
+            user.save()
+            user.roles.set([plain_role])
+            EncryptedTOTPDevice.objects.update_or_create(
+                user=user, name="default", defaults={"confirmed": True, "key_encrypted": crypto.encrypt(key), "step": 30,
+                                                     "digits": 6, "tolerance": 1, "last_t": -1})
+            rows.append(f"{user.email},{password},{key.hex()},plain")
 print("\n".join(rows))

@@ -1,0 +1,14 @@
+{% extends layout %}
+{% block title %}{{ rubric.name }}{% endblock %}
+{% block content %}
+<div data-kb-page="rubric" class="kb-page">
+  <div class="page-head">
+    <h1 class="page-title">{{ rubric.name }}</h1>
+    {% include "knowledge/_subscribe.html" %}
+  </div>
+  <p class="small text-muted"><a href="/kb/">База знаний</a>{% for item in path %} / <a href="/kb/rubrics/{{ item.id }}/">{{ item.name }}</a>{% endfor %}</p>
+  <ul class="list-unstyled kb-list" data-kb-list>
+    {% include "knowledge/_list_rows.html" %}
+  </ul>
+</div>
+{% endblock %}
