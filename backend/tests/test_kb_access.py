@@ -903,7 +903,8 @@ def test_permission_granted_to_other_role_in_interface_without_code(django_captu
     user = support.make_employee()
     with django_capture_on_commit_callbacks(execute=True):
         user.roles.add(role)
-    employee = support.logged_in(_fresh(user))
+    _fresh(user)  # кэш прав сброшен; вход — исходным объектом: у перечитанного из базы нет `test_password`
+    employee = support.logged_in(user)
     rubric = kb.general_rubric()
     assert employee.get("/kb/new/").status_code == 200
     made = employee.post("/kb/new/", {"title": "Статья по роли", "text": "Текст", "rubric": rubric.pk, "tags": ""})

@@ -229,7 +229,7 @@ Opus по задачам» в конце файла.
   `maxNesting`, nh3 с фильтром атрибутов, `plain` до 100 000), `services/pdn.py` (`find` по токенам с переводами строк,
   `mask_plain`, `mask_resolution`), команда `kb_rerender` — backend/apps/knowledge/services/render.py, pdn.py,
   management/commands/kb_rerender.py — (FR-402, FR-403, FR-428, FR-431, NFR-405)
-- [ ] T-5208 [sonnet] службы статьи (план: «Создание, сохранение и публикация», «История…», «Корзина и ночная
+- [x] T-5208 [sonnet] службы статьи (план: «Создание, сохранение и публикация», «История…», «Корзина и ночная
   очистка», «Права и видимость»): `access.py`, `articles.py` (цепочка шагов, замки, разделяемый замок тегов, векторы,
   события), `versions.py` (сравнение `SequenceMatcher`, восстановление, удаление версии), очистка корзины в `retention.py`
   (`purge_trash`: порции, `skip_locked`, сбои, теги под исключительным замком; задание `tasks.purge_trash` лишь вызывает
