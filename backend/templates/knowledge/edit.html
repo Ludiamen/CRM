@@ -11,7 +11,7 @@
     <h2 class="h6">Вложения</h2>
     {% if article.state != "trash" %}<form data-form="kb-attach" method="post" action="/kb/{{ article.pk }}/files/" enctype="multipart/form-data" hx-post="/kb/{{ article.pk }}/files/" hx-encoding="multipart/form-data" hx-trigger="change" hx-target="[data-kb-files]" hx-swap="outerHTML">{% csrf_token %}
       <label class="visually-hidden" for="kb-file">Файл</label>
-      <input type="file" class="form-control form-control-sm" id="kb-file" name="file">
+      <input type="file" class="form-control form-control-sm kb-file-input" id="kb-file" name="file">
     </form>{% endif %}
     {% include "knowledge/_files.html" %}
   </section>

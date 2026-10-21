@@ -8,10 +8,10 @@
       <span data-field="size">{{ item.file.size|filesizeformat }}</span>
       <span data-field="state">{% if item.file.status == "pending" %}проверяется{% elif item.file.status == "quarantine" %}в карантине{% endif %}</span>
       {% if editable %}
-      {% if item.file.status != "quarantine" %}<button type="button" data-action="kb-insert-link" data-insert="[{{ item.name }}](att:{{ item.pk }})">Вставить ссылку</button>{% endif %}
-      {% if item.image_format and item.file.status == "clean" %}<button type="button" data-action="kb-insert-image" data-insert="![{{ item.name }}](att:{{ item.pk }})">Картинка</button>{% endif %}
+      {% if item.file.status != "quarantine" %}<button type="button" class="btn btn-sm btn-outline-secondary" data-action="kb-insert-link" data-insert="[{{ item.name }}](att:{{ item.pk }})">Вставить ссылку</button>{% endif %}
+      {% if item.image_format and item.file.status == "clean" %}<button type="button" class="btn btn-sm btn-outline-secondary" data-action="kb-insert-image" data-insert="![{{ item.name }}](att:{{ item.pk }})">Картинка</button>{% endif %}
       <form class="inline-form" method="post" action="/kb/{{ article.pk }}/files/{{ item.pk }}/delete/" hx-post="/kb/{{ article.pk }}/files/{{ item.pk }}/delete/" hx-target="[data-kb-files]" hx-swap="outerHTML">{% csrf_token %}
-        <button type="submit" data-action="kb-file-delete">Удалить</button>
+        <button type="submit" class="btn btn-sm btn-outline-danger" data-action="kb-file-delete">Удалить</button>
       </form>
       {% endif %}
     </li>

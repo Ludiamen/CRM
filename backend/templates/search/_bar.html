@@ -1,6 +1,6 @@
 {# Строка поиска в верхней панели (CONTRACT-005, 11.9): поле, подпись, окно выдачи; без role, ws-connect, hx-ext #}
 <div data-search-bar class="position-relative me-2">
-  <input type="search" name="q" maxlength="200" autocomplete="off" class="form-control form-control-sm" aria-label="Поиск" placeholder="Поиск"
+  <input type="search" name="q" maxlength="200" autocomplete="off" class="form-control form-control-sm" aria-label="Поиск" placeholder="Поиск"{% if request.path == "/search/" %} value="{{ request.GET.q }}"{% endif %}
          hx-get="/search/popup/" hx-trigger="input changed delay:300ms, search" hx-sync="this:replace" hx-target="#search-popup" hx-swap="outerHTML">
   {% include "search/_popup.html" with groups=None q="" q_url="" %}
 </div>

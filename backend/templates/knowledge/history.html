@@ -10,14 +10,15 @@
   <form data-form="kb-compare" method="get" action="/kb/{{ article.pk }}/compare/">
     <div class="table-wrap">
       <table class="table table-sm align-middle kb-history">
-        <thead><tr><th scope="col"></th><th scope="col">№</th><th scope="col">Когда и кто</th><th scope="col">Комментарий</th></tr></thead>
+        <thead><tr><th scope="col"></th><th scope="col">Номер</th><th scope="col">Автор</th><th scope="col">Время</th><th scope="col">Комментарий к правке</th></tr></thead>
         <tbody>
           {% for item in versions %}
           <tr data-version="{{ item.number }}">
             <td><input type="checkbox" name="v" value="{{ item.number }}" aria-label="Версия {{ item.number }}"></td>
             <td><a data-action="kb-version-open" href="/kb/{{ article.pk }}/versions/{{ item.number }}/">Версия {{ item.number }}</a></td>
-            <td><time data-at="{{ item.created_at|date:'c' }}" datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'d.m.Y H:i' }}</time> <span data-field="author">{% person_name item.author %}</span></td>
-            <td data-field="comment">{{ item.comment }}</td>
+            <td data-label="Автор"><span data-field="author">{% person_name item.author %}</span></td>
+            <td data-label="Время"><time data-at="{{ item.created_at|date:'c' }}" datetime="{{ item.created_at|date:'c' }}">{{ item.created_at|date:'d.m.Y H:i' }}</time></td>
+            <td data-field="comment" data-label="Комментарий к правке">{{ item.comment }}</td>
           </tr>
           {% endfor %}
         </tbody>

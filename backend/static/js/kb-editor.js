@@ -186,6 +186,15 @@
     }
   });
 
+  /* После ответа на загрузку поле выбора файла очищается: имя непринятого файла в нём не остаётся (T-5301). */
+  document.addEventListener('htmx:afterRequest', function (event) {
+    var elt = event.detail && event.detail.elt;
+    if (elt && elt.matches && elt.matches('form[data-form="kb-attach"]')) {
+      var input = elt.querySelector('input[name="file"]');
+      if (input) { input.value = ''; }
+    }
+  });
+
   /* После загрузки картинки список вложений заменён целиком: в текст идёт `![имя](att:N)` для новой строки-картинки. */
   document.addEventListener('htmx:afterSwap', function () {
     if (!pendingImage) { return; }

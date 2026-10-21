@@ -11,8 +11,8 @@
     {% if errors.title %}<div class="invalid-feedback d-block" data-error="title" data-code="{{ errors.title.code }}">{{ errors.title.text }}</div>{% endif %}
   </div>
   <div class="mb-3">
-    <label class="form-label" for="kb-rubric">Рубрика</label>
-    <select class="form-select" id="kb-rubric" name="rubric">
+    <label class="form-label" for="kb-rubric">Рубрика <span class="small text-muted">(обязательно)</span></label>
+    <select class="form-select" id="kb-rubric" name="rubric" aria-required="true">
       <option value="">— выберите рубрику —</option>
       {% for option in rubric_options %}<option value="{{ option.id }}"{% if option.selected %} selected{% endif %}>{{ option.label }}</option>{% endfor %}
     </select>
