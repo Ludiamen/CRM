@@ -70,6 +70,17 @@ TASKS-004.
 - **Нагрузочный прогон** — только на свободной машине и с вашего согласия (T-5304).
 - **Ручной проход** — «статья за 5 минут» и «Статья из решения» на настоящей заявке (T-5308).
 
+**Этап 4: к сведению при приёмке среза (T-5309)**
+- **Web Push в Edge.** Тест среза 004 `e05_two_devices[edge]` в итоговой приёмке красный: портал отправил push на обе подписки,
+  сервис Microsoft WNS принял оба (201), но второй профиль Edge уведомление не показал — доставка теряется во внешнем сервисе;
+  в chromium тест зелёный, код push не менялся со среза 004. Кроме того, тест зависит от времени суток: ночью тихие часы
+  откладывают push в сводку. Подробности — «Зелёный прогон (T-5260)».
+- **Заголовок черновика в журнале (З2, T-5306).** Журнал хранит заголовок статьи не меньше 3 лет; почта или телефон в заголовке
+  черновика предупреждения не вызывают и останутся в журнале и после удаления статьи навсегда. Это по плану, нарушения нет;
+  если нужно строже — писать в журнал только номер статьи или предупреждать о ПДн уже при создании черновика (изменение плана).
+- **Журнал веб-сервера (З3, T-5306).** Запрос поиска в журнал nginx не попадает — код строже текста FR-446; формулировку спеки
+  предлагаю уточнить при следующем проходе.
+
 ## Что не проверялось
 - Исполнимость подмен `support_kb.py` и обвязки `helpers_kb.py` — файлов ещё нет; их проверит Opus при приёмке контракта
   (решение 2) и красный прогон T-5160.
@@ -197,3 +208,129 @@ Edge уведомления за 90 с не показал — доставка 
 `notify-push.js` не менялись со среза 004) отработал верно, в chromium тест зелёный. Решение Opus: не регрессия среза 005, а
 зависимость теста среза 004 от внешнего сервиса (как наблюдения решения 26 среза 004); вынесено владельцу в «Что владельцу знать»
 к Этапу 4. **T-5260 закрыт.**
+
+## Ход выполнения: этап 4 (проверка) — 2026-10-21
+Разрешения владельца — `crm-work/slice005/owner-answers-2026-10-21-stage4.md` п. 1 (T-5300, T-5303, T-5306, T-5307; работа
+со стендом T-5301, T-5302, T-5305; T-5304 — по согласованию времени на свободной машине). Рабочие файлы — `crm-work/slice005/stage4/`.
+
+### Проверки инструментами (T-5303)
+Вывод команд 2026-10-21 10:20 (`stage4/T-5303.txt`):
+
+```
+== sdd.py проверить
+возможностей: 115 (MVP: 38, позже: 53, не нужно: 24, без решения: 0); MVP покрыто спеками: 34 из 38; MVP не покрыты: CAP-51, CAP-52, CAP-82, CAP-105
+документов: 85, ошибок: 0, предупреждений: 0
+== unittest tools
+----------------------------------------------------------------------
+Ran 140 tests in 0.638s
+
+OK
+== check_secrets
+секретов в индексе не найдено
+== verify_vendor
+замечание: Alpine.js CSP: в своей ветке есть версия новее — 3.17.5 (в проекте 3.17.4)
+vendor: разделов 4, ошибок 0, замечаний 1
+== test_constitution (unittest, настоящий constitution.json; проверка кода backend/ и deploy/ по конституции — внутри sdd.py проверить)
+Ran 4 tests in 0.017s
+
+OK
+```
+
+`sdd.py проверить` в 10:20 — 0 ошибок. Позже в тот же день по поручению владельца подготовлены ADR-0013 (поручения) и REF-CAP
+версии 6 — до подписи владельца `sdd.py` показывает «зависимость «REF-CAP» не утверждена» у документов, зависящих от REF-CAP;
+это не относится к коду среза, проверку повторить перед переводом отчёта на проверку (T-5307). Замечание `verify_vendor` —
+вышла Alpine.js CSP 3.17.5 при 3.17.4 в проекте; новой сторонней статики в срезе нет, обновление — не задача среза.
+
+### Инварианты (T-5306)
+Проверка Sonnet по заданию Opus, полная таблица с доказательствами (файл:строка) — `stage4/T-5306.md`; выполнена до T-5304 с
+разрешения владельца — нагрузочный прогон код не меняет; если по его итогам код изменится, проверку повторить.
+**Нарушений нет** по всем инвариантам задачи: «модуль-приложение» (границы импорта, точки `search_providers`,
+`ticket_card_parts`, `notification_kinds`, шина с одними id; knowledge зовёт servicedesk только через `public` под
+`is_installed`), «настройка-без-кода» (срок корзины — настройка в базе; права через роли), «интеграции-через-адаптеры» (ClamAV
+через `uploads.store` → очередь RQ с повтором), «аудит-изменений» (12 кодов по плану, без текстов статей, комментариев и имён
+вложений), «пдн-152фз» (маска «Статьи из решения», предупреждение при публикации и сохранении опубликованной, во внешние каналы —
+постоянная фраза и ссылка, поиск ничего не пишет), «секреты-в-url», «sql-только-параметры» (весь сырой SQL — литералы с `%s`),
+дополнительно CSP. Замечания (не нарушения):
+- **З1.** Модули knowledge и search подключены в `config/urls.py`, `config/cron.py`, `templates/_assets.html` безусловно —
+  выключение требует правки трёх мест кроме `INSTALLED_APPS`. Так же подключены servicedesk и notify — соглашение проекта.
+  Решение Opus: не трогать в срезе 005.
+- **З2.** В журнале под ключом `title` хранится заголовок статьи (по плану, раздел «Журнал»). Журнал хранится не меньше 3 лет;
+  предупреждение о ПДн срабатывает при публикации, но не при создании черновика, поэтому почта или телефон, введённые в заголовок
+  черновика, останутся в журнале и после удаления статьи навсегда. Прямого нарушения нет — вынесено владельцу (см. «Что владельцу
+  знать», Этап 4).
+- **З3.** FR-446 говорит, что запрос остаётся в журнале веб-сервера; на деле `log_format portal` пишет `$uri` без параметров
+  (`deploy/nginx.conf`, `nginx.prod.conf`) — код строже спеки. Предложение: уточнить формулировку FR-446 при следующем проходе спеки.
+
+### Прохождение требований (T-5307; итог — после T-5304 и T-5305)
+Собрано `stage4/T-5307-collect.py` (теги FR/NFR из докстрингов тестов; серверные итоги `stage3/full/after-c2d.txt` поверх
+`after-fix1.txt` и повтора тестов времени; приёмка `stage3/green/*.xml`, последний прогон побеждает). 62 требования (FR 49,
+NFR 13), у всех есть тесты; падений в итоговых результатах нет. Ждут Этапа 4: NFR-401, NFR-402, NFR-412 — нагрузка T-5304
+(приёмка `test_k12` — дымовой замер «лучшее из трёх» на малых данных; серверный тест NFR-412 проверяет только наличие
+скриптов); NFR-413 — копия и восстановление T-5305 (серверный тест — только том `protected`). NFR-403: замер 200 000 знаков
+1,10 с под нагрузкой параллельной приёмки, без нагрузки — в пределе 1 с. Тег в докстринге — заявление автора теста; содержание
+тестов против требований сверялось проверками R-52NN Этапа 3, а не скриптом.
+
+| Требование | Серверные (число: итог) | Приёмка (тестов; круги: итог) | Код (backend/apps/) | Примечание |
+|---|---|---|---|---|
+| FR-401 | 8: 8 PASSED | 8 тестов; chromium: 8 PASSED; edge: 8 PASSED; firefox: 8 PASSED | knowledge/models.py, services/articles.py |  |
+| FR-402 | 13: 13 PASSED | 4 тестов; chromium: 4 PASSED; edge: 4 PASSED; firefox: 4 PASSED | knowledge/services/render.py |  |
+| FR-403 | 7: 7 PASSED | 5 тестов; chromium: 5 PASSED; edge: 5 PASSED; firefox: 5 PASSED | knowledge/static (панель, предпросмотр), views/articles.py | замер 5 минут — T-5308 |
+| FR-404 | 2: 2 PASSED | 2 тестов; chromium: 2 PASSED; edge: 2 PASSED; firefox: 2 PASSED | knowledge/urls.py |  |
+| FR-405 | 2: 2 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | knowledge/apps.py (menu_items) |  |
+| FR-406 | 11: 11 PASSED | 10 тестов; chromium: 10 PASSED; edge: 10 PASSED; firefox: 10 PASSED | core (миграция прав), knowledge/services/access.py |  |
+| FR-407 | 13: 13 PASSED | 9 тестов; chromium: 9 PASSED; edge: 9 PASSED; firefox: 9 PASSED | knowledge/services/access.py |  |
+| FR-408 | 14: 14 PASSED | 8 тестов; chromium: 8 PASSED; edge: 8 PASSED; firefox: 8 PASSED | knowledge/services/articles.py |  |
+| FR-409 | 16: 16 PASSED | 14 тестов; chromium: 14 PASSED; edge: 14 PASSED; firefox: 14 PASSED | knowledge/services/access.py, views/* |  |
+| FR-410 | 10: 10 PASSED | 5 тестов; chromium: 5 PASSED; edge: 5 PASSED; firefox: 5 PASSED | knowledge/services/articles.py, versions.py |  |
+| FR-411 | 18: 18 PASSED | 7 тестов; chromium: 7 PASSED; edge: 7 PASSED; firefox: 7 PASSED | knowledge/services/versions.py, views/history.py |  |
+| FR-412 | 9: 9 PASSED | 3 тестов; chromium: 3 PASSED; edge: 3 PASSED; firefox: 3 PASSED | knowledge/services/versions.py |  |
+| FR-413 | 9: 9 PASSED | 5 тестов; chromium: 5 PASSED; edge: 5 PASSED; firefox: 5 PASSED | knowledge/services/articles.py |  |
+| FR-414 | 2: 2 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | knowledge/services/versions.py, models.py |  |
+| FR-415 | 15: 15 PASSED | 6 тестов; chromium: 6 PASSED; edge: 6 PASSED; firefox: 6 PASSED | knowledge/services/retention.py, views/management.py |  |
+| FR-416 | 15: 15 PASSED | 7 тестов; chromium: 7 PASSED; edge: 7 PASSED; firefox: 7 PASSED | knowledge/views/management.py |  |
+| FR-417 | 19: 19 PASSED | 3 тестов; chromium: 3 PASSED; edge: 3 PASSED; firefox: 3 PASSED | knowledge/services/retention.py, tasks.py |  |
+| FR-418 | 22: 22 PASSED | 6 тестов; chromium: 6 PASSED; edge: 6 PASSED; firefox: 6 PASSED | knowledge/services/rubrics.py |  |
+| FR-419 | 8: 8 PASSED | 2 тестов; chromium: 2 PASSED; edge: 2 PASSED; firefox: 2 PASSED | knowledge/services/rubrics.py |  |
+| FR-420 | 19: 19 PASSED | 5 тестов; chromium: 5 PASSED; edge: 5 PASSED; firefox: 5 PASSED | knowledge/services/tags.py |  |
+| FR-421 | 16: 16 PASSED | 5 тестов; chromium: 5 PASSED; edge: 5 PASSED; firefox: 5 PASSED | knowledge/views/navigation.py |  |
+| FR-422 | 37: 37 PASSED | 11 тестов; chromium: 11 PASSED; edge: 11 PASSED; firefox: 11 PASSED | knowledge/services/files.py, views/files.py |  |
+| FR-423 | 20: 20 PASSED | 7 тестов; chromium: 7 PASSED; edge: 7 PASSED; firefox: 7 PASSED | knowledge/services/files.py, render.py |  |
+| FR-424 | 21: 21 PASSED | 0 | core/services/uploads.py, knowledge/services/files.py |  |
+| FR-425 | 19: 19 PASSED | 12 тестов; chromium: 12 PASSED; edge: 12 PASSED; firefox: 12 PASSED | knowledge/views/comments.py, core/services/comments.py |  |
+| FR-426 | 17: 17 PASSED | 2 тестов; chromium: 2 PASSED; edge: 2 PASSED; firefox: 2 PASSED | core/models/comment.py, core/services/comments.py |  |
+| FR-427 | 17: 17 PASSED | 5 тестов; chromium: 5 PASSED; edge: 5 PASSED; firefox: 5 PASSED | knowledge/services/links.py, views/links.py | на настоящей закрытой заявке — T-5308 |
+| FR-428 | 18: 18 PASSED | 3 тестов; chromium: 3 PASSED; edge: 3 PASSED; firefox: 3 PASSED | knowledge/services/pdn.py |  |
+| FR-429 | 21: 21 PASSED | 7 тестов; chromium: 7 PASSED; edge: 7 PASSED; firefox: 7 PASSED | knowledge/services/links.py |  |
+| FR-430 | 3: 3 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | knowledge/views/links.py |  |
+| FR-431 | 15: 15 PASSED | 3 тестов; chromium: 3 PASSED; edge: 3 PASSED; firefox: 3 PASSED | knowledge/services/pdn.py |  |
+| FR-432 | 13: 13 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | core/extensions.py (ticket_card_parts), knowledge/extensions.py |  |
+| FR-433 | 11: 11 PASSED | 0 | core/extensions.py, servicedesk/views |  |
+| FR-434 | 14: 14 PASSED | 7 тестов; chromium: 7 PASSED; edge: 7 PASSED; firefox: 7 PASSED | knowledge/notify_kinds.py |  |
+| FR-435 | 31: 31 PASSED | 10 тестов; chromium: 10 PASSED; edge: 10 PASSED; firefox: 10 PASSED | knowledge/notify_kinds.py, notify/services/dispatch.py |  |
+| FR-436 | 9: 9 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | notify/services/dispatch.py |  |
+| FR-437 | 13: 13 PASSED | 5 тестов; chromium: 5 PASSED; edge: 5 PASSED; firefox: 5 PASSED | knowledge/services/subscriptions.py |  |
+| FR-438 | 23: 23 PASSED | 7 тестов; chromium: 7 PASSED; edge: 7 PASSED; firefox: 7 PASSED | knowledge/audit_labels.py, services/* |  |
+| FR-439 | 5: 5 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | search/views.py, шаблон шапки core |  |
+| FR-440 | 9: 9 PASSED | 4 тестов; chromium: 4 PASSED; edge: 4 PASSED; firefox: 4 PASSED | search/views.py, статика поиска |  |
+| FR-441 | 4: 4 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | search/services.py, knowledge/services/search.py |  |
+| FR-442 | 17: 17 PASSED | 5 тестов; chromium: 5 PASSED; edge: 5 PASSED; firefox: 5 PASSED | search/views.py |  |
+| FR-443 | 46: 46 PASSED | 7 тестов; chromium: 7 PASSED; edge: 7 PASSED; firefox: 7 PASSED | search/parse.py, knowledge/services/vectors.py |  |
+| FR-444 | 11: 11 PASSED | 6 тестов; chromium: 6 PASSED; edge: 6 PASSED; firefox: 6 PASSED | knowledge/services/search.py, servicedesk/extensions.py |  |
+| FR-445 | 15: 15 PASSED | 0 | core/extensions.py (search_providers), search/services.py |  |
+| FR-446 | 5: 5 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | search/views.py (без записи запросов) |  |
+| FR-447 | 9: 9 PASSED | 2 тестов; chromium: 2 PASSED; edge: 2 PASSED; firefox: 2 PASSED | knowledge/services/vectors.py |  |
+| FR-448 | 3: 3 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | knowledge/services/retention.py, models.py |  |
+| FR-449 | 8: 8 PASSED | 3 тестов; chromium: 3 PASSED; edge: 3 PASSED; firefox: 3 PASSED | knowledge/services/versions.py |  |
+| NFR-401 | 0 | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | search/services.py | ждёт T-5304 |
+| NFR-402 | 0 | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | knowledge/views/ (все) | ждёт T-5304 |
+| NFR-403 | 1: 1 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | knowledge/services/render.py | время на стенде — T-5301/T-5308; серверный замер есть |
+| NFR-404 | 8: 8 PASSED | 1 тестов; chromium: 1 PASSED; edge: 1 PASSED; firefox: 1 PASSED | core/services/uploads.py, knowledge/services/files.py | антивирус 1 мин на живом ClamAV — T-5301 |
+| NFR-405 | 22: 22 PASSED | 5 тестов; chromium: 5 PASSED; edge: 5 PASSED; firefox: 5 PASSED | knowledge/services/render.py (nh3), CSP nginx/middleware |  |
+| NFR-406 | 1: 1 PASSED | 7 тестов; chromium: 7 PASSED; edge: 7 PASSED; firefox: 7 PASSED | knowledge/static (.kb-scroll), шапка поиска | ширина 360 px — приёмка; ручной проход T-5301 |
+| NFR-407 | 2: 2 PASSED | 0 | core/services/audit.py |  |
+| NFR-408 | 6: 6 PASSED | 0 | search/parse.py, knowledge/services/search.py, tags.py |  |
+| NFR-409 | 2: 2 PASSED | 0 | шаблоны, settings (Europe/Moscow) | тексты — тесты точечные; полный проход T-5301 |
+| NFR-410 | 5: 5 PASSED | 0 | knowledge/services/retention.py |  |
+| NFR-411 | 9: 9 PASSED | 2 тестов; chromium: 2 PASSED; edge: 2 PASSED; firefox: 2 PASSED | knowledge/services/files.py, articles.py |  |
+| NFR-412 | 1: 1 PASSED | 0 | — | ждёт T-5304 |
+| NFR-413 | 1: 1 PASSED | 0 | deploy/backup/ (backup.sh), deploy/RESTORE.md (без правок, plan.md) | ждёт T-5305 (копия и восстановление) |
