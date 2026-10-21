@@ -177,13 +177,14 @@ def test_ui_and_mail_in_russian_moscow_time(employee, mailpit, new_context, brow
 
 
 def test_suite_runs_in_chromium_firefox_and_edge_if_installed(browser, page, request):
-    """NFR-009: набор идёт в трёх браузерах; проект Edge без установленного Edge пропускается фикстурой
-    (единственный допустимый skip), Firefox обязан быть установлен (`playwright install firefox`)."""
-    assert PROJECTS == ["chromium", "firefox", "edge"]
+    """NFR-009: набор идёт в четырёх браузерах; проекты Edge и Яндекс Браузера без установки пропускаются
+    фикстурой (единственные допустимые skip), Firefox обязан быть установлен (`playwright install firefox`)."""
+    assert PROJECTS == ["chromium", "firefox", "edge", "yandex"]
     project = request.node.callspec.params["browser"]
     assert browser.e2e_project == project
     agent = page.evaluate("navigator.userAgent")
-    expected = {"chromium": r"Chrome/(?!.*Edg/)", "firefox": r"Firefox/", "edge": r"Edg/"}[project]
+    expected = {"chromium": r"Chrome/(?!.*(?:Edg|YaBrowser)/)", "firefox": r"Firefox/", "edge": r"Edg/",
+                "yandex": r"YaBrowser/"}[project]
     assert re.search(expected, agent), f"проект {project} запущен не в своём браузере: {agent}"
     response = page.goto("/login/")
     assert response is not None and response.status == 200

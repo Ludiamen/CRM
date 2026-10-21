@@ -5,10 +5,11 @@
     set -a; . ../deploy/.env; set +a
     E2E_MAILPIT_URL=http://127.0.0.1:8025 python -m pytest tests/e2e
 
-Браузеры — chromium, firefox и Edge (`channel="msedge"`). Если Edge не
-установлен, его проект пропускается с пометкой «Edge не установлен»: это
-единственный допустимый skip. Яндекс.Браузер Playwright не ведёт — его
-проходит человек (T-308). Снимки экрана и trace — в /playwright-report/
+Браузеры — chromium, firefox, Edge (`channel="msedge"`) и Яндекс Браузер
+(`executable_path` из E2E_YANDEX_PATH, по умолчанию /usr/bin/yandex-browser-stable;
+разрешение владельца 2026-10-21). Edge или Яндекс Браузер не установлен — его
+проект пропускается с пометкой «… не установлен»: это единственные допустимые
+skip. Снимки экрана и trace — в /playwright-report/
 (параметры --output, --screenshot, --tracing в pytest.ini).
 
 Адрес стенда — https://127.0.0.1:8031/ с тем же именем хоста, что в PORTAL_URL
@@ -43,7 +44,8 @@ from tests import factories
 
 PORTAL_URL = os.environ.get("E2E_PORTAL_URL", "https://127.0.0.1:8031/")
 COMPOSE_FILE = Path(__file__).resolve().parents[3] / "deploy" / "docker-compose.yml"
-PROJECTS = ["chromium", "firefox", "edge"]
+PROJECTS = ["chromium", "firefox", "edge", "yandex"]
+YANDEX_PATH = os.environ.get("E2E_YANDEX_PATH", "/usr/bin/yandex-browser-stable")
 # Chrome и Edge запускаются без --disable-background-networking: иначе подписка Web Push
 # (служба Google) не работает (CONTRACT-004 § 8.1, решение E23); круг firefox не меняется
 CHROMIUM_LAUNCH_ARGS = {"ignore_default_args": ["--disable-background-networking"]}
@@ -63,7 +65,7 @@ expect.set_options(timeout=15_000)
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
-        "webpush: тест Web Push; выполняется только в кругах chromium и edge, в круге firefox снимается со сбора "
+        "webpush: тест Web Push; выполняется только в кругах chromium и edge, в кругах firefox и yandex снимается со сбора "
         "(решение 8 задач среза 004)",
     )
 
@@ -74,11 +76,11 @@ def pytest_collection_modifyitems(config, items):
         if "/tests/e2e/" in str(item.fspath).replace("\\", "/"):
             item.add_marker(pytest.mark.e2e)
 
-    # тесты с меткой webpush в круге firefox не собираются (не пропускаются); порядок остальных не меняется
+    # тесты с меткой webpush в кругах firefox и yandex не собираются (не пропускаются); порядок остальных не меняется
     снятые = [
         it for it in items
         if it.get_closest_marker("webpush")
-        and getattr(getattr(it, "callspec", None), "params", {}).get("browser") == "firefox"
+        and getattr(getattr(it, "callspec", None), "params", {}).get("browser") in ("firefox", "yandex")
     ]
     if снятые:
         config.hook.pytest_deselected(items=снятые)
@@ -96,16 +98,18 @@ def pytest_collection_modifyitems(config, items):
 
 @pytest.fixture(scope="session", params=PROJECTS)
 def browser(playwright, request):
-    """Браузер проекта: chromium, firefox или Edge (пропуск, если Edge не установлен)."""
+    """Браузер проекта: chromium, firefox, Edge или Яндекс Браузер (пропуск, если Edge или Яндекс Браузер не установлен)."""
     name = request.param
     try:
         if name in CHANNELS:
             instance = playwright.chromium.launch(channel=CHANNELS[name], **CHROMIUM_LAUNCH_ARGS)
+        elif name == "yandex":
+            instance = playwright.chromium.launch(executable_path=YANDEX_PATH, **CHROMIUM_LAUNCH_ARGS)
         else:
             instance = getattr(playwright, name).launch()
     except PlaywrightError as e:
-        if name == "edge":
-            pytest.skip("Edge не установлен")
+        if name in ("edge", "yandex"):
+            pytest.skip({"edge": "Edge", "yandex": "Яндекс Браузер"}[name] + " не установлен")
         raise RuntimeError(f"не запускается {name}: {e}") from e
     instance.e2e_project = name
     reset = os.environ.get("E2E_RESET_CMD")
