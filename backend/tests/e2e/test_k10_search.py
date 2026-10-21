@@ -513,8 +513,9 @@ def test_k10_invisible_ticket_is_absent_by_subject_or_number_without_any_hint(ad
     # участник: по общему слову видит только свою
     hrefs = _group_hrefs(page, shared, "tickets")
     assert f"/tickets/{visible}/" in hrefs and f"/tickets/{hidden}/" not in hrefs
-    # по теме скрытой заявки и по её номеру — ничего, подсказки нет
-    queries = [hidden_word, f"#{hidden}"]
+    # по теме скрытой заявки и по её однозначному номеру — ничего, подсказки нет; «#N» от 10 — ещё и слово «N»
+    # (CONTRACT-005 9.1: «#42» → number=42, words=["42"]), его проверяет ветка ниже, как номер без «#»
+    queries = [hidden_word] + ([f"#{hidden}"] if hidden < 10 else [])
     nothing = unique_word("zz")
     _results(page, nothing)
     reference = _norm(page.locator('[data-search-page] [data-empty-state="search"]').inner_text())
@@ -530,10 +531,12 @@ def test_k10_invisible_ticket_is_absent_by_subject_or_number_without_any_hint(ad
         text = _norm(_norm(empty.inner_text()).replace(query, ""))
         assert text == reference, f"запрос {query}: страница отличается от пустой выдачи"
     if hidden >= 10:
-        # номер без «#» — ещё и слово поиска: чужие совпадения по началу допустимы, заявки и подсказки быть не должно
-        _results(page, str(hidden))
-        assert f"/tickets/{hidden}/" not in _hrefs(page.locator("[data-search-page]"))
-        expect(page.locator("[data-search-page] [data-search-hint]")).to_have_count(0)
+        # номер (с «#» и без) — ещё и слово поиска: чужие совпадения по началу (почта, телефон сотрудника) допустимы,
+        # заявки и подсказки быть не должно
+        for query in (str(hidden), f"#{hidden}"):
+            _results(page, query)
+            assert f"/tickets/{hidden}/" not in _hrefs(page.locator("[data-search-page]")), query
+            expect(page.locator("[data-search-page] [data-search-hint]")).to_have_count(0)
     status, body = _get_text(page, "/search/popup/?" + urlencode({"q": hidden_word}))
     assert status == 200 and f"/tickets/{hidden}/" not in body and "data-search-group" not in body
 
