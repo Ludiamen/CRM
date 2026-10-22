@@ -89,7 +89,9 @@ def test_headers_and_cookies_on_real_stand(employee, new_context):
     protected = page.request.get("/me/security/")
     assert "no-store" in protected.headers.get("cache-control", "")
 
-    cookies = page.context.cookies()
+    # только куки портала: Яндекс Браузер сам заводит в профиле свои куки .yandex.ru
+    # (pi, yandexuid …, SameSite=None) — к порталу они не относятся
+    cookies = page.context.cookies(page.url)
     assert cookies, "после входа нет ни одной куки"
     for cookie in cookies:
         assert cookie["secure"], f"кука {cookie['name']} без Secure"
