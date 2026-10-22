@@ -27,6 +27,7 @@ import contextlib
 import json
 import re
 import secrets
+import time
 from datetime import datetime
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
@@ -532,9 +533,16 @@ def test_e05_two_devices_removing_one_stops_push_to_it_and_other_still_gets_push
         _close_member(member)
         # дано: оба устройства получают push (положительный контроль того же пути)
         _new_mail("Не работает принтер")
-        for context in (first, second):
-            shown = helpers_notify.wait_service_worker_notifications(context, count=1, timeout=PUSH_WAIT)
-            assert _titles(shown) == [EXTERNAL_SUBJECT], _titles(shown)
+        # оба устройства — попеременно: Chromium убирает показанное уведомление примерно
+        # через 9 с, и пока ждём первое, push второго успевал исчезнуть до проверки
+        seen = {0: [], 1: []}
+        deadline = time.monotonic() + PUSH_WAIT
+        while time.monotonic() < deadline and not all(seen.values()):
+            for index, context in enumerate((first, second)):
+                if not seen[index]:
+                    seen[index] = helpers_notify.service_worker_notifications(context)
+        for index, context in enumerate((first, second)):
+            assert _titles(seen[index]) == [EXTERNAL_SUBJECT], f"устройство {index + 1}: {_titles(seen[index])}"
             helpers_notify.close_service_worker_notifications(context)
         # когда: сотрудник удаляет первое устройство из списка
         view = first.new_page()
