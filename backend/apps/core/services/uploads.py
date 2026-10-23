@@ -268,7 +268,8 @@ def detect_image(data: bytes) -> str:
     Число точек больше `files.MAX_PHOTO_PIXELS` и `Image.DecompressionBombError` — `ImageTooLarge`.
     """
     try:
-        with Image.open(BytesIO(data)) as image:
+        # разбор только разрешёнными форматами: заголовки прочих форматов Pillow не читает (проверка безопасности 2026-10-23)
+        with Image.open(BytesIO(data), formats=tuple(_IMAGE_FORMATS)) as image:
             fmt, (width, height) = image.format, image.size
             if fmt not in _IMAGE_FORMATS:
                 return ""

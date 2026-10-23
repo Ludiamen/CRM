@@ -5,7 +5,10 @@
 трассировка могут содержать фрагмент запроса, поэтому `log.exception` не используется).
 """
 import logging
+from contextlib import contextmanager
 from typing import NamedTuple
+
+from django.db import connection, transaction
 
 from apps.core import extensions
 from apps.core.extensions import ParsedQuery, SearchProvider, SearchRow
@@ -14,6 +17,9 @@ log = logging.getLogger(__name__)
 
 POPUP_LIMIT = 5
 PAGE_LIMIT = 20
+# Предел времени каждого запроса поставщика к базе (проверка безопасности 2026-10-23, CONTRACT-005 п. 81): дорогой
+# запрос прерывается базой, группа выпадает как при сбое поставщика, остальные работают.
+QUERY_TIMEOUT_MS = 2000
 
 
 class Group(NamedTuple):
@@ -52,13 +58,28 @@ def providers(user) -> list[SearchProvider]:
     return found
 
 
+@contextmanager
+def _time_limited():
+    """Транзакция поставщика с пределом `statement_timeout` (`set_config(…, true)` действует до конца транзакции);
+    после успешного опроса прежнее значение возвращается, при ошибке его возвращает откат точки сохранения."""
+    with transaction.atomic():
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT current_setting('statement_timeout')")
+            previous = cursor.fetchone()[0]
+            cursor.execute("SELECT set_config('statement_timeout', %s, true)", [str(QUERY_TIMEOUT_MS)])
+        yield
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT set_config('statement_timeout', %s, true)", [previous])
+
+
 def _collect(provider: SearchProvider, user, parsed: ParsedQuery, limit: int, offset: int):
     """Строки одной группы: закреплённые и первые `limit` основных; поставщик выбирает `limit + 1` основных строк.
 
     Возвращает `(строки, есть_ещё)`; при ошибке поставщика — `None`.
     """
     try:
-        rows = provider.search(user, parsed, limit, offset)
+        with _time_limited():
+            rows = provider.search(user, parsed, limit, offset)
     except Exception as exc:  # noqa: BLE001
         log.error("search provider failed: key=%s error=%s", provider.key, type(exc).__name__)
         return None
@@ -126,7 +147,8 @@ def count(user, parsed: ParsedQuery, key: str) -> Count | None:
     if provider is None:
         return None
     try:
-        number, capped = provider.count(user, parsed)
+        with _time_limited():
+            number, capped = provider.count(user, parsed)
     except Exception as exc:  # noqa: BLE001
         log.error("search provider failed: key=%s error=%s", provider.key, type(exc).__name__)
         return None

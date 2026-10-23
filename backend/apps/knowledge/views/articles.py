@@ -155,6 +155,21 @@ def errors_of(refused: KnowledgeError) -> dict:
     return {"errors": {refused.field: item}} if refused.field else {"alert": item}
 
 
+def refused_form_target(request, article_id):
+    """Статья для повторного показа формы после отказа у поля.
+
+    Служба проверяет поля формы раньше права (CONTRACT-005, B-3), поэтому отказ у поля может прийти и на статью, которую
+    сотрудник не видит: тогда ответ — как у GET-правки (чужой черновик и несуществующий номер — 404, нет права — 403),
+    без вложений, версии и заголовка чужой статьи. Статья в корзине показывается как прежде (вложения в ней скрыты)."""
+    try:
+        item = access.get_for(request.user, article_id)
+    except access.ArticleGone:
+        return Article.objects.filter(pk=article_id).first()
+    if item.state != Article.State.TRASH and not access.can_change(request.user, item):
+        raise PermissionDenied
+    return item
+
+
 def edit_context(request, article, values=None, extra=None) -> dict:
     """Контекст шаблона `knowledge/edit.html` (и фрагмента формы): введённое, дерево рубрик, вложения, отказы.
 
@@ -287,7 +302,7 @@ def edit(request, article_id):
                  "base_version": conflict.current_version}
         return render_form(request, item, values, extra)
     except KnowledgeError as refused:
-        item = Article.objects.filter(pk=article_id).first()
+        item = refused_form_target(request, article_id)
         return render_form(request, item, values, {**errors_of(refused), "base_version": base})
     item = result.article
     if result.kind == "no_changes":

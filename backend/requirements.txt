@@ -15,7 +15,7 @@ django-csp==4.0
 gunicorn==26.2.0
 uvicorn==0.54.0
 uvicorn-worker==0.4.0
-Pillow==11.3.0
+Pillow==13.0.0
 # Срез 002 (PLAN-002, «Новые компоненты и лицензии»).
 openpyxl==3.1.5
 et-xmlfile==2.0.0

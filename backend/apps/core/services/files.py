@@ -119,7 +119,8 @@ def _check(data: bytes) -> str:
     if len(data) > MAX_PHOTO_BYTES:
         raise PhotoError("too_big")
     try:
-        with Image.open(io.BytesIO(data)) as image:
+        # разбор только разрешёнными форматами (проверка безопасности 2026-10-23); прочие — `bad_format`, как прежде
+        with Image.open(io.BytesIO(data), formats=tuple(FORMATS)) as image:
             fmt, (width, height) = image.format, image.size
             if fmt in FORMATS and width * height > MAX_PHOTO_PIXELS:
                 raise PhotoError("too_many_pixels")
@@ -170,7 +171,7 @@ def upload_photo(user: User, uploaded, *, actor, ip=None) -> StoredFile:
 
 def _encode(source: pathlib.Path, target: StoredFile) -> None:
     """Перекодирует исходник в два JPEG: вписан в квадрат, без EXIF, с поворотом, белый фон вместо прозрачного."""
-    with Image.open(source) as opened:
+    with Image.open(source, formats=tuple(FORMATS)) as opened:
         image = ImageOps.exif_transpose(opened)
         if image.mode in ("RGBA", "LA", "P", "PA"):
             image = image.convert("RGBA")

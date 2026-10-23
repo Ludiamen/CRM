@@ -430,6 +430,36 @@ def test_compare_over_2000_changed_lines_shows_first_2000_and_remainder_message(
     assert not _dom(_compare(reader.client, short, 1, 2)).find(data_kb_diff_more=True)
 
 
+def test_compare_of_large_interleaved_change_is_fast_and_keeps_2000_lines_format():
+    """Проверка безопасности 2026-10-23 (CONTRACT-005 п. 80): изменена каждая вторая строка из 6 000 — прежнее
+    подробное сравнение всего текста шло бы секунды на запрос (время растёт квадратично); теперь ответ быстрый и точный:
+    3 000 удалённых и 3 000 добавленных строк, показ FR-411 прежний — первые 2 000 и «Ещё 4000 изменений не показано»;
+    две правки в разных концах статьи на 3 000 строк показываются ровно двумя строками каждая."""
+    import time
+
+    reader = kb.as_reader()
+    before = [f"строка {n:05d}" for n in range(6000)]
+    after = [line if n % 2 else line + " изменена" for n, line in enumerate(before)]
+    article, _ = _editor_and_versions(["\n".join(before), "\n".join(after)])
+    started = time.monotonic()
+    response = _compare(reader.client, article, 1, 2)
+    elapsed = time.monotonic() - started
+    assert response.status_code == 200 and elapsed < 1.5, elapsed
+    dom = _dom(response)
+    deleted, added = _marked(dom, "del"), _marked(dom, "add")
+    assert len(deleted) + len(added) == 2000
+    assert deleted[:2] == ["строка 00000", "строка 00002"] and added[:2] == ["строка 00000 изменена", "строка 00002 изменена"]
+    more = dom.find(data_kb_diff_more=True)
+    assert len(more) == 1 and "Ещё 4000 изменений не показано" in more[0].text()
+    edges = before[:3000]
+    edited = list(edges)
+    edited[5], edited[2995] = "правка в начале", "правка в конце"
+    two, _ = _editor_and_versions(["\n".join(edges), "\n".join(edited)])
+    dom = _dom(_compare(reader.client, two, 1, 2))
+    assert _marked(dom, "del") == ["строка 00005", "строка 02995"]
+    assert _marked(dom, "add") == ["правка в начале", "правка в конце"]
+
+
 def test_compare_with_deleted_version_shows_version_deleted_hint():
     """FR-411, FR-449: одной из версий нет (удалена) — подсказка «Версия удалена» и разницы нет; в истории её нет."""
     reader = kb.as_reader()

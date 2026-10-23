@@ -527,6 +527,39 @@ def test_count_endpoint_returns_group_count():
     assert exact_log.search == [] and capped_log.search == []
 
 
+def test_slow_provider_query_is_cut_by_time_limit_and_other_groups_still_show(monkeypatch):
+    """Проверка безопасности 2026-10-23 (CONTRACT-005 п. 81): запрос поставщика к базе ограничен по времени — дорогой
+    запрос прерывается, его группы нет в выдаче, остальные группы есть, ответ приходит быстро и без ошибки."""
+    import time
+
+    from django.db import connection
+
+    from apps.core.extensions import SearchProvider
+    from apps.search import services
+
+    monkeypatch.setattr(services, "QUERY_TIMEOUT_MS", 50)
+    fast, _ = _fake("fast", "Быстрая", 10, 3)
+
+    def slow_search(user, parsed, limit, offset):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_sleep(%s)", [2])
+        return []
+
+    slow = SearchProvider(key="slow", title="Медленная", order=20, search=slow_search, count=lambda user, parsed: (0, False),
+                          available=lambda user: True)
+    session = kb.as_reader()
+    with _only(fast, slow):
+        started = time.monotonic()
+        response = _get(session.client, PAGE, q=QUERY)
+        elapsed = time.monotonic() - started
+        after = _get(session.client, PAGE, q=QUERY)
+    body = response.content.decode()
+    assert response.status_code == 200 and elapsed < 1.5, elapsed
+    assert 'data-search-group="fast"' in body and "fast-row-00" in body
+    assert 'data-search-group="slow"' not in body
+    assert after.status_code == 200 and "fast-row-00" in after.content.decode()
+
+
 def test_count_endpoint_unknown_or_unavailable_group_gives_nothing():
     """FR-442, FR-444: неизвестная, недоступная, упавшая и не названная группа — 200 с пустым телом, без ошибки;
     ответ на недоступную не отличается от ответа на несуществующую; счёт недоступной не вызывается."""

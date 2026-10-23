@@ -43,7 +43,8 @@ def _check_logo(data: bytes) -> str:
     if len(data) > MAX_LOGO_BYTES:
         raise ValueError("Логотип больше 1 МБ: уменьшите размер файла.")
     try:
-        with Image.open(io.BytesIO(data)) as image:
+        # разбор только разрешёнными форматами (проверка безопасности 2026-10-23)
+        with Image.open(io.BytesIO(data), formats=tuple(FORMATS)) as image:
             fmt, (width, height) = image.format, image.size
             image.verify()
     except (UnidentifiedImageError, OSError, SyntaxError, ValueError, Image.DecompressionBombError):

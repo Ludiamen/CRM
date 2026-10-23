@@ -693,6 +693,32 @@ def test_editor_foreign_draft_and_trash_denied():
     assert draft.pk not in seen and trashed.pk not in seen
 
 
+def test_invalid_form_on_foreign_draft_or_article_without_right_reveals_nothing():
+    """FR-407, FR-409 (проверка безопасности 2026-10-23): служба проверяет поля формы раньше права (CONTRACT-005 B-3),
+    но ответ на неверную форму не должен выдавать чужую статью: чужой черновик и несуществующий номер — 404 без имён
+    вложений, номера версии и заголовка; опубликованная статья у сотрудника без права — 403; у редактора с правом —
+    отказ у поля, как прежде."""
+    reader, editor = kb.as_reader(), kb.as_editor()
+    draft = kb.make_draft(title="Скрытый черновик для проверки")
+    kb.attach_file(draft, name="секретный-план-закупок.png")
+    published = kb.make_published(title="Опубликованная для проверки формы")
+    kb.attach_file(published, name="вложение-опубликованной.txt")
+    before = _snap(draft)
+    for who in (reader, editor):
+        for action in ("save", "publish"):
+            got = who.client.post(f"/kb/{draft.pk}/edit/", _edit_data(draft, title="", action=action))
+            assert got.status_code == 404, (action, got.status_code)
+            body = got.content.decode()
+            assert "секретный-план-закупок" not in body and "Скрытый черновик" not in body
+        missing = who.client.post("/kb/99999999/edit/", _edit_data(draft, title=""))
+        assert missing.status_code == 404
+    denied = reader.client.post(f"/kb/{published.pk}/edit/", _edit_data(published, title=""))
+    assert denied.status_code == 403 and "вложение-опубликованной" not in denied.content.decode()
+    allowed = editor.client.post(f"/kb/{published.pk}/edit/", _edit_data(published, title=""))
+    assert allowed.status_code == 200 and 'data-error="title"' in allowed.content.decode()
+    assert _snap(draft) == before
+
+
 def test_author_lost_edit_right_draft_denied_manager_publishes():
     """FR-407, FR-408: автор, потерявший «Редактирование», получает 404 на свой черновик и на публикацию; менеджер
     публикует его: статья `published`, `published_at` поставлен, версия не добавляется (текст не менялся, FR-410)."""

@@ -3,6 +3,8 @@
 
 Версия не правится: у неё нет функции изменения. Сравнение живёт здесь же (модуля `diff` в перечне плана нет).
 """
+from bisect import bisect_left
+from collections import Counter
 from difflib import SequenceMatcher
 from typing import NamedTuple
 
@@ -16,6 +18,9 @@ from ..models import Article, ArticleVersion, Rubric
 from . import VersionError, access, articles, pdn
 
 DIFF_LIMIT = 2000
+# Предел изменённой части для подробного построчного сравнения (проверка безопасности 2026-10-23, CONTRACT-005 п. 80):
+# время SequenceMatcher растёт квадратично; худший случай 2 000 строк — около 0,5 с, 10 000 — 11 с, 50 000 — минуты.
+MAX_DIFF_LINES = 2000
 
 
 class FieldDiff(NamedTuple):
@@ -41,6 +46,86 @@ class Comparison(NamedTuple):
     fields: list
     lines: list
     more: int
+
+
+def _opcodes(before: list, after: list) -> list:
+    """Опкоды построчного сравнения в виде `SequenceMatcher.get_opcodes()`.
+
+    Общее начало и общий конец отбрасываются заранее (обычная правка меняет середину). Середина не длиннее
+    `MAX_DIFF_LINES` сравнивается `SequenceMatcher`; длиннее — выравнивается по опорным строкам, которые встречаются ровно
+    один раз в каждой версии (наибольшая возрастающая цепочка их позиций, как в patience diff), и `SequenceMatcher`
+    сравнивает только промежутки между опорами. Промежуток длиннее предела с обеих сторон — одна замена: сравнение там
+    грубее, но верное и быстрое; показ FR-411 «первые 2 000 и Ещё N» тот же."""
+    head = 0
+    limit = min(len(before), len(after))
+    while head < limit and before[head] == after[head]:
+        head += 1
+    tail = 0
+    while tail < limit - head and before[-1 - tail] == after[-1 - tail]:
+        tail += 1
+    result = [("equal", 0, head, 0, head)] if head else []
+    middle = before[head:len(before) - tail], after[head:len(after) - tail]
+    if max(len(middle[0]), len(middle[1])) <= MAX_DIFF_LINES:
+        result += _gap(*middle, head, head)
+    else:
+        result += _anchored(*middle, head, head)
+    if tail:
+        result.append(("equal", len(before) - tail, len(before), len(after) - tail, len(after)))
+    return _merged(result)
+
+
+def _gap(before: list, after: list, i: int, j: int) -> list:
+    """Опкоды одного промежутка (сдвинуты на `i`, `j`): вставка, удаление, подробное сравнение или одна замена."""
+    if not before and not after:
+        return []
+    if not before:
+        return [("insert", i, i, j, j + len(after))]
+    if not after:
+        return [("delete", i, i + len(before), j, j)]
+    if max(len(before), len(after)) > MAX_DIFF_LINES:
+        return [("replace", i, i + len(before), j, j + len(after))]
+    return [(tag, i1 + i, i2 + i, j1 + j, j2 + j)
+            for tag, i1, i2, j1, j2 in SequenceMatcher(None, before, after, autojunk=True).get_opcodes()]
+
+
+def _anchored(before: list, after: list, i: int, j: int) -> list:
+    """Выравнивание по уникальным в обеих версиях строкам: O(n log n), промежутки между опорами — `_gap`."""
+    seen_before, seen_after = Counter(before), Counter(after)
+    where_after = {line: k for k, line in enumerate(after) if seen_after[line] == 1}
+    pairs = [(k, where_after[line]) for k, line in enumerate(before) if seen_before[line] == 1 and line in where_after]
+    tails, tail_at, back = [], [], [-1] * len(pairs)
+    for n, (_, b) in enumerate(pairs):
+        place = bisect_left(tails, b)
+        if place:
+            back[n] = tail_at[place - 1]
+        if place == len(tails):
+            tails.append(b)
+            tail_at.append(n)
+        else:
+            tails[place], tail_at[place] = b, n
+    chain, n = [], tail_at[-1] if tail_at else -1
+    while n >= 0:
+        chain.append(pairs[n])
+        n = back[n]
+    chain.reverse()
+    result, prev_a, prev_b = [], 0, 0
+    for a, b in chain + [(len(before), len(after))]:
+        result += _gap(before[prev_a:a], after[prev_b:b], i + prev_a, j + prev_b)
+        if a < len(before):
+            result.append(("equal", i + a, i + a + 1, j + b, j + b + 1))
+        prev_a, prev_b = a + 1, b + 1
+    return result
+
+
+def _merged(opcodes: list) -> list:
+    """Соседние опкоды `equal` склеиваются в один (как у `SequenceMatcher`)."""
+    merged: list = []
+    for code in opcodes:
+        if merged and code[0] == "equal" and merged[-1][0] == "equal" and merged[-1][2] == code[1]:
+            merged[-1] = ("equal", merged[-1][1], code[2], merged[-1][3], code[4])
+        else:
+            merged.append(code)
+    return merged
 
 
 def restore(user, article_id: int, number: int, confirm_pdn: bool = False) -> articles.SaveResult:
@@ -105,9 +190,10 @@ def compare(article: Article, a: int, b: int) -> Comparison:
     if old_tags != new_tags:
         fields.append(FieldDiff("tags", ", ".join(old_tags), ", ".join(new_tags)))
     before_lines, after_lines = old.text.split("\n"), new.text.split("\n")
+    opcodes = _opcodes(before_lines, after_lines)
     lines: list[DiffLine] = []
     shown = more = 0
-    for tag, i1, i2, j1, j2 in SequenceMatcher(None, before_lines, after_lines, autojunk=True).get_opcodes():
+    for tag, i1, i2, j1, j2 in opcodes:
         if tag == "equal":
             if more == 0:
                 lines.extend(DiffLine("same", text) for text in after_lines[j1:j2])
