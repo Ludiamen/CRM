@@ -92,7 +92,7 @@ def test_k01_toolbar_buttons_insert_markdown_markup_into_text_field(admin_page, 
     page = author.page
     open_new_article(page)
     area = article_form(page).locator("textarea[name=text]")
-    inserted = {"bold": "**", "italic": "*", "heading": "# ", "list": "- ", "olist": "1. ", "code": "`",
+    inserted = {"bold": "**", "italic": "*", "heading": "## ", "list": "- ", "olist": "1. ", "code": "`",
                 "link": "](https://)", "table": "|"}
     for name, markup in inserted.items():
         # п. 1: кнопка «<name>» без выделения вставляет разметку в позицию курсора
@@ -110,7 +110,8 @@ def test_k01_toolbar_buttons_insert_markdown_markup_into_text_field(admin_page, 
     area.fill("строка")
     area.select_text()
     page.locator('[data-kb-toolbar] button[data-md="heading"]').click()
-    assert area.input_value().startswith("# "), "заголовок: знак не в начале строки"
+    # раздел статьи — второй уровень (`## `; решение владельца 2026-10-23, CONTRACT-005 § 11.3)
+    assert area.input_value().startswith("## "), "заголовок: знак второго уровня не в начале строки"
     # таблица — шаблон из двух столбцов с разделителем
     area.fill("")
     page.locator('[data-kb-toolbar] button[data-md="table"]').click()

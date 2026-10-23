@@ -51,7 +51,7 @@
     else if (kind === 'italic') { wrap(field, '*', '*', 'текст'); }
     else if (kind === 'code') { wrap(field, '`', '`', 'код'); }
     else if (kind === 'link') { wrap(field, '[', '](https://)', 'текст'); }
-    else if (kind === 'heading') { prefixLine(field, '# '); }
+    else if (kind === 'heading') { prefixLine(field, '## '); }  /* раздел статьи — второй уровень: первый — её название (решение владельца 2026-10-23) */
     else if (kind === 'list') { prefixLine(field, '- '); }
     else if (kind === 'olist') { prefixLine(field, '1. '); }
     else if (kind === 'table') { insertText(field, TABLE); }
