@@ -650,7 +650,8 @@ def test_k12_author_writes_and_publishes_article_with_buttons_and_preview_within
                       len(line))
         page.locator(f'[data-kb-toolbar] button[data-md="{button}"]').click()
     value = area.input_value()
-    for expected in ("# Подключение к корпоративной сети", "- первый пункт списка", "1. первый шаг", "**важно**",
+    # «Заг.» — раздел статьи второго уровня (`## `; решение владельца 2026-10-23, CONTRACT-005 § 11.3)
+    for expected in ("## Подключение к корпоративной сети", "- первый пункт списка", "1. первый шаг", "**важно**",
                      "*заметка*", "`vpn connect corp`", "[портал](https://)"):
         assert expected in value, f"кнопками панели не получено «{expected}»"
     area.fill(value.replace("[портал](https://)", "[портал](https://example.ru/)") + "\n\n")
@@ -660,7 +661,7 @@ def test_k12_author_writes_and_publishes_article_with_buttons_and_preview_within
     # «Предпросмотр»: те же оформления, что у опубликованной статьи
     open_preview(page)
     preview = page.locator("[data-kb-panel=preview] [data-kb-preview]")
-    expect(preview.locator("h1")).to_contain_text("Подключение к корпоративной сети")
+    expect(preview.locator("h2")).to_contain_text("Подключение к корпоративной сети")
     expect(preview.locator("strong")).to_contain_text("важно")
     expect(preview.locator("em")).to_contain_text("заметка")
     expect(preview.locator("code").first).to_be_visible()
@@ -669,7 +670,7 @@ def test_k12_author_writes_and_publishes_article_with_buttons_and_preview_within
     expect(preview.locator("table")).to_have_count(1)
     # возврат на «Текст»: введённое цело; «Сохранить черновик»
     open_text_tab(page)
-    assert "# Подключение к корпоративной сети" in area.input_value(), "после предпросмотра текст изменился"
+    assert "## Подключение к корпоративной сети" in area.input_value(), "после предпросмотра текст изменился"
     press_save(page)
     page.wait_for_url(re.compile(r"/kb/\d+/edit/$"))
     article_id = helpers_kb.article_id_from_url(page.url)
@@ -684,4 +685,4 @@ def test_k12_author_writes_and_publishes_article_with_buttons_and_preview_within
     open_article(reader.page, article_id)
     expect(reader.page.locator('article h1[data-field="title"]')).to_have_text(title)
     expect(reader.page.locator(f'a[data-tag="{tag}"]')).to_have_count(1)
-    expect(reader.page.locator('[data-field="body"] h1')).to_contain_text("Подключение к корпоративной сети")
+    expect(reader.page.locator('[data-field="body"] h2')).to_contain_text("Подключение к корпоративной сети")
