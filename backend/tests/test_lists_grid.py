@@ -471,7 +471,8 @@ def test_column_header_link_toggles_dir_for_current_sort_column():
         assert len(heads) == 1, f"заголовок th[data-sort={code!r}]"
         links = [n for n in _dom(response) if n.tag == "a" and any(a is heads[0] for a in n.ancestors)]
         assert links, f"в заголовке {code!r} нет ссылки"
-        marks = {heads[0].attrs.get("data-dir"), links[0].attrs.get("data-dir")} - {None}
+        # `data-dir` — на `th[data-sort]` текущего столбца (ответ 27, CONTRACT-006, 11.3, 15.3)
+        marks = {heads[0].attrs.get("data-dir")} - {None}
         return marks, _qs_of(links[0].attrs["href"])
 
     marks, link = header(_get(manager, lst, {"sort": "s", "dir": "asc"}), "s")
@@ -508,7 +509,9 @@ def test_foreign_codes_in_sort_are_dropped_silently():
     for foreign in ("zzz", "f999", "hs", "ox", "version", "values", "archived_by", "search", "pk",
                     'x" ; DROP TABLE lists_record; --', "s__icontains", "s'"):
         for direction in ("asc", "desc"):
-            assert _numbers(manager, lst, {"sort": foreign, "dir": direction}) in (by_number, by_number[::-1]), foreign
+            # `dir` без допустимого `sort` не действует: порядок по `number` по возрастанию (ответ 28, CONTRACT-006,
+            # 10.3, 15.3)
+            assert _numbers(manager, lst, {"sort": foreign, "dir": direction}) == by_number, foreign
         assert _numbers(manager, lst, {"sort": foreign}) == by_number, foreign
 
 

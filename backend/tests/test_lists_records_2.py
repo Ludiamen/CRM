@@ -214,6 +214,11 @@ def test_card_shows_visible_field_values_but_not_hidden_ones_files_related_ticke
     record = lists.make_record(
         lst, "Ноутбук", {shown.code: "ИН-777", hidden.code: "метка-скрыта-9"}, created_by=author)
     clean = lists.attach_file(record, clean_field, "акт-приёмки.pdf", status="clean")
+    # `data-file-id` — `RecordFile.pk` (ответ Opus О1); номер строки уводится от номера `StoredFile`, чтобы реализация
+    # на `StoredFile.pk` не прошла случайно
+    RecordFile = support.model("lists.RecordFile")
+    RecordFile.objects.filter(pk=clean.pk).update(id=clean.file_id + 7919)
+    clean = RecordFile.objects.get(pk=clean.file_id + 7919)
     lists.attach_file(record, pending_field, "фото-стойки.png", status="pending")
     support.model("lists.Change").objects.create(record=record, kind="created", changes=[], actor=author)
     owner = lists.make_record(referring, "Лицензия на ноутбук", {link_field.code: [record.pk]}, created_by=author)
@@ -236,9 +241,7 @@ def test_card_shows_visible_field_values_but_not_hidden_ones_files_related_ticke
 
     files = q(root, None, data_lists_files=clean_field.code)
     assert files, "нет блока файлов поля «Акт»"
-    # контракт (11.7) не говорит, чей id в `data-file-id`: строки `RecordFile` или `StoredFile` — принимаются оба
-    row = [n for n in q(files[0], "li", data_file_id=True)
-           if n.attrs["data-file-id"] in (str(clean.pk), str(clean.file_id))]
+    row = [n for n in q(files[0], "li", data_file_id=True) if n.attrs["data-file-id"] == str(clean.pk)]
     assert row, "нет строки файла с id файла записи"
     assert row[0].attrs["data-scan"] == "clean" and "акт-приёмки.pdf" in row[0].text()
     assert q(row[0], "a", data_action="file-download")
@@ -327,14 +330,14 @@ def test_card_buttons_edit_archive_label_by_right_and_purge_only_for_manager_on_
     assert links["record-edit"].attrs["href"] == f"{base}/{live.number}/edit/"
     assert links["record-label"].attrs["href"] == f"{base}/{live.number}/label/"
 
-    # у записи в архиве про «Править» контракт молчит: проверяется остальное
+    # у записи в архиве кнопки «Править» нет (ответ 23, CONTRACT-006, 11.5, 15.3)
     editor_old = _card(editor, lst, old.number)
-    assert _actions(editor_old) - {"record-edit"} == {"record-restore", "record-label"}
+    assert _actions(editor_old) == {"record-restore", "record-label"}
 
     manager_live = _card(manager, lst, live.number)
     assert _actions(manager_live) == {"record-edit", "record-archive", "record-label"}
     manager_old = _card(manager, lst, old.number)
-    assert _actions(manager_old) - {"record-edit"} == {"record-restore", "record-label", "record-purge"}
+    assert _actions(manager_old) == {"record-restore", "record-label", "record-purge"}
     assert q(tree(manager_old), "dialog", data_lists_confirm=True), "нет диалога подтверждения удаления"
 
 

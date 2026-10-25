@@ -572,9 +572,12 @@ TEXTS_12_3 = {
     "import_two_records": "Уникальные поля указывают на разные записи",
     "import_time_missing": "Укажите время: ДД.ММ.ГГГГ ЧЧ:ММ",
     "bad_file_field": "Выберите поле для файла",
+    # ответ 53 (CONTRACT-006, 12.3, 15.3; образец CONTRACT-005, решение 41)
+    "write_failed": "Не удалось сохранить файл",
 }
-# ключи, у которых словарь может хранить фразу вместе с соседней ссылкой или формами (К16): проверяем вхождением
-CONTAINS_ONLY = ("unique_taken", "record_referenced")
+# ключи, у которых словарь может хранить фразу вместе с соседней ссылкой: проверяем вхождением. `record_referenced` —
+# ровно «…: {links}», хвост собирает служба (ответ 61, CONTRACT-006, 12.1, 15.3): сверяется равенством
+CONTAINS_ONLY = ("unique_taken",)
 PROBE_NAMES = ("limit", "items", "field", "list", "count", "names", "links", "hidden", "who", "when", "archived",
                "skipped", "row", "value", "number", "url")
 PROBE = {name: f"‹{name}›" for name in PROBE_NAMES}

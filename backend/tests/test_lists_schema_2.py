@@ -129,7 +129,9 @@ def _events(action: str, obj=None) -> list:
 
 
 def _flag(value) -> bool:
-    return str(value).lower() == "true"
+    """`hidden` в журнале — булево JSON (ответ 57, CONTRACT-006, 8.1, 15.3), не строка."""
+    assert value is None or isinstance(value, bool), f"hidden — булево JSON, получено {value!r}"
+    return value is True
 
 
 def _world(*, with_manager: bool = True):

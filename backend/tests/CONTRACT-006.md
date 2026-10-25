@@ -20,8 +20,10 @@ T-6140, раздел 13.3). В колонке «Тесты» стоят зада
 
 Правила для всех тестов среза:
 - время (решение 5 задач): службы берут время из `django.utils.timezone.now()` и дату из `apps.core.widgets.moscow_today()`
-  (факт); тесты ставят часы фикстурой `clock` (`Clock` из `tests/factories.py`); проверки «по Москве» ставят часы на
-  полночь UTC (дата по Москве уже следующая);
+  (факт); тесты ставят часы фикстурой `clock` (`Clock` из `tests/factories.py`); для «сегодня по Москве» и границ суток
+  часы ставятся на 21:00–23:59 UTC (в Москве уже следующий день); 00:00 UTC — только для проверок показа времени (03:00
+  по Москве против 00:00 UTC); помощник `support_kb.utc_midnight` годится только для показа времени (ответ Opus О5,
+  раздел 15.3, К-1);
 - задания выполняются синхронно: обход сроков — `support_lists.run_reminders(today)` (раздел 5.9); задания очереди
   `maintenance` (пересчёт векторов, И2) — прежним помощником `support_notify.run_jobs("maintenance")` внутри
   `with django_capture_on_commit_callbacks(execute=True):`; приёмка сдвигает сроки командой `e2e_lists_shift --days N`
@@ -46,6 +48,10 @@ T-6140, раздел 13.3). В колонке «Тесты» стоят зада
   `form#staff-filter` и `#notify-bell`;
 - подписчик `lists` на `core.user_dismissed` (решение 14 задач): тесты среза проверяют, что в журнале приложения нет
   записей уровня `ERROR` логгера `apps.core.events`;
+- неотличимость 404 (раздел 15.3, К-10): `support.same_failure` сравнивает ответы одного и того же клиента (нечитаемый
+  объект против несуществующего); ответы разных сотрудников различаются меню и верхней панелью оболочки
+  (`apps/core/context.py`, `permissions.menu_for(user)`; факт) — между ними сравниваются только статус и отсутствие
+  данных объекта;
 - тесты ходят по путям плана (раздел «Контракты»), а не по именам маршрутов; маршруты среза не содержат `regist`, `signup`
   (решение 15 задач);
 - SQL — только параметры (NFR-509): `cursor.execute(sql, [list_no])`; код поля — только из `Field.code` схемы.
@@ -80,7 +86,7 @@ T-6140, раздел 13.3). В колонке «Тесты» стоят зада
 | Файл теста развёртывания | `tests/test_lists_deploy.py` (по образцу `test_kb_deploy.py`; решение 18 задач) | T-6125 |
 | Шаблоны | в `templates/lists/` нет атрибута `style=` и атрибутов `on…=` (регулярное выражение, как в `test_shell.py`) | T-6125 test_lists_templates_have_no_style_attribute, test_lists_templates_have_no_inline_event_handlers; T-6120 test_label_pages_have_no_inline_style_or_event_attributes |
 | CSP | страницы `/lists/…` отдают `Content-Security-Policy` с `script-src 'self'` без `'unsafe-inline'` и `'unsafe-eval'`; `img-src 'self' data:` без `http:`, `https:`, `*` (QR — `data:`); тест читает заголовок у `/lists/`, `/lists/<id>/`, `/lists/<id>/<n>/`, `/lists/<id>/<n>/label/` | T-6125 test_lists_pages_send_csp_without_unsafe_inline_in_script_src, test_csp_img_src_on_lists_pages_allows_data_and_no_external_addresses |
-| Язык и время | тексты страниц среза по-русски (страницы — `support_lists.list_pages(lst, record)`, раздел 5.9); время — по Москве: тест ставит `Clock` на полночь UTC и находит дату и время по Москве в значении «дата и время» и в истории (`time[data-at]`); итог загрузки (`[data-lists-notice="import-summary"]`) кроме счётчиков раздела 11.9 показывает время завершения по Москве `time[data-at]` («ДД.ММ.ГГГГ ЧЧ:ММ»; план, «Безопасный вывод, язык, узкий экран»: время — Europe/Moscow, «итог загрузки»); тест ставит `Clock` на полночь UTC и находит в итоге дату по Москве (решение Opus 2026-10-25, Н9 исправлено) | T-6125 test_lists_pages_texts_are_russian, test_lists_times_are_shown_in_moscow_at_utc_midnight_in_dates_history_and_import_summary |
+| Язык и время | тексты страниц среза по-русски (страницы — `support_lists.list_pages(lst, record)`, раздел 5.9); время — по Москве: тест ставит `Clock` на полночь UTC и находит дату и время по Москве в значении «дата и время» и в истории (`time[data-at]`); итог загрузки (`[data-lists-notice="import-summary"]`) кроме счётчиков раздела 11.9 показывает время завершения по Москве `time[data-at]` («ДД.ММ.ГГГГ ЧЧ:ММ»; план, «Безопасный вывод, язык, узкий экран»: время — Europe/Moscow, «итог загрузки»); тест ставит `Clock` на полночь UTC и находит в итоге дату по Москве (решение Opus 2026-10-25, Н9 исправлено); полночь UTC проверяет показ времени (03:00 по Москве), дату по Москве, отличную от даты UTC, — часы 21:00–23:59 UTC (ответ Opus О5, К-1) | T-6125 test_lists_pages_texts_are_russian, test_lists_times_are_shown_in_moscow_at_utc_midnight_in_dates_history_and_import_summary |
 
 ### 1.2. Задание сроков, nginx, том файлов
 
@@ -103,7 +109,7 @@ T-6140, раздел 13.3). В колонке «Тесты» стоят зада
 | Что | Требование | Тесты |
 |---|---|---|
 | Транзакция | всё стирание и `seed` — в одной `transaction.atomic(using=<алиас>)` | T-6124 test_lists_stand_reset_runs_in_transaction_under_migrate_alias |
-| Файлы | пути файлов по строкам `RecordFile` (по всем состояниям: `incoming/`, `attachments/`, `quarantine/`) собираются до удаления; затем удаляются строки `RecordFile` и их `StoredFile`; диск — `core_files.remove_paths(paths)` в `transaction.on_commit` | T-6124 test_lists_stand_reset_wipes_record_files_rows_stored_files_and_disk_after_commit |
+| Файлы | пути файлов по строкам `RecordFile` (по всем состояниям: `incoming/`, `attachments/`, `quarantine/`) собираются до удаления; затем удаляются строки `RecordFile` и их `StoredFile`; диск — `transaction.on_commit(lambda: core_files.remove_paths(paths), using=<алиас>)` на том же алиасе, что транзакция сброса; прямой вызов после `atomic`, как в `apps/knowledge/stand.py`, не годится: во вложенной в тестовую транзакцию `atomic` он стирает до фиксации (К-9) | T-6124 test_lists_stand_reset_wipes_record_files_rows_stored_files_and_disk_after_commit |
 | Порядок стирания (план) | `TicketLink`, `ReminderSent`, `Change`, `UniqueValue`, `Record`, `UserView`, `ImportJob`, `Access`, `Choice`, `Field`, `List` (после `RecordFile`); у `Field.target` RESTRICT, поэтому поля стираются до списков | T-6124 test_lists_stand_reset_wipes_links_reminders_history_unique_values_records_views_imports_access_choices_fields_lists |
 | Восстановление | вызов `seed(django.apps.apps, SimpleNamespace(connection=connections[<алиас>]))` миграции `0002` (как `knowledge`, CONTRACT-005, 1.3); на время вызова отключается обработчик `m2m_changed` прав ядра (план); итог — шесть стартовых списков, право `lists.manage` у «Администратора портала», строки `Access` у «Сотрудника ИТ» | T-6124 test_lists_stand_reset_then_seeds_six_starting_lists_with_fields_permission_and_access, test_lists_stand_reset_returns_deleted_and_renamed_starting_list |
 | Не трогается | `StoredFile` с `purpose="attachment"` и `purpose="knowledge"` и их файлы | T-6124 test_lists_stand_reset_keeps_ticket_and_article_files |
@@ -151,7 +157,7 @@ T-6140, раздел 13.3). В колонке «Тесты» стоят зада
 | `Field` | поля плана; `type` — `CharField(16, choices=Field.Type.choices)`; `code` — `CharField(40)`; `default` — `JSONField(null=True, blank=True)`; `order` — `PositiveIntegerField`; `target` — `ForeignKey("lists.List", RESTRICT, null=True, blank=True, related_name="referring_fields")`; `settings` — `JSONField(default=dict)` с ключами `currency`, `deadline`, `thresholds` (план); логические признаки — `BooleanField(default=False)` | T-6103, T-6104 |
 | `Field.Type` | `TextChoices`: `STRING = "string", "Строка"`; `TEXT = "text", "Многострочный текст"`; `NUMBER = "number", "Число"`; `MONEY = "money", "Деньги"`; `DATE = "date", "Дата"`; `DATETIME = "datetime", "Дата и время"`; `BOOL = "bool", "Да/нет"`; `CHOICE = "choice", "Список значений"`; `PERSON = "person", "Сотрудник"`; `UNIT = "unit", "Подразделение"`; `RECORD = "record", "Запись другого списка"`; `FILE = "file", "Файл"` (значения — план; подписи — решение контракта по названиям типов SPEC-006) | T-6103 test_service_rejects_property_not_of_its_type_for_each_of_12_types |
 | `Field`, ограничения | `UniqueConstraint(fields=["list", "code"], name="lists_field_list_code_uniq")`; `UniqueConstraint("list", Lower("name"), name="lists_field_list_name_ci_uniq")`; `CheckConstraint(condition=Q(type="record", target__isnull=False) \| (~Q(type="record") & Q(target__isnull=True)), name="lists_field_target_iff_record")`; индекс (`list`, `order`) | T-6103 test_record_field_without_target_rejected_and_target_own_list_allowed |
-| Код поля | у созданных вручную — `f<next_field_no>` под исключительным замком списка, `next_field_no` растёт и не возвращается после удаления; регулярное выражение `^[a-z][a-z0-9_]*$`, длина до 40; запрещены `title`, `number`, `new`, `order` (план) | T-6103 test_field_code_f_next_field_no_not_reused_after_delete_and_reserved_or_invalid_codes_rejected, test_literal_fields_new_and_order_urls_are_not_taken_for_field_code; T-6106 test_field_code_is_f_number_so_values_key_never_consists_of_digits |
+| Код поля | у созданных вручную — `f<next_field_no>` под исключительным замком списка, `next_field_no` растёт и не возвращается после удаления; регулярное выражение `^[a-z][a-z0-9_]*$`, длина до 40; запрещены `title`, `number`, `new`, `order` (план); проверка — валидаторы поля модели `Field.code` (`RegexValidator(r"^[a-z][a-z0-9_]*$")` и валидатор запрещённых слов): `full_clean()` даёт `ValidationError` с ключом `code`; службы код не принимают (`f<n>` выдаёт `add_field`) (К-13) | T-6103 test_field_code_f_next_field_no_not_reused_after_delete_and_reserved_or_invalid_codes_rejected, test_literal_fields_new_and_order_urls_are_not_taken_for_field_code; T-6106 test_field_code_is_f_number_so_values_key_never_consists_of_digits |
 | `Field.default` | строка — строка; число — каноническая строка («12.5»); деньги — строка с двумя знаками; дата — `{"today": true}` или `"YYYY-MM-DD"`; да/нет — `true`; список значений — `[id]`; у прочих типов — `None` (план) | T-6103 test_default_value_only_for_six_types_and_date_today_stored_as_today_true |
 | `Choice` | `title` (`CharField(100)`), `order` (`PositiveIntegerField`), `archived` (`BooleanField(default=False)`); `UniqueConstraint("field", Lower("title"), name="lists_choice_field_title_ci_uniq")` | T-6104 |
 | `Record` | поля плана; `number`, `version` — `PositiveIntegerField` (`version` с 1); `values` — `JSONField(default=dict)`; `search` — `SearchVectorField(null=True)`; `archived_by` — `ForeignKey("core.User", PROTECT, null=True, blank=True, related_name="+")`; `created_by`, `updated_by` — PROTECT, `related_name="+"` (решение контракта: без обратных имён у `User`) | T-6108a |
@@ -305,12 +311,21 @@ test_core_org_servicedesk_notify_knowledge_search_do_not_import_lists.
 Модули — `apps/lists/services/<модуль>.py`. Аргумент `lst` — объект `List`, `actor`, `user`, `viewer` — `core.User`.
 Сигнатуры — решение контракта там, где план назвал только имя функции; отступления от формы плана оговорены в строке.
 
+Права в службах (решение Opus 2026-10-25, П3, К-2; план, стр. 251 «право проверяется в начале и повторно в службе»):
+каждая служба, которая принимает актора (`schema.*`, `records.create`, `records.save`, `archive.*`, `files.*`,
+`imports.*`, `tickets.link`, `tickets.unlink`), сама перепроверяет право: нет права «правит» (у `schema.*` и
+`archive.purge` — права управлять) — `django.core.exceptions.PermissionDenied`; список не читается — `Http404`. У
+`tickets.link`/`tickets.unlink` право — условие 5.5 (чтение списка и видимость заявки, иначе `Http404`), «правит» не
+требуется: привязывает читающий (10.2, T-6114; спека: привязку делает тот, кто видит заявку и читает список — подтверждено Opus 2026-10-26).
+Службы без актора (`unique.*`, `vectors.*`, `reminders.*`, `links.referrers`) прав не проверяют. Тест, который зовёт службу,
+выдаёт актору нужное право на каждый список вызова.
+
 ### 5.1. Исключения и общие типы (`apps/lists/services/errors.py`; модуль — решение контракта)
 
 | Имя | Требование | Тесты |
 |---|---|---|
 | `ListsError(code, *, field="", params=None)` | отказ службы; `code` — ключ словаря `texts.TEXTS` (раздел 12); `field` — код поля (`"title"` у названия записи, `"name"`, `"description"` у списка и поля); `params` — словарь подстановок текста; `.message` — готовый текст | все тесты отказов |
-| `ValuesInvalid(errors: dict[str, ListsError])` | подкласс `ListsError` (`code="values_invalid"` — контейнер отказов полей, своего текста в `TEXTS` нет): отказы нескольких полей формы записи сразу, ключ — код поля или `"title"` | T-6106, T-6108a |
+| `ValuesInvalid(errors: dict[str, ListsError])` | подкласс `ListsError` (`code="values_invalid"` — контейнер отказов полей, своего текста в `TEXTS` нет): отказы нескольких полей формы записи сразу, ключ — код поля или `"title"`; отказ уникальности при сохранении записи — тоже здесь: `errors[<код>].code == "unique_taken"` (ответ Opus О2) | T-6106, T-6107, T-6108a |
 | `RecordGone` | подкласс `ListsError`, `code="record_gone"` («Запись удалена», план) | T-6108a test_save_of_record_purged_during_edit_gives_200_form_with_record_deleted_not_404 |
 | `RecordArchived` | подкласс `ListsError`, `code="record_archived"` («Запись в архиве») | T-6108a, T-6110, T-6121 |
 | `VersionConflict(who, when)` | подкласс `ListsError`, `code="version_conflict"`; `who` — `User` (`updated_by`), `when` — `updated_at` (план) | T-6108a test_second_save_from_same_base_version_is_refused_with_who_and_moscow_time_as_200_form_with_input |
@@ -332,8 +347,8 @@ test_core_org_servicedesk_notify_knowledge_search_do_not_import_lists.
 | `update_list(lst, *, name, description, actor) -> List` | журнал `lists.list_changed` с «было / стало» (`name`, `description`) | T-6103, T-6123 |
 | `delete_list(lst, *, actor) -> None` | исключительный замок, `FOR UPDATE` строки списка; отказы `list_has_records`, `list_referenced` (раздел 12.1); журнал `lists.list_deleted` | T-6103 |
 | `can_delete_list(lst) -> ListsError \| None` | та же проверка без изменений — для доступности кнопки и пояснения (имя — решение контракта) | T-6103 test_delete_list_with_records_or_only_archived_records_rejected_and_button_unavailable_with_reason |
-| `add_field(lst, *, name, type, actor, hint="", required=False, multiple=False, unique=False, show_in_table=False, default=None, currency=None, target=None, deadline=False, thresholds=()) -> Field` | свойство не своего типа — `ListsError("property_not_allowed", field=<свойство>)`; 51-е поле — `fields_limit`; новое обязательное в списке с записями — `required_new_with_records`; `currency` по умолчанию `RUB`; журнал `lists.field_created` | T-6103 |
-| `update_field(field, *, actor, **changes) -> Field` | ключи `changes` — имена параметров `add_field`; правила поля с данными и пустого поля — план; журнал `lists.field_changed` | T-6104 |
+| `add_field(lst, *, name, type, actor, hint="", required=False, multiple=False, unique=False, show_in_table=False, default=None, currency=None, target=None, deadline=False, thresholds=()) -> Field` | свойство не своего типа — `ListsError("property_not_allowed", field=<свойство>)`; 51-е поле — `fields_limit`; новое обязательное в списке с записями — `required_new_with_records`; `currency` по умолчанию `RUB`; `target` — объект `List` (id — только в форме, 10.2); пустое название — `ListsError("required", field="name")`; журнал `lists.field_created` (К-13) | T-6103 |
+| `update_field(field, *, actor, **changes) -> Field` | ключи `changes` — имена параметров `add_field`; правила поля с данными и пустого поля — план; присланный `type` (как и `currency`, `target`) у поля с данными — `ListsError("field_locked", field="type")`, поле не меняется (К-13); журнал `lists.field_changed` | T-6104 |
 | `hide_field(field, *, actor)`, `show_field(field, *, actor)` | признак `hidden`; у поля типа `string` или `text` — `List.vectors_stale_since = now` и постановка `refresh_vectors` после фиксации (И2); у остальных типов вектор не зависит от поля — признак и задание не ставятся (решение Opus при проверке контракта 2026-10-25, Н11); журнал `lists.field_hidden` / `lists.field_shown`; у системного «Названия» строки `Field` нет — скрыть нечего | T-6104 |
 | `delete_field(field, *, actor)` | только пустое поле (`has_data` ложно) — иначе `field_has_data`; журнал `lists.field_deleted` | T-6104 |
 | `move_field(field, direction, *, actor)` | `direction` — `"up"` или `"down"`; меняет `order` с соседом | T-6103 test_up_down_arrows_and_order_post_change_order_of_form_card_and_default_columns |
@@ -348,13 +363,13 @@ test_core_org_servicedesk_notify_knowledge_search_do_not_import_lists.
 
 | Функция | Требование | Тесты |
 |---|---|---|
-| `values.parse(field, raw, *, old=None, viewer, source="form") -> Parsed` | `Parsed(value, error)`: `value` — значение в форме хранения раздела 2.3 или `None` (пусто); `error` — `ListsError` или `None`; `raw` — строка или список строк (многозначные); `old` — сохранённое значение поля (правило «старое остаётся»); `source` — `"form"` или `"import"` (правила загрузки: сотрудник по почте или ФИО, подразделение по названию или пути, значение по названию, запись по названию или номеру, «Да»/«Нет», значения через «;») | T-6106, T-6118 |
+| `values.parse(field, raw, *, old=None, viewer, source="form") -> Parsed` | `Parsed(value, error)`: `value` — значение в форме хранения раздела 2.3 или `None` (пусто); `error` — `ListsError` или `None`; `raw` — строка или список строк (многозначные); `old` — сохранённое значение поля (правило «старое остаётся»); `source` — `"form"` или `"import"` (правила загрузки: сотрудник по почте или ФИО, подразделение по названию или пути, значение по названию, запись по названию или номеру, «Да»/«Нет», значения через «;»); несколько id в поле без «несколько» — `error` с кодом `value_unavailable`, без обрезки (К-13) | T-6106, T-6118 |
 | `values.display(field, value, viewer) -> str` | строка показа: сотрудник — ФИО и « (уволен)» у уволенного; значение из архива значений — его название; запись — «Название — №N», у записи в архиве — с « (в архиве)», у записи нечитаемого списка — «запись недоступного списка»; деньги — «1 234,50 ₽» (раздел 12.4); дата — «ДД.ММ.ГГГГ»; дата и время — «ДД.ММ.ГГГГ ЧЧ:ММ» по Москве; да/нет — «Да» / «Нет»; несколько значений — через «; » | T-6106 test_display_* |
-| `unique.normalize(field, value) -> str \| None` | раздел 2.3; пусто — `None` | T-6107 test_number_100_0_and_100_are_the_same_unique_value |
+| `unique.normalize(field, value) -> str \| None` | раздел 2.3; `value` — значение в форме хранения (каноническая форма раздела 2.3), не сырая строка ввода (ответ Opus О3); пусто — `None` | T-6107 test_number_100_0_and_100_are_the_same_unique_value |
 | `unique.find_owners(lst, field, norm_values) -> dict[str, Record]` | предварительная проверка до вставки (решения 28 и 45): нормализованное значение → запись-владелец (в том числе в архиве); точка подмены теста гонки; ею же пользуется предпросмотр загрузки | T-6107 test_race_with_bypassed_precheck_hits_db_constraint_in_savepoint_and_gives_field_refusal, test_precheck_reports_owner_record_including_archived_for_import_preview |
-| `unique.sync(record, fields) -> None` | для каждого уникального поля из `fields` (видимого и скрытого) строки `UniqueValue` записи удаляются и вставляются во вложенной точке сохранения; `IntegrityError` — `ListsError("unique_taken", field=<код>, params={"number": <номер владельца>, "url": "/lists/<id>/<n>/"})`; внешняя транзакция остаётся рабочей | T-6107 test_every_value_write_path_calls_unique_sync, test_race_refusal_leaves_no_duplicate_row_and_outer_save_transaction_usable |
-| `records.create(lst, data, actor, *, via_import=False) -> Record` | `data` — словарь «код → строка или список строк» и `"title"`; порядок — раздел 5.2; `vectors.refresh`, `history.write(created)`; отказы полей — `ValuesInvalid` | T-6108a |
-| `records.save(lst, number, data, *, base_version, actor) -> SaveResult` | `SaveResult(record, changed: bool)`; первым аргументом — список и номер, а не запись (решение контракта: план требует, чтобы запись искала служба под замком, иначе «Запись удалена» недостижима); нет строки при `number < next_number` — `RecordGone`; в архиве — `RecordArchived`; версия — `VersionConflict`; скрытое за время правки поле с непустым значением — `ValuesInvalid` с кодом `field_hidden_meanwhile` у поля; без изменений — `changed=False`, ни версии, ни события | T-6108a |
+| `unique.sync(record, fields) -> None` | `fields` — объекты `Field` (ответ Opus О3); для каждого уникального поля из `fields` (видимого и скрытого) строки `UniqueValue` записи удаляются и вставляются во вложенной точке сохранения; `IntegrityError` — `ListsError("unique_taken", field=<код>, params={"number": <номер владельца>, "url": "/lists/<id>/<n>/"})`; внешняя транзакция остаётся рабочей; сам `sync` поднимает голый `ListsError`, `records.create/save` переупаковывают его в `ValuesInvalid` (ответ Opus О2) | T-6107 test_every_value_write_path_calls_unique_sync, test_race_refusal_leaves_no_duplicate_row_and_outer_save_transaction_usable |
+| `records.create(lst, data, actor, *, via_import=False) -> Record` | `data` — словарь «код → строка или список строк» и `"title"`; порядок — раздел 5.2; `vectors.refresh`, `history.write(created)`; отказы полей (в том числе `unique_taken`) — `ValuesInvalid`; права — шапка раздела 5 (`PermissionDenied` / `Http404`); при `via_import=True` `vectors.refresh` не зовёт — вектор считает `imports.confirm` пакетно в конце (план, «Загрузка», шаг 4; К-4) | T-6108a |
+| `records.save(lst, number, data, *, base_version, actor) -> SaveResult` | `SaveResult(record, changed: bool)`; первым аргументом — список и номер, а не запись (решение контракта: план требует, чтобы запись искала служба под замком, иначе «Запись удалена» недостижима); нет строки при `number < next_number` — `RecordGone`; в архиве — `RecordArchived`; версия — `VersionConflict`; скрытое за время правки поле с непустым значением — `ValuesInvalid` с кодом `field_hidden_meanwhile` у поля; без изменений — `changed=False`, ни версии, ни события; без права «правит» — `PermissionDenied` (ответ Opus О4; адрес отвечает 403 читающему, 404 нечитающему), список не читается — `Http404`; отказ уникальности — `ValuesInvalid` с `unique_taken` у поля; значения полей с `hidden=True` форма не несёт, служба их не трогает, у видимых полей отсутствие ключа — «пусто» (ответ 17) | T-6102, T-6108a |
 | `history.write(record, kind, changes, actor, *, via_import=False) -> Change` | только `INSERT` строки `Change`; других функций изменения истории в `history` нет | T-6109 test_history_service_only_appends_rows |
 | `history.page(record, offset) -> HistoryPage` | `HistoryPage(rows, next_offset)`: 50 строк новыми сверху (`at`, `id` по убыванию), `next_offset` — `offset + 50` или `None` | T-6109 test_history_fragment_pages_by_50_newest_first_with_show_more_offset |
 
@@ -381,11 +396,11 @@ test_core_org_servicedesk_notify_knowledge_search_do_not_import_lists.
 | Функция | Требование | Тесты |
 |---|---|---|
 | `grid.read(params, lst, viewer) -> GridParams` | `params` — `QueryDict` запроса; разбор раздела 10.3; коды — только из `visible_fields`; чужое — отбрасывается молча | T-6111 |
-| `grid.records(lst, viewer, gp) -> QuerySet[Record]` | отбор, фильтры, поиск, сортировка с последним ключом `number`; без среза страницы; код поля — только параметр SQL: `qs.query.sql_with_params()` — кода нет в тексте, он в параметрах (решение 30 задач) | T-6111 test_grid_queryset_sql_has_field_code_only_among_params_not_in_query_text |
+| `grid.records(lst, viewer, gp) -> QuerySet[Record]` | отбор, фильтры, поиск, сортировка с последним ключом `number` по возрастанию в обоих направлениях (К-15); без среза страницы; код поля — только параметр SQL: `qs.query.sql_with_params()` — кода нет в тексте, он в параметрах (решение 30 задач) | T-6111 test_grid_queryset_sql_has_field_code_only_among_params_not_in_query_text |
 | `grid.columns(lst, viewer) -> list[str]` | коды столбцов: `UserView.columns` без скрытых и удалённых; нет строки — `["title", <видимые с show_in_table по order>]` | T-6112 |
 | `reminders.select_candidates(today) -> list[Candidate]` | шаг 1 плана; `Candidate(record_id, list_id, field_id, due_date)`; точка подмены «между выборкой и замком» (решение 45 задач) | T-6115 |
-| `reminders.run(today) -> RunResult` | шаги 1–5 плана (уборка — в конце); `RunResult(notified: int, failed: list[int])` — число созданных уведомлений и номера записей со сбоем; сбой записи — `logger.error` логгера `apps.lists.reminders` с номером записи и именем класса исключения, обход продолжается (имя функции — решение контракта: тесту нужен вызов с датой, команде — число уведомлений) | T-6115, T-6116, T-6124 |
-| `apps.lists.tasks.remind_deadlines() -> None` | `reminders.run(moscow_today())`; если `failed` не пусто — после обхода `RuntimeError` с номерами записей | T-6115 test_reminder_failure_of_one_record_logged_with_number_and_class_loop_continues_and_task_fails_at_end; T-6125 |
+| `reminders.run(today) -> RunResult` | шаги 1–5 плана (уборка — в конце); `RunResult(notified: int, failed: list[int])` — число созданных уведомлений и id записей (`Record.pk`) со сбоем; сбой записи — `logger.error` логгера `apps.lists.reminders` строкой «список <id>, запись <id>: <класс исключения>» (id списка и id записи; К-14), обход продолжается; без приложения `notify` шаги рассылки пропускаются целиком, отметок `ReminderSent` нет, уборка выполняется; дата сменилась между выборкой и замком — запись в этом обходе пропускается (имя функции — решение контракта: тесту нужен вызов с датой, команде — число уведомлений) | T-6115, T-6116, T-6124 |
+| `apps.lists.tasks.remind_deadlines() -> None` | `reminders.run(moscow_today())`; если `failed` не пусто — после обхода `RuntimeError` с id записей (`Record.pk`, К-14) | T-6115 test_reminder_failure_of_one_record_logged_with_number_and_class_loop_continues_and_task_fails_at_end; T-6125 |
 | `vectors.refresh(record_ids) -> None` | единственное место расчёта вектора (план); литерал SQL с `unnest(%s::bigint[], %s::text[], %s::text[])`; текст — `title` (A) и видимые `string`/`text` (C, первые 100 000 знаков) | T-6122 test_vector_has_title_weight_a_and_visible_text_fields_weight_c_capped_at_100000_chars |
 | `apps.lists.tasks.refresh_vectors(list_id: int, field_id: int) -> None` (И2) | задание очереди `maintenance`; ставится в `transaction.on_commit` вызовом `django_rq.get_queue("maintenance").enqueue(refresh_vectors, list_id, field_id, job_timeout=600)`; запоминает `vectors_stale_since` в начале; пересчитывает записи списка, у которых поле заполнено (`values__has_key=<код>`; ставится только для полей `string` и `text` — Н11), порциями по 500 по возрастанию `id`, каждая порция — своя транзакция под разделяемым `access.lock_list`; в конце снимает признак, только если он не изменился с начала (`filter(pk=…, vectors_stale_since=<запомненное>).update(vectors_stale_since=None)`), иначе его снимет следующее задание; нет списка или поля — выходит без ошибки | T-6104, T-6122 test_vector_is_refreshed_on_create_save_archive_restore_import_hide_and_show |
 
@@ -397,14 +412,14 @@ test_core_org_servicedesk_notify_knowledge_search_do_not_import_lists.
 | `labels.qr_data_uri(url) -> str` | `"data:image/svg+xml;base64," + base64(qrcode.make(url, image_factory=SvgPathImage, box_size=10, border=4) в байтах SVG)`; сравнение — побайтно (решение 10 задач, факт T-6006) | T-6120 test_qr_matches_qrcode_generation_of_portal_url_card_address |
 | `labels.card_url(record) -> str` | `settings.PORTAL_URL` без завершающей «/» + `/lists/<id>/<n>/`; без строки запроса | T-6120 test_qr_address_has_no_query_or_session_data |
 | `export.build(lst, viewer, params) -> HttpResponse` | `export.LIMIT = 10000`; `count() > LIMIT` — `ListsError("export_too_many")`; иначе XLSX плана | T-6117 |
-| `imports.upload(lst, actor, *, name, content) -> ImportJob` | `table_file.read` с пределами плана; отказ — `ListsError` с кодом раздела 12.2 | T-6118 |
+| `imports.upload(lst, actor, *, name, content) -> ImportJob` | `table_file.read` с пределами плана; отказ — `ListsError` с кодом раздела 12.1 (`too_big` → `import_too_big`, `too_many_rows` → `import_too_many_rows`, остальные ключи `table_file` → `import_bad_format`); ключи `texts` для `table_file.read` — отдельный словарь модуля `texts.py`, не ключи `TEXTS` (К-7) | T-6118 |
 | `imports.get_job(user, lst, job_id) -> ImportJob` | `Http404`: нет, другой список, другой автор, старше суток (`created_at < now - 1 день`) | T-6118 test_job_of_other_author_or_other_list_returns_404, test_job_older_than_one_day_is_404_and_edit_right_rechecked_on_each_step |
 | `imports.auto_mapping(lst, header) -> dict[str, str]` | номер столбца (строкой) → код поля или `"title"` по названию без учёта регистра и крайних пробелов; поле «файл» не сопоставляется | T-6118 test_mapping_matches_columns_by_name_ignoring_case_and_edge_spaces |
-| `imports.preview(job, mapping, actor) -> ImportJob` | заполняет `rows` и `state="preview"`; в базе записей не меняет; счётчики — `imports.counts(job) -> dict` с ключами `will_create`, `will_update`, `error` | T-6118 test_preview_changes_nothing_in_database_before_confirm, test_preview_shows_counts_will_create_will_update_with_errors |
-| `imports.confirm(lst, job_id, actor) -> dict` | итог `{"created", "updated", "errors"}`; повтор при `state="done"` — прежний итог; журнал `lists.import_done` | T-6119 |
+| `imports.preview(job, mapping, actor) -> ImportJob` | заполняет `rows` и `state="preview"`; в базе записей не меняет; `map.N` с кодом поля «файл» отбрасывается как пусто (столбец не загружается); пустая ячейка «Название» — как отсутствие столбца (`import_no_title` у создающей строки); сотрудник по почте вне действующих (уволенный, заблокированный, приглашённый) — `value_unavailable` (К-7); счётчики — `imports.counts(job) -> dict` с ключами `will_create`, `will_update`, `error` | T-6118 test_preview_changes_nothing_in_database_before_confirm, test_preview_shows_counts_will_create_will_update_with_errors |
+| `imports.confirm(lst, job_id, actor) -> dict` | итог `{"created", "updated", "errors"}`; повтор при `state="done"` — прежний итог; задание ищется через `get_job` (чужое, старое — `Http404`); свежих владельцев уникальных значений собирает вызовом `unique.find_owners(lst, field, norm_values)` — один вызов на уникальное поле (К-5); `updated` — число выполненных строк `will_update`, в том числе без изменений, версия и событие `imported` — только при изменении (К-6); `vectors.refresh(ids)` — один раз после обхода строк по всем созданным и обновлённым записям (К-4); журнал `lists.import_done` | T-6119 |
 | `imports.sample(lst) -> bytes` | XLSX: первый лист — заголовки, второй — «Подсказки» (план) | T-6119 |
-| `files.attach(lst, number, *, field_code, name, data, actor) -> RecordFile` | порядок проверок: запись (нет — `Http404`, в архиве — `RecordArchived`), поле: пустой `field_code` или поле этого списка не типа «файл» — `ListsError("bad_file_field", field="field")` (отказ у формы); код несуществующего поля, поля другого списка или скрытого поля — `Http404` (как чужое; решение Opus при проверке контракта 2026-10-25, Н6), 20 файлов — `files_limit`, одиночное поле занято — `field_has_file`, `reject_reason` — `file_too_big` / `file_type_refused`; затем `uploads.store`, событие `file_added` | T-6121 |
-| `files.remove(lst, number, file_id, *, actor) -> None` | `Http404` — файл не этой записи; в архиве — `RecordArchived`; событие `file_removed`; диск после фиксации | T-6121 |
+| `files.attach(lst, number, *, field_code, name, data, actor) -> RecordFile` | порядок проверок: запись (нет — `Http404`, в архиве — `RecordArchived`), поле: пустой `field_code` или поле этого списка не типа «файл» — `ListsError("bad_file_field", field="field")` (отказ у формы); код несуществующего поля, поля другого списка или скрытого поля — `Http404` (как чужое; решение Opus при проверке контракта 2026-10-25, Н6), 20 файлов — `files_limit`, одиночное поле занято — `field_has_file`, `reject_reason` — `file_too_big` / `file_type_refused`; затем `uploads.store`, событие `file_added`; сбой записи файла — `ListsError("write_failed", field="file")`, строки откатываются, диск чист (ответ 53); `ListsError.field` — `"file"` у `files_limit`, `field_has_file`, `file_too_big`, `file_type_refused`, `write_failed`, `"field"` у `bad_file_field` | T-6121 |
+| `files.remove(lst, number, file_id, *, actor) -> None` | `file_id` — `RecordFile.pk` (ответ Opus О1); `Http404` — файл не этой записи; в архиве — `RecordArchived`; событие `file_removed`; диск после фиксации | T-6121 |
 | `files.still_waiting(stored)`, `files.clean(stored)`, `files.found(stored, signature)` | функции `FilePurpose` по образцу `knowledge/services/files.py`; `Heuristics.Encrypted.*` — строка `RecordFile` удаляется | T-6121 test_encrypted_heuristic_scan_removes_record_file_row |
 | `search.search(user, parsed, limit, offset)`, `search.count(user, parsed)`, `search.parse_local(q) -> ParsedQuery` | раздел 9 | T-6122 |
 
@@ -564,13 +579,16 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | Поле: скрыть, показать | `lists.field_hidden`, `lists.field_shown` | `lists.field` | `list`, `field`, `hidden` (`false`/`true`) |
 | Поле: удаление | `lists.field_deleted` | `lists.field` | `before`: `list`, `field`, `type` |
 | Значения списка значений | `lists.choices_changed` | `lists.field` | `list`, `field`, `choices` — названия значений не в архиве по порядку через «, » |
-| Запись: в архив, вернуть, удалить навсегда | `lists.record_archived`, `lists.record_restored`, `lists.record_purged` | `lists.record`, id записи | `list`, `number`, `title` (без значений полей) |
+| Запись: в архив, вернуть, удалить навсегда | `lists.record_archived`, `lists.record_restored`, `lists.record_purged` | `lists.record`, id записи | `list` (название списка), `number`, `title` (без значений полей): у `record_archived` и `record_restored` — в `after`, у `record_purged` — в `before` (К-12) |
 | Итог загрузки | `lists.import_done` | `lists.import`, id задания | `after`: `list`, `file`, `created`, `updated`, `errors` |
 
 Ключи — только из набора плана: `list`, `name`, `description`, `field`, `type`, `required`, `multiple`, `unique`,
 `show_in_table`, `hidden`, `default`, `hint`, `currency`, `target`, `thresholds`, `choices`, `readers`, `editors`,
 `number`, `title`, `created`, `updated`, `errors`, `file`; ключей `url`, `link`, `key`, `code` нет. Распределение ключей
-по действиям — решение контракта по таблице плана. Правка записи, файлы, связь с заявкой, выгрузка, этикетка и поиск в
+по действиям — решение контракта по таблице плана. Вид значений (К-12): `list` и `target` — названия списков; флажки
+`required`, `multiple`, `unique`, `show_in_table`, `hidden` — булево JSON; `type` — подпись типа; `default` — строка
+показа; `hint` — строка; `currency` — код (`RUB`); `thresholds` — список целых; пустой набор `readers`/`editors` —
+пустая строка `""`. Правка записи, файлы, связь с заявкой, выгрузка, этикетка и поиск в
 журнал не пишутся. Тесты T-6123, T-6103, T-6104, T-6110, T-6119.
 
 ### 8.2. Подписи (`apps/lists/audit_labels.py`)
@@ -601,7 +619,7 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | Что | Требование | Тесты |
 |---|---|---|
 | Поставщик | `SearchProvider("lists", "Списки", 50, search, count, available)`; `available` — `access.sees_section`; группа идёт после «Подразделений» (40) | T-6122 test_lists_provider_is_registered_with_key_title_order_50_after_units |
-| `search(user, parsed, limit, offset) -> list[SearchRow]` | до `limit + 1` строк; сначала точные совпадения (`UniqueValue` видимых уникальных полей читаемых списков, записи не в архиве, `norm_value == unique-нормализация parsed.text`), затем без повторов записей `search @@ to_tsquery('russian', parsed.raw)` (`SearchQuery(parsed.raw, config="russian", search_type="raw")`), ранг по убыванию, затем `number`; `list_id__in=readable`, `archived=False`; у `parsed.hint` — `[]` | T-6122 test_results_order_exact_matches_first_then_rank_then_number, test_provider_returns_limit_plus_one_rows_and_exact_uncapped_count |
+| `search(user, parsed, limit, offset) -> list[SearchRow]` | до `limit + 1` строк; сначала точные совпадения (`UniqueValue` видимых уникальных полей читаемых списков, записи не в архиве, `norm_value == unique-нормализация parsed.text`), затем без повторов записей `search @@ to_tsquery('russian', parsed.raw)` (`SearchQuery(parsed.raw, config="russian", search_type="raw")`), ранг по убыванию, затем `number` по возрастанию; `list_id__in=readable`, `archived=False`; у `parsed.hint` — `[]`; порядок — `order_by("-rank", "number")`: ранг по убыванию, затем `number` по возрастанию (К-8) | T-6122 test_results_order_exact_matches_first_then_rank_then_number, test_provider_returns_limit_plus_one_rows_and_exact_uncapped_count |
 | Строка выдачи | `SearchRow(title=<название записи>, subtitle=<название списка>, url="/lists/<id>/<n>/")`; на странице поиска строка читается как «<название> — <список>» (решение контракта: поля `title`/`subtitle` записи ядра, как у прежних поставщиков) | T-6122 test_query_dell_finds_row_laptop_dell_dash_equipment_with_card_link |
 | `count(user, parsed) -> tuple[int, bool]` | `(число, False)` — точное, без потолка; запись из точного совпадения и из `tsquery` считается один раз | T-6122 test_record_matched_exactly_and_by_tsquery_appears_once_in_results_and_count |
 | Текст запроса | не пишется ни в базу, ни в журнал портала, ни в журнал приложения | T-6122 test_query_text_marker_is_absent_in_database_audit_and_app_log |
@@ -629,7 +647,7 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | Запрос HTMX | заголовок `HX-Request: true`; ответ — фрагмент без `<html>`; таблица — фрагмент сетки при `HX-Target: lists-grid` и заголовок `Vary: HX-Request` у ответа `/lists/<id>/` | T-6111 test_hx_target_lists_grid_returns_grid_fragment_with_vary_hx_request |
 | Отказ службы на POST | всегда 200 (и на НХ) с формой или фрагментом, введённое остаётся; отказ у поля — `[data-error="<поле>"][data-code="<код>"]` рядом с полем (`<поле>` — код поля записи, `title`, `name`, `description`, `hint`, `thresholds`, `file` (файл загрузки и файл записи), `field` (поле для файла), `choices` (значения списка значений), а в настройке поля — имя свойства: `type`, `required`, `multiple`, `unique`, `default`, `currency`, `target`; какой код у поля, а какой общий — колонка «Где» таблиц 12.1–12.3; решение Opus при проверке контракта 2026-10-25, Н5), общий отказ — `[role=alert][data-code="<код>"]` (соглашение срезов 001–005, CONTRACT-004, раздел 13); коды — ключи раздела 12 | все тесты отказов |
 | Успех POST | обычный POST — 302 на адрес из 10.2; НХ-POST — 200 с заголовком `HX-Redirect: <тот же адрес>`, кроме адресов, у которых в 10.2 назван фрагмент | T-6103, T-6108a |
-| 403, 404 | список не читается, запись, файл, связь, задание загрузки не существуют — 404, тело без данных объекта (как у несуществующего); список читается, действие не разрешено — 403 (план) | T-6102 |
+| 403, 404 | список не читается, запись, файл, связь, задание загрузки не существуют — 404, тело без данных объекта (как у несуществующего); список читается, действие не разрешено — 403 (план); тесты сравнивают ответ на нечитаемый и несуществующий объект в пределах одного клиента (шапка, К-10) | T-6102 |
 | Карточка удалённой записи | номер меньше `next_number`, строки нет — 404 с текстом «Запись удалена» в теле (план) | T-6108b test_card_of_missing_record_with_number_below_next_number_is_404_record_deleted |
 | Числа | `<int:…>` в путях; `page` — целое от 1 (иное — 1); `offset` — целое от 0 (иное — 0) | T-6109, T-6111 |
 
@@ -640,10 +658,10 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | `/lists/new/` POST | `name`, `description` | 302 на `/lists/<id>/settings/` |
 | `/lists/<id>/` GET | `preset`, `sort`, `dir`, `q`, `page`, `f.<код>`, `f.<код>.from`, `f.<код>.to`, `f.<код>.files` (план; разбор — 10.3) | 200 страница или фрагмент сетки |
 | `/lists/<id>/columns/` POST | `columns` — повторяющееся, коды по порядку показа (`title` — системное) | 302 на `/lists/<id>/`; НХ — фрагмент сетки |
-| `/lists/<id>/filter-values/<код>/` GET | `q` | 200 фрагмент `ul[data-lists-pick]`, до 20 строк; скрытое поле, поле не ссылочного типа (`choice`, `person`, `unit`, `record` — ссылочные) или нечитаемый целевой список — 404 |
+| `/lists/<id>/filter-values/<код>/` GET | `q` — подстрока без учёта регистра в строке показа (у записи — ещё номер целиком) | 200 фрагмент `ul[data-lists-pick] > li[data-pick-id="<id>"]`, как у `/pick/`, текст — строка показа, до 20 строк (К-15); скрытое поле, поле не ссылочного типа (`choice`, `person`, `unit`, `record` — ссылочные) или нечитаемый целевой список — 404 |
 | `/lists/<id>/export/` GET | параметры таблицы | 200 XLSX, `Content-Disposition: attachment; filename*=UTF-8''<название списка в процентной записи>.xlsx`; больше 10 000 — 200 страница таблицы с `[role=alert][data-code="export_too_many"]` |
 | `/lists/<id>/settings/` POST | `name`, `description` | 302 на тот же адрес |
-| `/lists/<id>/settings/fields/new/` POST и `…/<код>/` POST | `name`, `hint`, `type` (только при создании и у пустого поля), `required`, `multiple`, `unique`, `show_in_table`, `deadline` (флажки, значение `on`), `default` (строка; у даты — `today` или дата ДД.ММ.ГГГГ; у списка значений — id значения; у да/нет — `on`), `currency` (`RUB`, `USD`, `EUR`), `target` (id списка), `thresholds` — повторяющееся, до трёх целых, пустые отбрасываются | 302 на `/lists/<id>/settings/fields/` |
+| `/lists/<id>/settings/fields/new/` POST и `…/<код>/` POST | `name`, `hint`, `type` (только при создании и у пустого поля), `required`, `multiple`, `unique`, `show_in_table`, `deadline` (флажки, значение `on`), `default` (строка; у даты — `today` или дата ДД.ММ.ГГГГ; у списка значений — id значения; у да/нет — `on`), `currency` (`RUB`, `USD`, `EUR`), `target` (id списка), `thresholds` — повторяющееся, до трёх целых, пустые отбрасываются; GET `…/fields/new/?type=<тип>` отдаёт форму со свойствами этого типа, выбор типа перезапрашивает форму (`hx-get`) (К-15) | 302 на `/lists/<id>/settings/fields/`; присланный `type` у поля с данными — 200 с `[data-error="type"][data-code="field_locked"]` |
 | `…/<код>/hide/`, `…/show/`, `…/delete/`, `…/up/`, `…/down/` POST | — | 302 на вкладку «Поля» |
 | `…/fields/order/` POST | `codes` — повторяющееся, все коды строк `Field` списка (со скрытыми, без `title`) в новом порядке (Н15) | 302; НХ — 204; отказ `bad_order` — 200 с `[role=alert][data-code="bad_order"]` (и на НХ) |
 | `…/<код>/choices/` POST | пары повторяющихся `id` и `title` в новом порядке; у нового значения `id` пусто; архивный id среди `id` — возврат из архива | 302 на `/lists/<id>/settings/fields/<код>/` |
@@ -654,9 +672,9 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | `/lists/<id>/<n>/archive/`, `…/restore/` POST | — | 302 на карточку |
 | `/lists/<id>/bulk-archive/` POST | `n` — повторяющееся, номера | 200 страница (НХ — фрагмент) таблицы с итогом «В архив: N, пропущено: M» в `[data-lists-notice="bulk-result"]`; больше 50 — 200 с `[role=alert][data-code="bulk_too_many"]`, ничего не изменено |
 | `/lists/<id>/<n>/purge/` POST | — | 302 на `/lists/<id>/?preset=archive`; ссылки — 200 карточка с `[role=alert][data-code="record_referenced"]`; не в архиве — 403 |
-| `/lists/<id>/<n>/files/` POST (multipart) | `field` — код поля «файл», `file` — файл | 302 на карточку; НХ — фрагмент блока файлов (11.7); отказ файла — 200 с `[data-error="file"][data-code=…]`; `bad_file_field` — 200 с `[data-error="field"][data-code="bad_file_field"]`; запись в архиве — 200 с `[role=alert][data-code="record_archived"]`; несуществующее, чужое или скрытое поле — 404 (5.7) |
+| `/lists/<id>/<n>/files/` POST (multipart) | `field` — код поля «файл», `file` — файл | 302 на карточку; НХ — фрагмент блока файлов (11.7); отказ файла (в том числе `write_failed` — сбой записи) — 200 с `[data-error="file"][data-code=…]`; `bad_file_field` — 200 с `[data-error="field"][data-code="bad_file_field"]`; запись в архиве — 200 с `[role=alert][data-code="record_archived"]`; несуществующее, чужое или скрытое поле — 404 (5.7) |
 | `/lists/<id>/<n>/files/<file_id>/` GET | — | «чистый» — `X-Accel-Redirect`, `Content-Disposition: attachment; filename*=…`, `X-Content-Type-Options: nosniff` (`file_response.download`); «проверяется», «карантин», файл не этой записи — 404 |
-| `/lists/<id>/<n>/files/<file_id>/delete/` POST | — | 302 на карточку; НХ — фрагмент блока файлов |
+| `/lists/<id>/<n>/files/<file_id>/delete/` POST | — (`<file_id>` здесь и в адресе выше — `RecordFile.pk`, ответ Opus О1) | 302 на карточку; НХ — фрагмент блока файлов; запись в архиве — 200 с `[role=alert][data-code="record_archived"]`, файл остаётся |
 | `/lists/<id>/<n>/label/` GET; `/lists/<id>/labels/` GET | `n` — повторяющееся | 200; больше 100 номеров — 200 с `[role=alert][data-code="labels_too_many"]` без этикеток; несуществующие и удалённые навсегда номера пропускаются молча, записи в архиве печатаются (решение 39 задач) |
 | `/lists/<id>/import/` POST (multipart) | `file` | 302 на `/lists/<id>/import/<job>/`; отказ — 200 с `[data-error="file"][data-code=…]`, задание не создаётся |
 | `/lists/<id>/import/<job>/` POST | `map.<номер столбца с 0>` — код поля, `title` или пусто (не загружать) | 200 страница предпросмотра (11.9); задание не своё, другой список, старше суток — 404 (решение 31 задач) |
@@ -673,10 +691,10 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 |---|---|---|
 | `preset` | `all` (по умолчанию), `expiring`, `mine`, `archive`; иное — `all`; недоступный списку отбор — `all` | T-6112 |
 | `sort` | код видимого поля, `title`, `number`; иное, поле «файл» и поле-ссылка на нечитаемый список — отбрасывается (порядок по `number`) | T-6111 |
-| `dir` | `asc` (по умолчанию), `desc` | T-6111 test_column_header_link_toggles_dir_for_current_sort_column |
+| `dir` | `asc` (по умолчанию), `desc`; действует только вместе с допустимым `sort`, без него — порядок по `number` по возрастанию (К-15) | T-6111 test_column_header_link_toggles_dir_for_current_sort_column |
 | `f.<код>` | `string`, `text` и `f.title` — подстрока без учёта регистра; `choice`, `person`, `unit`, `record` — id (повторяющееся — все значения по «и»); `bool` — `yes` или `no` | T-6111 |
 | `f.<код>.from`, `f.<код>.to` | `number`, `money` — число с точкой или запятой; `date` — ДД.ММ.ГГГГ или ISO; `datetime` — «ДД.ММ.ГГГГ ЧЧ:ММ» по Москве, «до» включительно по минуте; неверное значение отбрасывается | T-6111 test_invalid_date_number_and_id_filter_values_are_dropped_without_server_error |
-| `f.<код>.files` | `yes`, `no` (у поля «файл») | T-6111 test_file_filter_yes_and_no_by_presence_of_record_files |
+| `f.<код>.files` | `yes`, `no` (у поля «файл»; по файлам именно этого поля, К-15) | T-6111 test_file_filter_yes_and_no_by_presence_of_record_files |
 | `q` | раздел 9 | T-6122 |
 | `page` | 50 строк на странице, 51-я — признак следующей | T-6111 test_page_holds_50_rows_51st_row_marks_next_page_and_page_param_opens_it |
 
@@ -713,13 +731,14 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 `data-qr-url` (решение 50 задач), `data-card-part` оболочки сервис-деска.
 
 ### 11.1. Общие
+Кнопки форм, диалог подтверждения, ссылка на настройку, подсказки выбора, форма файла — также 15.4.
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
 | `[data-lists-page="<имя>"]` | корень содержимого страницы: `home`, `new`, `grid`, `settings`, `fields`, `field`, `access`, `add`, `record`, `edit`, `archived-edit` (GET правки записи в архиве), `import`, `mapping`, `preview`, `summary`, `label`, `labels`, `gone` (404 «Запись удалена») | T-6140…T-6153 |
 | `time[data-at]` | время по Москве, `datetime` — ISO, текст «ДД.ММ.ГГГГ ЧЧ:ММ» | T-6125, T-6109 |
 | Пометка «уволен» | `{% person_name %}`: `span[data-dismissed="true"]` «ФИО (уволен)» | T-6106, T-6109, T-6141 |
-| Пометка «в архиве» | `[data-lists-archived]` с текстом «в архиве» — у карточки, значения-ссылки, строки «Ссылаются», строки раздела заявки | T-6110, T-6113, T-6114 |
+| Пометка «в архиве» | `[data-lists-archived]` с текстом «в архиве» — у карточки, значения-ссылки, строки «Ссылаются», строки раздела заявки; у значения-ссылки на запись в архиве ссылка `a` есть (К-15) | T-6110, T-6113, T-6114 |
 | «Запись недоступного списка» | `[data-lists-unavailable]` без ссылки и названия | T-6113, T-6117 |
 | Отказы | `[data-error="<поле>"][data-code="<код>"]`, `[role=alert][data-code="<код>"]` | все |
 | Пустые состояния | `[data-empty-state="lists"]` — пустая главная; `[data-empty-state="lists-grid"]` — пустая таблица | T-6103, T-6112 |
@@ -738,7 +757,7 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | Форма поля | `form[data-lists-field-form]`; свойства — `[data-prop="required"\|"multiple"\|"unique"\|"show_in_table"\|"default"\|"currency"\|"target"\|"deadline"\|"thresholds"]`; недоступных типу свойств в разметке нет | T-6103 test_field_form_shows_only_properties_of_its_type_and_file_has_no_required |
 | Значения списка значений | `[data-lists-choices]`: `li[data-choice-id]`, архивные — `li[data-choice-id][data-archived]` с кнопкой `button[data-action="choice-restore"]`; у значения не в архиве — `input[name="title"]` (переименование; рядом скрытое `input[name="id"]`) и `button[data-action="choice-remove"]`; новое значение — `input[data-lists-choice-title]` и `button[data-action="choice-add"]` (добавляет строку с пустым `id`); сохранение — POST `…/choices/` (10.2) (Н7) | T-6104, T-6153 |
 | Права | `[data-lists-access="read"]`, `[data-lists-access="edit"]`: `li[data-subject="role:<id>"\|"unit:<id>"]` с `button[data-action="access-remove"]`; в каждом наборе — `input[data-lists-picker="units"]` (подсказка `/lists/units/`, нажатие на `li[data-pick-id]` добавляет подразделение), `select[data-lists-role-select]` (роли) с `button[data-action="access-add"]`; у каждой строки скрытое `input[name="readers"\|"editors"][value="role:<id>"\|"unit:<id>"]` (Н7) | T-6103, T-6152 |
-| Удаление списка | `button[data-action="list-delete"]`; недоступна — атрибут `disabled` и пояснение `[data-lists-delete-reason]` с текстом отказа | T-6103 test_delete_list_with_records_or_only_archived_records_rejected_and_button_unavailable_with_reason |
+| Удаление списка | на вкладке «Основное» (`/lists/<id>/settings/`, К-15): `button[data-action="list-delete"]`; недоступна — атрибут `disabled` и пояснение `[data-lists-delete-reason]` с текстом отказа | T-6103 test_delete_list_with_records_or_only_archived_records_rejected_and_button_unavailable_with_reason |
 
 ### 11.3. Таблица записей
 
@@ -746,13 +765,13 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 |---|---|---|
 | `#lists-grid.lists-grid[data-narrow="cards"]` | контейнер сетки (цель `HX-Target`); строки `tr[data-record-number="<n>"]`, название — `a[data-field="title"]` на `/lists/<id>/<n>/`; ячейки `td[data-col="<код>"]` | T-6112 test_grid_markup_has_narrow_cards_container_and_lists_grid_class, test_grid_row_title_links_to_record_card_address_of_that_record |
 | `[data-lists-presets] a[data-preset="all"\|"expiring"\|"mine"\|"archive"]` | ссылки отборов; у текущего `aria-current="page"` | T-6112 |
-| `th[data-sort="<код>"] a` | заголовок со ссылкой сортировки; `[data-dir="asc"\|"desc"]` у текущего | T-6111 |
+| `th[data-sort="<код>"] a` | заголовок со ссылкой сортировки; `[data-dir="asc"\|"desc"]` — на `th[data-sort]` текущего столбца (К-15) | T-6111 |
 | `[data-lists-found]` | «Найдено: N» | T-6111 test_found_count_equals_count_of_same_filtered_queryset_and_is_always_shown |
 | `[data-lists-filters]` | фильтры: `[data-lists-filter="<код>"]` | T-6112 test_hidden_field_is_absent_from_column_and_filter_choices |
 | `dialog[data-lists-columns]` | выбор столбцов: `input[name="columns"][data-lists-column-choice="<код>"]` | T-6112 |
 | `form[data-lists-search]` | строка поиска (`input[name="q"]`), подсказка `[data-lists-search-hint]` | T-6122, T-6151 |
 | Флажки строк | `input[type="checkbox"][name="n"][value="<n>"][data-lists-row-check]` | T-6112, T-6142 |
-| Групповые действия | `button[data-action="bulk-archive"]` (правящим), `button[data-action="bulk-labels"]` (читающим; ведёт на `/lists/<id>/labels/?n=…`) | T-6112 test_labels_action_is_offered_to_reader_and_leads_to_labels_page_with_checked_numbers |
+| Групповые действия | `button[data-action="bulk-archive"]` (правящим), `button[data-action="bulk-labels"]` (читающим; ведёт на `/lists/<id>/labels/?n=…`: флажки строк и кнопка — в одной форме, у кнопки `formmethod="get"`, `formaction="/lists/<id>/labels/"`, К-15) | T-6112 test_labels_action_is_offered_to_reader_and_leads_to_labels_page_with_checked_numbers |
 | Кнопки таблицы | `a[data-action="record-add"]`, `a[data-action="import"]` (правящим), `a[data-action="export"]` (читающим) | T-6112 test_empty_list_shows_no_records_text_and_add_and_import_buttons_to_editor |
 | Страницы | `a[data-action="next-page"]` с `page=N+1` | T-6111 |
 
@@ -761,7 +780,7 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
 | `form[data-lists-record-form]` | поля по `order`: контейнер `[data-lists-field="<код>"]` с элементом `[name="<код>"]` внутри (`input`, `select`, `textarea`), у обязательных `[data-required]` на контейнере; «Название» — `[data-lists-field="title"]`; скрытое `input[name="base_version"]`; `value` на GET: дата — «ДД.ММ.ГГГГ» (`PortalDateInput`; умолчание «сегодня» — дата по Москве), дата и время — «ДД.ММ.ГГГГ ЧЧ:ММ» по Москве, число и деньги — каноническое значение с запятой без разрядов и знака валюты («12,5», «1234,50») (решение Opus при проверке контракта 2026-10-25, Н8) | T-6106, T-6141 |
-| Скрытое за время правки | у поля `[data-lists-field="<код>"][data-hidden-meanwhile]` только для чтения и отказ `[data-error="<код>"][data-code="field_hidden_meanwhile"]` | T-6108a test_field_hidden_during_edit_with_nonempty_value_is_refused_with_hidden_mark_and_shown_read_only |
+| Скрытое за время правки | у поля `[data-lists-field="<код>"][data-hidden-meanwhile]` только для чтения — значение текстом, без элемента с `name="<код>"` (ответ 15); `base_version` после отказа — текущая версия записи (ответ 16) и отказ `[data-error="<код>"][data-code="field_hidden_meanwhile"]` | T-6108a test_field_hidden_during_edit_with_nonempty_value_is_refused_with_hidden_mark_and_shown_read_only |
 | Подсказки выбора | `input[data-lists-picker="people"\|"units"\|"record"]` с `hx-get` и паузой 300 мс; ответ — `ul[data-lists-pick]`; нажатие на `li[data-pick-id]` добавляет выбранное | T-6113, T-6141 |
 | Выбранные значения | `[data-lists-selected="<код поля>"] li[data-selected-id="<id>"]` со скрытым `input[name="<код>"][value="<id>"]` и `button[data-action="pick-remove"]` (снятие); повтор уже выбранного не добавляется; у поля `choice` — `input[type="checkbox"][name="<код>"][value="<id>"]` при «несколько», `select[name="<код>"]` без «несколько» (снятие — снять флажок или выбрать пустое) (Н7; решение контракта К15) | T-6141, T-6106 |
 
@@ -770,10 +789,10 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
 | `[data-lists-record]` | корень карточки; `[data-lists-value="<код>"]` — значение видимого поля (многострочное — с `<br>`) | T-6108b |
-| Кнопки | `a[data-action="record-edit"]`, `button[data-action="record-archive"]`, `button[data-action="record-restore"]`, `a[data-action="record-label"]`, `button[data-action="record-purge"]` (управляющему, только запись в архиве; подтверждение `dialog[data-lists-confirm]`) | T-6108b test_card_buttons_edit_archive_label_by_right_and_purge_only_for_manager_on_archived_record |
+| Кнопки | `a[data-action="record-edit"]`, `button[data-action="record-archive"]`, `button[data-action="record-restore"]`, `a[data-action="record-label"]`, `button[data-action="record-purge"]` (управляющему, только запись в архиве; подтверждение `dialog[data-lists-confirm]`); у записи в архиве `record-edit` нет (ответ 23) | T-6108b test_card_buttons_edit_archive_label_by_right_and_purge_only_for_manager_on_archived_record |
 | `[data-lists-referrers]` | «Ссылаются на эту запись»: `li[data-record-ref="<id списка>:<n>"]` | T-6113 |
 | `[data-lists-related-tickets]` | «Связанные заявки»: `li[data-ticket-number="<номер>"]` с текстом «#N Тема, состояние» | T-6114 |
-| `[data-lists-history]` | место фрагмента истории | T-6109 |
+| `[data-lists-history]` | место фрагмента истории; карточка выводит в нём первую страницу (50 строк) тем же фрагментом, что `…/history/` (К-15) | T-6109 |
 
 ### 11.6. История
 
@@ -786,14 +805,14 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
-| `[data-lists-files="<код поля>"]` | блок файлов поля: `li[data-file-id="<id>"][data-scan="pending"\|"clean"\|"quarantine"]`; у «чистого» — `a[data-action="file-download"]`; у остальных — пометка «проверяется» или «в карантине» без ссылки | T-6121, T-6149 |
-| Кнопки | `form[data-action="file-attach"]` (`input[name="file"]`, `input[name="field"]`), `button[data-action="file-delete"]` (правящим, запись не в архиве) | T-6121 |
+| `[data-lists-files="<код поля>"]` | блок файлов поля: `li[data-file-id="<id>"][data-scan="pending"\|"clean"\|"quarantine"]`; у «чистого» — `a[data-action="file-download"]`; у остальных — пометка «проверяется» или «в карантине» без ссылки; `<id>` в `data-file-id` — `RecordFile.pk` (ответ Opus О1) | T-6121, T-6149 |
+| Кнопки | `form[data-action="file-attach"]` (`input[name="file"]`, `input[name="field"]`), `button[data-action="file-delete"]` (правящим, запись не в архиве; у записи в архиве нет ни формы, ни кнопок, файлы видны, «чистые» скачиваются) | T-6121 |
 
 ### 11.8. Карточка заявки и «Закреплённое»
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
-| Раздел заявки | оболочка сервис-деска `[data-card-part="lists-records"]`; внутри — `[data-lists-ticket-section]`, строки `li[data-ticket-link-id="<id>"]` с `a` на карточку записи и текстом «Название — Список», `button[data-action="ticket-unlink"]`; поле поиска `input[data-lists-picker="ticket"]` и кнопка `button[data-action="ticket-link"]` | T-6114, T-6146 |
+| Раздел заявки | оболочка сервис-деска `[data-card-part="lists-records"]`; внутри — `[data-lists-ticket-section]`, строки `li[data-ticket-link-id="<id>"]` с `a` на карточку записи и текстом «Название — Список», `button[data-action="ticket-unlink"]`; поле поиска `input[data-lists-picker="ticket"]` и кнопка `button[data-action="ticket-link"]` — в разделе, рядом с полем; `li[data-pick-id]` подбора — `Record.pk`; `q` из цифр (можно с `#`) ищет и номер записи целиком (К-15) | T-6114, T-6146 |
 | «Закреплённое» | `#lists-pinned[data-lists-pinned]` в `lists/_card_pinned.html`; строки `li[data-pinned-record]` «Название — Список — Поле»; ссылка только у списков, которые смотрящий читает | T-6113, T-6145 |
 
 ### 11.9. Загрузка, этикетки, поиск
@@ -804,7 +823,7 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | Предпросмотр | `tr[data-import-row="<номер строки>"][data-result="will_create"\|"will_update"\|"error"]`, причина — `[data-field="reason"]`, номер записи — `[data-field="number"]`; счётчики `[data-import-count="will_create"\|"will_update"\|"error"]`; кнопка `button[data-action="import-confirm"]` | T-6118 |
 | Итог | `[data-lists-notice="import-summary"]` с `[data-import-summary="created"\|"updated"\|"errors"]` и временем завершения `time[data-at]` (по Москве) | T-6119, T-6125 |
 | Этикетка | `[data-lists-label]` с `[data-field="list"]`, `[data-field="title"]`, `[data-field="value"]` (значение уникального поля или «№ N»); QR — `img[data-lists-qr][data-qr-url="<адрес карточки>"]` с `src="data:image/svg+xml;base64,…"` | T-6120 test_qr_is_img_with_svg_base64_data_uri_and_data_qr_url_attribute_holding_card_address |
-| Лист этикеток | `[data-lists-labels-sheet]` — по одной `[data-lists-label]` на номер; класс печати `lists-labels`; `labels.css`: `@page { size: A4; margin: 10mm 9mm }`, сетка 3 × 7 (63,5 × 38,1 мм), `@media print` скрывает `#top-bar`, `.app-top-bar`, `#main-menu`, `.app-menu` (решение 59 задач) | T-6120 test_labels_css_a4_page_margins_3x7_grid_and_print_media_hides_app_top_bar_and_app_menu |
+| Лист этикеток | `[data-lists-labels-sheet]` — по одной `[data-lists-label]` на номер; класс печати `lists-labels` — у корня листа `[data-lists-labels-sheet]`; `labels.css`: `@page { size: A4; margin: 10mm 9mm }`, сетка 3 × 7 (63,5 × 38,1 мм; `display: grid; grid-template-columns: repeat(3, 63.5mm); grid-auto-rows: 38.1mm`, К-15), `@media print` скрывает `#top-bar`, `.app-top-bar`, `#main-menu`, `.app-menu` (решение 59 задач) | T-6120 test_labels_css_a4_page_margins_3x7_grid_and_print_media_hides_app_top_bar_and_app_menu |
 | Сквозной поиск | группа выдачи с ключом `lists` (разметка группы — прежняя страница поиска среза 005) | T-6122, T-6151 |
 
 ## 12. Тексты, которые проверяют тесты
@@ -824,7 +843,7 @@ T-6125 `test_lists_deploy.py::test_lists_texts_dictionary_contains_every_key_and
 | Код | Где | Текст | Источник | Тесты |
 |---|---|---|---|---|
 | `unique_taken` | код поля | «Такое значение уже есть в списке» и рядом ссылка `a[href="/lists/<id>/<n>/"]` на запись-владельца | FR-546 | T-6107, T-6141 |
-| `required` | код поля, `title` | «Обязательное поле» | FR-546 | T-6106, T-6141 |
+| `required` | код поля, `title`, `name` (списка и поля, К-11) | «Обязательное поле» | FR-546 | T-6106, T-6141 |
 | `too_long` | код поля, `title`, `name`, `description`, `hint`, `choices` | «Предел: {limit} знаков» (например «Предел: 500 знаков», «Предел: 10 000 знаков»); `limit` передаётся строкой с разрядным пробелом: «100», «500», «10 000» (Н13) | FR-546 | T-6103, T-6106, T-6108a |
 | `required_new_with_records` | `required` | «Сначала заполните поле у всех записей» | FR-546 | T-6103, T-6153 |
 | `unique_repeats` | `unique` | «Значения повторяются: {items}»; `items` — до 10 пар «№<номер> — <значение>» через «; » (форма пары — решение контракта) | FR-546, план | T-6104, T-6153 |
@@ -834,7 +853,7 @@ T-6125 `test_lists_deploy.py::test_lists_texts_dictionary_contains_every_key_and
 | `unit_in_records` | — (отказ ядра на странице оргструктуры) | «подразделение указано в {count} записях списков» — фраза `unit_usage`; ядро выводит «Узел нельзя удалить: <фраза>.» (план: слова уточнены под рамку ядра; числительное не склоняется — слова плана) | план, FR-546 | T-6113 |
 | `unit_in_access` | — (отказ ядра на странице оргструктуры) | «указано в правах списков: {names}»; при записях — через «; » после фразы `unit_in_records`; без записей — одна эта фраза; `names` — названия списков по алфавиту через «, » | план | T-6113 |
 | `role_in_access` | — (отказ ядра на странице ролей) | «Нельзя удалить: указано в правах списков: {names}.» — фраза `role_usage`, ядро выводит её как есть | FR-546, план | T-6113, T-6153 |
-| `record_referenced` | общий | «Нельзя удалить: на запись ссылаются записи: {links}»; `links` — ссылки «Название — №N» на записи читаемых списков через «, »; остальные — числом: при ссылках и скрытых — «Нельзя удалить: на запись ссылаются записи: {links} и ещё {hidden}»; если ссылок нет — «Нельзя удалить: на запись ссылаются записи: {hidden}» (одно число без слов; форма — решение контракта К16, определена по решению Opus при проверке контракта 2026-10-25, Н4) | FR-546, план | T-6110, T-6144 |
+| `record_referenced` | общий | «Нельзя удалить: на запись ссылаются записи: {links}»; `links` — ссылки «Название — №N» на записи читаемых списков через «, »; остальные — числом: при ссылках и скрытых — «Нельзя удалить: на запись ссылаются записи: {links} и ещё {hidden}»; если ссылок нет — «Нельзя удалить: на запись ссылаются записи: {hidden}» (одно число без слов; форма — решение контракта К16, определена по решению Opus при проверке контракта 2026-10-25, Н4); в словаре — один ключ `TEXTS["record_referenced"] = "Нельзя удалить: на запись ссылаются записи: {links}"`, хвост («… и ещё {hidden}» или одно число) служба собирает в `links` до подстановки (К-11) | FR-546, план | T-6110, T-6144 |
 | `files_limit` | `file` | «У записи уже 20 файлов» | FR-546 | T-6121 |
 | `file_too_big` | `file` | «Файл больше 20 МБ» | FR-546 | T-6121 |
 | `file_type_refused` | `file` | «Файл такого типа не принимается» (и исполняемый, и архив с паролем) | FR-546 | T-6121 |
@@ -895,6 +914,7 @@ T-6125 `test_lists_deploy.py::test_lists_texts_dictionary_contains_every_key_and
 | `import_two_records` | строка загрузки | «Уникальные поля указывают на разные записи» |
 | `import_time_missing` | строка загрузки | «Укажите время: ДД.ММ.ГГГГ ЧЧ:ММ» |
 | `bad_file_field` | `field` загрузки файла (пустое значение или поле не типа «файл»; 5.7) | «Выберите поле для файла» |
+| `write_failed` | `file` (сбой записи файла записи, 5.7) | «Не удалось сохранить файл» (образец CONTRACT-005, решение 41; ответ 53, К-11) |
 
 В итоге строки предпросмотра причина — текст отказа с названием поля впереди: «<Поле>: <текст>»; у записи в архиве —
 `record_archived` («Запись в архиве»), у повтора в файле — `import_repeat_in_file`.
@@ -1056,3 +1076,63 @@ T-6140 в своём отчёте; прежние помощники — `helper
 | К23 | порядок регистраций `register_all()` — порядок таблицы плана, `stand_reset` последней; обработчик `links.on_user_dismissed` | план не задаёт порядок и имя обработчика |
 | К24 | помощники `support_lists.py` с сигнатурами раздела 5.9, в том числе `choice_id`, `run_unseed`, `read_xlsx`, `read_back`, `list_pages`, `ListLock`, `list_no`, `set_vectors`, `TITLES_006` сверх перечня строки T-6101 | писатели тестов не придумывают имён (решение 2 задач); перечисленные имена нужны нескольким файлам тестов |
 | К25 | `as_reader(lst)`, `as_editor(lst)` получают список | в срезе 006 «читает» и «правит» — свойство пары «сотрудник, список», а не право роли |
+
+### 15.3. Ответы на вопросы писателей тестов (2026-10-25)
+
+Вопросы и допущения писателей серверных тестов T-6102…T-6126 сведены в `crm-work/slice006/stage2/tests/answers-draft.md`
+(65 строк, противоречия П1–П6, пункты К-1…К-15). Ответы О1–О5 — ответы Opus; строки «предложение» сводчика и строки
+«следует из …» Opus утвердил как есть 2026-10-25 («Утверждение Opus» того же файла). Всё ниже — решения Opus, не решения
+владельца. Пункты внесены в разделы, названные в скобках.
+
+- О1, К-3: `<file_id>` в адресах файлов, в `files.remove` и в `li[data-file-id]` — `RecordFile.pk` (5.7, 10.2, 11.7).
+- О2, К-3: отказ уникальности при сохранении записи — `ValuesInvalid` с `errors[<код>].code == "unique_taken"`;
+  `unique.sync` поднимает голый `ListsError("unique_taken")` (5.1, 5.4).
+- О3, К-3: `unique.sync(record, fields)` — объекты `Field`; `unique.normalize(field, value)` — значение в форме хранения
+  (5.4).
+- О4, П3, К-2: каждая служба с актором (`schema.*`, `records.create/save`, `archive.*`, `files.*`, `imports.*`,
+  `tickets.link/unlink`) перепроверяет право: нет права «правит» — `PermissionDenied`, список не читается — `Http404`;
+  у `tickets.link/unlink` проверка — условие 5.5 (чтение списка и видимость заявки, `Http404`), без «правит»;
+  службы без актора (`unique.*`, `vectors.*`, `reminders.*`, `links.referrers`) прав не проверяют (шапка раздела 5, 5.4).
+- О5, К-1: «сегодня по Москве» и границы суток — часы 21:00–23:59 UTC; 00:00 UTC — только для показа времени; имена тестов
+  с `utc_midnight` не меняются (шапка, 1.4). Описание помощника `support_kb.utc_midnight` в `support_kb.py` не правилось
+  (общие файлы помощников вне задания внесения ответов): тесты среза 006 зовут его только для показа времени.
+- К-4: при `via_import=True` `records.create` вектор не считает; `imports.confirm` зовёт `vectors.refresh(ids)` один раз
+  в конце (5.4, 5.7; П5).
+- К-5, К-6: `imports.confirm` собирает владельцев через `unique.find_owners` (один вызов на уникальное поле); `updated` —
+  все выполненные строки `will_update`, версия и событие `imported` — только при изменении (5.7).
+- К-7: `map.N` с полем «файл» — пусто; сотрудник по почте вне действующих — `value_unavailable`; коды `import_*`
+  отказа файла; ключи `texts` для `table_file.read` — отдельный словарь; пустая ячейка «Название» — нет названия (5.7).
+- К-8: поиск — `order_by("-rank", "number")`, номер по возрастанию (9).
+- К-9: сброс стенда — `transaction.on_commit(…, using=<алиас>)` (1.3).
+- К-10: `support.same_failure` — ответы одного клиента (шапка, 10.1; П1, П2).
+- К-11: `record_referenced` — один ключ «…: {links}»; `required` — ещё у `name`; новый код `write_failed` (12.1, 12.3).
+- К-12: ключи и вид значений журнала (8.1).
+- К-13: проверка кода поля — валидаторы `Field.code`; `target` — объект `List`; `field_locked` у присланного `type`;
+  несколько id без «несколько» — `value_unavailable`; пустое название — `required` у `name` (2.2, 5.3, 5.4).
+- К-14: напоминания — id записей в `failed`, журнале и `RuntimeError`; без `notify` отметок нет; смена даты между
+  выборкой и замком — пропуск (5.6).
+- К-15: зацепки и разбор таблицы (10.2, 10.3, 11.1–11.9): `data-dir` на `th`; последний ключ `number` по возрастанию;
+  `f.<код>.files` — файлы этого поля; filter-values — `li[data-pick-id]`; «Этикетки» — GET-форма флажков; сетка
+  `labels.css`; `lists-labels` у листа; «Удалить список» на «Основном»; форма поля по `?type=`; история в карточке;
+  у записи в архиве нет `record-edit`, `file-attach`, `file-delete`; поле «только для чтения» — текст без `name`.
+- Остальные строки таблицы `answers-draft.md` не вводят новых имён (например, строка 12: точка подмены гонки
+  `lists_list_name_ci_uniq` не вводится; строка 33: запись с одним узлом в двух полях считается в `unit_usage` один раз;
+  строка 36: «Закреплённое» — строка на пару «запись, поле»); они действуют как утверждённые ответы Opus по
+  `answers-draft.md`.
+
+### 15.4. Ответы на вопросы приёмки (T-6140, 2026-10-26)
+Решения Opus; главнее строк раздела 11 при расхождении.
+
+1. Главная кнопка каждой формы среза (создание списка, «Основное», поле, права, значения, запись) — единственная
+   `button[type=submit]` без `data-action` в своей форме; служебные кнопки формы (`access-add`, `choice-add`, `pick-remove`,
+   …) всегда с `data-action`. Правило — в §11 «Общее».
+2. `dialog[data-lists-confirm]`: кнопка подтверждения — `button[type=submit][data-action="confirm"]`; «Отмена» —
+   `button[data-action="cancel"]` (форма `method="dialog"` или отдельная). Помощник подтверждения жмёт `[data-action=confirm]`.
+3. Ссылка на настройку списка — `a[data-action="list-settings"]` (на главной у строки списка и на странице таблицы);
+   есть у управляющего, нет у остальных.
+4. Пустое название списка — `[data-error="name"][data-code="required"]` «Обязательное поле» (как ответ серверным № 10).
+5. `select[data-lists-role-select]` — значения пунктов — `<id>` роли (без префикса).
+6. `ul[data-lists-pick]` выводится внутри своего контейнера: `[data-lists-field="<код>"]` или `[data-lists-access="<уровень>"]`.
+7. Загрузка файла — своя форма внутри `[data-lists-files="<код>"]` у каждого поля «файл»: `input[type=file][name=file]`,
+   скрытое `field`, отправка кнопкой `button[type=submit]` (без автоотправки; HTMX-ответ заменяет блок файлов поля).
+8. «Удалить список» — вкладка «Основное» `/lists/<id>/settings/` (как ответ серверным № 11).

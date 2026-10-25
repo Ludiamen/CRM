@@ -7,9 +7,9 @@ FR-537, FR-546, NFR-505, NFR-512). Сценарий 10 спеки 006 (серв�
 `scan_unavailable`, запись файла — `fail_file_write`; том `protected` настоящий (`protected_root`). Замки — по SQL
 (решение 6 задач). Код среза на уровне модуля не импортируется (CONTRACT-006, шапка). Тексты отказов — литералы раздела 12.
 
-Допущение писателя (см. отчёт): контракт не говорит, чей номер стоит в `<file_id>` и в `li[data-file-id]` — строки
-`RecordFile` или `StoredFile`. Файлы, которые тест создаёт помощником, получают оба номера одинаковыми (`_align`), а
-разметку и отказы тест проверяет по обоим прочтениям.
+`<file_id>` в адресах, в `files.remove` и в `li[data-file-id]` — `RecordFile.pk` (ответ Opus О1, CONTRACT-006, 15.3).
+У файлов, которые тест создаёт помощником, номер строки `RecordFile` уводится от номера её `StoredFile` (`_distinct`),
+чтобы реализация на `StoredFile.pk` не прошла случайно.
 """
 import datetime
 import hashlib
@@ -38,6 +38,7 @@ TEXT_REFUSED = "Файл такого типа не принимается"
 TEXT_LIMIT = "У записи уже 20 файлов"
 TEXT_HAS_FILE = "В поле уже есть файл"
 TEXT_ARCHIVED = "Запись в архиве"
+TEXT_WRITE_FAILED = "Не удалось сохранить файл"
 
 
 # --- разбор разметки (помощник только этого файла) ------------------------------------------------------
@@ -161,15 +162,16 @@ def _post_file(client, lst, record, field, name: str, data: bytes, *, hx: bool =
                        **(HX if hx else {}))
 
 
-def _align(made):
-    """Номер строки `RecordFile` приводится к номеру её `StoredFile` (прочтение `<file_id>` контрактом не задано)."""
-    stored_id = made.file_id
-    _m("RecordFile").objects.filter(pk=made.pk).update(id=stored_id)
-    return _m("RecordFile").objects.get(pk=stored_id)
+def _distinct(made):
+    """Номер строки `RecordFile` уводится от номера её `StoredFile`: `<file_id>` — `RecordFile.pk` (ответ Opus О1),
+    и при совпавших номерах тест не отличил бы реализацию на `StoredFile.pk`."""
+    distinct_id = made.file_id + 7919
+    _m("RecordFile").objects.filter(pk=made.pk).update(id=distinct_id)
+    return _m("RecordFile").objects.get(pk=distinct_id)
 
 
 def _file(record, field, *, status="clean", write=False, name="акт.pdf", data=None, uploaded_by=None):
-    return _align(ls.attach_file(record, field, name, data, status=status, write=write, uploaded_by=uploaded_by))
+    return _distinct(ls.attach_file(record, field, name, data, status=status, write=write, uploaded_by=uploaded_by))
 
 
 def _counts() -> tuple[int, int]:
@@ -196,8 +198,8 @@ def _rows(block) -> list:
 
 
 def _row_of(block, made) -> Node:
-    found = [row for row in _rows(block) if row.attrs["data-file-id"] in (str(made.pk), str(made.file_id))]
-    assert len(found) == 1, f"в блоке нет строки файла {made.pk}/{made.file_id}"
+    found = [row for row in _rows(block) if row.attrs["data-file-id"] == str(made.pk)]
+    assert len(found) == 1, f"в блоке нет строки файла с data-file-id={made.pk} (RecordFile.pk)"
     return found[0]
 
 
@@ -283,7 +285,7 @@ def test_editor_attaches_file_to_saved_record_and_file_is_listed_as_checking(
     assert (stored.purpose, stored.owner_id, stored.status, stored.size) == ("lists", None, "pending", len(data))
     assert (protected_root / "incoming" / str(stored.pk)).read_bytes() == data
     (row,) = _rows(_block(response, world.field))
-    assert row.attrs["data-file-id"] in (str(attached.pk), str(stored.pk))
+    assert row.attrs["data-file-id"] == str(attached.pk)
     assert row.attrs["data-scan"] == "pending" and "проверяется" in row.text()
     assert "акт приёмки.txt" in row.text()
     assert q(row, "a", data_action="file-download") == [], "до проверки ссылки нет"
@@ -360,7 +362,7 @@ def test_attach_and_delete_take_shared_list_lock_then_record_for_update(
         made = _files().attach(world.lst, world.record.number, field_code=world.field.code, name="акт.txt",
                                data=b"data", actor=world.editor.user)
     _assert_shared_lock_then_record_for_update(attach_sqls, world.lst, schema_read=True)
-    made = _align(made)
+    made = _distinct(made)
     with ls.capture_sql() as remove_sqls:
         _files().remove(world.lst, world.record.number, made.pk, actor=world.editor.user)
     _assert_shared_lock_then_record_for_update(remove_sqls, world.lst, schema_read=False)
@@ -443,7 +445,7 @@ def test_second_file_in_field_without_multiple_is_refused_field_already_has_file
         response = _post_file(world.editor.client, world.lst, world.record, world.other, name, b"photo")
         assert response.status_code == 200 and q(tree(response), data_error=True) == [], name
     assert _m("RecordFile").objects.filter(record=world.record, field=world.other).count() == 2
-    attached = _align(attached)
+    attached = _distinct(attached)
     with django_capture_on_commit_callbacks(execute=True):
         removed = world.editor.client.post(_base(world.lst, world.record) + f"files/{attached.pk}/delete/", **HX)
     assert removed.status_code == 200
@@ -506,7 +508,7 @@ def test_clean_scan_moves_file_to_attachments_and_file_becomes_downloadable(
     """FR-536, FR-537, NFR-505: чисто — файл из `incoming/` в `attachments/<id>`, статус `clean`, `scanned_at` стоит, прежний путь стёрт, в блоке ссылка скачивания; до проверки адрес файла отвечает 404, после — 200."""
     world = _world()
     data = b"clean document body"
-    made = _align(_attach_via_service(world, "чистый.txt", data, django_capture_on_commit_callbacks))
+    made = _distinct(_attach_via_service(world, "чистый.txt", data, django_capture_on_commit_callbacks))
     stored = made.file
     incoming = protected_root / "incoming" / str(stored.pk)
     url = _base(world.lst, world.record) + f"files/{made.pk}/"
@@ -528,7 +530,7 @@ def test_clean_scan_moves_file_to_attachments_and_file_becomes_downloadable(
 def test_found_scan_puts_file_to_quarantine(django_capture_on_commit_callbacks, protected_root, monkeypatch):
     """FR-536, NFR-505: найден вирус — файл в `quarantine/<id>` с подписью, строки остались, в блоке «в карантине» без ссылки, адрес файла отвечает 404."""
     world = _world()
-    made = _align(_attach_via_service(world, "заражён.txt", org.eicar_bytes(), django_capture_on_commit_callbacks))
+    made = _distinct(_attach_via_service(world, "заражён.txt", org.eicar_bytes(), django_capture_on_commit_callbacks))
     stored = made.file
     org.scan_found(monkeypatch, "Eicar-Signature")
     _scan(stored, django_capture_on_commit_callbacks)
@@ -569,7 +571,7 @@ def test_clamav_unavailable_keeps_record_and_file_checking_and_requeue_pending_s
 
     world = _world()
     state = _state(world.record)
-    made = _align(_attach_via_service(world, "ждёт.txt", b"waiting data", django_capture_on_commit_callbacks))
+    made = _distinct(_attach_via_service(world, "ждёт.txt", b"waiting data", django_capture_on_commit_callbacks))
     stored = made.file
     calls = org.scan_unavailable(monkeypatch)
     org.run_files_worker()
@@ -586,7 +588,7 @@ def test_clamav_unavailable_keeps_record_and_file_checking_and_requeue_pending_s
     assert world.editor.client.get(_base(world.lst, world.record) + f"files/{made.pk}/").status_code == 404
     # второй файл: задание потеряно (постановка не исполнена), ждёт дольше часа — повтор ставит ежечасное задание
     with django_capture_on_commit_callbacks(execute=False):
-        lost = _align(_files().attach(world.lst, world.record.number, field_code=world.field.code, name="потерян.txt",
+        lost = _distinct(_files().attach(world.lst, world.record.number, field_code=world.field.code, name="потерян.txt",
                                       data=b"lost job", actor=world.editor.user))
     assert [job for job in org.files_jobs() if tuple(job.args) == (str(lost.file_id),)] == []
     support.model("core.StoredFile").objects.filter(pk=lost.file_id).update(
@@ -614,6 +616,8 @@ def test_storage_write_failure_rolls_back_removes_paths_and_does_not_return_500(
         with django_capture_on_commit_callbacks(execute=True):
             response = _post_file(client, world.lst, world.record, world.field, "схема.txt", b"data", hx=hx)
         assert response.status_code == 200, f"сбой записи файла: ждали 200 (не 500), получили {response.status_code}"
+        # ответ 53 (CONTRACT-006, 12.3, 15.3): отказ у поля `file` с кодом `write_failed` и его текстом
+        _refused(response, "write_failed", TEXT_WRITE_FAILED)
     assert calls, "запись файла была вызвана через `uploads.write_file`"
     assert _counts() == before, "ни `RecordFile`, ни `StoredFile` не осталось"
     assert _disk(protected_root) == []
@@ -635,7 +639,7 @@ def test_attach_and_delete_do_not_change_record_version(django_capture_on_commit
     assert response.status_code == 200
     (made,) = _m("RecordFile").objects.filter(record=record)
     assert _state(record) == state and _fresh(record).version == 3
-    made = _align(made)
+    made = _distinct(made)
     with django_capture_on_commit_callbacks(execute=True):
         removed = world.editor.client.post(_base(world.lst, record) + f"files/{made.pk}/delete/", **HX)
     assert removed.status_code == 200
@@ -658,7 +662,7 @@ def test_attach_and_delete_write_file_added_and_file_removed_history(
     (item,) = added.changes
     assert item["field"] == world.field.code and item["name"] == world.field.name
     assert "акт приёмки.pdf" in (item.get("before"), item.get("after"))
-    made = _align(_m("RecordFile").objects.get(record=world.record))
+    made = _distinct(_m("RecordFile").objects.get(record=world.record))
     with django_capture_on_commit_callbacks(execute=True):
         world.editor.client.post(_base(world.lst, world.record) + f"files/{made.pk}/delete/", **HX)
     (removed,) = _m("Change").objects.filter(record=world.record, kind="file_removed")
@@ -732,7 +736,7 @@ def test_checking_and_quarantined_files_are_listed_to_reader_with_mark_but_downl
     archived_page = world.editor.client.get(_base(world.lst, archived))
     assert archived_page.status_code == 200
     (row,) = _rows(_block(archived_page, world.field))
-    assert row.attrs["data-file-id"] in (str(kept.pk), str(kept.file_id)) and "архивный акт.pdf" in row.text()
+    assert row.attrs["data-file-id"] == str(kept.pk) and "архивный акт.pdf" in row.text()
     root = tree(archived_page)
     assert q(root, "form", data_action="file-attach") == [] and q(root, "button", data_action="file-delete") == []
 

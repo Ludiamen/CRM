@@ -416,8 +416,8 @@ def test_labels_sheet_renders_one_label_per_requested_number():
         item = by_url[card_address(lst, record)]
         assert item["title"] == record.title and item["list"] == lst.name
         assert item["value"] == record.values["inv"] and item["src"].startswith(DATA_URI)
-    classes = [node.attrs.get("class", "").split() for node in page.walk()]
-    assert any("lists-labels" in names for names in classes), "нет класса печати `lists-labels`"
+    # класс печати — у корня листа `[data-lists-labels-sheet]` (ответ 52, CONTRACT-006, 11.9, 15.3)
+    assert "lists-labels" in sheets[0].attrs.get("class", "").split(), "нет класса печати `lists-labels` у листа"
 
 
 def test_labels_sheet_100_numbers_accepted_101_refused():

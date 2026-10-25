@@ -551,14 +551,17 @@ def test_reminder_failure_of_one_record_logged_with_number_and_class_loop_contin
 
     monkeypatch.setattr(reminders, "notify_record", flaky)
     caplog.set_level(logging.ERROR, logger="apps.lists.reminders")
-    named = re.compile(rf"(?<!\d)({bad.number}|{bad.pk})(?!\d)")
+    # в `failed`, журнале и `RuntimeError` — id записи (`Record.pk`), строка журнала «список <id>, запись <id>: <класс>»
+    # (ответ 40, CONTRACT-006, 5.6, 15.3)
+    named = re.compile(rf"(?<!\d){bad.pk}(?!\d)")
+    line = f"список {world.lst.pk}, запись {bad.pk}: ValueError"
 
     result = _run(clock, TODAY)
 
-    assert [i for i in result.failed if i in (bad.number, bad.pk)] == result.failed and len(result.failed) == 1
+    assert result.failed == [bad.pk]
     assert _refs(editor) == sorted([_ref(good_one, world.due, 30), _ref(good_two, world.due, 30)])
     logged = [r for r in caplog.records if r.name == "apps.lists.reminders" and r.levelno >= logging.ERROR]
-    assert logged and any("ValueError" in r.getMessage() and named.search(r.getMessage()) for r in logged)
+    assert logged and any(line in r.getMessage() for r in logged), [r.getMessage() for r in logged]
     assert _marks(bad) == []
     with pytest.raises(RuntimeError) as failure:
         _tasks().remind_deadlines()

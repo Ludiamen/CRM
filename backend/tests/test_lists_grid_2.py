@@ -473,6 +473,8 @@ def test_bulk_archive_archives_only_checked_numbers_and_reports_archived_and_ski
     assert set(archived_kinds.values_list("record_id", flat=True)) == {checked_one.pk, checked_two.pk}
     # служба: те же числа, пропуск не меняет записи
     other = ls.make_list()
+    # служба перепроверяет право «правит» (решение Opus 2026-10-25, П3): автору выдаётся «правит» и на `other`
+    ls.grant_list(other, author.roles.get(), "edit")
     live = ls.make_record(other, "Живая", created_by=author)
     in_archive = ls.make_record(other, "В архиве", archived=True, created_by=author)
     deleted = ls.make_record(other, "Удалена", created_by=author)

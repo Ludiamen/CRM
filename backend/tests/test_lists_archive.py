@@ -134,12 +134,12 @@ def _world(title="Ноутбук активный", values=None, *, archived=Fal
 
 
 def _file(record, field, *, status="clean", write=False, name="акт.pdf"):
-    """Файл записи; id строки `RecordFile` приведён к id `StoredFile`, чтобы адреса `…/files/<file_id>/` работали
-    при любом прочтении «file_id» (контракт его не уточняет)."""
+    """Файл записи. `<file_id>` в адресах — `RecordFile.pk` (ответ Opus О1, CONTRACT-006, 15.3); номер строки
+    `RecordFile` уводится от номера её `StoredFile`, чтобы реализация на `StoredFile.pk` не прошла случайно."""
     made = lists.attach_file(record, field, name, status=status, write=write)
-    stored_id = made.file_id
-    _m("RecordFile").objects.filter(pk=made.pk).update(id=stored_id)
-    return _m("RecordFile").objects.get(pk=stored_id)
+    distinct_id = made.file_id + 7919
+    _m("RecordFile").objects.filter(pk=made.pk).update(id=distinct_id)
+    return _m("RecordFile").objects.get(pk=distinct_id)
 
 
 def _reload(record):
@@ -344,8 +344,9 @@ def test_archive_keeps_unique_rows_ticket_links_files_and_history(protected_root
     errors = _svc("errors")
     with pytest.raises(errors.ListsError) as refused:
         _svc("records").create(lst, {"title": "Двойник", unique_field.code: " ин-500 "}, session.user)
-    inner = getattr(refused.value, "errors", None) or {unique_field.code: refused.value}
-    assert inner[unique_field.code].code == "unique_taken"
+    # ответ Opus О2: отказ уникальности при сохранении — `ValuesInvalid`, у поля код `unique_taken`
+    assert isinstance(refused.value, errors.ValuesInvalid)
+    assert refused.value.errors[unique_field.code].code == "unique_taken"
 
 
 def _unique_rows(lst):

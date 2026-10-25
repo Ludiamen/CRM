@@ -450,8 +450,8 @@ def test_field_hidden_during_edit_with_nonempty_value_is_refused_with_hidden_mar
     assert _find(body, data_error=f1.code, data_code="field_hidden_meanwhile")
     assert "Поле скрыто администратором, значение не сохранится" in body
     assert _find(body, data_lists_field=f1.code, data_hidden_meanwhile="")
-    controls = _find(body, name=f1.code)
-    assert all("readonly" in control or "disabled" in control for control in controls)
+    # значение показывается текстом, без элемента с `name="<код>"` (ответ 15, CONTRACT-006, 11.4, 15.3)
+    assert _find(body, name=f1.code) == []
     stored = _fresh(record)
     assert (stored.version, stored.values[f1.code], stored.values[f2.code]) == (1, "старое", "заметка")
 

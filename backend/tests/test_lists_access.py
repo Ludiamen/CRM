@@ -614,13 +614,18 @@ def test_right_revoked_between_get_and_post_is_rejected_by_service_recheck():
     ll.grant_list(lst, role, "read")
     refused = who.client.post(f"/lists/{lst.pk}/{record.number}/edit/", form)
     assert refused.status_code == 403
+    # служба перепроверяет право (ответ Opus О4, решение Opus П3, CONTRACT-006, 5.4, 15.3): читает, не правит —
+    # `PermissionDenied`
+    with pytest.raises(PermissionDenied):
+        records.save(lst, record.number, {"title": "Из службы", f_str.code: "C"}, base_version=1, actor=_fresh(user))
     _model("lists.Access").objects.filter(list=lst).delete()
     gone = who.client.post(f"/lists/{lst.pk}/{record.number}/edit/", form)
     assert gone.status_code == 404
     saved = Record.objects.get(pk=record.pk)
     assert (saved.title, saved.values, saved.version) == ("Запись до отзыва", {f_str.code: "A"}, 1)
     assert Change.objects.filter(record=record).count() == history
-    with pytest.raises((PermissionDenied, Http404)):
+    # список не читается — `Http404` (решение Opus П3)
+    with pytest.raises(Http404):
         records.save(lst, record.number, {"title": "Из службы", f_str.code: "C"}, base_version=1, actor=_fresh(user))
     saved = Record.objects.get(pk=record.pk)
     assert (saved.title, saved.version) == ("Запись до отзыва", 1)

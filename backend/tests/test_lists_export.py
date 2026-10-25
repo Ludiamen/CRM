@@ -497,12 +497,14 @@ def test_export_for_non_reader_returns_404_same_as_missing_list():
     other = lp.make_list(created_by=manager.user)
     outsider = lp.as_reader(other)
     stranger = support.logged_in(support.make_employee())
-    missing = outsider.client.get("/lists/987654321/export/")
-    assert missing.status_code == 404
-    answers = [outsider.client.get(f"/lists/{lst.pk}/export/"), stranger.get(f"/lists/{lst.pk}/export/")]
-    assert all(r.status_code == 404 for r in answers)
-    assert all("Секретное-название-zq" not in r.content.decode() for r in answers)
-    assert support.same_failure(*answers, missing), "ответ 404 на закрытый список отличим от ответа на несуществующий"
+    # Ответы разных сотрудников различаются меню оболочки, поэтому закрытый список сравнивается с несуществующим
+    # в пределах одного клиента (CONTRACT-006, раздел 15.3, К-10).
+    for client in (outsider.client, stranger):
+        missing = client.get("/lists/987654321/export/")
+        closed = client.get(f"/lists/{lst.pk}/export/")
+        assert missing.status_code == 404 and closed.status_code == 404
+        assert "Секретное-название-zq" not in closed.content.decode()
+        assert support.same_failure(closed, missing), "ответ 404 на закрытый список отличим от ответа на несуществующий"
     assert _file(lp.as_reader(lst), lst).status_code == 200
 
 

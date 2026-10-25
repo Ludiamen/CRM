@@ -535,9 +535,11 @@ def test_history_of_record_of_unreadable_list_is_404_like_missing_record():
     nobody = support.make_employee()
     nobody_client = support.logged_in(nobody)
     missing_list = support.model("lists.List").objects.order_by("-pk").first().pk + 1000
-    absent = outsider.client.get(f"/lists/{missing_list}/1/history/")
-    assert absent.status_code == 404
+    # Ответы разных сотрудников различаются меню оболочки: несуществующий список запрашивает тот же клиент
+    # (CONTRACT-006, раздел 15.3, К-10).
     for client in (outsider.client, nobody_client):
+        absent = client.get(f"/lists/{missing_list}/1/history/")
+        assert absent.status_code == 404
         response = _history(client, lst, record)
         assert response.status_code == 404
         assert support.same_failure(response, absent)

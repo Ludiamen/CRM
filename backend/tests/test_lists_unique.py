@@ -130,12 +130,22 @@ def _refusal(exc: BaseException, code_of_field: str):
     return exc
 
 
-def _expect_taken(call, owner, field_code="f1"):
-    """Вызов отклонён отказом `unique_taken` у поля со ссылкой на `owner`; возвращает отказ."""
-    ListsError = _errors().ListsError
-    with pytest.raises(ListsError) as raised:
+def _expect_taken(call, owner, field_code="f1", *, direct=False):
+    """Вызов отклонён отказом `unique_taken` у поля со ссылкой на `owner`; возвращает отказ.
+
+    Ответ Opus О2 (CONTRACT-006, 5.4, 15.3): `records.create/save` поднимают `ValuesInvalid`, у поля в `errors` —
+    `ListsError` с кодом `unique_taken`; прямой вызов `unique.sync` (`direct=True`) — голый `ListsError("unique_taken")`.
+    """
+    errors = _errors()
+    with pytest.raises(errors.ListsError) as raised:
         call()
-    refusal = _refusal(raised.value, field_code)
+    if direct:
+        assert not isinstance(raised.value, errors.ValuesInvalid), "unique.sync поднимает голый ListsError"
+        refusal = raised.value
+    else:
+        assert isinstance(raised.value, errors.ValuesInvalid), f"ждали ValuesInvalid, получено {raised.value!r}"
+        assert field_code in raised.value.errors, f"нет отказа у поля {field_code}: {sorted(raised.value.errors)}"
+        refusal = raised.value.errors[field_code]
     assert refusal.code == "unique_taken"
     assert refusal.field == field_code
     assert refusal.params["number"] == owner.number
@@ -224,7 +234,7 @@ def test_hidden_unique_field_still_blocks_duplicate():
     other.values = {"f1": " ин-300"}
     other.save(update_fields=["values"])
 
-    _expect_taken(lambda: _svc("unique").sync(other, [field]), owner)
+    _expect_taken(lambda: _svc("unique").sync(other, [field]), owner, direct=True)
 
     assert _rows(lst, field) == [("f1", "ин-300", owner.number)]
 
@@ -338,7 +348,7 @@ def test_race_refusal_leaves_no_duplicate_row_and_outer_save_transaction_usable(
     third.values = {"f1": "ИН-500"}
     third.save(update_fields=["values"])
     with transaction.atomic():
-        refusal = _expect_taken(lambda: _svc("unique").sync(third, [field]), owner)
+        refusal = _expect_taken(lambda: _svc("unique").sync(third, [field]), owner, direct=True)
         assert refusal.message.startswith(TAKEN)
         Record.objects.filter(pk=third.pk).update(title="Третья 2")
         assert Record.objects.get(pk=third.pk).title == "Третья 2"
@@ -366,6 +376,10 @@ def test_enable_unique_and_duplicate_save_in_both_orders_leave_no_duplicate_and_
 
     # очерёдность 2: повтор сохранён до включения
     other = lists.make_list()
+    # служба перепроверяет право «правит» (решение Opus 2026-10-25, П3): правящему `lst` выдаётся «правит» и на `other`;
+    # объект сотрудника берётся заново — `access.scope` хранится на объекте (`user._lists_scope`, 5.5)
+    lists.grant_list(other, user.roles.get(), "edit")
+    user = type(user).objects.get(pk=user.pk)
     second = lists.add_field(other, "string", "Инвентарный номер")
     c = lists.make_record(other, "В", {second.code: "у-1"}, created_by=user)
     d = _svc("records").create(other, {"title": "Г", second.code: "У-1"}, user)
