@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "apps.servicedesk",
     "apps.notify",
     "apps.knowledge",
+    "apps.lists",
     "apps.search",
 ]
 # Встроенной админки Django нет: администрирование — свой раздел с проверкой

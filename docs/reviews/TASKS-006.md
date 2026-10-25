@@ -96,3 +96,18 @@ id: REV-TASKS-006
 - Исполнимость подмен `support_lists.py` и обвязки `helpers_lists.py` — файлов ещё нет; их проверит Opus при приёмке
   контракта и красный прогон T-6160.
 - Поведение замков, форматов Excel и QR на настоящем окружении — ранние факты Этапа 1.
+
+## Ход выполнения: этап 1 (подготовка) — 2026-10-25
+
+### Ранние факты: T-6003
+
+### Ранний замер векторов (T-6004)
+
+### Ранние факты: T-6005
+
+### Ранние факты: T-6006
+
+### Подготовка: зависимости (T-6002)
+
+### Каркас (T-6001)
+Создан каркас `backend/apps/lists/` по строке T-6001 и блоку «Где живёт код» плана: `apps.py` (`ListsConfig`, метка `lists`, `ready()` зовёт `extensions.register_all()`, пока пустую), пустые модули с докстрокой, пакеты `migrations/`, `management/commands/`, `views/` (9 модулей), `services/` (17 модулей); `backend/templates/lists/.gitkeep`; `backend/static/lists/lists.js`, `lists.css`, `labels.css` с комментарием назначения. В `INSTALLED_APPS` добавлено `apps.lists` после `apps.knowledge`, перед `apps.search`. Прогон восьми файлов прежних тестов (под замком): 146 прошли, 2 красных, оба ожидаемые проверки места приложения: `test_kb_deploy.py::test_knowledge_and_search_are_in_installed_apps_after_notify`, `test_notify_deploy.py::test_notify_is_last_in_installed_apps`. Других красных нет; тесты не правились.
