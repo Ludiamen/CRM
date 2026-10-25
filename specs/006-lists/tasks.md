@@ -178,7 +178,7 @@ Opus по задачам» в конце файла; решения владел
   контрактах» (таблица «было / стало» для T-6138; сами `CONTRACT.md` и `CONTRACT-002…005` не правятся). Opus проверяет
   контракт до запуска T-6101 (решение 2) — backend/tests/CONTRACT-006.md — (FR-546; план: «Контракты», «Тексты отказов»,
   «Проверка»)
-- [ ] T-6101 [sonnet] общие помощники тестов по принятому контракту T-6100: `backend/tests/support_lists.py` по образцу
+- [x] T-6101 [sonnet] общие помощники тестов по принятому контракту T-6100: `backend/tests/support_lists.py` по образцу
   `support_kb.py` (без `@pytest.fixture`, без импорта `apps.lists` на уровне модуля — модели лениво, код среза внутри
   функций, сбор тестов проходит до появления кода): `PERMISSIONS_006`, `as_reader/as_editor/as_manager`, фабрики
   `make_list`, `add_field` (по типам и свойствам), `make_record`, `archive`, `attach_file` (с подменой ClamAV, состояния
