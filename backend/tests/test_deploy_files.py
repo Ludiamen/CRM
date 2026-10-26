@@ -354,11 +354,12 @@ def test_test_service_waits_for_healthy_clamav():
 
 def test_nginx_body_size_6m_and_protected_location_internal_with_headers():
     """FR-132, NFR-108: в nginx.conf и nginx.prod.conf лимит тела запроса 6m в `http` (фото до 5 МБ в форме), 55m — только
-    в трёх `location` формы, ответа и загрузки файлов статьи (срезы 003 и 005), а /protected/ — внутреннее расположение с alias на том, nosniff, типом
+    в четырёх `location` формы, ответа, загрузки файлов статьи и файлов записи списка (срезы 003, 005 и 006), а /protected/ — внутреннее расположение с alias на том, nosniff, типом
     image/jpeg и Cache-Control private, max-age=86400 (общий /protected/ для фото срезом 003 не меняется)."""
     form_locations = (r"location\s*=\s*/request/\s*\{([^{}]*)\}",
                       r"location\s*~\s*\^/tickets/\(new/\|\[0-9\]\+/reply/\)\$\s*\{([^{}]*)\}",
-                      r"location\s*~\s*\^/kb/\[0-9\]\+/files/\$\s*\{([^{}]*)\}")
+                      r"location\s*~\s*\^/kb/\[0-9\]\+/files/\$\s*\{([^{}]*)\}",
+                      r"location\s*~\s*\^/lists/\[0-9\]\+/\[0-9\]\+/files/\$\s*\{([^{}]*)\}")
     for name in ("nginx.conf", "nginx.prod.conf"):
         text = uncommented(deploy_text(name))
         for pattern in form_locations:

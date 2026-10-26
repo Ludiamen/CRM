@@ -49,7 +49,11 @@ KB_KINDS = (
     (RUBRIC, "Статья в рубрике по подписке"),
 )
 KB_MODULE = "База знаний"
-ROWS = KINDS + KB_KINDS  # строки таблицы участника очереди в порядке каталога
+# срез 006: вид «Срок в записи списка» доступен всем (CONTRACT-006, раздел 7.3) — строка у каждого сотрудника, после
+# видов базы знаний
+LISTS_KINDS = (("lists.deadline", "Срок в записи списка"),)
+LISTS_MODULE = "Списки"
+ROWS = KINDS + KB_KINDS + LISTS_KINDS  # строки таблицы участника очереди в порядке каталога
 COLUMNS = ("На портале", "Почта", "Push в браузере", "Telegram", "MAX")  # § 15.5
 CHANNEL_ORDER = ["portal", "email", "push", "telegram", "max"]  # § 14.3
 SAVED = "Настройки уведомлений сохранены."  # § 15.4
@@ -267,7 +271,8 @@ def test_e04_my_notifications_table_shows_kinds_with_module_five_channel_columns
     expect(table.locator("th[data-channel]")).to_have_text(list(COLUMNS))
     heads = table.locator("th[data-channel]").evaluate_all("els => els.map(e => e.dataset.channel)")
     assert heads == CHANNEL_ORDER, heads
-    # п. 1: строки — четыре вида сервис-деска и три вида базы знаний в порядке каталога, у каждой название и модуль
+    # п. 1: строки — четыре вида сервис-деска, три вида базы знаний и вид списков в порядке каталога, у каждой название
+    # и модуль (CONTRACT-006, раздел 7.3)
     rows = table.locator("tr[data-notify-kind]")
     expect(rows).to_have_count(len(ROWS))
     codes = rows.evaluate_all("els => els.map(e => e.dataset.notifyKind)")
@@ -275,7 +280,8 @@ def test_e04_my_notifications_table_shows_kinds_with_module_five_channel_columns
     for code, title in ROWS:
         row = table.locator(f'tr[data-notify-kind="{code}"]')
         expect(row.locator('[data-field="title"]')).to_have_text(title)
-        expect(row.locator('[data-field="module"]')).to_have_text(KB_MODULE if code.startswith("knowledge.") else MODULE)
+        module = KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.") else MODULE
+        expect(row.locator('[data-field="module"]')).to_have_text(module)
         cells = row.locator("td[data-channel]")
         expect(cells).to_have_count(5)
         assert cells.evaluate_all("els => els.map(e => e.dataset.channel)") == CHANNEL_ORDER

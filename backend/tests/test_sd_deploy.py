@@ -33,6 +33,11 @@ KNOWLEDGE_JOBS = {
     # имя: (очередь, интервал в секундах или None, строка cron по UTC или None, job_timeout); CONTRACT-005, раздел 1.2
     "purge_trash": ("maintenance", None, "45 23 * * *", 600),
 }
+LISTS_JOBS = {
+    # имя: (функция, очередь, интервал в секундах или None, строка cron по UTC или None, job_timeout); CONTRACT-006,
+    # раздел 1.2: имя задания не совпадает с именем функции, поэтому сверка — отдельно от цикла «имя = функция»
+    "lists_reminders": ("remind_deadlines", "maintenance", None, "0 5 * * *", 600),
+}
 # время по Москве (час, минута) у ночных заданий — из таблицы «Расписание» § 1
 MOSCOW_NIGHT = {
     "purge_inbound": (2, 10), "anonymize_tickets": (2, 20),
@@ -383,7 +388,7 @@ def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_min
     """FR-210, NFR-206: `config/cron.py` регистрирует восемь новых заданий (имя = функция из
     `apps.servicedesk.tasks`) в очередях `inbox` и `maintenance`, не в `mail`; опрос ящика — каждую минуту; два задания
     среза 004 — `notify_tick` (очередь `notify`, `interval=30`, `job_timeout=120`) и `notify_retention` (`maintenance`,
-    `40 23 * * *`, 600); задание среза 005 — `purge_trash` (`maintenance`, `45 23 * * *`, 600); всего семнадцать вызовов `register`; `scheduler` — одна копия с `rq cron`."""
+    `40 23 * * *`, 600); задание среза 005 — `purge_trash` (`maintenance`, `45 23 * * *`, 600); задание среза 006 — `lists_reminders` (функция `remind_deadlines`, `maintenance`, `0 5 * * *`, 600); всего восемнадцать вызовов `register`; `scheduler` — одна копия с `rq cron`."""
     registered = cron_by_name()
     for name, (queue, cron, _timeout) in NEW_JOBS.items():
         assert name in registered, f"в cron.py нет задания {name}"
@@ -399,7 +404,14 @@ def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_min
         assert registered[name]["interval"] == interval, f"{name}: interval={registered[name]['interval']!r}"
         assert registered[name]["cron"] == cron, f"{name}: cron={registered[name]['cron']!r}"
         assert registered[name]["job_timeout"] == timeout, f"{name}: job_timeout={registered[name]['job_timeout']!r}"
-    assert len(cron_registrations()) == 17, "шесть прежних, восемь среза 003, два среза 004 и один среза 005"
+    for name, (function, queue, interval, cron, timeout) in LISTS_JOBS.items():
+        assert name in registered, f"в cron.py нет задания {name}"
+        assert registered[name]["function"] == function, f"{name}: функция {registered[name]['function']}"
+        assert registered[name]["queue"] == queue, f"{name}: очередь {registered[name]['queue']}"
+        assert registered[name]["interval"] == interval, f"{name}: interval={registered[name]['interval']!r}"
+        assert registered[name]["cron"] == cron, f"{name}: cron={registered[name]['cron']!r}"
+        assert registered[name]["job_timeout"] == timeout, f"{name}: job_timeout={registered[name]['job_timeout']!r}"
+    assert len(cron_registrations()) == 18, "шесть прежних, восемь среза 003, два среза 004, один среза 005 и один среза 006"
     source = (BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8")
     assert re.search(r"from apps\.servicedesk\.tasks import", source)
     scheduler = block("scheduler")

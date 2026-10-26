@@ -1,6 +1,6 @@
 """T-4101: каталог видов уведомлений и пять каналов (FR-301…FR-306, FR-321, FR-344). Сценарии 1, 3 и 4 спеки среза 004.
 
-Одиннадцать видов четырёх модулей (таблица контракта § 3.2 и CONTRACT-005, раздел 7.2), сборка каталога из точки `notification_kinds` при каждом вызове,
+Двенадцать видов пяти модулей (таблица контракта § 3.2, CONTRACT-005, раздел 7.2, и CONTRACT-006, раздел 7.3), сборка каталога из точки `notification_kinds` при каждом вызове,
 повтор кода как отказ запуска, пять каналов и один столбец push, портал всегда включён, обязательные виды, запись
 `Notification`. Код среза на уровне модуля не импортируется: имена берутся внутри тестов (CONTRACT-004, шапка).
 """
@@ -38,6 +38,10 @@ TABLE = [
     ("knowledge.rubric_subscription", "Статья в рубрике по подписке", "База знаний", 52, False,
      ("portal", "email"), ("knowledge.article_published", "knowledge.article_changed"),
      "Новая статья в рубрике по подписке"),
+    # вид модуля «Списки» (CONTRACT-006, разделы 7.1 и 7.3): order 60, каналы «На портале» и «Почта», событий шины нет;
+    # `external_text` — запасной текст, внешний текст по порогу даёт `external_text_of` (его проверяет T-6116)
+    ("lists.deadline", "Срок в записи списка", "Списки", 60, False, ("portal", "email"), (),
+     "Истекает срок в записи списка"),
     ("core.new_device", "Вход с нового устройства", "Ядро", 110, True, ("portal",), ("core.new_device",), ""),
     ("core.password_changed", "Пароль изменён", "Ядро", 120, True, ("portal",), ("core.password_changed",), ""),
     ("core.second_factor_reset", "Второй фактор сброшен", "Ядро", 130, True, ("portal",),
@@ -100,15 +104,16 @@ def _register_core_and_notify():
 # --- каталог: состав ---------------------------------------------------------------------------------
 
 def test_catalog_contains_eight_kinds_from_three_modules():
-    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно одиннадцать видов, по `order` (сервис-деск 10–40, база знаний 50–52,
-    ядро 110–130, уведомления 200), из модулей «Сервис-деск», «База знаний», «Ядро» и «Уведомления»."""
+    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно двенадцать видов, по `order` (сервис-деск 10–40, база знаний 50–52,
+    списки 60, ядро 110–130, уведомления 200), из модулей «Сервис-деск», «База знаний», «Списки», «Ядро» и «Уведомления»."""
     catalog = _kinds().catalog()
     assert [kind.code for kind in catalog] == [row[0] for row in TABLE]
-    assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления", "База знаний"}
+    assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления", "База знаний", "Списки"}
     assert [kind.module for kind in catalog].count("Сервис-деск") == 4
     assert [kind.module for kind in catalog].count("Ядро") == 3
     assert [kind.module for kind in catalog].count("Уведомления") == 1
     assert [kind.module for kind in catalog].count("База знаний") == 3
+    assert [kind.module for kind in catalog].count("Списки") == 1
 
 
 def test_catalog_kind_codes_titles_and_modules_match_plan_table():
@@ -136,11 +141,12 @@ def test_catalog_default_channels_per_kind():
 
 def test_kind_has_code_title_module_default_channels_mandatory_and_order():
     """FR-301: у вида есть код, название, модуль, каналы по умолчанию, признак «обязательный» и порядок; поля и значения
-    по умолчанию — как в § 3.1; каталог сортирует по `(order, порядок регистрации функций)`."""
+    по умолчанию — как в § 3.1 (и CONTRACT-006, раздел 2.1: `external_text_of` — последнее поле, по умолчанию `None`);
+    каталог сортирует по `(order, порядок регистрации функций)`."""
     extensions = _ext()
     names = [field.name for field in dataclasses.fields(extensions.NotificationKind)]
     assert names == ["code", "title", "module", "events", "build", "external_text", "default_channels", "mandatory",
-                     "available", "still_relevant", "order", "coalesce"]
+                     "available", "still_relevant", "order", "coalesce", "external_text_of"]
     bare = extensions.NotificationKind(code="t.bare", title="Голый", module="Тест")
     assert bare.events == ()
     assert bare.build("any.event", {}) == []
@@ -151,6 +157,7 @@ def test_kind_has_code_title_module_default_channels_mandatory_and_order():
     assert bare.still_relevant(1, "x:1") is True
     assert bare.order == 0
     assert bare.coalesce is False
+    assert bare.external_text_of is None
     with pytest.raises(dataclasses.FrozenInstanceError):
         bare.code = "t.other"
     with extensions.empty():

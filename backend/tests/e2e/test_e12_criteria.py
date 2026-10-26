@@ -51,6 +51,10 @@ KB_KINDS = (
     ("knowledge.my_article_changed", "Мою статью изменили"),
     (RUBRIC, "Статья в рубрике по подписке"),
 )
+# срез 006: вид «Срок в записи списка» доступен всем (CONTRACT-006, раздел 7.3) — восьмая строка таблицы участника
+# очереди и таблицы умолчаний администратора
+LISTS_MODULE = "Списки"
+LISTS_KINDS = (("lists.deadline", "Срок в записи списка"),)
 EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mandatory, внешний текст)
     NEW_IN_QUEUE: ("Новая заявка в моей очереди", MODULE, False, "Новая заявка в вашей очереди"),
     ASSIGNED: ("Мне назначили заявку", MODULE, False, "Вам назначена заявка"),
@@ -60,6 +64,8 @@ EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mand
                                         "Новый комментарий к вашей статье"),
     "knowledge.my_article_changed": ("Мою статью изменили", KB_MODULE, False, "Вашу статью изменили"),
     RUBRIC: ("Статья в рубрике по подписке", KB_MODULE, False, "Новая статья в рубрике по подписке"),
+    # CONTRACT-006, раздел 7.1: `external_text` — запасной текст; текст по порогу (`external_text_of`) здесь не читается
+    "lists.deadline": ("Срок в записи списка", LISTS_MODULE, False, "Истекает срок в записи списка"),
     "core.new_device": ("Вход с нового устройства", "Ядро", True, ""),
     "core.password_changed": ("Пароль изменён", "Ядро", True, ""),
     "core.second_factor_reset": ("Второй фактор сброшен", "Ядро", True, ""),
@@ -919,23 +925,27 @@ def test_e12_catalog_shows_four_service_desk_kinds_three_security_kinds_and_chan
     assert set(catalog) == set(EXPECTED_CATALOG), sorted(set(catalog) ^ set(EXPECTED_CATALOG))
     assert len([c for c in catalog if c.startswith("servicedesk.")]) == 4
     assert len([c for c in catalog if c.startswith("knowledge.")]) == 3
+    assert len([c for c in catalog if c.startswith("lists.")]) == 1
     assert sorted(c for c in catalog if c.startswith("core.")) == [
         "core.new_device", "core.password_changed", "core.second_factor_reset"]
-    # таблица «Мои уведомления»: четыре вида сервис-деска, три вида базы знаний и две сводные строки
+    # таблица «Мои уведомления»: четыре вида сервис-деска, три вида базы знаний, вид списков и две сводные строки
     member.page.goto("/me/notifications/")
-    for code, title in KINDS + KB_KINDS:
+    for code, title in KINDS + KB_KINDS + LISTS_KINDS:
         row = member.page.locator(f'table[data-notify-table] tr[data-notify-kind="{code}"]')
         expect(row).to_have_count(1)
         expect(row.locator('[data-field="title"]')).to_have_text(title)
-        expect(row.locator('[data-field="module"]')).to_have_text(KB_MODULE if code.startswith("knowledge.") else MODULE)
-    # видимый результат: четыре вида сервис-деска и три вида базы знаний; видов безопасности и «Канал отвязан» среди строк видов нет
-    expect(member.page.locator("table[data-notify-table] tr[data-notify-kind]")).to_have_count(len(KINDS) + len(KB_KINDS))
+        module = KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.") else MODULE
+        expect(row.locator('[data-field="module"]')).to_have_text(module)
+    # видимый результат: четыре вида сервис-деска, три вида базы знаний и вид списков; видов безопасности и «Канал отвязан» среди строк видов нет
+    expect(member.page.locator("table[data-notify-table] tr[data-notify-kind]")).to_have_count(
+        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS))
     expect(member.page.locator('table[data-notify-table] tr[data-notify-kind^="core."], '
                                'table[data-notify-table] tr[data-notify-kind^="notify."]')).to_have_count(0)
-    # страница администратора: все не обязательные виды — четыре сервис-деска и три базы знаний (§ 14.4)
+    # страница администратора: все не обязательные виды — четыре сервис-деска, три базы знаний и вид списков (§ 14.4)
     page.goto("/settings/notifications/")
-    expect(page.locator("table[data-defaults-table] tr[data-notify-kind]")).to_have_count(len(KINDS) + len(KB_KINDS))
-    for code, _title in KINDS + KB_KINDS:
+    expect(page.locator("table[data-defaults-table] tr[data-notify-kind]")).to_have_count(
+        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS))
+    for code, _title in KINDS + KB_KINDS + LISTS_KINDS:
         expect(page.locator(f'table[data-defaults-table] tr[data-notify-kind="{code}"]')).to_have_count(1)
     expect(member.page.locator('tr[data-notify-fixed="security"]')).to_contain_text(FIXED_SECURITY)
     expect(member.page.locator('tr[data-notify-fixed="channel_unbound"]')).to_contain_text(FIXED_UNBOUND)

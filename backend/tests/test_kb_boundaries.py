@@ -215,9 +215,11 @@ def test_servicedesk_org_core_do_not_import_knowledge_or_search():
 
 def test_ticket_card_without_knowledge_has_no_parts_and_renders(caplog):
     """FR-432, FR-433: пока `knowledge` включён, закрытая заявка с решением несёт три части (`kb-articles`,
-    `kb-from-ticket`, `kb-link-tool`); без его регистраций точка `ticket_card_parts` пуста, карточки открытой и закрытой
+    `kb-from-ticket`, `kb-link-tool`); без его регистраций (и без регистраций `lists`, который со срезом 006 пишет в ту же
+    точку часть `lists-records`, CONTRACT-006, разделы 3.2 и 3.4) точка `ticket_card_parts` пуста, карточки открытой и закрытой
     заявок рисуются (200, поля, форма комментария, «Открыть заново»), оболочек `data-card-part` нет, ошибок в журнале нет."""
     from apps.core import extensions
+    from tests import support_lists
 
     user, queue = _reader_in_queue("servicedesk.all", "knowledge.edit")
     opened, closed = _two_tickets(queue)
@@ -225,8 +227,8 @@ def test_ticket_card_without_knowledge_has_no_parts_and_renders(caplog):
     for part in KB_PARTS:
         assert f'data-card-part="{part}"' in with_kb, f"при включённом модуле нет части {part}"
     with caplog.at_level("DEBUG"):
-        with support_kb.without_knowledge():
-            assert extensions.registered("ticket_card_parts") == [], "точка не пуста без knowledge"
+        with support_kb.without_knowledge(), support_lists.without_lists():
+            assert extensions.registered("ticket_card_parts") == [], "точка не пуста без knowledge и lists"
             html_open = _card_html(user, opened)
             html_closed = _card_html(user, closed)
     for html in (html_open, html_closed):
@@ -259,8 +261,9 @@ def test_ticket_card_without_knowledge_has_no_article_button_section_or_link_too
 # --- FR-433: каталог уведомлений, поиск, меню без knowledge ---------------------------------------------------------
 
 def test_notification_catalog_without_knowledge_has_no_knowledge_kinds():
-    """FR-433: без регистраций `knowledge` каталог видов уведомлений — прежние восемь видов трёх модулей, видов с кодом
-    `knowledge.*` и модулем «База знаний» нет, проверка каталога проходит; с включённым модулем добавляются ровно три."""
+    """FR-433: без регистраций `knowledge` каталог видов уведомлений — прежние восемь видов трёх модулей и вид
+    `lists.deadline` модуля «Списки» (срез 006, CONTRACT-006, раздел 7.3), видов с кодом `knowledge.*` и модулем
+    «База знаний» нет, проверка каталога проходит; с включённым модулем добавляются ровно три."""
     from apps.notify.services import kinds
 
     full = {kind.code: kind for kind in kinds.catalog()}
@@ -271,7 +274,8 @@ def test_notification_catalog_without_knowledge_has_no_knowledge_kinds():
         rest = kinds.catalog()
     assert [k.code for k in rest if k.code.startswith("knowledge.") or k.module == "База знаний"] == []
     assert {k.code for k in rest} == set(full) - added
-    assert len(rest) == 8, "прежних видов срезов 003 и 004 — восемь"
+    assert "lists.deadline" in {k.code for k in rest}, "вид среза 006 не зависит от knowledge"
+    assert len(rest) == 9, "прежних видов срезов 003 и 004 — восемь и вид lists.deadline среза 006"
 
 
 def test_search_without_knowledge_has_no_articles_group():
@@ -357,16 +361,17 @@ def test_points_has_seventeen_names():
 
 def test_points_new_names_search_providers_and_ticket_card_parts_are_last_two():
     """FR-432, FR-445: прежние пятнадцать имён и их порядок не изменились, новые `search_providers` и `ticket_card_parts`
-    стоят последними (в таком порядке); в `ticket_card_parts` регистрируется только `knowledge`, `servicedesk` её
-    не регистрирует; неизвестная точка отказывает `ValueError`."""
+    стоят последними (в таком порядке); в `ticket_card_parts` регистрируются только `knowledge` и `lists` (срез 006,
+    CONTRACT-006, раздел 3.2), `servicedesk` её не регистрирует; неизвестная точка отказывает `ValueError`."""
     from apps.core import extensions
 
     assert tuple(extensions.POINTS[:15]) == POINTS_15
     assert tuple(extensions.POINTS[-2:]) == ("search_providers", "ticket_card_parts") == support_kb.POINTS_005
     parts = extensions.registered("ticket_card_parts")
     assert parts, "knowledge не зарегистрировал части карточки"
-    assert all(getattr(f, "__module__", "").startswith("apps.knowledge") for f in parts), \
-        f"в ticket_card_parts регистрируется не только knowledge: {[f.__module__ for f in parts]}"
+    owners = {".".join(getattr(f, "__module__", "").split(".")[:2]) for f in parts}
+    assert owners == {"apps.knowledge", "apps.lists"}, \
+        f"в ticket_card_parts регистрируются не только knowledge и lists: {[f.__module__ for f in parts]}"
     with pytest.raises(ValueError):
         extensions.register("no_such_point", lambda: [])
     with pytest.raises(ValueError):

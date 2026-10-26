@@ -23,15 +23,16 @@ def test_seven_permissions_created_by_migration():
 
 
 def test_three_builtin_roles_with_initial_permissions():
-    """FR-015, FR-020, FR-118: три начальные роли; у администратора все пятнадцать прав (срезы 001–005), у «Руководителя» ровно `staff.view`, у «Сотрудника ИТ» `staff.view` и `knowledge.edit`."""
+    """FR-015, FR-020, FR-118: три начальные роли; у администратора все шестнадцать прав (срезы 001–006), у «Руководителя» ровно `staff.view`, у «Сотрудника ИТ» `staff.view` и `knowledge.edit`."""
     from tests.support_kb import PERMISSIONS_005
+    from tests.support_lists import PERMISSIONS_006
     from tests.support_notify import PERMISSIONS_004
 
     Role = model("core.Role")
     builtin = {r.name: r for r in Role.objects.filter(is_builtin=True)}
     assert set(builtin) == {support.ADMIN_ROLE, support.MANAGER_ROLE, support.STAFF_ROLE}
     assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(
-        PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003 + PERMISSIONS_004 + PERMISSIONS_005)
+        PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003 + PERMISSIONS_004 + PERMISSIONS_005 + PERMISSIONS_006)
     assert set(builtin[support.MANAGER_ROLE].permissions.values_list("code", flat=True)) == {"staff.view"}
     assert set(builtin[support.STAFF_ROLE].permissions.values_list("code", flat=True)) == {"staff.view", "knowledge.edit"}
     employee = support.logged_in(support.make_employee(roles=[builtin[support.STAFF_ROLE]]))

@@ -109,12 +109,13 @@ def cron_registrations() -> list[dict]:
 # --- приложения, расписание, зависимости ------------------------------------------------------------------------------
 
 def test_knowledge_and_search_are_in_installed_apps_after_notify():
-    """FR-433, FR-445: в конце `INSTALLED_APPS` — `apps.notify`, затем `apps.knowledge`, затем `apps.search` (решение 3
-    задач); у приложений метки `knowledge` и `search`, у `knowledge` `verbose_name` «База знаний» (раздел 1.1)."""
+    """FR-433, FR-445: в конце `INSTALLED_APPS` — `apps.notify`, затем `apps.knowledge`, затем `apps.lists` (срез 006,
+    CONTRACT-006, раздел 1.1), затем `apps.search` (решение 3 задач); у приложений метки `knowledge` и `search`,
+    у `knowledge` `verbose_name` «База знаний» (раздел 1.1)."""
     from django.apps import apps
     from django.conf import settings
 
-    assert list(settings.INSTALLED_APPS)[-3:] == ["apps.notify", "apps.knowledge", "apps.search"]
+    assert list(settings.INSTALLED_APPS)[-4:] == ["apps.notify", "apps.knowledge", "apps.lists", "apps.search"]
     assert apps.get_app_config("knowledge").label == "knowledge"
     assert apps.get_app_config("search").label == "search"
     assert apps.get_app_config("knowledge").verbose_name == "База знаний"
@@ -122,10 +123,13 @@ def test_knowledge_and_search_are_in_installed_apps_after_notify():
 
 def test_purge_trash_is_registered_in_cron_with_45_23_maintenance_timeout_600():
     """FR-417: `config/cron.py` — семнадцатая запись: `purge_trash` (`apps.knowledge.tasks.purge_trash`), очередь
-    `maintenance`, `cron="45 23 * * *"`, `job_timeout=600` (раздел 1.2)."""
+    `maintenance`, `cron="45 23 * * *"`, `job_timeout=600` (раздел 1.2); всего записей восемнадцать — восемнадцатая
+    `lists_reminders` среза 006 (CONTRACT-006, раздел 1.2)."""
     registrations = cron_registrations()
-    assert len(registrations) == 17, f"вызовов register {len(registrations)}, ожидается 17 (16 прежних и purge_trash)"
+    assert len(registrations) == 18, (
+        f"вызовов register {len(registrations)}, ожидается 18 (16 прежних, purge_trash и lists_reminders)")
     by_name = {item["name"]: item for item in registrations}
+    assert "lists_reminders" in by_name, "нет задания lists_reminders среза 006"
     item = by_name.get("purge_trash")
     assert item, "нет задания purge_trash"
     assert item["target"] == "apps.knowledge.tasks.purge_trash", f"функция задания: {item['target']}"
@@ -570,13 +574,16 @@ def test_stand_reset_knowledge_restores_general_rubric_and_role_permissions():
     from apps.core import extensions
     from apps.knowledge.stand import stand_reset
 
-    # раздел 1.3: функция зарегистрирована в точке, и последней среди приложений (команда зовёт точки в обратном
-    # порядке, поэтому `knowledge` идёт первой, раньше `notify`)
+    # раздел 1.3: функция зарегистрирована в точке позже `notify`; со срезом 006 последней среди приложений стоит
+    # `lists`, `knowledge` — предпоследней (CONTRACT-006, раздел 1.3: команда зовёт точки в обратном порядке, поэтому
+    # `lists` идёт первой, `knowledge` — второй, раньше `notify`)
     names = [func.__module__ for func in extensions.registered("stand_reset")]
     assert "apps.knowledge.stand" in names, "stand_reset модуля knowledge не зарегистрирован в точке"
     assert "apps.notify.stand" in names
     assert names.index("apps.knowledge.stand") > names.index("apps.notify.stand")
-    assert names.index("apps.knowledge.stand") == len(names) - 1
+    assert "apps.lists.stand" in names, "stand_reset модуля lists не зарегистрирован в точке"
+    assert names.index("apps.lists.stand") == len(names) - 1
+    assert names.index("apps.knowledge.stand") == len(names) - 2
     for rubric in _on("knowledge.Rubric").order_by("-depth"):
         rubric.delete()
     _on("knowledge.KnowledgeSettings").all().delete()
