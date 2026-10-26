@@ -38,9 +38,8 @@ def _row(page, code):
 
 
 def _marked(page, code, attr: str, value: str):
-    """Пометка `[<attr>="<value>"]` строки поля: на самой строке или внутри неё (контракт 11.2 место не уточняет)."""
-    base = f'[data-lists-fields-grid] tr[data-field-code="{code}"]'
-    return page.locator(f'{base}[{attr}="{value}"], {base} [{attr}="{value}"]')
+    """Пометка `[<attr>="<value>"]` строки поля — на ячейке названия `[data-field="name"]` (CONTRACT-006, 15.5 п. 7)."""
+    return page.locator(f'[data-lists-fields-grid] tr[data-field-code="{code}"] [data-field="name"][{attr}="{value}"]')
 
 
 def _field_action(page, list_id, code, action: str) -> None:
@@ -315,7 +314,7 @@ def test_l14_empty_field_is_deleted_after_confirm_dialog_with_journal_entry(admi
     expect(_marked(page, code, "data-has-data", "false").first).to_be_attached()
     # «Отмена» диалога: поле на месте
     _row(page, code).locator('button[data-action="field-delete"]').click()
-    dialog = page.locator("dialog[data-lists-confirm]")
+    dialog = page.locator("dialog[data-lists-confirm][open]")
     expect(dialog).to_be_visible()
     dialog.locator('button[data-action="cancel"]').click()
     expect(dialog).not_to_be_visible()

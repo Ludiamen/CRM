@@ -307,7 +307,7 @@ def test_l01_delete_empty_list_after_confirm_removes_it_with_journal_entry(admin
     expect(button).to_be_enabled()
     expect(page.locator("[data-lists-delete-reason]")).to_be_hidden()
     button.click()
-    expect(page.locator("dialog[data-lists-confirm]")).to_be_visible()
+    expect(page.locator("dialog[data-lists-confirm][open]")).to_be_visible()
     # п. 7: подтверждение кнопкой `[data-action="confirm"]` — переход на главную, списка нет
     helpers_lists.confirm_dialog(page)
     page.wait_for_url(re.compile(r"/lists/$"))

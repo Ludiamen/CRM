@@ -11,7 +11,8 @@
 - подготовка вне интерфейса — только команды стенда: `e2e_poll_mailbox` (через `deliver`), `e2e_backdate`,
   `e2e_run_job anonymize_tickets`; `stand_shell` в файле нет;
 - раздел заявки — `[data-card-part="lists-records"] [data-lists-ticket-section]`; подбор — `input[data-lists-picker="ticket"]`,
-  `ul[data-lists-pick] li[data-pick-id]` внутри раздела, привязка — `button[data-action="ticket-link"]`.
+  `ul[data-lists-pick] li[data-pick-id]` внутри раздела; нажатие на строку подбора только выбирает, привязку делает
+  `button[data-action="ticket-link"]` (CONTRACT-006, 15.5 п. 4); «Отвязать» — без подтверждения.
 """
 import re
 import secrets
@@ -28,7 +29,6 @@ from tests.e2e.helpers_sd import MAILBOX
 PART = '[data-card-part="lists-records"]'
 SECTION = PART + " [data-lists-ticket-section]"
 INV_NAME = "Инвентарный номер"
-SHORT = 1500  # мс: ожидание «привязалось уже по нажатию на пункт подбора»
 
 
 # --- Свои помощники файла ---------------------------------------------------------------------------------
@@ -124,15 +124,12 @@ def _offers(page, title: str):
 
 
 def _link(page, title: str) -> None:
-    """Выбирает в подборе запись `title` и привязывает; ждёт строку раздела. Если привязка прошла уже по нажатию на
-    пункт — кнопку не жмёт (повторная привязка второй строки не даёт, но фрагмент уже заменён)."""
+    """Выбирает в подборе запись `title` (нажатие на строку только выбирает) и нажимает «Привязать запись»
+    (`button[data-action="ticket-link"]`, 15.5 п. 4); ждёт строку раздела."""
     offer = _offers(page, title)
     expect(offer).to_have_count(1)
     offer.click()
-    try:
-        expect(_row(page, title)).to_have_count(1, timeout=SHORT)
-    except AssertionError:
-        _section(page).locator('button[data-action="ticket-link"]').click()
+    _section(page).locator('button[data-action="ticket-link"]').click()
     expect(_row(page, title)).to_have_count(1)
 
 

@@ -7,7 +7,9 @@
 - каждый тест заводит свои списки с уникальными названиями, свои записи и свою заявку; шесть стартовых списков и общие
   настройки не меняются; `stand_shell` в файле нет; единственная команда стенда — `helpers_lists.shift` (тест срока);
 - «В архив» и «Удалить навсегда» подтверждаются диалогом `dialog[data-lists-confirm]` (план: «подтверждение»;
-  15.4 п. 2: `[data-action="confirm"]`); «Вернуть из архива» подтверждения не требует (в плане о нём не сказано);
+  15.4 п. 2: `[data-action="confirm"]`; диалог ищется открытым — `[open]`, 15.5 пп. 1–2); «Вернуть из архива»
+  подтверждения не требует (15.5 п. 1);
+- привязка к заявке — помощник `helpers_lists.link_ticket`: выбор строки подбора, затем «Привязать запись» (15.5 п. 4);
 - наличие записи в «Все», в поиске, в выборе поля-ссылки и в подборе заявки читается по ответу сервера: тест
   сравнивает «до» и «после» одним набором проверок (`_presence`), поэтому пустая выдача не принимается за успех;
 - даты — по Москве (`ZoneInfo("Europe/Moscow")`).
@@ -70,24 +72,9 @@ def _new_ticket(admin_page) -> int:
 
 
 def _link_ticket(page, number, word) -> None:
-    """Привязка записи к заявке в разделе «Записи списков»: подсказка по слову названия, выбор строки, «Привязать
-    запись»; ждёт строку связи с этим словом."""
-    helpers_sd.open_ticket(page, number)
-    field = page.locator(f'{PART} input[data-lists-picker="ticket"]')
-    expect(field).to_be_visible()
-    with page.expect_response(lambda r: "/lists/ticket-pick/" in r.url):
-        field.fill(word)
-    option = page.locator(f"{PART} ul[data-lists-pick] li[data-pick-id]").filter(has_text=word)
-    expect(option).to_have_count(1)
-    option.click()
-    row = page.locator(f"{PART} li[data-ticket-link-id]").filter(has_text=word)
-    button = page.locator(f'{PART} button[data-action="ticket-link"]')
-    # контракт не говорит, уходит ли связь сразу по выбору строки или по кнопке: нажимаем кнопку, если связи ещё нет
-    try:
-        expect(row).to_have_count(1, timeout=1500)
-    except AssertionError:
-        button.click()
-    expect(row).to_have_count(1)
+    """Привязка записи к заявке в разделе «Записи списков»: подсказка по слову названия, выбор строки (только выбор),
+    «Привязать запись»; ждёт строку связи с этим словом (15.5 п. 4, помощник `link_ticket`)."""
+    helpers_lists.link_ticket(page, number, word, word)
 
 
 def _suggest(page, field, url_part: str, query: str) -> str:
@@ -179,7 +166,7 @@ def test_l05_archive_after_confirm_dialog_removes_record_from_all_preset_search_
     # п. 1: «В архив», подтверждение в диалоге
     open_record(page, world.a, world.number)
     page.locator('button[data-action="record-archive"]').click()
-    expect(page.locator("dialog[data-lists-confirm]")).to_be_visible()
+    expect(page.locator("dialog[data-lists-confirm][open]")).to_be_visible()
     confirm_dialog(page)
     expect(page.locator('button[data-action="record-restore"]')).to_be_visible()
     # п. 1: записи нет в «Все», в поиске, в выборе поля-ссылки и в подборе заявки; в «Архиве» она есть
@@ -322,7 +309,7 @@ def test_l05_purge_of_archived_record_referenced_by_other_list_is_refused_with_l
     _archive(admin_page, world.a, world.number)
     # п. 6: кнопка, подтверждение в диалоге
     admin_page.locator('button[data-action="record-purge"]').click()
-    expect(admin_page.locator("dialog[data-lists-confirm]")).to_be_visible()
+    expect(admin_page.locator("dialog[data-lists-confirm][open]")).to_be_visible()
     confirm_dialog(admin_page)
     # п. 6: отказ с текстом и ссылкой на ссылающуюся запись «Название — №N»
     alert = admin_page.locator('[role=alert][data-code="record_referenced"]')
@@ -355,7 +342,7 @@ def test_l05_purge_of_archived_record_without_referrers_after_confirm_dialog_rem
     _archive(admin_page, world.a, world.number)
     # п. 7: «Удалить навсегда», подтверждение — переход на отбор «Архив» списка
     admin_page.locator('button[data-action="record-purge"]').click()
-    expect(admin_page.locator("dialog[data-lists-confirm]")).to_be_visible()
+    expect(admin_page.locator("dialog[data-lists-confirm][open]")).to_be_visible()
     confirm_dialog(admin_page)
     admin_page.wait_for_url(re.compile(rf"/lists/{world.a}/\?preset=archive"))
     expect(admin_page.locator('[data-lists-page="grid"]')).to_be_visible()

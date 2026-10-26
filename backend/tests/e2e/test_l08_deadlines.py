@@ -216,11 +216,13 @@ def test_l08_deadline_switch_on_date_field_offers_30_and_7_by_default_and_saves_
     page = admin_page
     list_id = create_list(page, unique_list_name("Лицензии"))
     form = open_new_field(page, list_id, "date")
-    # п. 1: включение «Срока» — предложены пороги 30 и 7 (значение или подсказка входа)
+    # п. 1: включение «Срока» — предложены пороги 30 и 7 значениями входов, не подсказкой (15.5 п. 8): первые два
+    # входа — «30» и «7», третий пуст
     form.locator('[data-prop="deadline"] input[name="deadline"]').check()
     expect(_threshold_boxes(form).first).to_be_visible()
-    offered = _threshold_boxes(form).evaluate_all("els => els.map(e => e.value || e.placeholder)")
-    assert sorted(int(v) for v in offered if str(v).strip()) == [7, 30], f"предложены пороги: {offered}"
+    expect(_threshold_boxes(form)).to_have_count(3)
+    offered = _threshold_boxes(form).evaluate_all("els => els.map(e => e.value.trim())")
+    assert offered == ["30", "7", ""], f"предложены пороги (значения входов): {offered}"
     # п. 1: вводит «30, 7» — поле сохранено
     helpers_lists.fill_field_form(page, thresholds=[30, 7], name=FIELD_DUE)
     assert submit_field_form(page, list_id), f"поле не сохранено: {refusal_codes(page)}"

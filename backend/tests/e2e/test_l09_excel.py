@@ -84,7 +84,7 @@ def _set_columns(page, list_id, wanted=None) -> None:
     системное. Ждёт, пока таблица покажет ровно эти столбцы."""
     page.goto(f"/lists/{list_id}/")
     expect(page.locator("#lists-grid")).to_be_visible()
-    page.locator("button, a").filter(has_text="Выбрать столбцы").first.click()
+    page.locator('button[data-action="columns"]').click()  # «Выбрать столбцы» (CONTRACT-006, 15.5 п. 6)
     dialog = page.locator("dialog[data-lists-columns]")
     expect(dialog).to_be_visible()
     codes = []
@@ -564,16 +564,15 @@ def test_l09_sample_xlsx_has_headers_of_visible_fields_except_file_and_hints_she
     open_settings(page, list_id, "fields")
     row = page.locator(f'[data-lists-fields-grid] tr[data-field-code="{f_hidden}"]')
     row.locator('button[data-action="field-hide"]').click()
-    expect(page.locator(f'[data-lists-fields-grid] tr[data-field-code="{f_hidden}"][data-hidden="true"], '
-                        f'[data-lists-fields-grid] tr[data-field-code="{f_hidden}"] [data-hidden="true"]').first
-           ).to_be_attached()
-    # п. 11: «Скачать образец» (ссылка на /lists/<id>/sample/ — на странице загрузки или таблицы)
+    # `data-hidden` — на ячейке названия строки (15.5 п. 7)
+    expect(page.locator(f'[data-lists-fields-grid] tr[data-field-code="{f_hidden}"] [data-field="name"]'
+                        '[data-hidden="true"]')).to_be_attached()
+    # п. 11: «Скачать образец» — `a[data-action="sample"]` на странице загрузки (15.5 п. 6)
     page.goto(f"/lists/{list_id}/import/")
-    link = page.locator(f'a[href="/lists/{list_id}/sample/"]')
-    if not link.count():
-        page.goto(f"/lists/{list_id}/")
-        link = page.locator(f'a[href="/lists/{list_id}/sample/"]')
+    link = page.locator('[data-lists-page="import"] a[data-action="sample"]')
     expect(link).to_have_count(1)
+    expect(link).to_have_attribute("href", f"/lists/{list_id}/sample/")
+    expect(link).to_contain_text("Скачать образец")
     download = _download(page, link)
     assert download.suggested_filename == f"{name} — образец.xlsx"
     book = _read_book(download)

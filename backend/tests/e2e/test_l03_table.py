@@ -7,8 +7,9 @@
 - управляющий — `admin_page`; читающий и правящий — `make_list_reader` / `make_list_editor`;
 - массовая подготовка (51 запись для 50 строк страницы): прямые POST формы `/lists/<id>/add/` от имени управляющего,
   каждый ответ проверяется на 302 (`_direct_add_record`); остальные записи — формой;
-- фильтры (п. 3) задаются параметрами адреса (раздел 10.3): внутреннее устройство `[data-lists-filter]` контракт не
-  задаёт, тест проверяет наличие зацепки `[data-lists-filter="<код>"]` у поля;
+- фильтры (п. 3): один проход формой — блок `[data-lists-filters]` внутри `form[data-lists-search]`, элементы названы как
+  параметры 10.3, главная кнопка формы (15.5 п. 3); остальные сочетания — параметрами адреса (раздел 10.3);
+- подтверждения — `dialog[data-lists-confirm][open]` (15.5 пп. 1–2): групповое «В архив» подтверждается диалогом;
 - п. 1 сценария: отбор «Все» и порядок строк без сортировки; порядок, которого контракт не задаёт, не проверяется.
 """
 import re
@@ -20,7 +21,7 @@ from playwright.sync_api import expect
 
 from tests.e2e import helpers_lists, helpers_org
 from tests.e2e.helpers_lists import (
-    add_field, archive_record, create_list, create_record, make_list_editor, make_list_reader, open_add_record,
+    add_field, archive_record, confirm_dialog, create_list, create_record, make_list_editor, make_list_reader, open_add_record,
     open_settings, pick, post_status, set_choices, status_of, submit_record, fill_record,
     unique_list_name, unique_word, open_narrow, page_fits)
 
@@ -165,7 +166,7 @@ def test_l03_chosen_columns_kept_for_employee_and_list_after_reopen_and_other_em
     cols = _cols(fp)
     assert {model, inv} <= cols and note not in cols, f"столбцы по умолчанию: {cols}"
     # п. 2: выбор других столбцов — «Примечание» вместо «Модели»
-    fp.get_by_role("button", name="Выбрать столбцы").click()
+    fp.locator('button[data-action="columns"]').click()  # «Выбрать столбцы» (15.5 п. 6)
     dialog = fp.locator("dialog[data-lists-columns]")
     expect(dialog).to_be_visible()
     expect(dialog.locator(f'input[name="columns"][data-lists-column-choice="{model}"]')).to_be_checked()
@@ -205,6 +206,22 @@ def test_l03_equals_from_to_and_contains_filters_leave_only_matching_rows_and_sh
     for code in (state, bought):
         expect(page.locator(f'[data-lists-filter="{code}"]')).to_have_count(1)
     broken, working = ids[1], ids[0]
+    # п. 3: фильтры формой — «Название» содержит «принтер» и дата покупки с 01.03.2024 по 30.09.2024 (15.5 п. 3)
+    form = page.locator("form[data-lists-search]")
+    filters = form.locator("[data-lists-filters]")
+    expect(filters).to_have_count(1)
+    filters.locator('[data-lists-filter="title"] input[name="f.title"]').fill("принтер")
+    filters.locator(f'[data-lists-filter="{bought}"] input[name="f.{bought}.from"]').fill("01.03.2024")
+    filters.locator(f'[data-lists-filter="{bought}"] input[name="f.{bought}.to"]').fill("30.09.2024")
+    form.locator("button[type=submit]:not([data-action])").click()
+    # адрес несёт действующие параметры (обычный GET или `hx-push-url`); порядок параметров не задан
+    page.wait_for_url(lambda url: "f.title=" in url and f"f.{bought}.from=" in url and f"f.{bought}.to=" in url)
+    _shows(page, ["Принтер Canon"])
+    # «Найдено» — после открытия того же адреса: место `[data-lists-found]` относительно `#lists-grid` (цели `hx-get`)
+    # контракт не задаёт
+    page.goto(page.url)
+    _shows(page, ["Принтер Canon"])
+    _found(page, 1)
     # п. 3: «равно» — Состояние = Сломан
     _open_grid(page, list_id, f"?f.{state}={broken}")
     _shows(page, ["Принтер Canon", "Ноутбук Lenovo"])
@@ -381,7 +398,9 @@ def test_l03_hidden_field_absent_from_column_and_filter_choice(admin_page, emplo
     # поле скрыто управляющим на вкладке «Поля»
     open_settings(page, list_id, "fields")
     page.locator(f'[data-lists-fields-grid] tr[data-field-code="{store}"] button[data-action="field-hide"]').click()
-    expect(page.locator(f'[data-lists-fields-grid] tr[data-field-code="{store}"][data-hidden="true"]')).to_be_visible()
+    # `data-hidden` — на ячейке названия строки, не на `tr` (15.5 п. 7)
+    expect(page.locator(f'[data-lists-fields-grid] tr[data-field-code="{store}"] [data-field="name"][data-hidden="true"]')
+           ).to_be_visible()
     probe(rp, False)
     probe(page, False)
 
@@ -400,6 +419,7 @@ def test_l03_archive_and_labels_actions_apply_to_checked_rows_only(admin_page, e
     for title in ("Первая", "Вторая"):
         ep.locator(f'input[type="checkbox"][name="n"][data-lists-row-check][value="{numbers[title]}"]').check()
     ep.locator('button[data-action="bulk-archive"]').click()
+    confirm_dialog(ep)  # групповое «В архив» — с подтверждением (15.5 п. 1, решение Opus)
     expect(ep.locator('[data-lists-notice="bulk-result"]')).to_contain_text(re.compile(r"В архив:\s*2,\s*пропущено:\s*0"))
     _open_grid(ep, list_id)
     _shows(ep, ["Третья", "Четвёртая"])

@@ -12,7 +12,8 @@ FR-513, FR-514, FR-525, FR-527, FR-528, FR-540, FR-545).
 - каждый тест заводит свои списки, записи и людей с уникальными названиями; сброса стенда и `stand_shell` в файле нет;
   вне интерфейса — только `helpers_sd.deliver` (письмо заявки в тесте 14);
 - пункт «после обновления портала» (п. 1) — серверный T-6105 (решение 19 задач), в приёмке его нет;
-- 404 «как у несуществующего» сравнивается в пределах одного клиента (раздел 10.1, К-10): статус и текст страницы.
+- 404 «как у несуществующего» сравнивается в пределах одного клиента (раздел 10.1, К-10): статус и текст области
+  содержимого `main#content` без всплывающих сообщений `.alert`, каждый раз после нейтральной страницы `/me/` (15.5 п. 11).
 """
 import io
 import zipfile
@@ -163,14 +164,26 @@ def _revoke_subject(page, list_id, level: str, subject: str) -> None:
     expect(page.locator(f'[data-lists-access="{level}"] li[data-subject="{subject}"]')).to_have_count(0)
 
 
+_CONTENT_TEXT_JS = ("el => { const c = el.cloneNode(true); c.querySelectorAll('.alert').forEach(a => a.remove());"
+                    " return c.textContent.replace(/\\s+/g, ' ').trim(); }")
+
+
+def _content_text(page, path: str):
+    """Открывает нейтральную страницу `/me/` (забирает ожидающие всплывающие сообщения), затем `path`; возвращает
+    ответ и текст области содержимого `main#content` без `.alert` (CONTRACT-006, 15.5 п. 11)."""
+    page.goto("/me/")
+    response = page.goto(path)
+    return response, page.locator("main#content").evaluate(_CONTENT_TEXT_JS)
+
+
 def _same_404(page, real: str, missing: str) -> None:
-    """Адрес `real` отвечает так же, как несуществующий `missing`: 404 и тот же текст страницы (один клиент, К-10)."""
-    got = page.goto(real)
-    real_text = page.locator("body").inner_text()
-    other = page.goto(missing)
+    """Адрес `real` отвечает так же, как несуществующий `missing`: 404 и тот же текст области содержимого без
+    всплывающих сообщений (один клиент, К-10; 15.5 п. 11 — меню и счётчики оболочки не сравниваются)."""
+    got, real_text = _content_text(page, real)
+    other, other_text = _content_text(page, missing)
     assert got.status == 404, f"{real}: ответ {got.status}, нужен 404"
     assert other.status == 404, f"{missing}: ответ {other.status}, нужен 404"
-    assert page.locator("body").inner_text() == real_text, f"{real} отвечает не так, как несуществующий {missing}"
+    assert other_text == real_text, f"{real} отвечает не так, как несуществующий {missing}"
 
 
 def _record_with_picks(page, list_id, title: str, picks: dict | None = None) -> int:
@@ -349,8 +362,12 @@ def test_l13_head_granted_read_of_contracts_in_interface_sees_only_that_list_wit
     try:
         # п. 3: администратор выдаёт чтение в интерфейсе («Читают» списка «Договоры»)
         grant_role(page, contracts, "read", head_id)
-        # п. 3: руководитель открывает «Списки» — только «Договоры»
-        assert list_names_on_home(head.page) == {contracts: "Договоры"}
+        # п. 3: руководитель открывает «Списки» — «Договоры» есть, других стартовых списков нет (точное равенство
+        # набора хрупко к остаткам упавшего прогона в общей базе круга, решение 56; 15.5, строка 63)
+        names = list_names_on_home(head.page)
+        assert names.get(contracts) == "Договоры", f"у руководителя нет «Договоров»: {names}"
+        others = {name for name, list_id in ids.items() if name != "Договоры" and list_id in names}
+        assert not others, f"руководитель видит чужие стартовые списки: {others}"
         expect(head.page.locator('#main-menu a[href="/lists/"]')).to_have_count(1)
         # список читает: таблица открыта, выгрузка есть; правки и настройки нет
         response = head.page.goto(f"/lists/{contracts}/")

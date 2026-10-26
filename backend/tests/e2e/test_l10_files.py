@@ -323,14 +323,9 @@ def test_l10_removed_file_shows_file_removed_with_name_in_history(admin_page, em
     history = page.locator("[data-lists-history]")
     expect(history.locator('li[data-change-kind="file_added"]').filter(has_text=f"Добавлен файл {name}")).to_have_count(1)
     expect(history.locator('li[data-change-kind="file_removed"]')).to_have_count(0)
-    # п. 7: файл удалён из записи кнопкой «Удалить» (подтверждение — если оно есть: встроенное или диалог)
-    page.on("dialog", lambda dialog: dialog.accept())
+    # п. 7: файл удалён из записи кнопкой «Удалить» — без подтверждения (CONTRACT-006, 15.5 п. 1)
     page.locator(f'li[data-file-id="{file_id}"] button[data-action="file-delete"]').click()
-    try:
-        expect(record_file_row(page, file_id)).to_have_count(0, timeout=3000)
-    except AssertionError:
-        confirm_dialog(page)
-        expect(record_file_row(page, file_id)).to_have_count(0)
+    expect(record_file_row(page, file_id)).to_have_count(0)
     # п. 7: открыта история — «Удалён файл <имя>»
     open_record(page, list_id, number)
     expect(record_file_row(page, file_id)).to_have_count(0)

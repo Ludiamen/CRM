@@ -309,8 +309,13 @@ def test_l11_qr_url_opened_by_employee_not_reading_list_gives_same_answer_as_mis
     page = outsider.page
 
     def answer(url: str, mask: tuple = ()):
+        # сравнение 404 (CONTRACT-006, 15.5 п. 11): нейтральная страница забирает ожидающие всплывающие сообщения,
+        # затем — текст области содержимого `main#content` без `.alert` (меню и счётчики оболочки не сравниваются)
+        page.goto("/me/")
         response = page.goto(url)
-        text = page.inner_text("body")
+        text = page.locator("main#content").evaluate(
+            "el => { const c = el.cloneNode(true); c.querySelectorAll('.alert').forEach(a => a.remove());"
+            " return c.textContent.replace(/\\s+/g, ' ').trim(); }")
         for part in mask:
             text = text.replace(part, "<адрес>")
         return response.status, text

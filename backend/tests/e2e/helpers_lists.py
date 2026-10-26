@@ -10,7 +10,8 @@
   `add_field`, `try_add_field`, `field_codes`, `field_code_by_name`, `open_field`, `set_choices`, `choice_titles`,
   `direct_add_field` (только для массовой подготовки, например 50 полей);
 - записи через интерфейс: `record_form`, `open_add_record`, `open_edit_record`, `fill_record`, `choose`, `pick`, `submit_record`,
-  `create_record`, `try_create_record`, `open_record`, `record_number_from_url`, `archive_record`;
+  `create_record`, `try_create_record`, `open_record`, `record_number_from_url`, `archive_record` (с подтверждением);
+- привязка записи к заявке в разделе «Записи списков»: `link_ticket` (CONTRACT-006, 15.5 п. 4);
 - файлы записи на ClamAV стенда: `files_block`, `record_file_row`, `scan_snapshot`, `try_attach_file`, `attach_file`,
   `wait_file_clean`, `eicar_bytes`;
 - команда стенда `e2e_lists_shift` (13.1): `shift`, `parse_shift_line`;
@@ -285,9 +286,9 @@ def open_settings(page, list_id, tab: str = "main") -> None:
 
 
 def confirm_dialog(page) -> None:
-    """Подтверждает открытый диалог `dialog[data-lists-confirm]` кнопкой `button[type=submit][data-action="confirm"]`
-    (15.4, п. 2); результат не ждёт."""
-    dialog = page.locator("dialog[data-lists-confirm]")
+    """Подтверждает открытый диалог `dialog[data-lists-confirm][open]` кнопкой `button[type=submit][data-action="confirm"]`
+    (15.4, п. 2; 15.5, пп. 1–2: диалог один на страницу, открыт `showModal()`); результат не ждёт."""
+    dialog = page.locator("dialog[data-lists-confirm][open]")
     expect(dialog).to_be_visible()
     dialog.locator('button[type=submit][data-action="confirm"]').click()
 
@@ -400,7 +401,9 @@ def fill_field_form(page, *, name: str | None = None, hint: str | None = None, r
                     target=None) -> None:
     """Заполняет форму поля (10.2): только переданные значения. Флажки — `[data-prop="<свойство>"] input[name=…]`;
     `thresholds` — до трёх целых в `input[name=thresholds]` (лишние поля очищаются); `default` — строка в поле
-    `default` (у да/нет — `True`/`False` флажком, у выпадающего списка — значение пункта); `currency` — `RUB`,
+    `default` (у да/нет — `True`/`False` флажком, у выпадающего списка — значение пункта; у даты — выбор
+    `select[name="default_mode"]`: `"today"` — пункт `today`, `""` — пункт «нет», иначе пункт `date` и дата
+    ДД.ММ.ГГГГ в `input[name="default"]`, 15.5, п. 13); `currency` — `RUB`,
     `USD`, `EUR`; `target` — номер списка. `name` и `hint` вводятся последними, после возможной перерисовки формы.
     Пределы браузера снимаются (`lift_limits`)."""
     form = field_form(page)
@@ -415,7 +418,17 @@ def fill_field_form(page, *, name: str | None = None, hint: str | None = None, r
         assert boxes.count() >= len(values), f"полей порогов {boxes.count()}, нужно {len(values)}"
         for i, box in enumerate(boxes.all()):
             box.fill(values[i] if i < len(values) else "")
-    if default is not None:
+    mode = form.locator('[data-prop="default"] select[name="default_mode"]')
+    if default is not None and mode.count():
+        # поле «дата» (15.5, п. 13): режим умолчания, дата — только у режима `date`
+        if str(default) in ("today", ""):
+            mode.select_option(value=str(default))
+        else:
+            mode.select_option(value="date")
+            box = form.locator('[data-prop="default"] input[name="default"]')
+            expect(box).to_be_visible()
+            box.fill(str(default))
+    elif default is not None:
         control = form.locator('[data-prop="default"] [name="default"]')
         expect(control.first).to_be_visible()
         kind = control.first.evaluate("el => el.tagName === 'SELECT' ? 'select' : (el.type || '')")
@@ -633,12 +646,33 @@ def open_record(page, list_id, number) -> None:
 
 
 def archive_record(page, list_id, number) -> None:
-    """«В архив» на карточке (`button[data-action="record-archive"]`, правящий); ждёт кнопку
-    `button[data-action="record-restore"]` и пометку `[data-lists-archived]` на карточке."""
+    """«В архив» на карточке (`button[data-action="record-archive"]`, правящий) с подтверждением в
+    `dialog[data-lists-confirm]` (15.5, п. 1); ждёт кнопку `button[data-action="record-restore"]` и пометку
+    `[data-lists-archived]` на карточке."""
     open_record(page, list_id, number)
     page.locator('button[data-action="record-archive"]').click()
+    confirm_dialog(page)
     expect(page.locator('button[data-action="record-restore"]')).to_be_visible()
     expect(page.locator('[data-lists-page="record"] [data-lists-archived]').first).to_be_visible()
+
+
+def link_ticket(page, ticket_number, query: str, title: str) -> None:
+    """Привязывает запись к заявке в разделе «Записи списков» (11.8; 15.5, п. 4): открывает карточку заявки, вводит
+    `query` в `input[data-lists-picker="ticket"]` (ждёт ответ `/lists/ticket-pick/`), нажимает строку подбора
+    `li[data-pick-id]` с текстом `title` (только выбор), затем `button[data-action="ticket-link"]` и ждёт строку
+    раздела `li[data-ticket-link-id]` с `title`."""
+    helpers_sd.open_ticket(page, ticket_number)
+    section = page.locator('[data-card-part="lists-records"] [data-lists-ticket-section]')
+    field = section.locator('input[data-lists-picker="ticket"]')
+    expect(field).to_be_visible()
+    with page.expect_response(lambda r: "/lists/ticket-pick/" in r.url and r.request.method == "GET"):
+        field.fill(query)
+    option = section.locator("ul[data-lists-pick] li[data-pick-id]").filter(has_text=title)
+    expect(option).to_have_count(1)
+    option.click()
+    section.locator('button[data-action="ticket-link"]').click()
+    # ответ заменяет раздел целиком (`hx-swap="outerHTML"`): локатор раздела ищется заново
+    expect(section.locator("li[data-ticket-link-id]").filter(has_text=title)).to_have_count(1)
 
 
 # --- Файлы записи (11.7; решение 19) --------------------------------------------------------------------------

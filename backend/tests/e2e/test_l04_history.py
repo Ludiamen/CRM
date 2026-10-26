@@ -10,11 +10,10 @@
   `[data-change-field]` с `[data-field="before"]` и `[data-field="after"]`; тексты — раздел 12.4 («Создана»,
   «Перенесена в архив», «Возвращена из архива», «Изменено загрузкой», «Добавлен файл», «Удалён файл»);
 - время показа — по Москве (UTC+3 без перехода на летнее время), хостовой пояс не используется;
-- кнопки «В архив», «Вернуть» и «Удалить» у файла: подтверждение в `dialog[data-lists-confirm]` контракт называет
-  только у «Удалить навсегда» и у поля; если диалог появится, тест его подтверждает (`_click_maybe_confirm`).
+- подтверждения (CONTRACT-006, 15.5 п. 1): «В архив» — с диалогом `dialog[data-lists-confirm][open]`; «Вернуть из архива»
+  и «Удалить» у файла — без подтверждения.
 """
 import re
-import time
 from datetime import datetime, timedelta, timezone
 
 from playwright.sync_api import expect
@@ -61,37 +60,22 @@ def _shown_time(row) -> datetime:
     return datetime(year, month, day, hour, minute)
 
 
-def _click_maybe_confirm(page, button, finished, *, timeout: float = 20.0) -> None:
-    """Нажимает `button` и ждёт, пока `finished()` станет истиной. Если появился диалог `dialog[data-lists-confirm]`,
-    подтверждает его один раз (контракт называет диалог не у всех действий этого файла)."""
-    dialog = page.locator("dialog[data-lists-confirm]")
-    button.click()
-    confirmed = False
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
-        if finished():
-            return
-        if not confirmed and dialog.is_visible():
-            confirm_dialog(page)
-            confirmed = True
-        page.wait_for_timeout(100)
-    raise AssertionError("действие не завершилось за отведённое время")
-
-
 def _archive(page, list_id, number) -> None:
-    """«В архив» на карточке с подтверждением, если оно запрошено; ждёт «Вернуть» и пометку «в архиве»."""
+    """«В архив» на карточке с подтверждением в диалоге (15.5 п. 1); ждёт «Вернуть» и пометку «в архиве»."""
     open_record(page, list_id, number)
     restore = page.locator('button[data-action="record-restore"]')
-    _click_maybe_confirm(page, page.locator('button[data-action="record-archive"]'), lambda: restore.count() > 0)
+    page.locator('button[data-action="record-archive"]').click()
+    confirm_dialog(page)
     expect(restore).to_be_visible()
     expect(page.locator('[data-lists-page="record"] [data-lists-archived]').first).to_be_visible()
 
 
 def _restore(page, list_id, number) -> None:
-    """«Вернуть» на карточке записи в архиве; ждёт «В архив» и исчезновение пометки «в архиве»."""
+    """«Вернуть» на карточке записи в архиве (без подтверждения, 15.5 п. 1); ждёт «В архив» и исчезновение пометки
+    «в архиве»."""
     open_record(page, list_id, number)
     archive = page.locator('button[data-action="record-archive"]')
-    _click_maybe_confirm(page, page.locator('button[data-action="record-restore"]'), lambda: archive.count() > 0)
+    page.locator('button[data-action="record-restore"]').click()
     expect(archive).to_be_visible()
     expect(page.locator('[data-lists-page="record"] [data-lists-archived]')).to_have_count(0)
 
@@ -242,7 +226,8 @@ def test_l04_added_and_removed_file_give_file_added_and_file_removed_rows(admin_
     # п. 3: файл удалён — новая строка над прежними
     block = files_block(page, code)
     row = page.locator(f'li[data-file-id="{file_id}"]')
-    _click_maybe_confirm(page, block.locator('button[data-action="file-delete"]'), lambda: row.count() == 0)
+    block.locator('button[data-action="file-delete"]').click()  # без подтверждения (15.5 п. 1)
+    expect(row).to_have_count(0)
     open_record(page, list_id, number)
     assert _kinds(page, 3) == ["file_removed", "file_added", "created"]
     removed = _rows(page).first

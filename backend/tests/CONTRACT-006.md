@@ -659,15 +659,15 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | `/lists/<id>/` GET | `preset`, `sort`, `dir`, `q`, `page`, `f.<код>`, `f.<код>.from`, `f.<код>.to`, `f.<код>.files` (план; разбор — 10.3) | 200 страница или фрагмент сетки |
 | `/lists/<id>/columns/` POST | `columns` — повторяющееся, коды по порядку показа (`title` — системное) | 302 на `/lists/<id>/`; НХ — фрагмент сетки |
 | `/lists/<id>/filter-values/<код>/` GET | `q` — подстрока без учёта регистра в строке показа (у записи — ещё номер целиком) | 200 фрагмент `ul[data-lists-pick] > li[data-pick-id="<id>"]`, как у `/pick/`, текст — строка показа, до 20 строк (К-15); скрытое поле, поле не ссылочного типа (`choice`, `person`, `unit`, `record` — ссылочные) или нечитаемый целевой список — 404 |
-| `/lists/<id>/export/` GET | параметры таблицы | 200 XLSX, `Content-Disposition: attachment; filename*=UTF-8''<название списка в процентной записи>.xlsx`; больше 10 000 — 200 страница таблицы с `[role=alert][data-code="export_too_many"]` |
+| `/lists/<id>/export/` GET | параметры таблицы | 200 XLSX (столбцы — столбцы таблицы сотрудника без скрытых, столбца «№» нет; значение поля «запись» — «Название», 15.5 п. 9), `Content-Disposition: attachment; filename*=UTF-8''<название списка в процентной записи>.xlsx`; больше 10 000 — 200 страница таблицы с `[role=alert][data-code="export_too_many"]` |
 | `/lists/<id>/settings/` POST | `name`, `description` | 302 на тот же адрес |
-| `/lists/<id>/settings/fields/new/` POST и `…/<код>/` POST | `name`, `hint`, `type` (только при создании и у пустого поля), `required`, `multiple`, `unique`, `show_in_table`, `deadline` (флажки, значение `on`), `default` (строка; у даты — `today` или дата ДД.ММ.ГГГГ; у списка значений — id значения; у да/нет — `on`), `currency` (`RUB`, `USD`, `EUR`), `target` (id списка), `thresholds` — повторяющееся, до трёх целых, пустые отбрасываются; GET `…/fields/new/?type=<тип>` отдаёт форму со свойствами этого типа, выбор типа перезапрашивает форму (`hx-get`) (К-15) | 302 на `/lists/<id>/settings/fields/`; присланный `type` у поля с данными — 200 с `[data-error="type"][data-code="field_locked"]` |
+| `/lists/<id>/settings/fields/new/` POST и `…/<код>/` POST | `name`, `hint`, `type` (только при создании и у пустого поля), `required`, `multiple`, `unique`, `show_in_table`, `deadline` (флажки, значение `on`), `default` (строка; у даты — `today` или дата ДД.ММ.ГГГГ; у списка значений — id значения; у да/нет — `on`; в форме поля «дата» умолчание выбирается `select[name="default_mode"]` (`""` — нет, `today`, `date`) и `input[name="default"]` (ДД.ММ.ГГГГ) для `date` — решение Opus 2026-10-26, 15.5 п. 13), `currency` (`RUB`, `USD`, `EUR`), `target` (id списка), `thresholds` — повторяющееся, до трёх целых, пустые отбрасываются; GET `…/fields/new/?type=<тип>` отдаёт форму со свойствами этого типа, выбор типа перезапрашивает форму (`hx-get`) (К-15) | 302 на `/lists/<id>/settings/fields/`; присланный `type` у поля с данными — 200 с `[data-error="type"][data-code="field_locked"]` |
 | `…/<код>/hide/`, `…/show/`, `…/delete/`, `…/up/`, `…/down/` POST | — | 302 на вкладку «Поля» |
 | `…/fields/order/` POST | `codes` — повторяющееся, все коды строк `Field` списка (со скрытыми, без `title`) в новом порядке (Н15) | 302; НХ — 204; отказ `bad_order` — 200 с `[role=alert][data-code="bad_order"]` (и на НХ) |
 | `…/<код>/choices/` POST | пары повторяющихся `id` и `title` в новом порядке; у нового значения `id` пусто; архивный id среди `id` — возврат из архива | 302 на `/lists/<id>/settings/fields/<код>/` |
 | `/lists/<id>/settings/access/` POST | `readers`, `editors` — повторяющиеся значения `role:<id>` или `unit:<id>` | 302 на тот же адрес |
 | `/lists/<id>/delete/` POST | — | 302 на `/lists/` |
-| `/lists/<id>/add/` POST и `/lists/<id>/<n>/edit/` POST | `title`; по полю — имя `<код>`: строка, текст, число, деньги — одно значение; дата — «ДД.ММ.ГГГГ» или ISO; дата и время — «ДД.ММ.ГГГГ ЧЧ:ММ» по Москве; да/нет — `on`; `choice`, `person`, `unit`, `record` — повторяющиеся id; у правки — скрытое `base_version` (план); поля «файл» в форме нет | 302 на `/lists/<id>/<n>/`; отказ — 200 с формой; GET правки записи в архиве — 200 страница с «Запись в архиве» без формы, POST правки записи в архиве — 200 с отказом «Запись в архиве» (решение 31 задач); POST правки удалённой — 200 с формой и «Запись удалена» |
+| `/lists/<id>/add/` POST и `/lists/<id>/<n>/edit/` POST | `title`; по полю — имя `<код>`: строка, текст, число, деньги — одно значение; дата — «ДД.ММ.ГГГГ» или ISO; дата и время — «ДД.ММ.ГГГГ ЧЧ:ММ» по Москве; да/нет — `on`; `choice`, `person`, `unit`, `record` — повторяющиеся id; у правки — скрытое `base_version` (план); поля «файл» в форме нет | 302 на `/lists/<id>/<n>/`; отказ — 200 с формой; GET правки записи в архиве — 200 страница с «Запись в архиве» без формы, POST правки записи в архиве — 200 с отказом «Запись в архиве» (решение 31 задач) при любой `base_version`: проверка архива раньше проверки версии (15.5 п. 10); POST правки удалённой — 200 с формой и «Запись удалена» |
 | `/lists/<id>/<n>/history/` GET | `offset` | 200 фрагмент: строки и кнопка «Показать ещё» (11.6) |
 | `/lists/<id>/<n>/archive/`, `…/restore/` POST | — | 302 на карточку |
 | `/lists/<id>/bulk-archive/` POST | `n` — повторяющееся, номера | 200 страница (НХ — фрагмент) таблицы с итогом «В архив: N, пропущено: M» в `[data-lists-notice="bulk-result"]`; больше 50 — 200 с `[role=alert][data-code="bulk_too_many"]`, ничего не изменено |
@@ -680,8 +680,8 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | `/lists/<id>/import/<job>/` POST | `map.<номер столбца с 0>` — код поля, `title` или пусто (не загружать) | 200 страница предпросмотра (11.9); задание не своё, другой список, старше суток — 404 (решение 31 задач) |
 | `/lists/<id>/import/<job>/confirm/` POST | — | 200 страница итога; повтор — тот же итог; чужое задание, старше суток — 404 |
 | `/lists/<id>/sample/` GET | — | 200 XLSX `filename*=UTF-8''<название списка> — образец.xlsx` |
-| `/lists/<id>/pick/`, `/lists/people/`, `/lists/units/` GET | `q` | 200 фрагмент `ul[data-lists-pick]` > `li[data-pick-id="<id>"]`, до 20 строк; запись — «Название — №N», сотрудник — ФИО и должность (без почты), узел — название и путь |
-| `/lists/ticket-pick/` GET | `ticket`, `q` | 200 фрагмент, до 10 `li[data-pick-id]`; заявка не видна — 404 |
+| `/lists/<id>/pick/`, `/lists/people/`, `/lists/units/` GET | `q` (минимальной длины нет, 15.5 п. 5); `<id>` в `/pick/` — целевой список | 200 фрагмент `ul[data-lists-pick]` > `li[data-pick-id="<id>"]`, до 20 строк; запись — «Название — №N», сотрудник — ФИО и должность (без почты), узел — название и путь |
+| `/lists/ticket-pick/` GET | `ticket`, `q` (минимальной длины нет; текст строки — «Название — Список», 15.5 пп. 4–5) | 200 фрагмент, до 10 `li[data-pick-id]`; заявка не видна — 404 |
 | `/lists/ticket-links/` POST | `ticket`, `record` (id записи) | 200 фрагмент раздела целиком (`hx-swap="outerHTML"`); запись в архиве — 200 фрагмент с `[role=alert][data-code="record_archived"]`; нет записи, список не читается, заявка не видна — 404 |
 | `/lists/ticket-links/<id>/delete/` POST | — | 200 фрагмент раздела; без видимости заявки или чтения списка — 404 (решение 31 задач) |
 
@@ -731,7 +731,7 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 `data-qr-url` (решение 50 задач), `data-card-part` оболочки сервис-деска.
 
 ### 11.1. Общие
-Кнопки форм, диалог подтверждения, ссылка на настройку, подсказки выбора, форма файла — также 15.4.
+Кнопки форм, диалог подтверждения, ссылка на настройку, подсказки выбора, форма файла — также 15.4. Подтверждения, фильтры таблицы, привязка к заявке, триггер подсказок, зацепки «Выбрать столбцы» и «Скачать образец», место `data-hidden` — также 15.5 (ответы на вопросы приёмки 2026-10-26).
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
@@ -740,6 +740,7 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | Пометка «уволен» | `{% person_name %}`: `span[data-dismissed="true"]` «ФИО (уволен)» | T-6106, T-6109, T-6141 |
 | Пометка «в архиве» | `[data-lists-archived]` с текстом «в архиве» — у карточки, значения-ссылки, строки «Ссылаются», строки раздела заявки; у значения-ссылки на запись в архиве ссылка `a` есть (К-15) | T-6110, T-6113, T-6114 |
 | «Запись недоступного списка» | `[data-lists-unavailable]` без ссылки и названия | T-6113, T-6117 |
+| Диалог подтверждения | один `dialog[data-lists-confirm]` на страницу (текст и действие подставляет `lists.js`), открывается `showModal()` — у открытого атрибут `open`; приёмка ищет `dialog[data-lists-confirm][open]`; диалог есть у `list-delete`, `field-delete`, `record-archive`, `record-purge`, `bulk-archive`, у остальных действий среза подтверждения нет; встроенное окно браузера (`confirm()`) не используется (15.5 пп. 1–2) | T-6140…T-6153 |
 | Отказы | `[data-error="<поле>"][data-code="<код>"]`, `[role=alert][data-code="<код>"]` | все |
 | Пустые состояния | `[data-empty-state="lists"]` — пустая главная; `[data-empty-state="lists-grid"]` — пустая таблица | T-6103, T-6112 |
 | Сообщения не об отказах | `[data-lists-notice="<имя>"]`: `bulk-result` (итог группового «В архив»), `vectors-stale` («Поиск по списку обновляется», И2), `import-summary` | T-6112, T-6104 |
@@ -751,27 +752,27 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | `li[data-list-id="<id>"]` | строка главной: `a[data-field="name"]` (адрес `/lists/<id>/`), `[data-field="description"]`, `[data-field="count"]` — число записей не в архиве цифрами | T-6102 test_home_shows_only_readable_lists_with_description_and_count_without_archive_manager_sees_all |
 | `a[data-action="lists-create"]` | «Создать список» (`/lists/new/`), только управляющему | T-6103, T-6140 |
 | `nav[data-lists-tabs] a[data-tab="main"\|"fields"\|"access"]` | вкладки «Основное», «Поля», «Права»; у текущей `aria-current="page"` | T-6103 test_create_list_opens_settings_with_tabs_main_fields_access_and_system_title |
-| `[data-lists-fields-grid]` | сетка полей в блоке прокрутки `.lists-scroll`; строки `tr[data-field-code="<код>"]`, у системного «Названия» `tr[data-field-code="title"][data-system]` без кнопок; у поля — `[data-field="name"]`, `[data-field="type"]`, `[data-hidden="true"\|"false"]`, `[data-has-data="true"\|"false"]` | T-6103, T-6104 test_fields_tab_shows_hide_without_delete_and_type_for_field_with_data |
-| Кнопки поля по состоянию | `button[data-action="field-up"\|"field-down"\|"field-hide"\|"field-show"\|"field-delete"]`, `a[data-action="field-edit"]`; у поля с данными нет `field-delete`, в форме поля нет выбора `type`; у скрытого — `field-show` вместо `field-hide`; `field-delete` открывает диалог подтверждения `dialog[data-lists-confirm]` | T-6104, T-6153 |
+| `[data-lists-fields-grid]` | сетка полей в блоке прокрутки `.lists-scroll`; строки `tr[data-field-code="<код>"]`, у системного «Названия» `tr[data-field-code="title"][data-system]` без кнопок; у поля — `[data-field="name"]`, `[data-field="type"]`, `[data-hidden="true"\|"false"]` и `[data-has-data="true"\|"false"]` — на ячейке названия `[data-field="name"]` этой строки, на самом `tr` их нет (15.5 п. 7) | T-6103, T-6104 test_fields_tab_shows_hide_without_delete_and_type_for_field_with_data |
+| Кнопки поля по состоянию | `button[data-action="field-up"\|"field-down"\|"field-hide"\|"field-show"\|"field-delete"]`, `a[data-action="field-edit"]`; у поля с данными нет `field-delete`, в форме поля нет выбора `type`; у скрытого — `field-show` вместо `field-hide`; `field-delete` открывает диалог подтверждения `dialog[data-lists-confirm]`; `field-up`, `field-down`, `field-hide`, `field-show` — без подтверждения (15.5 п. 1) | T-6104, T-6153 |
 | `[data-lists-drag]` | ручка перетаскивания строки (скрипт `lists.js`, POST `…/fields/order/`) | T-6140 |
-| Форма поля | `form[data-lists-field-form]`; свойства — `[data-prop="required"\|"multiple"\|"unique"\|"show_in_table"\|"default"\|"currency"\|"target"\|"deadline"\|"thresholds"]`; недоступных типу свойств в разметке нет | T-6103 test_field_form_shows_only_properties_of_its_type_and_file_has_no_required |
+| Форма поля | `form[data-lists-field-form]`; свойства — `[data-prop="required"\|"multiple"\|"unique"\|"show_in_table"\|"default"\|"currency"\|"target"\|"deadline"\|"thresholds"]`; недоступных типу свойств в разметке нет; в форме поля с данными элементов `type`, `currency`, `target` нет — значения показаны текстом; у поля «дата» свойство `default` — `select[name="default_mode"]` (`""`, `today`, `date`) и `input[name="default"]` (ДД.ММ.ГГГГ, для `date`); у нового поля «дата» с включённым «сроком» (и при включении «срока» у поля без порогов) первые два входа `input[name="thresholds"]` приходят с `value="30"` и `value="7"`, третий пуст (15.5 пп. 8, 13) | T-6103 test_field_form_shows_only_properties_of_its_type_and_file_has_no_required |
 | Значения списка значений | `[data-lists-choices]`: `li[data-choice-id]`, архивные — `li[data-choice-id][data-archived]` с кнопкой `button[data-action="choice-restore"]`; у значения не в архиве — `input[name="title"]` (переименование; рядом скрытое `input[name="id"]`) и `button[data-action="choice-remove"]`; новое значение — `input[data-lists-choice-title]` и `button[data-action="choice-add"]` (добавляет строку с пустым `id`); сохранение — POST `…/choices/` (10.2) (Н7) | T-6104, T-6153 |
 | Права | `[data-lists-access="read"]`, `[data-lists-access="edit"]`: `li[data-subject="role:<id>"\|"unit:<id>"]` с `button[data-action="access-remove"]`; в каждом наборе — `input[data-lists-picker="units"]` (подсказка `/lists/units/`, нажатие на `li[data-pick-id]` добавляет подразделение), `select[data-lists-role-select]` (роли) с `button[data-action="access-add"]`; у каждой строки скрытое `input[name="readers"\|"editors"][value="role:<id>"\|"unit:<id>"]` (Н7) | T-6103, T-6152 |
-| Удаление списка | на вкладке «Основное» (`/lists/<id>/settings/`, К-15): `button[data-action="list-delete"]`; недоступна — атрибут `disabled` и пояснение `[data-lists-delete-reason]` с текстом отказа | T-6103 test_delete_list_with_records_or_only_archived_records_rejected_and_button_unavailable_with_reason |
+| Удаление списка | на вкладке «Основное» (`/lists/<id>/settings/`, К-15): `button[data-action="list-delete"]`; недоступна — атрибут `disabled` и пояснение `[data-lists-delete-reason]` с текстом отказа; удаление — после подтверждения `dialog[data-lists-confirm]` (15.5 п. 1) | T-6103 test_delete_list_with_records_or_only_archived_records_rejected_and_button_unavailable_with_reason |
 
 ### 11.3. Таблица записей
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
-| `#lists-grid.lists-grid[data-narrow="cards"]` | контейнер сетки (цель `HX-Target`); строки `tr[data-record-number="<n>"]`, название — `a[data-field="title"]` на `/lists/<id>/<n>/`; ячейки `td[data-col="<код>"]` | T-6112 test_grid_markup_has_narrow_cards_container_and_lists_grid_class, test_grid_row_title_links_to_record_card_address_of_that_record |
+| `#lists-grid.lists-grid[data-narrow="cards"]` | контейнер сетки (цель `HX-Target`); строки `tr[data-record-number="<n>"]`, название — `a[data-field="title"]` на `/lists/<id>/<n>/`; ячейки `td[data-col="<код>"]`, у «Названия» — `td[data-col="title"]` с `a[data-field="title"]` внутри (15.5 п. 8); обработчик нажатия на всю строку не требуется | T-6112 test_grid_markup_has_narrow_cards_container_and_lists_grid_class, test_grid_row_title_links_to_record_card_address_of_that_record |
 | `[data-lists-presets] a[data-preset="all"\|"expiring"\|"mine"\|"archive"]` | ссылки отборов; у текущего `aria-current="page"` | T-6112 |
 | `th[data-sort="<код>"] a` | заголовок со ссылкой сортировки; `[data-dir="asc"\|"desc"]` — на `th[data-sort]` текущего столбца (К-15) | T-6111 |
-| `[data-lists-found]` | «Найдено: N» | T-6111 test_found_count_equals_count_of_same_filtered_queryset_and_is_always_shown |
-| `[data-lists-filters]` | фильтры: `[data-lists-filter="<код>"]` | T-6112 test_hidden_field_is_absent_from_column_and_filter_choices |
-| `dialog[data-lists-columns]` | выбор столбцов: `input[name="columns"][data-lists-column-choice="<код>"]` | T-6112 |
-| `form[data-lists-search]` | строка поиска (`input[name="q"]`), подсказка `[data-lists-search-hint]` | T-6122, T-6151 |
+| `[data-lists-found]` | «Найдено: N»; стоит внутри `#lists-grid` и обновляется тем же фрагментом, что строки (решение Opus 2026-10-26) | T-6111 test_found_count_equals_count_of_same_filtered_queryset_and_is_always_shown |
+| `[data-lists-filters]` | фильтры: `[data-lists-filter="<код>"]` (у «Названия» — `[data-lists-filter="title"]`); блок внутри GET-формы `form[data-lists-search]`; элементы названы как параметры 10.3: строка, текст и «Название» — `input[name="f.<код>"]`; число и деньги — `input[name="f.<код>.from"]`, `input[name="f.<код>.to"]`; дата — те же имена через `PortalDateInput` (`input[data-datefield-input]`); дата и время — текст «ДД.ММ.ГГГГ ЧЧ:ММ»; да/нет — `select[name="f.<код>"]` (пусто, `yes`, `no`); файл — `select[name="f.<код>.files"]` (пусто, `yes`, `no`); `choice`, `person`, `unit`, `record` — `input[data-lists-picker="filter"]` с `hx-get` на `/lists/<id>/filter-values/<код>/?q=`, ответ `ul[data-lists-pick]` внутри того же `[data-lists-filter]`, выбранное — `[data-lists-selected="f.<код>"] li[data-selected-id]` со скрытым `input[name="f.<код>"][value="<id>"]` и `button[data-action="pick-remove"]`; сброс — `a[data-action="filters-reset"]` на `/lists/<id>/?preset=<текущий>` (15.5 п. 3) | T-6112 test_hidden_field_is_absent_from_column_and_filter_choices |
+| `button[data-action="columns"]`, `dialog[data-lists-columns]` | кнопка «Выбрать столбцы» `button[data-action="columns"]` — на странице таблицы у всех читающих, открывает диалог; сохранение — главная кнопка формы диалога (15.4 п. 1), без подтверждения (15.5 пп. 1, 6); выбор столбцов: `input[name="columns"][data-lists-column-choice="<код>"]` | T-6112 |
+| `form[data-lists-search]` | строка поиска (`input[name="q"]`), подсказка `[data-lists-search-hint]`; одна GET-форма страницы таблицы (action `/lists/<id>/`) со строкой поиска, блоком `[data-lists-filters]` и скрытыми `preset`, `sort`, `dir` (`page` в форме нет); главная кнопка «Применить» — единственная `button[type=submit]` без `data-action` (15.4 п. 1); поиск — Enter в `q` или та же кнопка; отправка поиска несёт фильтры, отправка фильтров — `q`; отправка — обычный GET или `hx-get` в `#lists-grid` с `hx-push-url="true"`, адрес страницы несёт действующие параметры (15.5 п. 3) | T-6122, T-6151 |
 | Флажки строк | `input[type="checkbox"][name="n"][value="<n>"][data-lists-row-check]` | T-6112, T-6142 |
-| Групповые действия | `button[data-action="bulk-archive"]` (правящим), `button[data-action="bulk-labels"]` (читающим; ведёт на `/lists/<id>/labels/?n=…`: флажки строк и кнопка — в одной форме, у кнопки `formmethod="get"`, `formaction="/lists/<id>/labels/"`, К-15) | T-6112 test_labels_action_is_offered_to_reader_and_leads_to_labels_page_with_checked_numbers |
+| Групповые действия | `button[data-action="bulk-archive"]` (правящим; открывает `dialog[data-lists-confirm]`, подтверждение отправляет форму флажков на `/lists/<id>/bulk-archive/`, 15.5 п. 1), `button[data-action="bulk-labels"]` (читающим; ведёт на `/lists/<id>/labels/?n=…`: флажки строк и кнопка — в одной форме, у кнопки `formmethod="get"`, `formaction="/lists/<id>/labels/"`, К-15) | T-6112 test_labels_action_is_offered_to_reader_and_leads_to_labels_page_with_checked_numbers |
 | Кнопки таблицы | `a[data-action="record-add"]`, `a[data-action="import"]` (правящим), `a[data-action="export"]` (читающим) | T-6112 test_empty_list_shows_no_records_text_and_add_and_import_buttons_to_editor |
 | Страницы | `a[data-action="next-page"]` с `page=N+1` | T-6111 |
 
@@ -779,17 +780,18 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
-| `form[data-lists-record-form]` | поля по `order`: контейнер `[data-lists-field="<код>"]` с элементом `[name="<код>"]` внутри (`input`, `select`, `textarea`), у обязательных `[data-required]` на контейнере; «Название» — `[data-lists-field="title"]`; скрытое `input[name="base_version"]`; `value` на GET: дата — «ДД.ММ.ГГГГ» (`PortalDateInput`; умолчание «сегодня» — дата по Москве), дата и время — «ДД.ММ.ГГГГ ЧЧ:ММ» по Москве, число и деньги — каноническое значение с запятой без разрядов и знака валюты («12,5», «1234,50») (решение Opus при проверке контракта 2026-10-25, Н8) | T-6106, T-6141 |
+| `form[data-lists-record-form]` | поля по `order`: контейнер `[data-lists-field="<код>"]` с элементом `[name="<код>"]` внутри (`input`, `select`, `textarea`), у обязательных `[data-required]` на контейнере; «Название» — `[data-lists-field="title"][data-required]` (15.5 п. 8); скрытое `input[name="base_version"]`; `value` на GET: дата — «ДД.ММ.ГГГГ» (`PortalDateInput`; умолчание «сегодня» — дата по Москве), дата и время — «ДД.ММ.ГГГГ ЧЧ:ММ» по Москве, число и деньги — каноническое значение с запятой без разрядов и знака валюты («12,5», «1234,50») (решение Opus при проверке контракта 2026-10-25, Н8) | T-6106, T-6141 |
 | Скрытое за время правки | у поля `[data-lists-field="<код>"][data-hidden-meanwhile]` только для чтения — значение текстом, без элемента с `name="<код>"` (ответ 15); `base_version` после отказа — текущая версия записи (ответ 16) и отказ `[data-error="<код>"][data-code="field_hidden_meanwhile"]` | T-6108a test_field_hidden_during_edit_with_nonempty_value_is_refused_with_hidden_mark_and_shown_read_only |
-| Подсказки выбора | `input[data-lists-picker="people"\|"units"\|"record"]` с `hx-get` и паузой 300 мс; ответ — `ul[data-lists-pick]`; нажатие на `li[data-pick-id]` добавляет выбранное | T-6113, T-6141 |
+| Подсказки выбора | `input[data-lists-picker="people"\|"units"\|"record"]` с `hx-get` и паузой 300 мс (`hx-trigger="input changed delay:300ms"` — у всех `input[data-lists-picker]`, в том числе `filter` и `ticket`; минимальной длины запроса нет, 15.5 п. 5); ответ — `ul[data-lists-pick]`; нажатие на `li[data-pick-id]` добавляет выбранное | T-6113, T-6141 |
 | Выбранные значения | `[data-lists-selected="<код поля>"] li[data-selected-id="<id>"]` со скрытым `input[name="<код>"][value="<id>"]` и `button[data-action="pick-remove"]` (снятие); повтор уже выбранного не добавляется; у поля `choice` — `input[type="checkbox"][name="<код>"][value="<id>"]` при «несколько», `select[name="<код>"]` без «несколько» (снятие — снять флажок или выбрать пустое) (Н7; решение контракта К15) | T-6141, T-6106 |
+| Отказ `unique_taken` | ссылка на запись-владельца `a[href="/lists/<id>/<n>/"]` — внутри самого элемента отказа `[data-error="<код>"][data-code="unique_taken"]` вместе с текстом 12.1 (15.5 п. 8) | T-6141 |
 
 ### 11.5. Карточка записи
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
 | `[data-lists-record]` | корень карточки; `[data-lists-value="<код>"]` — значение видимого поля (многострочное — с `<br>`) | T-6108b |
-| Кнопки | `a[data-action="record-edit"]`, `button[data-action="record-archive"]`, `button[data-action="record-restore"]`, `a[data-action="record-label"]`, `button[data-action="record-purge"]` (управляющему, только запись в архиве; подтверждение `dialog[data-lists-confirm]`); у записи в архиве `record-edit` нет (ответ 23) | T-6108b test_card_buttons_edit_archive_label_by_right_and_purge_only_for_manager_on_archived_record |
+| Кнопки | `a[data-action="record-edit"]`, `button[data-action="record-archive"]`, `button[data-action="record-restore"]`, `a[data-action="record-label"]`, `button[data-action="record-purge"]` (управляющему, только запись в архиве; подтверждение `dialog[data-lists-confirm]`); у записи в архиве `record-edit` нет (ответ 23); `record-archive` открывает `dialog[data-lists-confirm]`, POST `…/archive/` уходит только по подтверждению; `record-restore` — без подтверждения; `a[data-action="record-label"]` — без `target`, страница этикетки открывается в той же вкладке (15.5 пп. 1, 8) | T-6108b test_card_buttons_edit_archive_label_by_right_and_purge_only_for_manager_on_archived_record |
 | `[data-lists-referrers]` | «Ссылаются на эту запись»: `li[data-record-ref="<id списка>:<n>"]` | T-6113 |
 | `[data-lists-related-tickets]` | «Связанные заявки»: `li[data-ticket-number="<номер>"]` с текстом «#N Тема, состояние» | T-6114 |
 | `[data-lists-history]` | место фрагмента истории; карточка выводит в нём первую страницу (50 строк) тем же фрагментом, что `…/history/` (К-15) | T-6109 |
@@ -806,19 +808,20 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
 | `[data-lists-files="<код поля>"]` | блок файлов поля: `li[data-file-id="<id>"][data-scan="pending"\|"clean"\|"quarantine"]`; у «чистого» — `a[data-action="file-download"]`; у остальных — пометка «проверяется» или «в карантине» без ссылки; `<id>` в `data-file-id` — `RecordFile.pk` (ответ Opus О1) | T-6121, T-6149 |
-| Кнопки | `form[data-action="file-attach"]` (`input[name="file"]`, `input[name="field"]`), `button[data-action="file-delete"]` (правящим, запись не в архиве; у записи в архиве нет ни формы, ни кнопок, файлы видны, «чистые» скачиваются) | T-6121 |
+| Кнопки | `form[data-action="file-attach"]` (`input[name="file"]`, `input[name="field"]`), `button[data-action="file-delete"]` (правящим, запись не в архиве; у записи в архиве нет ни формы, ни кнопок, файлы видны, «чистые» скачиваются); `file-attach` и `file-delete` — без подтверждения; отказ `[data-error="file"]` — внутри блока `[data-lists-files="<код>"]` (15.5 пп. 1, 8) | T-6121 |
 
 ### 11.8. Карточка заявки и «Закреплённое»
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
-| Раздел заявки | оболочка сервис-деска `[data-card-part="lists-records"]`; внутри — `[data-lists-ticket-section]`, строки `li[data-ticket-link-id="<id>"]` с `a` на карточку записи и текстом «Название — Список», `button[data-action="ticket-unlink"]`; поле поиска `input[data-lists-picker="ticket"]` и кнопка `button[data-action="ticket-link"]` — в разделе, рядом с полем; `li[data-pick-id]` подбора — `Record.pk`; `q` из цифр (можно с `#`) ищет и номер записи целиком (К-15) | T-6114, T-6146 |
-| «Закреплённое» | `#lists-pinned[data-lists-pinned]` в `lists/_card_pinned.html`; строки `li[data-pinned-record]` «Название — Список — Поле»; ссылка только у списков, которые смотрящий читает | T-6113, T-6145 |
+| Раздел заявки | оболочка сервис-деска `[data-card-part="lists-records"]`; внутри — `[data-lists-ticket-section]`, строки `li[data-ticket-link-id="<id>"]` с `a` на карточку записи и текстом «Название — Список», `button[data-action="ticket-unlink"]`; поле поиска `input[data-lists-picker="ticket"]` и кнопка `button[data-action="ticket-link"]` — в разделе, рядом с полем; `li[data-pick-id]` подбора — `Record.pk`; `q` из цифр (можно с `#`) ищет и номер записи целиком (К-15); поле подбора видно сразу, без кнопки раскрытия; `ul[data-lists-pick]` — внутри `[data-lists-ticket-section]`, текст строки подбора «Название — Список»; нажатие на `li[data-pick-id]` только выбирает: скрытое `input[name="record"]` и `[data-lists-selected="record"] li[data-selected-id]`; POST `/lists/ticket-links/` делает кнопка `button[data-action="ticket-link"]` «Привязать запись», ответ заменяет раздел целиком; `ticket-unlink` — без подтверждения (15.5 п. 4) | T-6114, T-6146 |
+| «Закреплённое» | `#lists-pinned[data-lists-pinned]` в `lists/_card_pinned.html`; строки `li[data-pinned-record]` «Название — Список — Поле»; ссылка только у списков, которые смотрящий читает; раздел — на вкладке «Профиль» (`[data-tab-panel="profile"]`, открыта по умолчанию) в `/me/` и `/staff/<id>/` (план: `CardSection("lists-pinned", "profile", …)`) | T-6113, T-6145 |
 
 ### 11.9. Загрузка, этикетки, поиск
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
+| Образец | `a[data-action="sample"]` «Скачать образец» с `href="/lists/<id>/sample/"` — на странице загрузки `[data-lists-page="import"]`; на странице таблицы этой ссылки нет (15.5 п. 6) | T-6148 |
 | Сопоставление | `select[name="map.<N>"][data-lists-map-column="<N>"]`; поля «файл» среди вариантов нет | T-6118 test_mapping_file_field_not_offered_and_not_accepted |
 | Предпросмотр | `tr[data-import-row="<номер строки>"][data-result="will_create"\|"will_update"\|"error"]`, причина — `[data-field="reason"]`, номер записи — `[data-field="number"]`; счётчики `[data-import-count="will_create"\|"will_update"\|"error"]`; кнопка `button[data-action="import-confirm"]` | T-6118 |
 | Итог | `[data-lists-notice="import-summary"]` с `[data-import-summary="created"\|"updated"\|"errors"]` и временем завершения `time[data-at]` (по Москве) | T-6119, T-6125 |
@@ -925,7 +928,7 @@ T-6125 `test_lists_deploy.py::test_lists_texts_dictionary_contains_every_key_and
 |---|---|
 | Пункт меню, раздел | «Списки» (план) |
 | Главная, настройка | «Создать список» (план); вкладки «Основное», «Поля», «Права» (план); «Добавить поле»; «Показать», «Скрыть», «Удалить», «Изменить»; наборы «Читают», «Правят» (план) |
-| Таблица | отборы «Все», «Истекает», «Закреплено за мной», «Архив» (план); «Найдено: N»; «Добавить запись», «Загрузить из таблицы» (план); «Выгрузить в Excel» (решение 60 задач); «В архив», «Этикетки» (план); «Выбрать столбцы» |
+| Таблица | отборы «Все», «Истекает», «Закреплено за мной», «Архив» (план); «Найдено: N»; «Добавить запись», «Загрузить из таблицы» (план); «Выгрузить в Excel» (решение 60 задач); «В архив», «Этикетки» (план); «Выбрать столбцы»; главная кнопка формы фильтров «Применить» (15.5 п. 3) |
 | Карточка | «Изменить», «В архив», «Вернуть из архива», «Этикетка», «Удалить навсегда»; разделы «Файлы», «Связанные заявки», «Ссылаются на эту запись», «История» (план) |
 | Пометки | «(уволен)» (`person_name`); «в архиве»; «запись недоступного списка» (план); «узел №<id>» (без `org`); у файлов — «проверяется», «в карантине» |
 | Деньги | «1 234,50 ₽», «1 234,50 $», «1 234,50 €»: разряды — обычный пробел, запятая, знак валюты после пробела (план — «1 234,50 ₽») |
@@ -935,7 +938,7 @@ T-6125 `test_lists_deploy.py::test_lists_texts_dictionary_contains_every_key_and
 | Этикетка без уникального значения | «№ N» (план) |
 | История | `created` — «Создана»; `created` с `via_import` — «Создана загрузкой» (план); `changed` — «Изменена»; `imported` — «Изменено загрузкой» (план); `archived` — «Перенесена в архив»; `restored` — «Возвращена из архива»; `file_added` — «Добавлен файл <имя>» (план); `file_removed` — «Удалён файл <имя>» (план); «Показать ещё» (план) |
 | Карточка заявки | заголовок раздела «Записи списков» (T-6100); «Привязать запись», «Отвязать» (план) |
-| Загрузка | «Проверить» (план), «Загрузить»; счётчики «Будет создано: N», «Будет обновлено: N», «С ошибками: N»; итог «Создано: N, обновлено: M, с ошибками: K» (план — «создано N, обновлено M, с ошибками K») |
+| Загрузка | «Проверить» (план), «Загрузить»; «Скачать образец» (FR-535; 15.5 п. 6); счётчики «Будет создано: N», «Будет обновлено: N», «С ошибками: N»; итог «Создано: N, обновлено: M, с ошибками: K» (план — «создано N, обновлено M, с ошибками K») |
 | Файлы | «Прикрепить», «Скачать», «Удалить» (решение 60 задач) |
 | Образец | второй лист «Подсказки» (план); столбцы листа подсказок: «Поле», «Тип», «Обязательное», «Уникальное», «Значения», «Формат»; по строке на каждый заголовок первого листа в том же порядке («Название» и видимые поля кроме «файл»; у «Названия» — «Строка», «Да», «Нет»); «Тип» — подпись `Field.Type`; «Обязательное», «Уникальное» — «Да» / «Нет»; «Значения» — названия значений не в архиве через «; » (у прочих типов пусто); «Формат» — «ДД.ММ.ГГГГ» (дата), «ДД.ММ.ГГГГ ЧЧ:ММ» (дата и время), «1234,50» (деньги), у прочих типов пусто (план: поле, тип, обязательное, уникальное, допустимые значения, формат даты, даты и времени и денег; решение Opus при проверке контракта 2026-10-25, Н10) |
 
@@ -970,6 +973,8 @@ T-6125 `test_lists_deploy.py::test_lists_texts_dictionary_contains_every_key_and
 файла и ожидание «чистый», EICAR из частей, Mailpit, `fakebots`, сверка QR по `data-qr-url`, ширина 360 px) называет
 T-6140 в своём отчёте; прежние помощники — `helpers.py`, `helpers_sd.py`, `helpers_org.py`, `helpers_notify.py`,
 `helpers_kb.py`. Сброс стенда перед кругом — `helpers_sd.reset_stand_and_relogin()` (CONTRACT-003, 8.3).
+
+По ответам на вопросы приёмки 2026-10-26 (15.5 п. 12, решение Opus): `confirm_dialog(page)` ищет только открытый диалог `dialog[data-lists-confirm][open]`; `archive_record` после нажатия «В архив» подтверждает диалог; новый помощник `link_ticket(page, ticket_number, query, title)` — открывает заявку, вводит запрос в `input[data-lists-picker="ticket"]`, выбирает строку подбора, нажимает `button[data-action="ticket-link"]` и ждёт строку раздела.
 
 ## 14. Что меняется в прежних контрактах (для T-6138)
 
@@ -1136,3 +1141,88 @@ T-6140 в своём отчёте; прежние помощники — `helper
 7. Загрузка файла — своя форма внутри `[data-lists-files="<код>"]` у каждого поля «файл»: `input[type=file][name=file]`,
    скрытое `field`, отправка кнопкой `button[type=submit]` (без автоотправки; HTMX-ответ заменяет блок файлов поля).
 8. «Удалить список» — вкладка «Основное» `/lists/<id>/settings/` (как ответ серверным № 11).
+
+### 15.5. Ответы на вопросы приёмки (2026-10-26)
+Вопросы и допущения писателей приёмки T-6141…T-6153 сведены в `crm-work/slice006/stage2/e2e/answers-draft.md` (70 строк,
+разделы «Допущения, ведущие к падению на верной реализации» и «Что дописать в контракт»). Opus 2026-10-26 утвердил все
+строки «предложение» сводчика и подтвердил строки «следует из …» («Утверждение Opus» того же файла); групповое «В архив»
+(строка 5) и умолчание даты (п. 13 ниже) решил сам Opus. Всё ниже — решения Opus, не решения владельца; главнее строк
+разделов 10 и 11 при расхождении, как 15.4. Пункты внесены и в разделы, названные в скобках.
+
+1. **Подтверждения** (11.1, 11.2, 11.3, 11.5, 11.7, 11.8). `dialog[data-lists-confirm]` — у `list-delete`, `field-delete`,
+   `record-archive`, `record-purge` и `bulk-archive` (групповое «В архив»: кнопка открывает диалог, подтверждение
+   отправляет форму флажков на `/lists/<id>/bulk-archive/`; решение Opus). POST действия уходит только по
+   `button[type=submit][data-action="confirm"]` (15.4 п. 2). Без подтверждения: `record-restore`, `ticket-link`,
+   `ticket-unlink`, `file-attach`, `file-delete`, `field-hide`, `field-show`, `field-up`, `field-down`, `choice-remove`,
+   `choice-restore`, `access-remove`, `pick-remove`, сохранение столбцов. Встроенное окно браузера (`confirm()`) не
+   используется.
+2. **Один диалог на страницу** (11.1): общий для всех строк, текст и действие подставляет `lists.js`; открывается
+   `showModal()` — у открытого есть атрибут `open`; приёмка ищет `dialog[data-lists-confirm][open]`.
+3. **Фильтры таблицы** (11.3). `[data-lists-filters]` — внутри GET-формы `form[data-lists-search]` (action
+   `/lists/<id>/`); в `[data-lists-filter="<код>"]` (и `[data-lists-filter="title"]`) элементы с именами параметров 10.3:
+   строка, текст и «Название» — `input[name="f.<код>"]`; число и деньги — `input[name="f.<код>.from"]`,
+   `input[name="f.<код>.to"]`; дата — те же имена через `PortalDateInput` (`input[data-datefield-input]`); дата и время —
+   текст «ДД.ММ.ГГГГ ЧЧ:ММ»; да/нет — `select[name="f.<код>"]`, файл — `select[name="f.<код>.files"]` (пункты: пусто,
+   `yes`, `no`); ссылочные типы (`choice`, `person`, `unit`, `record`) — `input[data-lists-picker="filter"]` с `hx-get` на
+   `/lists/<id>/filter-values/<код>/?q=`, `ul[data-lists-pick]` внутри того же `[data-lists-filter]`, нажатие на
+   `li[data-pick-id]` добавляет `[data-lists-selected="f.<код>"] li[data-selected-id]` со скрытым
+   `input[name="f.<код>"][value="<id>"]` и `button[data-action="pick-remove"]`; скрытые `preset`, `sort`, `dir` (`page` в
+   форме нет); главная кнопка «Применить» — по 15.4 п. 1; сброс — `a[data-action="filters-reset"]` на
+   `/lists/<id>/?preset=<текущий>`. Отправка поиска сохраняет фильтры, отправка фильтров — запрос `q`. Поиск — Enter в
+   `q` или та же главная кнопка (второй кнопки отправки без `data-action` в форме нет). Отправка — обычный GET или
+   `hx-get` в `#lists-grid` с `hx-push-url="true"` (адрес страницы несёт действующие параметры).
+4. **Привязка к заявке** (11.8, 10.2). Поле `input[data-lists-picker="ticket"]` видно в разделе сразу, без кнопки
+   раскрытия; `ul[data-lists-pick]` — внутри `[data-lists-ticket-section]`; нажатие на `li[data-pick-id]` только выбирает
+   (скрытое `input[name="record"]`, `[data-lists-selected="record"] li[data-selected-id]`); POST `/lists/ticket-links/`
+   делает `button[data-action="ticket-link"]` «Привязать запись», ответ заменяет раздел целиком. Текст строки подбора —
+   «Название — Список». «Отвязать» — без подтверждения.
+5. **Триггер подсказок** (11.4, 10.2). У всех `input[data-lists-picker]` (люди, узлы, запись, заявка, фильтр) —
+   `hx-trigger="input changed delay:300ms"`: срабатывает и от `fill`, и от ввода по знаку; минимальной длины запроса у
+   `/pick/`, `/lists/people/`, `/lists/units/`, `/lists/ticket-pick/`, `filter-values` нет (предел «два знака» — только у
+   поиска внутри списка, раздел 9).
+6. **Зацепки кнопок** (11.3, 11.9, 12.4). `button[data-action="columns"]` «Выбрать столбцы» — на странице таблицы у всех
+   читающих, открывает `dialog[data-lists-columns]`, сохранение — главная кнопка формы диалога (15.4 п. 1);
+   `a[data-action="sample"]` «Скачать образец» (`href="/lists/<id>/sample/"`) — на `[data-lists-page="import"]`, на
+   странице таблицы её нет; надпись «Скачать образец» — в 12.4 («Загрузка»).
+7. **Сетка полей** (11.2). `data-hidden` и `data-has-data` — на ячейке `[data-field="name"]` строки
+   `tr[data-field-code="<код>"]` (по одному элементу на атрибут в строке), не на самом `tr`. `field-hide` — без
+   подтверждения.
+8. **Мелкие уточнения разметки** (11.2–11.5, 11.7). `[data-lists-field="title"][data-required]`; ссылка на владельца при
+   `unique_taken` — внутри элемента отказа `[data-error="<код>"][data-code="unique_taken"]`; `[data-error="file"]` —
+   внутри `[data-lists-files="<код>"]`; у «Названия» в таблице `td[data-col="title"]` с `a[data-field="title"]` внутри
+   («нажатие на строку» в приёмке — нажатие на эту ссылку); в форме поля с данными нет элементов `type`, `currency`,
+   `target` (значения текстом); `a[data-action="record-label"]` без `target`; пороги нового поля-срока — `value` «30» и «7»
+   в первых двух входах `input[name="thresholds"]`, третий пуст.
+9. **Выгрузка** (10.2). Столбца «№» нет: столбцы — столбцы таблицы сотрудника (`UserView`: «Название» и выбранные поля без
+   скрытых), заголовки — названия полей; значение поля «запись» — «Название» (план), в отличие от экрана и истории
+   («Название — №N»).
+10. **Отказ правки записи в архиве** (10.2) — раньше проверки версии: прямой POST со старой `base_version` даёт «Запись в
+    архиве».
+11. **Сравнение 404 в приёмке** (10.1, К-10) — статус и текст области содержимого `main#content` (факт:
+    `templates/base.html`) без всплывающих сообщений `.alert` (факт: `templates/_flashes.html`, выводятся внутри
+    `main#content`), после нейтральной страницы, открытой любому вошедшему (например, `/me/` — пример исполнителя внесения: у не
+    читающего `/lists/` сам отвечает 404), которая забирает ожидающие сообщения; несуществующий номер записи — не меньше `next_number` (иначе 404 «Запись удалена», 10.1).
+12. **Помощники приёмки** (13.3). `helpers_lists.link_ticket(page, ticket_number, query, title)` — ввод запроса, выбор
+    строки подбора, `ticket-link`, ожидание строки раздела; `helpers_lists.archive_record` подтверждает диалог;
+    `helpers_lists.confirm_dialog` ищет `dialog[data-lists-confirm][open]`.
+13. **Умолчание даты в форме поля** (10.2, 11.2; решение Opus). У поля «дата» в форме поля — `select[name="default_mode"]`
+    со значениями `""` (нет), `today`, `date` и `input[name="default"]` (ДД.ММ.ГГГГ) для `date`; хранение — по 2.2
+    (`{"today": true}` или ISO-дата).
+
+Остальные строки таблицы `answers-draft.md` новых имён не вводят и действуют как утверждённые ответы Opus, например:
+«Закреплённое» на `/me/` и `/staff/<id>/` — на вкладке «Профиль» `[data-tab-panel="profile"]`, строка «Название — Список —
+Поле» (строки 10–12); `<id>` в `/lists/<id>/pick/` — целевой список (17); поле «дата» — текстовый `PortalDateInput`,
+«31/12/2026» — `bad_date` (21, 22); `li[data-pick-id]` подсказки людей — `User.pk` (26); последний ключ сортировки —
+`number` по возрастанию в обоих направлениях (28); строка изменения истории называет поле, у `file_added` и
+`file_removed` тоже есть `[data-change-field]` (32); `imported` пишется только при изменении (33); пометка
+`[data-lists-archived]` — внутри `[data-lists-value="<код>"]` и `li[data-ticket-link-id]` (37); `/notifications/<id>/open/`
+отвечает 302 с `Location` (43); четыре непустых порога — отказ `thresholds_bad` (42); лист этикеток на 360 px не
+проверяется, страницы этикеток — в макете портала (56, 57); в сквозном поиске `[data-field="title"]` — ровно название
+записи, `[data-field="subtitle"]` — ровно название списка (60); `choice-remove` убирает строку в форме до общего
+сохранения (65).
+14. **Счётчик «Найдено»** (решение Opus 2026-10-26): `[data-lists-found]` — внутри `#lists-grid`; ответ фильтра или
+    страницы через HTMX заменяет его вместе со строками, приёмка может проверять счётчик без перезагрузки.
+15. **Сервер и `default_mode`** (решение Opus 2026-10-26): если прислан `default_mode`, умолчание даты берётся по нему
+    (`today` → `{"today": true}`; `date` → разбор `default`; пусто — без умолчания); если `default_mode` не прислан,
+    `default="today"` значит «сегодня», иное значение `default` — дата по правилам 2.2. Серверный тест
+    `test_default_value_only_for_six_types_and_date_today_stored_as_today_true` верен без правки.
