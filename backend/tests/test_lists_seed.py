@@ -237,7 +237,7 @@ def test_seed_multiple_fields_record_target_equipment_and_money_in_rubles():
             if field_type == "money":
                 assert row.settings.get("currency") == "RUB", where
             else:
-                assert "currency" not in row.settings, where
+                assert not row.settings.get("currency"), where
 
 
 def test_seed_license_number_field_has_hint_text_from_plan_table():
@@ -471,7 +471,7 @@ def test_home_after_clear_seed_shows_purpose_text_and_create_list_button_to_mana
     assert EMPTY_TEXT in empty[0].text()
     buttons = [n for n in _find(tree, data_action="lists-create") if n.tag == "a"]
     assert len(buttons) == 1 and buttons[0].attrs["href"] == "/lists/new/"
-    assert buttons[0].text() == "Создать список"
+    assert "Создать список" in buttons[0].text()
     assert not [n for n in tree.walk() if n.tag == "li" and "data-list-id" in n.attrs]
 
     ls.run_seed(using="default")

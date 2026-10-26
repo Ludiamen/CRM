@@ -7,7 +7,12 @@
 - заявки заводятся письмом в ящик заявок (стандартная библиотека и `helpers_sd.deliver`), как в срезе 005; слово темы —
   латинские буквы без цифр (поиск не принимает его за номер);
 - каждый тест заводит свои списки с уникальными названиями, записи и заявки; шесть стартовых списков не трогает;
-- общая настройка «очередь по умолчанию» меняется только в тесте п. 4 и возвращается в `finally`;
+- общая настройка «очередь по умолчанию» меняется только в тесте п. 4 и возвращается в `finally`; заведённая там же
+  очередь `other_queue` остаётся отмеченной (снять отметку нельзя: в ней открытая заявка, отказ `queue_has_open_tickets`,
+  CONTRACT-003) — допущение: на файлы круга после l07 это не влияет, при повторном круге на том же стенде в дереве
+  очередей прибавляется узел;
+- привязка к заявке по слову — общий помощник `helpers_lists.link_ticket` (CONTRACT-006 13.3, 15.5 п. 12); свой подбор
+  (`_search`, `_link`) — там, где тест смотрит строки подбора до привязки;
 - подготовка вне интерфейса — только команды стенда: `e2e_poll_mailbox` (через `deliver`), `e2e_backdate`,
   `e2e_run_job anonymize_tickets`; `stand_shell` в файле нет;
 - раздел заявки — `[data-card-part="lists-records"] [data-lists-ticket-section]`; подбор — `input[data-lists-picker="ticket"]`,
@@ -133,13 +138,6 @@ def _link(page, title: str) -> None:
     expect(_row(page, title)).to_have_count(1)
 
 
-def _link_from_ticket(page, number: int, word: str, title: str) -> None:
-    """Открывает заявку, ищет по слову и привязывает запись `title`."""
-    _open(page, number)
-    _search(page, word)
-    _link(page, title)
-
-
 def _close_ticket(page, number: int, resolution: str) -> None:
     """Закрытие заявки диалогом `ticket-close` с текстом решения; ждёт вид «закрыта»."""
     _open(page, number)
@@ -227,7 +225,7 @@ def test_l07_linked_row_shows_title_and_list_opens_record_card_and_unlink_remove
     number = _record(admin_page, list_id, title)
     ticket, _ = _new_ticket(admin_page)
     page = reader.page
-    _link_from_ticket(page, ticket, word, title)
+    helpers_lists.link_ticket(page, ticket, word, title)
     # п. 3: «Название — Список»
     assert f"{title} — {list_name}" in _norm(_row(page, title).inner_text())
     # нажатие открывает карточку записи
@@ -271,7 +269,7 @@ def test_l07_record_card_related_tickets_show_number_subject_state_only_for_tick
     assert helpers_lists.status_of(viewer.page, f"/tickets/{hidden}/") == 404
     # управляющий привязывает обе заявки к записи
     for ticket in (visible, hidden):
-        _link_from_ticket(admin_page, ticket, word, title)
+        helpers_lists.link_ticket(admin_page, ticket, word, title)
     # контроль: управляющему в карточке записи видны обе
     helpers_lists.open_record(admin_page, list_id, number)
     related = admin_page.locator("[data-lists-related-tickets]")
@@ -299,7 +297,7 @@ def test_l07_link_keeps_number_and_subject_after_ticket_anonymized_by_term(admin
     title = f"Принтер {word} приёмная"
     number = _record(admin_page, list_id, title)
     ticket, subject = _new_ticket(admin_page)
-    _link_from_ticket(reader.page, ticket, word, title)
+    helpers_lists.link_ticket(reader.page, ticket, word, title)
     _close_ticket(admin_page, ticket, f"Решено {unique_word('res')}")
     admin_page.goto("/servicedesk/")
     form = admin_page.locator('form[data-form="servicedesk-settings"]')
@@ -335,7 +333,7 @@ def test_l07_archived_record_not_offered_in_link_search_and_already_linked_shown
     ticket, _ = _new_ticket(admin_page)
     page = reader.page
     # дано: запись привязана до архива (запись в архиве не привязывается), затем обе записи — в архиве
-    _link_from_ticket(page, ticket, word, linked_title)
+    helpers_lists.link_ticket(page, ticket, word, linked_title)
     helpers_lists.archive_record(admin_page, list_id, linked_no)
     helpers_lists.archive_record(admin_page, list_id, archived_no)
     # п. 6: уже привязанная показана с пометкой «в архиве»
@@ -358,7 +356,7 @@ def test_l07_purged_record_link_disappears_from_ticket_card(admin_page, employee
     title = f"Принтер {word} списанный"
     number = _record(admin_page, list_id, title)
     ticket, _ = _new_ticket(admin_page)
-    _link_from_ticket(admin_page, ticket, word, title)
+    helpers_lists.link_ticket(admin_page, ticket, word, title)
     # дано: запись в архиве и удалена навсегда управляющим
     helpers_lists.archive_record(admin_page, list_id, number)
     _open(admin_page, ticket)
@@ -388,9 +386,7 @@ def test_l07_non_reader_of_list_does_not_see_linked_record_of_that_list_on_ticke
     _record(admin_page, closed_id, title_closed)
     ticket, _ = _new_ticket(admin_page)
     for title in (title_read, title_closed):
-        _open(admin_page, ticket)
-        _search(admin_page, word)
-        _link(admin_page, title)
+        helpers_lists.link_ticket(admin_page, ticket, word, title)
     # контроль: управляющему видны обе записи
     _open(admin_page, ticket)
     expect(_rows(admin_page)).to_have_count(2)

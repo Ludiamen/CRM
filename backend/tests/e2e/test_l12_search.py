@@ -145,7 +145,7 @@ def _toggle_field(page, list_id, code: str, action: str, hidden: bool) -> None:
 
 def test_l12_dell_in_top_search_shows_lists_group_row_title_dash_list_opening_card(admin_page, employee):
     """Сценарий 12, п. 1: запись «Ноутбук <слово>» в списке «Оборудование …», который читает сотрудник; слово в
-    верхней строке поиска — в выдаче группа «Списки» (после прочих групп), строка «Ноутбук <слово> — Оборудование …»,
+    верхней строке поиска — в выдаче группа «Списки», строка «Ноутбук <слово> — Оборудование …»,
     нажатие открывает карточку записи (FR-540)."""
     list_id, name = _make_list(admin_page)
     word = unique_word("dell")
@@ -163,6 +163,8 @@ def test_l12_dell_in_top_search_shows_lists_group_row_title_dash_list_opening_ca
     expect(row.locator('[data-field="title"]')).to_have_text(title)
     expect(row.locator('[data-field="subtitle"]')).to_have_text(name)
     groups = _groups(page.locator("[data-search-page]"))
+    # у читающего без прав на другое по уникальному слову других групп нет: порядок групп (50 — после «Подразделений»)
+    # здесь не доказывается, его проверяет серверный T-6122 (R-1-E3, находка 6)
     assert groups[-1] == "lists", f"группа «Списки» не последняя: {groups}"
     # п. 1: тот же запрос в строке поиска шапки — всплывающая выдача; нажатие на строку открывает карточку
     page.goto("/")

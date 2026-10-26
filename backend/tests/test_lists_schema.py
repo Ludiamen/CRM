@@ -437,8 +437,11 @@ def test_field_code_f_next_field_no_not_reused_after_delete_and_reserved_or_inva
     assert list(Field.objects.filter(list=lst).order_by("order").values_list("code", flat=True)) == ["f1", "f3"]
 
     def check(code: str) -> None:
+        # Проверяется только поле `code` (К-13): прочие поля (`settings` с `{}`, `hint` и т. п.) исключены, чтобы
+        # «пусто» у них не давало ошибку на верной реализации.
+        others = [f.name for f in Field._meta.concrete_fields if f.name != "code"]
         Field(list=lst, code=code, name="Проба", type="string", order=1).full_clean(
-            exclude=["list"], validate_unique=False, validate_constraints=False)
+            exclude=others, validate_unique=False, validate_constraints=False)
 
     for bad in ("title", "number", "new", "order", "Title", "9x", "a-b", "a b", "", "a" * 41, "_x"):
         with pytest.raises(ValidationError) as caught:
@@ -755,7 +758,8 @@ def test_new_field_required_in_list_with_records_rejected_fill_all_records_first
 # --- срок ---------------------------------------------------------------------------------------------------
 
 def test_deadline_form_offers_30_and_7_saves_thresholds_and_allows_several_deadline_fields():
-    """FR-529: форма поля «дата» предлагает пороги 30 и 7 (`[data-prop="thresholds"]`, `input[name=thresholds]`);
+    """FR-529: форма нового поля «дата» предлагает пороги только 30 и 7 (`input[name=thresholds]`, подстановка при
+    первом включении «срока» — решение Opus S1-Q5);
     «срок» с порогами сохраняется (`settings["deadline"]` истинно, `settings["thresholds"]` — заданные числа, порядок
     не проверяется); сроком можно пометить несколько полей-дат одного списка; пороги 1 и 365 принимаются; в журнал
     `lists.field_created` пороги попадают ключом `thresholds`."""
@@ -763,13 +767,15 @@ def test_deadline_form_offers_30_and_7_saves_thresholds_and_allows_several_deadl
 
     manager = ls.as_manager()
     lst = ls.make_list()
-    plain = ls.add_field(lst, "date", "Обычная дата")
-    page = manager.client.get(fields_url(lst, f"{plain.code}/"))
+    # Решение Opus (S1-Q5, 11.2): «30 и 7» подставляются только при первом включении «срока» в форме, сохранённое
+    # поле показывает свои пороги; на повторный показ формы тест не опирается. Сервер отдаёт форму нового поля
+    # `?type=date` (10.2) со свойством «срок»; входы порогов, если уже выведены, заполнены только значениями 30 и 7
+    # (первые два, третий пуст). Само включение «срока» и подстановку проверяет приёмка.
+    page = manager.client.get(fields_url(lst, "new/?type=date"))
     assert page.status_code == 200
-    block = find(page, data_prop="thresholds")
-    assert len(block) == 1
-    offered = {el.attrs.get("value") for el in find(page, "input", name="thresholds") if _inside(el, block[0])}
-    assert {"30", "7"} <= offered - {"", None}
+    assert len(find(page, data_prop="deadline")) == 1
+    offered = [el.attrs.get("value") for el in find(page, "input", name="thresholds") if el.attrs.get("value")]
+    assert offered in ([], ["30", "7"]), offered
 
     assert post_field(manager.client, lst, name="Окончание", type="date", deadline="on",
                       thresholds=["30", "7"]).status_code == 302

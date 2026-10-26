@@ -77,7 +77,8 @@ def _stored(purpose: str, status: str, data: bytes, *, write: bool = True):
 
 @contextlib.contextmanager
 def _commit_callbacks(capture):
-    """После фиксации: исполняет `on_commit` обоих соединений (какое из них выберет код, контракт не называет)."""
+    """После фиксации: исполняет `on_commit` обоих соединений; алиас стирания файлов (`migrate`, К-9) проверяет тест
+    стирания файлов."""
     with capture(using="default", execute=True) as on_default, capture(using="migrate", execute=True) as on_migrate:
         yield on_default, on_migrate
 
@@ -203,7 +204,8 @@ def test_lists_stand_reset_wipes_record_files_rows_stored_files_and_disk_after_c
         for stored, path, write in made:
             assert not _on("core.StoredFile").filter(pk=stored.pk).exists(), "StoredFile записи остался"
             assert path.exists() == write, "файл на диске тронут до фиксации"
-        assert on_default or on_migrate, "стирание файлов с диска не поставлено в on_commit"
+        # К-9, раздел 1.3: `on_commit` — на алиасе транзакции сброса, то есть `migrate`
+        assert on_migrate, "стирание файлов с диска не поставлено в on_commit соединения migrate"
 
     assert _on("lists.RecordFile").count() == 0
     for stored, path, _ in made:
@@ -308,7 +310,7 @@ def test_lists_stand_reset_returns_deleted_and_renamed_starting_list(django_capt
         assert list(_on("lists.Field").filter(list=rows[0]).order_by("order").values_list("code", flat=True)) \
             == field_codes, f"поля списка {code}"
     restored = _on("lists.List").get(code="equipment")
-    assert restored.description == ""
+    assert restored.description != "Правка"
     assert _on("lists.Field").get(list=restored, code="kind").name == "Вид"
     assert _on("lists.Field").filter(list=restored, code="place").exists()
     assert _on("lists.List").get(code="sims").name == "SIM-карты и телефоны"

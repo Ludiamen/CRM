@@ -392,9 +392,9 @@ def test_unit_nonexistent_node_rejected():
 
 def test_record_value_archived_unreadable_list_or_other_target_list_rejected_but_old_value_kept():
     """FR-507, FR-515: запись — в архиве, нечитаемого списка и не из целевого списка — `value_unavailable`; старая остаётся."""
-    target = sl.make_list("Оборудование")
-    other = sl.make_list("Договоры")
-    holder = sl.make_list("Лицензии")
+    target = sl.make_list("Оборудование для ссылок")
+    other = sl.make_list("Договоры для проверки")
+    holder = sl.make_list("Лицензии для ссылок")
     field = sl.add_field(holder, "record", "Устройство", target=target, multiple=True)
     live = sl.make_record(target, "Ноутбук")
     archived = sl.make_record(target, "Старый ноутбук", archived=True)
@@ -448,6 +448,9 @@ def test_multi_value_types_store_array_and_without_multiple_hold_at_most_one_id(
         one = ids_of(type_, single)[0]
         _accepts(single, [str(one)], [one], viewer=reader)
         assert isinstance(_parse(single, [str(one)], viewer=reader).value, list), type_
+        # Без «несколько» два действующих id — отказ `value_unavailable`, без обрезки (5.4, `values.parse`).
+        a, b = ids_of(type_, single)[:2]
+        _rejects(single, [str(a), str(b)], "value_unavailable", UNAVAILABLE, viewer=reader)
         many = make(type_, True)
         first, second, third = ids_of(type_, many)
         _accepts(many, [str(second), str(first), str(third)], [second, first, third], viewer=reader)
@@ -649,8 +652,8 @@ def test_display_dismissed_person_with_dismissed_mark_and_archived_choice_by_tit
 
 def test_display_record_of_unreadable_list_as_unavailable_and_archived_record_with_archived_mark():
     """FR-507: запись — «Название — №N», в архиве — с « (в архиве)», нечитаемого списка — «запись недоступного списка» без названия."""
-    target = sl.make_list("Оборудование")
-    holder = sl.make_list("Лицензии")
+    target = sl.make_list("Оборудование для ссылок")
+    holder = sl.make_list("Лицензии для ссылок")
     field = sl.add_field(holder, "record", "Устройство", target=target, multiple=True)
     live = sl.make_record(target, "Ноутбук Альфа")
     archived = sl.make_record(target, "Ноутбук Бета", archived=True)

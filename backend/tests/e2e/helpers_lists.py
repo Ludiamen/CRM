@@ -15,7 +15,8 @@
 - файлы записи на ClamAV стенда: `files_block`, `record_file_row`, `scan_snapshot`, `try_attach_file`, `attach_file`,
   `wait_file_clean`, `eicar_bytes`;
 - команда стенда `e2e_lists_shift` (13.1): `shift`, `parse_shift_line`;
-- отказы и ответы: `refusal_codes`, `lift_limits`, `status_of`, `post_status`, `audit_rows`;
+- отказы и ответы: `refusal_codes`, `lift_limits`, `status_of`, `post_status`, `audit_rows`, `content_text`,
+  `same_404` (ответ «как у несуществующего», 15.5 п. 11);
 - письма Mailpit и Telegram через `fakebots`: `mail_ids`, `item_mail`, `no_item_mail`, `bots`, `bind_telegram`,
   `wait_telegram`;
 - QR по решению 10: `qr_svg_variants`, `qr_image_bytes`, `qr_matches`;
@@ -227,6 +228,28 @@ def status_of(page, path: str) -> int:
 def post_status(page, path: str, data: dict | None = None) -> int:
     """Код ответа прямого POST от имени страницы с CSRF без перехода по редиректам (`helpers_org.direct_post`)."""
     return helpers_org.direct_post(page, path, data).status
+
+
+_CONTENT_TEXT_JS = ("el => { const c = el.cloneNode(true); c.querySelectorAll('.alert').forEach(a => a.remove());"
+                    " return c.textContent.replace(/\\s+/g, ' ').trim(); }")
+
+
+def content_text(page, path: str):
+    """Открывает нейтральную страницу `/me/` (забирает ожидающие всплывающие сообщения), затем `path`; возвращает
+    ответ и текст области содержимого `main#content` без `.alert` (CONTRACT-006, 15.5 п. 11)."""
+    page.goto("/me/")
+    response = page.goto(path)
+    return response, page.locator("main#content").evaluate(_CONTENT_TEXT_JS)
+
+
+def same_404(page, real: str, missing: str) -> None:
+    """Адрес `real` отвечает так же, как несуществующий `missing`: оба 404 и одинаковый текст области содержимого без
+    всплывающих сообщений; один клиент (К-10; 15.5 п. 11 — меню и счётчики оболочки не сравниваются)."""
+    got, real_text = content_text(page, real)
+    other, other_text = content_text(page, missing)
+    assert got is not None and got.status == 404, f"{real}: ответ {got and got.status}, нужен 404"
+    assert other is not None and other.status == 404, f"{missing}: ответ {other and other.status}, нужен 404"
+    assert other_text == real_text, f"{real} отвечает не так, как несуществующий {missing}"
 
 
 def audit_rows(admin_page, action: str, object_id=None) -> list:
@@ -568,13 +591,16 @@ def fill_record(page, values: dict) -> None:
             control.fill(str(value))
 
 
-def choose(page, code, title: str) -> None:
-    """Поле «список значений»: `select[name="<код>"]` — пункт с подписью `title`; флажки (при «несколько») —
-    флажок с подписью `title` (связь `<label>`)."""
+def choose(page, code, title: str, choice_id=None) -> None:
+    """Поле «список значений»: `select[name="<код>"]` — пункт с подписью `title`; флажки (при «несколько») — по
+    номеру значения `choice_id` флажок `input[type="checkbox"][name="<код>"][value="<id>"]` (11.4; номера возвращает
+    `set_choices`), без номера — флажок с подписью `title` (связь `<label>` контрактом не задана: лучше давать номер)."""
     box = _field_box(page, code)
     select = box.locator(f'select[name="{code}"]')
     if select.count():
         select.select_option(label=title)
+    elif choice_id is not None:
+        box.locator(f'input[type="checkbox"][name="{code}"][value="{choice_id}"]').check()
     else:
         box.get_by_label(title, exact=True).check()
 

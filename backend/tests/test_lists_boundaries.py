@@ -325,14 +325,15 @@ def test_menu_without_lists_has_no_lists_item():
     from apps.core.services import permissions
 
     manager = support_lists.as_manager()
-    item = [m for m in permissions.menu_for(manager.user) if m["title"] == "Списки"]
+    full = permissions.menu_for(manager.user)
+    item = [m for m in full if m["title"] == "Списки"]
     assert item and item[0]["url"] == "/lists/" and item[0]["order"] == 8, "при включённом модуле нет пункта «Списки»"
     assert 'href="/lists/"' in manager.client.get("/").content.decode()
     with support_lists.without_lists():
         menu = permissions.menu_for(manager.user)
         html = manager.client.get("/").content.decode()
     assert [m for m in menu if m["title"] == "Списки" or m["url"].startswith("/lists/")] == []
-    assert any(m["url"] == "/staff/" for m in menu), "пропали прежние пункты меню"
+    assert menu and [m for m in full if m["url"] != "/lists/"] == menu, "прежние пункты меню изменились"
     assert 'href="/lists/"' not in html
 
 

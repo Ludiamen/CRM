@@ -13,6 +13,7 @@
 """
 import re
 from datetime import datetime, timedelta
+from urllib.parse import parse_qs, urlsplit
 from zoneinfo import ZoneInfo
 
 from playwright.sync_api import expect
@@ -94,8 +95,8 @@ def test_l02_add_record_form_shows_fields_in_settings_order_with_required_marks_
     page = editor.page
     # п. 1: со страницы таблицы кнопка «Добавить запись» ведёт на форму
     page.goto(f"/lists/{list_id}/")
-    add = page.locator('a[data-action="record-add"]')
-    expect(add).to_have_count(1)
+    add = page.locator('[data-lists-page="grid"] a[data-action="record-add"]').first
+    expect(add).to_be_visible()
     expect(add).to_contain_text("Добавить запись")
     add.click()
     page.wait_for_url(re.compile(rf"/lists/{list_id}/add/$"))
@@ -249,10 +250,14 @@ def test_l02_saved_record_card_opens_at_number_url_that_stays_after_rename(admin
     fill_record(page, {"title": new_title})
     assert submit_record(page) == number
     assert re.search(rf"/lists/{list_id}/{number}/$", page.url)
-    # п. 5: старый адрес показывает ту же запись под новым названием; следующая запись получает следующий номер
+    # п. 5: старый адрес показывает ту же запись под новым названием
     page.goto(f"/lists/{list_id}/{number}/")
     expect(page.locator("[data-lists-record]")).to_contain_text(new_title)
-    expect(page.locator("[data-lists-record]")).not_to_contain_text(first_title)
+    # п. 5: прежнего названия нет в таблице (в карточке оно остаётся в истории — строка «было → стало», 11.6)
+    page.goto(f"/lists/{list_id}/")
+    expect(page.locator(f'#lists-grid tr[data-record-number="{number}"] a[data-field="title"]')).to_have_text(new_title)
+    expect(page.locator("#lists-grid")).not_to_contain_text(first_title)
+    # п. 5: следующая запись получает следующий номер
     assert create_record(page, list_id, f"Монитор {unique_word()}") == number + 1
 
 
@@ -378,7 +383,7 @@ def test_l02_reader_sees_no_add_or_edit_buttons_and_direct_add_and_edit_are_deni
     number = create_record(editor.page, list_id, "Ноутбук", {codes["model"]: "Исходная"})
     # контроль: у правящего кнопки есть
     editor.page.goto(f"/lists/{list_id}/")
-    expect(editor.page.locator('a[data-action="record-add"]')).to_have_count(1)
+    expect(editor.page.locator('[data-lists-page="grid"] a[data-action="record-add"]').first).to_be_visible()
     open_record(editor.page, list_id, number)
     expect(editor.page.locator('a[data-action="record-edit"]')).to_have_count(1)
     # п. 9: у читающего таблица и карточка есть, кнопок нет
@@ -447,7 +452,9 @@ def test_l02_choosing_and_removing_several_employees_and_choice_values_saves_set
     specs = [("tags", "Метки", "choice", {"multiple": True}), ("team", "Ответственные", "person", {"multiple": True})]
     list_id, codes = _make_list(admin_page, specs)
     tags, team = codes["tags"], codes["team"]
-    set_choices(admin_page, list_id, tags, ["Синий", "Красный", "Зелёный"])
+    tag_ids = dict(zip(("Синий", "Красный", "Зелёный"),
+                       set_choices(admin_page, list_id, tags, ["Синий", "Красный", "Зелёный"])))
+    assert len(tag_ids) == 3, f"значения списка не добавлены: {tag_ids}"
     word = unique_word("pk")
     first = employee(full_name=f"Первый {word}")
     second = employee(full_name=f"Второй {word}")
@@ -455,13 +462,14 @@ def test_l02_choosing_and_removing_several_employees_and_choice_values_saves_set
     selected = page.locator(f'[data-lists-selected="{team}"] li[data-selected-id]')
 
     def tag_box(title):
-        return record_form(page).locator(f'[data-lists-field="{tags}"]').get_by_label(title, exact=True)
+        return record_form(page).locator(
+            f'[data-lists-field="{tags}"] input[type="checkbox"][name="{tags}"][value="{tag_ids[title]}"]')
 
     open_add_record(page, list_id)
     fill_record(page, {"title": "Ноутбук"})
     # п. 11: выбраны три значения, одно снято
     for title in ("Синий", "Красный", "Зелёный"):
-        choose(page, tags, title)
+        choose(page, tags, title, choice_id=tag_ids[title])
     tag_box("Красный").uncheck()
     # п. 11: выбраны двое, второй снят и выбран снова, первый предложен повторно
     pick(page, team, word, pick_id=first.id)
@@ -471,10 +479,16 @@ def test_l02_choosing_and_removing_several_employees_and_choice_values_saves_set
     pick(page, team, word, pick_id=second.id)
     field = record_form(page).locator(f'[data-lists-field="{team}"] input[data-lists-picker]')
     field.fill("")
-    with page.expect_response(lambda r: "/lists/people/" in r.url):
+    # ответ именно на полный запрос (пустой `q` тоже уходит на сервер, 15.5 п. 5); решение — по телу ответа, а не по
+    # DOM до вставки фрагмента; если уже выбранный предложен, его нажатие не добавляет повтор (11.4)
+    def full_query(response):
+        return "/lists/people/" in response.url and parse_qs(urlsplit(response.url).query).get("q") == [word]
+
+    with page.expect_response(full_query) as answer:
         field.press_sequentially(word, delay=30)
     again = record_form(page).locator(f'[data-lists-field="{team}"] ul[data-lists-pick] li[data-pick-id="{first.id}"]')
-    if again.count():
+    if re.search(rf"""data-pick-id=["']?{first.id}["'\s>]""", answer.value.text()):
+        expect(again).to_have_count(1)
         again.click()
     expect(selected).to_have_count(2)
     assert sorted(el.get_attribute("data-selected-id") for el in selected.all()) == sorted([first.id, second.id])

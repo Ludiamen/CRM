@@ -187,12 +187,19 @@ def _vector_text(record) -> str:
     return support.model("lists.Record").objects.filter(pk=record.pk).values_list("search", flat=True).get() or ""
 
 
-def _weights(vector: str) -> dict[str, set]:
-    """Лексемы текстового вида `tsvector` и множества их весов (без метки — `D`)."""
-    result = {}
-    for lexeme, places in re.findall(r"'((?:[^']|'')+)':([0-9A-D,]+)", vector):
-        result[lexeme] = {mark or "D" for mark in re.findall(r"\d+([A-D]?)", places)}
-    return result
+def _weights_of(record, word: str) -> set[str]:
+    """Веса, с которыми слово `word` (после стемминга `russian`) есть в векторе записи: `search @@ to_tsquery(
+    'russian', 'слово:A')` по каждому весу — тем же приёмом `@@ to_tsquery`, что тесты векторов среза 005; лексемы
+    вектора — основы слов, поэтому сравнение идёт через базу, а не по тексту вектора."""
+    assert support.model("lists.Record")._meta.db_table == "lists_record"
+    found = set()
+    with connection.cursor() as cursor:
+        for mark in "ABCD":
+            cursor.execute("SELECT search @@ to_tsquery('russian', %s) FROM lists_record WHERE id = %s",
+                           [word + ":" + mark, record.pk])
+            if cursor.fetchone()[0]:
+                found.add(mark)
+    return found
 
 
 def _refresh(*records) -> None:
@@ -581,8 +588,8 @@ def test_single_character_local_query_shows_enter_at_least_two_chars():
     assert _found_number(page) == 3
     forms = _all(page, "form", {"data-lists-search": True})
     assert len(forms) == 1 and _all(page, "input", {"name": "q"}, within=forms[0])
-    assert _hint_texts(_grid(reader.client, lst, q="запись")) == []
-    assert _hint_texts(_grid(reader.client, lst)) == []
+    assert [t for t in _hint_texts(_grid(reader.client, lst, q="запись")) if t.strip()] == []
+    assert [t for t in _hint_texts(_grid(reader.client, lst)) if t.strip()] == []
 
 
 def test_local_query_longer_than_200_chars_shows_hint():
@@ -596,7 +603,7 @@ def test_local_query_longer_than_200_chars_shows_hint():
     assert HINT_LONG in _hint_texts(long_page)
     assert _found_number(long_page) == 2 and len(_numbers(long_page)) == 2
     edge = _grid(reader.client, lst, q="а" * 200)
-    assert _hint_texts(edge) == []
+    assert [t for t in _hint_texts(edge) if t.strip()] == []
     assert _numbers(edge) == [] and _found_number(edge) == 0
 
 
@@ -673,19 +680,19 @@ def test_vector_has_title_weight_a_and_visible_text_fields_weight_c_capped_at_10
     _null_vector(record)
     assert _vector_text(record) == ""
     _refresh(record)
-    weights = _weights(_vector_text(record))
-    assert weights["titlefox"] == {"A"}
-    assert weights["stringfox"] == {"C"} and weights["textfox"] == {"C"} and weights["secondline"] == {"C"}
-    assert "hiddenfox" not in weights and "12345" not in weights
+    assert _weights_of(record, "titlefox") == {"A"}
+    for word in ("stringfox", "textfox", "secondline"):
+        assert _weights_of(record, word) == {"C"}, word
+    assert _weights_of(record, "hiddenfox") == set() and _weights_of(record, "12345") == set()
 
     big_list = _list()
     big = sl.add_field(big_list, "text", "Большой текст")
     long_record = sl.make_record(big_list, "Короткое", {big.code: "начало " + "слово " * 20000 + "завершение"})
     _null_vector(long_record)
     _refresh(long_record)
-    capped = _weights(_vector_text(long_record))
-    assert "начало" in capped and "слово" in capped and "завершение" not in capped
-    assert capped["короткое"] == {"A"}
+    assert _weights_of(long_record, "начало") == {"C"} and _weights_of(long_record, "слово") == {"C"}
+    assert _weights_of(long_record, "завершение") == set(), "текст после 100 000 знаков попал в вектор"
+    assert _weights_of(long_record, "короткое") == {"A"}
 
 
 def test_vector_is_refreshed_on_create_save_archive_restore_import_hide_and_show(

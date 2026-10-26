@@ -17,6 +17,7 @@ FR-511, FR-514, FR-525, FR-526, FR-527).
 """
 import re
 from types import SimpleNamespace
+from urllib.parse import parse_qs, urlparse
 
 from playwright.sync_api import expect
 
@@ -336,23 +337,38 @@ def test_l06_record_field_picker_finds_non_archived_records_of_readable_list_by_
     field = box.locator("input[data-lists-picker]")
     options = box.locator("ul[data-lists-pick] li[data-pick-id]")
 
-    def search(query: str) -> None:
+    def is_answer(r, query: str) -> bool:
+        """Ответ подсказки `/lists/<целевой>/pick/` (10.2) именно на полный `query`, а не на его начало."""
+        url = urlparse(r.url)
+        return (url.path.endswith(f"/lists/{target.id}/pick/") and r.request.method == "GET"
+                and parse_qs(url.query).get("q") == [query])
+
+    def search(query: str) -> str:
+        """Вводит `query` по знаку и возвращает тело ответа подсказки на полный запрос: «нет в выдаче» проверяется
+        по нему, а не по DOM, который до подмены фрагмента HTMX ещё прежний."""
         field.fill("")
-        with page.expect_response(lambda r: "/pick/" in r.url):
+        with page.expect_response(lambda r: is_answer(r, query)) as info:
             field.press_sequentially(query, delay=30)
+        assert info.value.status == 200, f"подсказка по «{query}»: {info.value.status}"
+        return info.value.text()
 
     # п. 7: по названию — запись не в архиве, рядом с названием её номер
     search(word_live)
     expect(options.filter(has_text=target.live)).to_have_count(1)
     expect(options.filter(has_text=f"№{target.live_number}")).to_have_count(1)
+    # контроль: по общему слову ответ содержит запись не в архиве и не содержит архивную
+    body = search("Монитор")
+    assert target.live in body, "подсказка по общему слову не нашла запись не в архиве"
+    assert target.old not in body and word_old not in body, "архивная запись предложена"
     # запись в архиве по названию не предлагается
-    search(word_old)
-    expect(options.filter(has_text=target.old)).to_have_count(0)
+    # (по самому слову архивной записи проверяется только её полное название: ответ может повторять запрос)
+    body = search(word_old)
+    assert target.old not in body, "архивная запись предложена по названию"
     # по номеру записи; архивную по её номеру тоже не предлагают
     search(str(target.live_number))
     expect(options.filter(has_text=target.live).filter(has_text=f"№{target.live_number}")).to_have_count(1)
-    search(str(old_number))
-    expect(options.filter(has_text=target.old)).to_have_count(0)
+    body = search(str(old_number))
+    assert target.old not in body and word_old not in body, "архивная запись предложена по номеру"
     # выбор записи сохраняется в значении
     chosen = pick(page, source.code, word_live)
     assert chosen

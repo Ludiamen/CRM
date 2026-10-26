@@ -12,7 +12,7 @@ import re
 import time
 import zipfile
 from decimal import Decimal
-from urllib.parse import quote, unquote
+from urllib.parse import unquote
 
 import pytest
 from django.utils import timezone
@@ -231,7 +231,7 @@ def test_export_datetime_is_moscow_text_dd_mm_yyyy_hh_mm():
 
 
 def test_export_bool_employee_unit_and_record_shown_as_text():
-    """FR-532: да/нет — «Да»; сотрудник — ФИО; подразделение — название узла (не путь); запись другого списка —
+    """FR-532: да/нет — «Да», без значения — «Нет» (решение Opus 2026-10-26, S4); сотрудник — ФИО; подразделение — название узла (не путь); запись другого списка —
     её название; всё текстом."""
     manager, lst = _env()
     target = lp.make_list(created_by=manager.user)
@@ -246,7 +246,7 @@ def test_export_bool_employee_unit_and_record_shown_as_text():
     lp.make_record(lst, "Без значений", {})
     response = _file(manager, lst)
     assert _cell_of(response, 1, "Исправно").value == "Да"
-    assert _cell_of(response, 2, "Исправно").value in ("Нет", None, "")
+    assert _cell_of(response, 2, "Исправно").value == "Нет"
     assert _cell_of(response, 1, "Ответственный").value == "Воробьёв Игорь Петрович"
     assert _cell_of(response, 1, "Отдел").value == "Отдел связи"
     assert _cell_of(response, 1, "Устройство").value == "Принтер из кабинета 5"

@@ -536,9 +536,10 @@ def test_bulk_archive_takes_list_lock_then_record_lock_and_writes_journal_for_ea
     assert [event.object_id for event in events] == [str(record.pk) for record in records]
     for event, record in zip(events, records):
         assert event.object_type == "lists.record" and event.actor_id == session.user.pk
-        merged = {**(event.before or {}), **(event.after or {})}
-        assert str(merged["number"]) == str(record.number) and merged["title"] == record.title
-        assert "list" in merged
+        # ключи `record_archived` — только в `after` (CONTRACT-006, 8.1, К-12; решение Opus Р4)
+        assert not event.before
+        assert event.after["list"] == lst.name
+        assert str(event.after["number"]) == str(record.number) and event.after["title"] == record.title
         assert marker not in str(event.before) + str(event.after)
 
 
@@ -649,7 +650,7 @@ def _pick_ids(response) -> set[int]:
 def test_filter_values_offer_only_values_visible_to_employee():
     """FR-519, FR-514: значения для выбора в фильтре — только то, что сотрудник вправе видеть: записи читаемого
     целевого списка (не другого списка), значения списка значений; целевой список, который сотрудник не читает, — 404."""
-    target = ls.make_list("Оборудование")
+    target = ls.make_list("Оборудование Ф")
     foreign = ls.make_list("Чужие записи")
     closed = ls.make_list("Закрытый")
     lst = ls.make_list()
@@ -672,6 +673,15 @@ def test_filter_values_offer_only_values_visible_to_employee():
     assert session.client.get(f"/lists/{lst.pk}/filter-values/{closed_link.code}/").status_code == 404
     choice_ids = _pick_ids(session.client.get(f"/lists/{lst.pk}/filter-values/{state.code}/"))
     assert {ls.choice_id(state, "В работе"), ls.choice_id(state, "В ремонте")} <= choice_ids
+    # `q` — подстрока строки показа без учёта регистра; до 20 строк (CONTRACT-006, 10.2, К-15)
+    narrowed = _pick_ids(session.client.get(f"/lists/{lst.pk}/filter-values/{link.code}/", {"q": "НОУТ"}))
+    assert first.pk in narrowed and second.pk not in narrowed
+    narrowed_choice = _pick_ids(session.client.get(f"/lists/{lst.pk}/filter-values/{state.code}/", {"q": "ремонт"}))
+    assert ls.choice_id(state, "В ремонте") in narrowed_choice and ls.choice_id(state, "В работе") not in narrowed_choice
+    for index in range(22):
+        ls.make_record(target, f"Кабель {index}", created_by=author)
+    capped = _pick_ids(session.client.get(f"/lists/{lst.pk}/filter-values/{link.code}/", {"q": "абель"}))
+    assert len(capped) == 20
 
 
 def test_filter_values_give_404_to_non_reader_and_for_hidden_field():
@@ -681,10 +691,16 @@ def test_filter_values_give_404_to_non_reader_and_for_hidden_field():
     state = ls.add_field(lst, "choice", "Состояние", choices=("Новое",))
     hidden = ls.add_field(lst, "choice", "Прежнее", choices=("Старое",), hidden=True)
     plain = ls.add_field(lst, "string", "Заметка")
+    person_field = ls.add_field(lst, "person", "Ответственный")
+    unit_field = ls.add_field(lst, "unit", "Место")
     reader = ls.as_reader(lst)
     outsider = support.logged_in(support.make_employee())
     path = f"/lists/{lst.pk}/filter-values/"
     assert reader.client.get(f"{path}{state.code}/").status_code == 200
+    # `person` и `unit` — ссылочные виды: фрагмент значений, а не 404 (CONTRACT-006, 10.2)
+    _pick_ids(reader.client.get(f"{path}{person_field.code}/"))
+    _pick_ids(reader.client.get(f"{path}{unit_field.code}/"))
+    assert outsider.get(f"{path}{person_field.code}/").status_code == 404
     assert outsider.get(f"{path}{state.code}/").status_code == 404
     assert reader.client.get(f"{path}{hidden.code}/").status_code == 404
     assert reader.client.get(f"{path}{plain.code}/").status_code == 404

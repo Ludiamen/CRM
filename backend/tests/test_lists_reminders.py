@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from tests import factories, support
 from tests import support_lists as ls
+from tests import support_org as org
 from tests.support import model
 
 pytestmark = pytest.mark.django_db
@@ -331,16 +332,22 @@ def test_reminder_recipients_are_active_employees_from_visible_employee_fields_a
     in_first, in_second = support.make_employee(), support.make_employee()
     editor, reader, stranger = _editor(world.lst), _reader(world.lst), support.make_employee()
     due_date = TODAY + timedelta(days=30)
+    # «Правят» через подразделение: право у родителя, сотрудник — во вложенном узле (FR-530, `access.in_edit_set`)
+    parent_unit = org.make_unit()
+    child_unit = org.make_unit(parent=parent_unit)
+    ls.grant_list(world.lst, parent_unit, "edit")
+    via_unit = support.make_employee()
+    org.make_member(via_unit, child_unit)
     record = _record(world, due_date, people=[in_first], people2=[in_second])
 
     result = _run(clock, TODAY)
 
-    assert result.notified == 3
-    for user in (in_first, in_second, editor):
+    assert result.notified == 4
+    for user in (in_first, in_second, editor, via_unit):
         assert _refs(user) == [_ref(record, world.due, 30)]
         assert _notes(user).get().text == _expiring_text(world, record, due_date)
     assert _notes(reader).count() == 0 and _notes(stranger).count() == 0
-    assert _notes().count() == 3
+    assert _notes().count() == 4
 
 
 def test_reminder_skips_dismissed_employee_and_employee_only_in_hidden_field(clock):
@@ -498,8 +505,9 @@ def test_reminder_record_deleted_or_archived_between_select_and_lock_skipped_wit
 
 
 def test_reminder_field_hidden_or_date_changed_between_select_and_lock_rechecked_under_lock(clock, monkeypatch):
-    """FR-509, FR-530, NFR-511: поле скрыли (в одном списке) или дату сменили на далёкую (в другом) между выборкой и
-    замком — под замком проверка повторяется: уведомлений и отметок по ним нет; третий список не тронут."""
+    """FR-509, FR-530, NFR-511: поле скрыли (в одном списке) или дату сменили (в другом; новая дата тоже в пределах
+    порога) между выборкой и замком — под замком проверка повторяется, запись пропускается: уведомлений и отметок по
+    ним нет; третий список не тронут."""
     hidden_world = _world(thresholds=(30,))
     moved_world = _world(thresholds=(30,))
     control_world = _world(thresholds=(30,))
@@ -513,7 +521,7 @@ def test_reminder_field_hidden_or_date_changed_between_select_and_lock_rechecked
     def meanwhile(candidates):
         model("lists.Field").objects.filter(pk=hidden_world.due.pk).update(hidden=True)
         model("lists.Record").objects.filter(pk=moved_rec.pk).update(
-            values={moved_world.due.code: (TODAY + timedelta(days=200)).isoformat()})
+            values={moved_world.due.code: (TODAY + timedelta(days=20)).isoformat()})  # пересчёт дал бы порог 30
 
     selections = ls.act_between_select_and_lock(monkeypatch, meanwhile)
 
@@ -576,7 +584,7 @@ def test_reminder_without_notify_creates_no_notifications_and_still_cleans_up(cl
     остались."""
     world = _world(thresholds=(30,))
     _editor(world.lst)
-    _record(world, TODAY + timedelta(days=30))
+    target = _record(world, TODAY + timedelta(days=30))
     old_mark_record = _record(world, TODAY - timedelta(days=400), title="Давний срок")
     fresh_mark_record = _record(world, TODAY - timedelta(days=100), title="Недавний срок")
     clock.set(_at(TODAY))
@@ -597,6 +605,7 @@ def test_reminder_without_notify_creates_no_notifications_and_still_cleans_up(cl
 
     assert result.failed == [] and result.notified == 0
     assert _notes().count() == 0
+    assert not Mark.objects.filter(record=target).exists(), "без notify отметок ReminderSent нет (5.6)"
     assert not Job.objects.filter(pk=old_job.pk).exists() and Job.objects.filter(pk=fresh_job.pk).exists()
     assert not Mark.objects.filter(record=old_mark_record).exists()
     assert Mark.objects.filter(record=fresh_mark_record).count() == 1

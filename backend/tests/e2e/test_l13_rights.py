@@ -25,10 +25,10 @@ from playwright.sync_api import expect
 
 from tests.e2e import helpers, helpers_lists, helpers_org, helpers_sd
 from tests.e2e.helpers_lists import (
-    access_subjects, add_field, attach_file, create_list, create_record, grant_role, grant_unit, list_names_on_home,
-    make_list_editor, make_list_manager, make_list_reader, make_list_role, open_access, open_add_record,
-    open_edit_record, open_field, open_record, pick, post_status, status_of, submit_record, unique_list_name,
-    unique_word, wait_file_clean)
+    access_subjects, add_field, attach_file, create_list, create_record, grant_role, grant_unit, link_ticket,
+    list_names_on_home, make_list_editor, make_list_manager, make_list_reader, make_list_role, open_access,
+    open_add_record, open_edit_record, open_field, open_record, pick, post_status, status_of, submit_record,
+    unique_list_name, unique_word, wait_file_clean)
 
 LISTS_MANAGE = "lists.manage"
 MANAGE_TITLE = "Управление списками"        # подпись права в «Роли и права» (спека, сценарий 13, п. 1)
@@ -231,19 +231,6 @@ def _ticket(admin_page) -> tuple:
     return helpers_sd.ticket_number_by_subject(admin_page, word), queue_id
 
 
-def _link_to_ticket(page, number, query: str, count: int) -> None:
-    """Привязывает запись к заявке в разделе «Записи списков» (поле `input[data-lists-picker="ticket"]`, строка
-    подсказки с текстом `query`, `button[data-action="ticket-link"]`); ждёт, что связей стало `count`."""
-    helpers_sd.open_ticket(page, number)
-    part = page.locator('[data-card-part="lists-records"]')
-    part.locator('input[data-lists-picker="ticket"]').press_sequentially(query, delay=30)
-    option = part.locator("ul[data-lists-pick] li[data-pick-id]").filter(has_text=query)
-    expect(option).to_have_count(1, timeout=10_000)
-    option.click()
-    part.locator('button[data-action="ticket-link"]').click()
-    expect(page.locator('[data-card-part="lists-records"] li[data-ticket-link-id]')).to_have_count(count)
-
-
 def _xlsx_text(response) -> str:
     """Весь текст частей XLSX (`xl/…xml`) ответа выгрузки одной строкой."""
     with zipfile.ZipFile(io.BytesIO(response.body())) as book:
@@ -320,7 +307,8 @@ def test_l13_starter_lists_fields_tabs_show_types_choices_unique_and_deadline_th
         expect(page.locator('tr[data-field-code="title"][data-system]')).to_have_count(1)
         for code, name, type_label, _ in fields:
             row = page.locator(f'[data-lists-fields-grid] tr[data-field-code="{code}"]')
-            expect(row.locator('[data-field="name"]')).to_have_text(name)
+            # содержание ячейки контракт не задаёт точно (рядом могут быть пометки; R-1-E3, находка 3)
+            expect(row.locator('[data-field="name"]')).to_contain_text(name)
             expect(row.locator('[data-field="type"]')).to_contain_text(type_label)
         # п. 2: свойства — на странице каждого поля, у которого они есть
         for code, name, type_label, props in fields:
@@ -389,6 +377,9 @@ def test_l13_head_granted_read_of_contracts_in_interface_sees_only_that_list_wit
     # выдача снята: на следующем запросе раздела и списка нет
     assert status_of(head.page, "/lists/") == 404
     assert status_of(head.page, f"/lists/{contracts}/") == 404
+    # меню перечитывается с новой страницы: живого обновления меню контракт не обещает (R-1-E3, находка 1)
+    head.page.goto("/me/")
+    expect(head.page.locator("#main-menu")).to_be_visible()
     expect(head.page.locator('#main-menu a[href="/lists/"]')).to_have_count(0)
 
 
@@ -581,7 +572,7 @@ def test_l13_colleague_card_pinned_section_hides_rows_of_list_reader_lost_access
 def test_l13_direct_post_of_record_save_archive_import_and_settings_without_right_is_refused(admin_page, employee):
     """Сценарий 13, п. 10: прямые POST без кнопки — сохранение записи, архив, групповой архив, загрузка, настройка,
     поля, права, удаление списка, «Создать список» — проверяются на сервере: читающему 403, не читающему 404, правящему
-    настройка 403; данные не изменились (FR-514)."""
+    настройка 403; данные не изменились; положительный контроль — правящему прямой POST «В архив» проходит (FR-514)."""
     page = admin_page
     name = unique_list_name("Охрана")
     title = f"Запись {unique_word()}"
@@ -630,6 +621,11 @@ def test_l13_direct_post_of_record_save_archive_import_and_settings_without_righ
     assert hostile not in page.locator("body").inner_text()
     assert helpers_lists.field_codes(page, list_id) == ["title"]
     assert access_subjects(page, list_id, "read") == [f"role:{reader.list_role_id}"]
+    # положительный контроль того же пути (R-1-E3, находка 9; CONTRACT-006 10.4): правящему прямой POST «В архив»
+    # той же записи проходит — отказы выше не означают, что служба отвечает 403 всем
+    assert post_status(editor.page, f"/lists/{list_id}/{number}/archive/", {}) in (200, 302)
+    open_record(page, list_id, number)
+    expect(page.locator('[data-lists-page="record"] [data-lists-archived]').first).to_be_visible()
 
 
 def test_l13_dismissed_or_blocked_employee_in_read_set_has_no_access(admin_page, employee, new_context):
@@ -702,8 +698,10 @@ def test_l13_no_unreadable_records_in_menu_table_search_export_label_links_histo
     vp = viewer.page
     number, queue_id = _ticket(page)
     helpers_sd.add_queue_member(page, queue_id, [viewer.id], q=word_r)
-    _link_to_ticket(page, number, word_a, 1)
-    _link_to_ticket(page, number, word_b, 2)
+    # привязка — общим помощником обвязки (CONTRACT-006, 15.5 п. 12; R-1-E3, находка 7)
+    link_ticket(page, number, word_a, title_a)
+    link_ticket(page, number, word_b, title_b)
+    expect(page.locator('[data-card-part="lists-records"] li[data-ticket-link-id]')).to_have_count(2)
 
     # меню и главная: B нет, A есть
     home = list_names_on_home(vp)
@@ -771,8 +769,10 @@ def test_l13_manage_lists_right_given_to_role_in_interface_makes_its_employee_ma
     worker = employee(role=role_name)
     wp = worker.page
     ids = _starter_ids(page)
-    # до выдачи: раздела нет
+    # до выдачи: раздела нет (меню проверяется на «Профиле», где оно точно есть; R-1-E3, находка 2)
     assert status_of(wp, "/lists/") == 404
+    wp.goto("/me/")
+    expect(wp.locator("#main-menu")).to_be_visible()
     expect(wp.locator('#main-menu a[href="/lists/"]')).to_have_count(0)
     # администратор выдаёт право в интерфейсе «Роли и права»
     _, form = _role_page(page, role_name)

@@ -231,7 +231,7 @@ def test_deleting_empty_list_writes_list_deleted_with_name():
 def test_access_change_writes_readers_and_editors_role_and_unit_names_before_after():
     """FR-542: изменение прав — `lists.access_changed`: «читают» и «правят» — названия ролей и подразделений через
     «, » по алфавиту; `before` второй записи равен `after` первой; в `before` первой — прежний набор «читают»;
-    название списка есть в записи."""
+    пустой набор — пустая строка; название списка есть в записи."""
     from apps.lists.services import schema
 
     manager = lp.as_manager()
@@ -243,8 +243,9 @@ def test_access_change_writes_readers_and_editors_role_and_unit_names_before_aft
                        editors=[("role", melon.pk)], actor=manager.user)
     schema.save_access(lst, readers=[("role", apple.pk)], editors=[("role", melon.pk), ("unit", unit.pk)],
                        actor=manager.user)
-    first, second = _events("lists.access_changed", lst.pk)
-    for event in (first, second):
+    schema.save_access(lst, readers=[], editors=[], actor=manager.user)
+    first, second, third = _events("lists.access_changed", lst.pk)
+    for event in (first, second, third):
         assert event.actor == manager.user
         assert event.object_type == "lists.list" and event.object_id == str(lst.pk)
         assert _payload(event)["list"] == lst.name
@@ -255,6 +256,9 @@ def test_access_change_writes_readers_and_editors_role_and_unit_names_before_aft
     assert second.before["readers"] == first.after["readers"] and second.before["editors"] == first.after["editors"]
     assert second.after["readers"] == "Яблоко"
     assert second.after["editors"] == "Арбуз, Бухгалтерия журнала"
+    # пустой набор — пустая строка `""` (раздел 8.2, К-12)
+    assert third.before["readers"] == "Яблоко" and third.after["readers"] == ""
+    assert third.before["editors"] == "Арбуз, Бухгалтерия журнала" and third.after["editors"] == ""
 
 
 # --- действия над полем -----------------------------------------------------------------------------------
@@ -359,15 +363,17 @@ def test_record_archive_restore_purge_write_actions_with_number_and_title_only()
     archive.restore(lst, record.number, actor=editor.user)
     archive.purge(lst, doomed.number, actor=manager.user)
 
-    cases = (("lists.record_archived", record_pk, record, editor.user),
-             ("lists.record_restored", record_pk, record, editor.user),
-             ("lists.record_purged", doomed_pk, doomed, manager.user))
-    for action, pk, row, actor in cases:
+    # Р4, К-12: у `record_archived` и `record_restored` ключи — в `after`, у `record_purged` — в `before`
+    cases = (("lists.record_archived", record_pk, record, editor.user, "after"),
+             ("lists.record_restored", record_pk, record, editor.user, "after"),
+             ("lists.record_purged", doomed_pk, doomed, manager.user, "before"))
+    for action, pk, row, actor, side in cases:
         event = _one(action, pk)
         assert event.actor == actor, action
         assert event.object_type == "lists.record" and event.object_id == str(pk), action
         assert set(event.before) | set(event.after) == {"list", "number", "title"}, action
-        body = _payload(event)
+        body = getattr(event, side)
+        assert set(body) == {"list", "number", "title"}, action
         assert body["list"] == lst.name and int(body["number"]) == row.number and body["title"] == row.title, action
         assert VALUE_MARK not in json.dumps([event.before, event.after], ensure_ascii=False), action
 
@@ -481,7 +487,7 @@ def test_record_edit_file_ticket_link_export_label_and_search_write_no_audit(
 # --- подписи ----------------------------------------------------------------------------------------------
 
 def test_audit_labels_cover_every_action_object_type_and_written_key():
-    """FR-542: точка `audit_labels` среза даёт подписи четырнадцати действий, четырёх видов объекта и двадцати трёх
+    """FR-542: точка `audit_labels` среза даёт подписи четырнадцати действий, четырёх видов объекта и двадцати четырёх
     ключей раздела 8.2; подписи общих ключей (`name`, `description`, `number`, `title`, `created`, `updated`, `errors`)
     — прежние слова прежних модулей; словарь значений пуст; ядро после слияния отдаёт те же слова; у каждого
     записанного настоящими действиями ключа подпись есть."""

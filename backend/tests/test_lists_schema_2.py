@@ -235,8 +235,11 @@ def test_empty_field_deletable_despite_same_code_with_data_in_other_list_and_boo
     schema = _schema()
     manager, lst = _world()
     other = lists.make_list(created_by=manager.user)
-    mine = lists.add_field(lst, "string", "Моё", code="f1")
-    foreign = lists.add_field(other, "string", "Чужое", code="f1")
+    # Коды не задаются вручную: явный `code` не двигает `next_field_no` (support_lists.add_field), а в двух свежих
+    # списках автоматические коды первых полей и так совпадают.
+    mine = lists.add_field(lst, "string", "Моё")
+    foreign = lists.add_field(other, "string", "Чужое")
+    assert mine.code == foreign.code == "f1"
     foreign_record = lists.make_record(other, "Чужая запись", {foreign.code: "данные"})
     _change(foreign_record, "changed", "f1", "Чужое", "а", "б", manager.user)
     lists.make_record(lst, "Запись без значения")
@@ -388,7 +391,7 @@ def test_disabling_multiple_rejected_if_any_record_including_archived_has_two_va
 
 
 def test_type_currency_and_target_of_field_with_data_rejected():
-    """FR-509, FR-511: у поля с данными не меняются тип и валюта (служба) и целевой список (форма): отказ
+    """FR-509, FR-511: у поля с данными не меняются тип, валюта и целевой список (служба и форма): отказ
     `field_locked`, у формы — 200 с `[data-error=…][data-code="field_locked"]` и текстом; поле не изменилось."""
     schema = _schema()
     manager, lst = _world()
@@ -401,6 +404,12 @@ def test_type_currency_and_target_of_field_with_data_rejected():
     lists.make_record(lst, "Запись", {number.code: "5", money.code: "10.00", link.code: [target_record.pk]})
     _raises(lambda: schema.update_field(number, actor=manager.user, type="string"), "field_locked", "type")
     _raises(lambda: schema.update_field(money, actor=manager.user, currency="USD"), "field_locked", "currency")
+    # Целевой список службой — объект `List` (5.3, К-13); код отказа — `field="target"` (решение Opus, S1-Q2).
+    _raises(lambda: schema.update_field(link, actor=manager.user, target=other_target), "field_locked", "target")
+    # Присланный `type` у поля с данными в форме — 200 с `[data-error="type"][data-code="field_locked"]` (10.2).
+    response = manager.client.post(_field_url(lst, number), {"name": number.name, "type": "string"})
+    assert response.status_code == 200
+    assert _all(_doc(response), None, {"data-error": "type", "data-code": "field_locked"})
     response = manager.client.post(_field_url(lst, money), {"name": money.name, "currency": "USD"})
     assert response.status_code == 200
     doc = _doc(response)
@@ -417,8 +426,8 @@ def test_type_currency_and_target_of_field_with_data_rejected():
 
 def test_enabling_unique_with_repeats_lists_first_10_number_and_value_counting_archived():
     """FR-509, FR-546: включение «Уникального» при повторах — `unique_repeats` у поля `unique`, в тексте ровно 10
-    пар «№N — значение» через «; » при 12 нарушениях; повтор с записью в архиве учитывается (и у числа: «100» и
-    «100.0» совпадают); строки `UniqueValue` не создаются, признак не включён, журнала нет."""
+    пар «№N — значение» через «; » при 12 нарушениях; повтор с записью в архиве учитывается (и у числа «100» в
+    каноническом виде хранения, раздел 2.3); строки `UniqueValue` не создаются, признак не включён, журнала нет."""
     schema = _schema()
     manager, lst = _world()
     field = lists.add_field(lst, "string", "Повторяется")
@@ -455,7 +464,8 @@ def test_enabling_unique_with_repeats_lists_first_10_number_and_value_counting_a
     third = lists.make_list(created_by=manager.user)
     number_field = lists.add_field(third, "number", "Число")
     lists.make_record(third, "Живая", {number_field.code: "100"})
-    archived_number = lists.make_record(third, "В архиве", {number_field.code: "100.0"}, archived=True)
+    # Р3: число в `values` хранится канонически («100»); равенство «100» и «100.0» проверяет T-6107.
+    archived_number = lists.make_record(third, "В архиве", {number_field.code: "100"}, archived=True)
     error = _raises(lambda: schema.update_field(number_field, actor=manager.user, unique=True), "unique_repeats",
                     "unique")
     assert f"№{archived_number.number}" in error.message
@@ -463,13 +473,14 @@ def test_enabling_unique_with_repeats_lists_first_10_number_and_value_counting_a
 
 def test_enabling_unique_without_repeats_creates_unique_values_and_disabling_erases_them():
     """FR-509: включение «Уникального» без повторов создаёт строки `UniqueValue` по всем записям (в том числе в
-    архиве) в нормализации раздела 2.3 («ИН-1» → «ин-1», «12.50» → «12.5»), пустые значения строк не дают;
+    архиве) в нормализации раздела 2.3 («ИН-1» → «ин-1», число — каноническая строка «12.5»), пустые значения строк не дают;
     выключение стирает строки поля."""
     schema = _schema()
     manager, lst = _world()
     field = lists.add_field(lst, "string", "Номер")
     number_field = lists.add_field(lst, "number", "Количество")
-    lists.make_record(lst, "Первая", {field.code: "ИН-1", number_field.code: "12.50"})
+    # Р3: число в `values` хранится канонически («12.5»), `unique.normalize` принимает форму хранения (О3).
+    lists.make_record(lst, "Первая", {field.code: "ИН-1", number_field.code: "12.5"})
     lists.make_record(lst, "Вторая", {field.code: " Б-2 "}, archived=True)
     lists.make_record(lst, "Третья", {number_field.code: "7"})
     UniqueValue = support.model("lists.UniqueValue")
@@ -856,6 +867,9 @@ def _v14():
     manager, lst = _world()
     visible, hidden = _pair(lst, "text")
     record = lists.make_record(lst, "Запись", {visible.code: "видимыйтекст", hidden.code: "скрытыйтекст"})
+    # Помощник `make_record` уже посчитал вектор; стираем его, чтобы проверить именно пересчёт `vectors.refresh`.
+    support.model("lists.Record").objects.filter(pk=record.pk).update(search=None)
+    assert not _vector_matches(record, "видимыйтекст")
     vectors.refresh([record.pk])
     assert _vector_matches(record, "видимыйтекст") and not _vector_matches(record, "скрытыйтекст")
 
@@ -1109,6 +1123,10 @@ def test_choices_200_accepted_201st_title_101_and_case_duplicate_rejected_and_or
     assert error.params["limit"] == "100"
     _raises(lambda: schema.save_choices(field, existing[:5] + [(None, "ЗНАЧЕНИЕ 0")], actor=manager.user),
             "choice_name_taken", "choices")
+    # Латинская пара — независимо от локали кластера (кириллица выше проверяет требование для русских названий).
+    latin = lists.add_field(lst, "choice", "Латиница", choices=["Alpha"])
+    _raises(lambda: schema.save_choices(latin, [(lists.choice_id(latin, "Alpha"), "Alpha"), (None, "ALPHA")],
+                                        actor=manager.user), "choice_name_taken", "choices")
     assert Choice.objects.filter(field=field).count() == 200
     schema.save_choices(field, list(reversed(existing)), actor=manager.user)
     assert [c.title for c in Choice.objects.filter(field=field).order_by("order")] == [t for _, t in reversed(existing)]
@@ -1161,7 +1179,9 @@ def test_archived_default_choice_is_reset_and_not_put_into_new_record_form():
     doc = _doc(manager.client.get(f"/lists/{lst.pk}/add/"))
     container = _all(doc, None, {"data-lists-field": field.code})[0]
     assert not [el for el in doc.elements if _inside(el, container) and el.attrs.get("value") == str(ids["Б"])]
-    assert not [el for el in doc.elements if _inside(el, container) and "selected" in el.attrs]
+    # Пустой вариант `<option value="" selected>` допустим; выбранного непустого значения быть не должно.
+    assert not [el for el in doc.elements
+                if _inside(el, container) and "selected" in el.attrs and el.attrs.get("value")]
     other = lists.add_field(lst, "choice", "Второе", choices=["Х", "Ы"])
     unused = lists.choice_id(other, "Х")
     other.default = [unused]

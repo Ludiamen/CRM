@@ -108,7 +108,7 @@ def _import_csv(page, list_id, content: bytes, name: str, codes: list) -> None:
     """Загрузка таблицы через интерфейс до итога: «Загрузить из таблицы» → файл → сопоставление (столбец N — код из
     `codes`, `title` — «Название») → «Проверить» → «Загрузить»; ждёт страницу итога."""
     page.goto(f"/lists/{list_id}/")
-    page.locator('a[data-action="import"]').click()
+    page.locator('[data-lists-page="grid"] a[data-action="import"]').first.click()  # кнопка бывает и в пустом состоянии
     page.wait_for_url(re.compile(rf"/lists/{list_id}/import/$"))
     expect(page.locator('[data-lists-page="import"]')).to_be_visible()
     form = page.locator('[data-lists-page="import"] form:has(input[type=file][name="file"])')
@@ -392,10 +392,10 @@ def test_l04_non_reader_opening_history_by_direct_link_gets_same_answer_as_missi
     missing_record = f"/lists/{list_id}/{number + 500}/history/"
     missing_list = f"/lists/{int(list_id) + 100000}/{number}/history/"
     for person in (no_rights, staff):
-        # п. 8: отказ тот же, что у несуществующей записи и несуществующего списка
-        assert status_of(person.page, history) == 404
-        assert status_of(person.page, missing_record) == 404
-        assert status_of(person.page, missing_list) == 404
+        # п. 8: отказ тот же, что у несуществующей записи и несуществующего списка: 404 и тот же текст области
+        # содержимого одним клиентом (15.5 п. 11)
+        helpers_lists.same_404(person.page, history, missing_record)
+        helpers_lists.same_404(person.page, history, missing_list)
         # п. 8: в теле отказа нет ни названия записи, ни названия списка, ни строки истории
         body = helpers_org.direct_get(person.page, history).text()
         assert title not in body and list_name not in body and "Создана" not in body

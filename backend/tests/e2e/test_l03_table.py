@@ -27,6 +27,7 @@ from tests.e2e.helpers_lists import (
 
 MOSCOW = ZoneInfo("Europe/Moscow")
 ROWS = "#lists-grid tr[data-record-number]"
+NEXT_PAGE = '[data-lists-page="grid"] a[data-action="next-page"]'  # «Дальше» бывает над и под таблицей — берётся `.first`
 
 
 # --- Помощники файла -----------------------------------------------------------------------------------------
@@ -123,7 +124,7 @@ def test_l03_reader_opens_list_with_all_preset_without_archive_default_columns_5
     _found(rp, 51)
     # п. 1: 50 строк на странице, есть следующая; архивной записи среди них нет
     expect(rp.locator(ROWS)).to_have_count(50)
-    expect(rp.locator('a[data-action="next-page"]')).to_be_visible()
+    expect(rp.locator(NEXT_PAGE).first).to_be_visible()
     assert archived_title not in _titles(rp)
     # п. 1: столбцы по умолчанию — «Название» и поля с «показывать в таблице»; «Примечание» не показано
     cols = _cols(rp)
@@ -135,7 +136,7 @@ def test_l03_reader_opens_list_with_all_preset_without_archive_default_columns_5
     expect(first.locator(f'td[data-col="{model}"]')).to_have_text(f"Модель-{suffix}")
     expect(first.locator(f'td[data-col="{inv}"]')).to_have_text(f"INV-{suffix}")
     # п. 1: вторая страница — одна оставшаяся запись (архивная в «Все» не входит)
-    rp.locator('a[data-action="next-page"]').click()
+    rp.locator(NEXT_PAGE).first.click()
     expect(rp.locator(ROWS)).to_have_count(1)
     assert archived_title not in _titles(rp)
     # п. 1: нажатие на название открывает карточку этой записи
@@ -491,11 +492,12 @@ def test_l03_empty_list_shows_explanation_and_add_and_import_buttons_to_editor_o
     _open_grid(ep, list_id)
     expect(ep.locator('[data-empty-state="lists-grid"]')).to_contain_text("В списке пока нет записей")
     expect(ep.locator(ROWS)).to_have_count(0)
-    add = ep.locator('a[data-action="record-add"]')
+    add = ep.locator('[data-lists-page="grid"] a[data-action="record-add"]').first
     expect(add).to_be_visible()
     expect(add).to_contain_text("Добавить запись")
-    expect(ep.locator('a[data-action="import"]')).to_be_visible()
-    expect(ep.locator('a[data-action="import"]')).to_contain_text("Загрузить из таблицы")
+    load = ep.locator('[data-lists-page="grid"] a[data-action="import"]').first
+    expect(load).to_be_visible()
+    expect(load).to_contain_text("Загрузить из таблицы")
     add.click()
     ep.wait_for_url(re.compile(rf"/lists/{list_id}/add/$"))
     _open_grid(rp, list_id)
@@ -524,10 +526,12 @@ def test_l03_employee_without_list_right_gets_same_answer_as_missing_list_for_ta
     answer = helpers_org.direct_get(page, values)
     assert answer.status == 200 and "Сломан" in answer.text()
     assert status_of(sp, f"/lists/{own}/") == 200
-    # п. 12: адрес таблицы и подбор значений — как у несуществующего списка
+    # п. 12: адрес таблицы и подбор значений — как у несуществующего списка: 404 и тот же текст области содержимого
+    # одним клиентом (15.5 п. 11), в теле ответа нет данных списка
     for path, absent in ((table, f"/lists/{missing}/"), (values, f"/lists/{missing}/filter-values/{state}/?q=")):
-        got, gone = helpers_org.direct_get(sp, path), helpers_org.direct_get(sp, absent)
-        assert got.status == gone.status == 404, f"{path}: {got.status}, у несуществующего {gone.status}"
+        helpers_lists.same_404(sp, path, absent)
+        got = helpers_org.direct_get(sp, path)
+        assert got.status == 404, f"{path}: {got.status}"
         body = got.text()
         for leak in (closed_name, record_title, "Сломан", "Работает", 'data-lists-page="grid"'):
             assert leak not in body, f"ответ на {path} выдаёт «{leak}»"

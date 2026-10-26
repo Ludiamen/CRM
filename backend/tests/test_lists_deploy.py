@@ -324,9 +324,9 @@ def test_lists_scripts_are_external_files_in_static_lists():
     sources = "\n".join(path.read_text(encoding="utf-8") for path in _template_files())
     for tag in re.findall(r"<script\b[^>]*>", sources, re.I):
         assert re.search(r"\bsrc\s*=", tag), f"встроенный скрипт без src в шаблонах: {tag}"
-    assert re.search(r"<script\b(?=[^>]*\bdefer\b)(?=[^>]*\bsrc=\"[^\"]*lists/lists[^\"/]*\.js\")[^>]*>", sources), \
+    assert re.search(r"<script\b(?=[^>]*\bdefer\b)(?=[^>]*\bsrc=\"[^\"]*lists/lists[^\"/]*\.js[^\"]*\")[^>]*>", sources), \
         "в шаблонах нет <script defer src=…lists/lists.js>"
-    assert re.search(r"<link\b(?=[^>]*\brel=\"stylesheet\")(?=[^>]*\bhref=\"[^\"]*lists/lists[^\"/]*\.css\")[^>]*>",
+    assert re.search(r"<link\b(?=[^>]*\brel=\"stylesheet\")(?=[^>]*\bhref=\"[^\"]*lists/lists[^\"/]*\.css[^\"]*\")[^>]*>",
                      sources), "в шаблонах нет <link rel=\"stylesheet\" href=…lists/lists.css>"
     session, lst, record, _text, _when = _world()
     html = session.client.get(f"/lists/{lst.pk}/").content.decode()

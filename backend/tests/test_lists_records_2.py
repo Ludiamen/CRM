@@ -7,9 +7,11 @@
 (CONTRACT-006, шапка): модели берутся через `support.model`, зацепки — раздел 11 контракта.
 """
 import re
+from datetime import timedelta
 from html.parser import HTMLParser
 
 import pytest
+from django.utils import timezone
 
 from tests import factories, support, support_servicedesk as sd
 from tests import support_lists as lists
@@ -201,13 +203,14 @@ def test_card_of_missing_record_with_number_below_next_number_is_404_record_dele
 def test_card_shows_visible_field_values_but_not_hidden_ones_files_related_tickets_referrers_and_history():
     """FR-516: карточка показывает значения видимых полей `[data-lists-value]`, файлы (чистый — со ссылкой,
     «проверяется» — без), «Связанные заявки» (только видимые смотрящему), «Ссылаются на эту запись» и место
-    истории; значение и узел скрытого поля в ответе отсутствуют (решение владельца 2026-10-25)."""
-    lst = lists.make_list("Оборудование")
+    истории с первой страницей строк (50, новые сверху); значение и узел скрытого поля в ответе отсутствуют
+    (решение владельца 2026-10-25)."""
+    lst = lists.make_list("Оборудование отдела")  # не имя стартового списка (правило Р1)
     shown = lists.add_field(lst, "string", "Инвентарный номер")
     hidden = lists.add_field(lst, "string", "Служебная метка", hidden=True)
     clean_field = lists.add_field(lst, "file", "Акт")
     pending_field = lists.add_field(lst, "file", "Фото")
-    referring = lists.make_list("Лицензии")
+    referring = lists.make_list("Лицензии отдела")
     link_field = lists.add_field(referring, "record", "Оборудование", target=lst)
     viewer = _reader_with(lst, extra_lists=(referring,))
     author = support.make_employee()
@@ -220,7 +223,14 @@ def test_card_shows_visible_field_values_but_not_hidden_ones_files_related_ticke
     RecordFile.objects.filter(pk=clean.pk).update(id=clean.file_id + 7919)
     clean = RecordFile.objects.get(pk=clean.file_id + 7919)
     lists.attach_file(record, pending_field, "фото-стойки.png", status="pending")
-    support.model("lists.Change").objects.create(record=record, kind="created", changes=[], actor=author)
+    Change = support.model("lists.Change")
+    started = timezone.now()
+    Change.objects.create(record=record, kind="created", changes=[], actor=author, at=started)
+    # 51 строка истории: карточка выводит первую страницу — 50 новых (CONTRACT-006, 11.5, К-15; решение Opus S2-В)
+    Change.objects.bulk_create([
+        Change(record=record, kind="changed", actor=author, at=started + timedelta(minutes=number), changes=[
+            {"field": shown.code, "name": shown.name, "before": f"v{number - 1}", "after": f"v{number}"}])
+        for number in range(1, 51)])
     owner = lists.make_record(referring, "Лицензия на ноутбук", {link_field.code: [record.pk]}, created_by=author)
     # заявку смотрящий видит как ответственный; чужая заявка в другой очереди ему не видна
     mine = sd.make_ticket(queue=sd.make_queue(), subject="Замена картриджа", assignee=viewer.user)
@@ -265,7 +275,13 @@ def test_card_shows_visible_field_values_but_not_hidden_ones_files_related_ticke
     assert not q(tickets[0], "li", data_ticket_number=str(foreign.number)), "невидимая заявка в карточке"
     assert foreign.subject not in raw(response)
 
-    assert q(root, None, data_lists_history=True), "нет места истории"
+    history = q(root, None, data_lists_history=True)
+    assert history, "нет места истории"
+    history_rows = q(history[0], "li", data_change_kind=True)
+    assert len(history_rows) == 50, "в карточке — первая страница истории, 50 строк"
+    kinds = [row.attrs["data-change-kind"] for row in history_rows]
+    assert kinds == ["changed"] * 50, "самая старая строка — на второй странице"
+    assert "v50" in history_rows[0].text(), "новые строки сверху"
 
 
 def test_card_of_archived_record_shows_archived_mark():

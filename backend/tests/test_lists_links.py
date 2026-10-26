@@ -210,20 +210,30 @@ def test_pinned_section_lists_not_archived_records_of_all_lists_as_title_list_an
     list_c = ll.make_list("Договоры З", created_by=author)
     choice_field = ll.add_field(list_c, "choice", "Статус", choices=("Новый",))
     ll.make_record(list_c, "Договор с совпавшим числом", {choice_field.code: [person.pk]}, created_by=author)
+    # один сотрудник в двух видимых полях одной записи — две строки, на пару «запись, поле» (CONTRACT-006, 15.3)
+    list_d = ll.make_list("Кабинеты З", created_by=author)
+    keeper = ll.add_field(list_d, "person", "Хранитель")
+    deputy = ll.add_field(list_d, "person", "Заместитель")
+    record_d = ll.make_record(list_d, "Кабинет Гамма", {keeper.code: [person.pk], deputy.code: [person.pk]},
+                              created_by=author)
     response = _own_page(person)
     items = _pinned_items(response)
-    assert len(items) == 2, [item.text() for item in items]
+    assert len(items) == 4, [item.text() for item in items]
     texts = {_squash(item.text()) for item in items}
     assert any(_squash("Ноутбук Альфа — Оборудование З — Ответственный") in text for text in texts), texts
     assert any(_squash("Лицензия Бета — Лицензии З — Владелец") in text for text in texts), texts
+    assert any(_squash("Кабинет Гамма — Кабинеты З — Хранитель") in text for text in texts), texts
+    assert any(_squash("Кабинет Гамма — Кабинеты З — Заместитель") in text for text in texts), texts
     body = _html(response)
     for absent in ("Ноутбук в архиве", "Ноутбук чужой", "Договор с совпавшим числом"):
         assert absent not in body
     from apps.lists.services import links
 
     rows = links.pinned(person, person)
+    assert len(rows) == 4
     assert {(row.record.pk, row.list.pk, row.field.pk) for row in rows} == {
-        (w["record_a"].pk, w["list_a"].pk, w["field_a"].pk), (w["record_b"].pk, w["list_b"].pk, w["field_b"].pk)}
+        (w["record_a"].pk, w["list_a"].pk, w["field_a"].pk), (w["record_b"].pk, w["list_b"].pk, w["field_b"].pk),
+        (record_d.pk, list_d.pk, keeper.pk), (record_d.pk, list_d.pk, deputy.pk)}
 
 
 def test_own_card_without_list_right_shows_all_rows_without_links_and_other_record_data():
@@ -319,7 +329,11 @@ def test_pinned_section_is_shown_for_dismissed_employee():
     assert response.status_code == 200
     items = _pinned_items(response)
     assert len(items) == 2
-    assert {w["record_a"].values[w["field_a"].code][0], w["record_b"].values[w["field_b"].code][1]} == {person.pk}
+    Record = _model("lists.Record")
+    stored_a = Record.objects.get(pk=w["record_a"].pk).values
+    stored_b = Record.objects.get(pk=w["record_b"].pk).values
+    assert stored_a[w["field_a"].code] == [person.pk]
+    assert set(stored_b[w["field_b"].code]) == {w["other"].pk, person.pk}
 
 
 def test_hidden_person_field_gives_no_pinned_rows():
@@ -418,8 +432,13 @@ def test_unit_usage_counts_records_including_archived_and_hidden_unit_fields():
     from apps.lists.services import links
 
     unit = _unit_world()
+    # запись с тем же узлом в двух полях (видимом и скрытом) считается один раз (CONTRACT-006, 15.3)
+    list_three = ll.make_list("Подсобки У")
+    near = ll.add_field(list_three, "unit", "Ближнее место")
+    far = ll.add_field(list_three, "unit", "Дальнее место", hidden=True)
+    ll.make_record(list_three, "Запись с узлом в двух полях", {near.code: [unit.pk], far.code: [unit.pk]})
     phrase = links.unit_usage(unit.pk)
-    assert phrase == UNIT_PHRASE.format(n=3), phrase
+    assert phrase == UNIT_PHRASE.format(n=4), phrase
     for title in ("Запись с видимым узлом", "Запись со скрытым узлом", "Склад У", "Кабинеты У"):
         assert title not in phrase
     assert links.unit_usage(org.make_unit().pk) is None
@@ -656,6 +675,7 @@ def test_record_value_pointing_to_archived_record_is_marked_in_archive():
     marks = _q(archived_node, data_lists_archived=True)
     assert marks and "в архиве" in marks[0].text()
     assert _squash(f"Старый договор — №{old.number}") in _squash(archived_node.text())
+    assert _q(archived_node, "a", href=f"/lists/{target_list.pk}/{old.number}/"), "у записи в архиве ссылка есть (11.1)"
     live_node = value_node(with_live)
     assert not _q(live_node, data_lists_archived=True)
     assert _squash(f"Действующий договор — №{live.number}") in _squash(live_node.text())
@@ -736,6 +756,10 @@ def test_people_and_units_pickers_return_up_to_20_rows_and_units_match_name_or_p
     assert response.status_code == 200
     ids = _pick_ids(response)
     assert len(ids) == 20 and set(ids) <= {p.pk for p in people}
+    person_rows = _q(_tree(response), "li", data_pick_id=True)
+    assert person_rows and all("@" not in row.text() for row in person_rows), "строка сотрудника — без почты (10.2)"
+    people_html = _html(response)
+    assert all(p.email not in people_html for p in people if p.email)
     parent = org.make_unit("Корпус-Север")
     child = org.make_unit("Серверная", parent=parent)
     root = org.root_unit()

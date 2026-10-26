@@ -154,17 +154,21 @@ def _audit(action: str, record):
     return list(support.model("core.AuditEvent").objects.filter(action=action, object_id=str(record.pk)))
 
 
-def _assert_journal(action: str, record, lst, actor):
+def _assert_journal(action: str, record, lst, actor, side: str):
+    """Ключи — только в своей половине: `after` у `record_archived`/`record_restored`, `before` у `record_purged`
+    (CONTRACT-006, раздел 8, К-12; правило Р4); другая половина пуста."""
     events = _audit(action, record)
     assert len(events) == 1, f"одна запись журнала {action}, получено {len(events)}"
     event = events[0]
     assert event.actor == actor
     assert event.object_type == "lists.record"
-    merged = {**event.before, **event.after}
-    assert set(merged) <= AUDIT_FIELDS, f"в журнале только список, номер и название: {sorted(merged)}"
-    assert str(merged["number"]) == str(record.number)
-    assert merged["title"] == record.title
-    assert merged["list"] == lst.name
+    other = "before" if side == "after" else "after"
+    data = getattr(event, side)
+    assert not getattr(event, other), f"у {action} половина {other} пуста: {getattr(event, other)}"
+    assert set(data) <= AUDIT_FIELDS, f"в журнале только список, номер и название: {sorted(data)}"
+    assert str(data["number"]) == str(record.number)
+    assert data["title"] == record.title
+    assert data["list"] == lst.name
     return event
 
 
@@ -273,7 +277,7 @@ def test_archive_by_editor_sets_flags_writes_history_refreshes_vector_and_journa
     rows = list(_changes(record, "archived"))
     assert len(rows) == 1 and rows[0].actor == session.user
     assert fresh.search is not None and _vector_matches(fresh, "ноутбук")
-    _assert_journal("lists.record_archived", record, lst, session.user)
+    _assert_journal("lists.record_archived", record, lst, session.user, "after")
 
     clock.advance(hours=3)
     with django_capture_on_commit_callbacks(execute=True):
@@ -389,7 +393,7 @@ def test_restore_returns_record_to_all_preset_search_and_pickers_and_writes_jour
     rows = list(_changes(record, "restored"))
     assert len(rows) == 1 and rows[0].actor == session.user
     assert fresh.search is not None and _vector_matches(fresh, "lenovo")
-    _assert_journal("lists.record_restored", record, lst, session.user)
+    _assert_journal("lists.record_restored", record, lst, session.user, "after")
 
     with django_capture_on_commit_callbacks(execute=True):
         _svc("archive").restore(lst, record.number, actor=session.user)
@@ -424,7 +428,9 @@ def test_edit_and_file_actions_on_archived_record_are_refused_with_record_archiv
     assert upload.status_code == 200
     assert _alert(tree(upload), "record_archived")
 
-    _post(session, base + f"files/{attached.pk}/delete/")
+    deleted = _post(session, base + f"files/{attached.pk}/delete/")
+    assert deleted.status_code == 200
+    assert _alert(tree(deleted), "record_archived")
 
     errors = _svc("errors")
     with pytest.raises(errors.RecordArchived):
@@ -717,7 +723,7 @@ def test_purge_writes_journal_record_purged_with_number_and_title_without_field_
 
     _svc("archive").purge(lst, record.number, actor=manager.user)
 
-    event = _assert_journal("lists.record_purged", record, lst, manager.user)
+    event = _assert_journal("lists.record_purged", record, lst, manager.user, "before")
     dump = json.dumps([event.before, event.after], ensure_ascii=False)
     assert "Маркер-значения-17" not in dump and "Серийный" not in dump
     assert not _exists(record)
@@ -781,7 +787,8 @@ def test_ticket_card_has_no_link_to_purged_record():
 def test_archived_record_history_and_files_remain_after_nightly_lists_job_years_later(
         clock, protected_root):
     """FR-544: через годы запись в архиве, её история и файлы на месте после ночного задания списков
-    (`remind_deadlines`, обход сроков); напоминаний по записи в архиве нет; задания очистки записей нет — в
+    (`remind_deadlines`, обход сроков); напоминаний по записи в архиве нет, а живая запись с тем же сроком в том же
+    списке напоминание получает; задания очистки записей нет — в
     расписании у `lists` только `remind_deadlines`, в `apps/lists/tasks.py` нет функций очистки и обезличивания."""
     clock.set(lists.moscow(2021, 10, 20, 12, 0))
     lst = lists.make_list()
@@ -791,6 +798,8 @@ def test_archived_record_history_and_files_remain_after_nightly_lists_job_years_
     file_field = lists.add_field(lst, "file", "Акт")
     record = lists.make_record(lst, "Архивный прибор", {due.code: "2030-10-28"}, created_by=session.user,
                                archived=True)
+    # живая запись с тем же сроком: обход отличает архив (порог 7, до срока 28.10.2030 − 25.10.2030 = 3 дня)
+    live = lists.make_record(lst, "Рабочий прибор", {due.code: "2030-10-28"}, created_by=session.user)
     attached = _file(record, file_field, write=True)
     path = _svc_files_path(attached)
     body = path.read_bytes()
@@ -812,8 +821,14 @@ def test_archived_record_history_and_files_remain_after_nightly_lists_job_years_
     assert _m("RecordFile").objects.filter(pk=attached.pk, record=record).exists()
     assert support.model("core.StoredFile").objects.filter(pk=attached.file_id).exists()
     assert path.exists() and path.read_bytes() == body
-    assert result.notified == 0 and not _m("ReminderSent").objects.filter(record=record).exists()
-    assert support.model("notify.Notification").objects.count() == notifications
+    assert not _m("ReminderSent").objects.filter(record=record).exists()
+    assert _m("ReminderSent").objects.filter(record=live, field=due, threshold_days=7, due_date=date(2030, 10, 28),
+                                             notified=True).exists()
+    # получатель — правящий (набор «Правят», план «Напоминания» шаг 4); одно уведомление по живой записи
+    assert result.notified == 1
+    Notification = support.model("notify.Notification")
+    assert Notification.objects.count() == notifications + 1
+    assert not Notification.objects.filter(url=f"/lists/{lst.pk}/{record.number}/").exists()
 
     cron = ast.parse((support.BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8"))
     imported = {alias.name for node in ast.walk(cron) if isinstance(node, ast.ImportFrom)

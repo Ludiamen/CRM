@@ -249,12 +249,17 @@ def test_file_filter_yes_and_no_by_presence_of_record_files():
     """FR-519: у поля «файл» `f.<код>.files=yes` — записи, у которых есть файлы поля, `no` — у которых нет."""
     manager, lst = _env()
     file_field = lp.add_field(lst, "file", code="fl", multiple=True)
+    other_file_field = lp.add_field(lst, "file", code="fm")
     first, second, third, fourth = _records(lst, [{}, {}, {}, {}])
     lp.attach_file(first, file_field)
     lp.attach_file(second, file_field, name="счёт.pdf")
     lp.attach_file(second, file_field, name="акт.pdf")
+    # у третьей записи файл только другого поля: для `f.fl.files` он не в счёт (CONTRACT-006, 10.3, К-15)
+    lp.attach_file(third, other_file_field, name="схема.pdf")
     assert _numbers(manager, lst, {"f.fl.files": "yes"}) == [first.number, second.number]
     assert _numbers(manager, lst, {"f.fl.files": "no"}) == [third.number, fourth.number]
+    assert _numbers(manager, lst, {"f.fm.files": "yes"}) == [third.number]
+    assert _numbers(manager, lst, {"f.fm.files": "no"}) == [first.number, second.number, fourth.number]
 
 
 def test_invalid_date_number_and_id_filter_values_are_dropped_without_server_error():
@@ -452,10 +457,14 @@ def test_equal_sort_values_are_ordered_by_record_number_stably():
     params = {"sort": "n", "dir": "asc"}
     assert _numbers(manager, lst, params) == [first.number, second.number, third.number, fourth.number]
     assert _numbers(manager, lst, params) == _numbers(manager, lst, params)
+    # номер — последний ключ по возрастанию и при `desc` (CONTRACT-006, 5.6; 10.3, К-15)
+    assert _numbers(manager, lst, {"sort": "n", "dir": "desc"}) == [first.number, second.number, third.number,
+                                                                    fourth.number]
     same = lp.make_list(created_by=manager.user)
     lp.add_field(same, "string", code="s")
     one, two, three, four = _records(same, [{"s": "а"}, {"s": "а"}, {"s": "б"}, {"s": "а"}])
     assert _numbers(manager, same, {"sort": "s", "dir": "asc"}) == [one.number, two.number, four.number, three.number]
+    assert _numbers(manager, same, {"sort": "s", "dir": "desc"}) == [three.number, one.number, two.number, four.number]
 
 
 def test_column_header_link_toggles_dir_for_current_sort_column():

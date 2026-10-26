@@ -255,7 +255,7 @@ def test_l14_hidden_field_values_are_not_shown_in_record_card(admin_page):
     expect(page.locator(f'[data-lists-value="{code}"]')).to_have_count(0)
     text = _record_text_without_history(page)
     assert word not in text, "значение скрытого поля показано в карточке"
-    assert name not in text, "название скрытого поля показано в карточке"
+    # название поля в карточке не запрещено (решение владельца 2026-10-25 — только значения; R-1-E3, находка 4)
 
 
 def test_l14_hidden_field_changes_stay_visible_in_record_history(admin_page):
@@ -345,7 +345,8 @@ def test_l14_empty_field_type_can_be_changed(admin_page):
     helpers_lists.choose_type(page, "number")
     assert submit_field_form(page, list_id), f"тип пустого поля не изменён: {refusal_codes(page)}"
     open_settings(page, list_id, "fields")
-    expect(_row(page, code).locator('[data-field="type"]')).to_have_text(helpers_lists.TYPE_LABELS["number"])
+    # содержание ячейки контракт не задаёт точно (рядом могут быть пометки; R-1-E3, находка 3)
+    expect(_row(page, code).locator('[data-field="type"]')).to_contain_text(helpers_lists.TYPE_LABELS["number"])
     sides = helpers_org.audit_sides(page, "lists.field_changed")
     assert any(list_name in b + a and "Строка" in b and "Число" in a for b, a in sides), sides
 
@@ -456,7 +457,7 @@ def test_l14_new_field_in_list_with_records_cannot_be_required_at_once(admin_pag
     names = [tr.locator('[data-field="name"]').inner_text().strip()
              for tr in page.locator("[data-lists-fields-grid] tr[data-field-code]").all()
              if tr.get_attribute("data-field-code") != "title"]
-    assert name not in names, "поле создано несмотря на отказ"
+    assert not any(name in shown for shown in names), "поле создано несмотря на отказ"
     # без «Обязательного» то же поле добавляется
     assert add_field(page, list_id, name, "string")
     # в пустом списке «Обязательное» при создании допустимо
@@ -546,6 +547,8 @@ def test_l14_target_list_of_link_field_with_data_cannot_be_changed_and_reference
                                 {"name": link_name, "target": other_id})
     assert status == 200 and _has_code(body, "field_locked"), f"смена целевого списка: ответ {status}"
     assert re.search(r'data-error=["\']?target["\'\s>]', body), "отказ не у поля «целевой список»"
+    # в форме поля с данными элемента «целевой список» нет (CONTRACT-006 11.2, 15.5 п. 8; R-1-E3, находка 8)
+    expect(open_field(page, source_id, link).locator('[name="target"]')).to_have_count(0)
     # цель не изменилась: «Другая» не названа целью поля, её можно удалить
     open_settings(page, other_id)
     expect(page.locator('button[data-action="list-delete"]')).to_be_enabled()
@@ -604,6 +607,8 @@ def test_l14_currency_of_money_field_with_data_cannot_be_changed_but_name_hint_o
                                 {"name": money_name, "currency": "USD"})
     assert status == 200 and _has_code(body, "field_locked"), f"смена валюты: ответ {status}"
     assert re.search(r'data-error=["\']?currency["\'\s>]', body), "отказ не у поля «валюта»"
+    # в форме поля с данными элемента «валюта» нет (CONTRACT-006 11.2, 15.5 п. 8; R-1-E3, находка 8)
+    expect(open_field(page, list_id, money).locator('[name="currency"]')).to_have_count(0)
     open_record(page, list_id, number)
     value = page.locator(f'[data-lists-value="{money}"]')
     expect(value).to_contain_text("₽")
@@ -614,7 +619,7 @@ def test_l14_currency_of_money_field_with_data_cannot_be_changed_but_name_hint_o
     fill_field_form(page, name=new_name, hint=hint)
     assert submit_field_form(page, list_id), f"название и подсказка не сохранены: {refusal_codes(page)}"
     open_settings(page, list_id, "fields")
-    expect(_row(page, money).locator('[data-field="name"]')).to_have_text(new_name)
+    expect(_row(page, money).locator('[data-field="name"]')).to_contain_text(new_name)
     expect(open_field(page, list_id, money).locator('[name="hint"]')).to_have_value(hint)
     # порядок: «вверх» у второго поля
     _field_action(page, list_id, date, "field-up")
@@ -750,8 +755,8 @@ def test_l14_settings_and_rights_changes_appear_in_journal_as_before_after_witho
 
 def test_l14_settings_page_with_wide_fields_table_does_not_widen_page_at_360px(admin_page, browser,
                                                                                 browser_context_args):
-    """Сценарий 14, NFR-507: при 360 px страница настройки с широкой таблицей полей не шире экрана, таблица
-    прокручивается внутри своего блока (NFR-507)."""
+    """Сценарий 14, NFR-507: при 360 px страница настройки с широкой таблицей полей не шире экрана; таблица, если она
+    шире своего блока, прокручивается внутри него (прокрутка внутри блока допустима, но не обязательна; NFR-507)."""
     page = admin_page
     list_id = create_list(page, unique_list_name("Узкий"))
     add_field(page, list_id, "Серийный" + "номер" * 18, "string")
@@ -762,7 +767,9 @@ def test_l14_settings_page_with_wide_fields_table_does_not_widen_page_at_360px(a
         assert helpers_lists.page_fits(narrow), "горизонтальная прокрутка страницы настройки"
         block = narrow.locator(".lists-scroll:has([data-lists-fields-grid]), .lists-scroll[data-lists-fields-grid]")
         expect(block).to_have_count(1)
-        assert helpers_lists.scrolls_inside(block), "таблица полей не прокручивается внутри блока"
+        # перенос длинного слова тоже верен: прокрутка требуется, только если таблица шире блока (R-1-E3, находка 5)
+        wider = block.evaluate("el => el.scrollWidth > el.clientWidth")
+        assert not wider or helpers_lists.scrolls_inside(block), "таблица полей шире блока и не прокручивается в нём"
         assert helpers_lists.page_fits(narrow)
     finally:
         context.close()

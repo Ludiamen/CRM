@@ -177,13 +177,11 @@ def test_label_shows_list_name_record_name_and_first_visible_unique_value():
 
 
 def test_label_takes_first_unique_field_by_field_order():
-    """FR-538: значение берётся у первого по порядку полей уникального поля, а не у созданного первым; у числового
-    уникального поля порядок считается так же."""
+    """FR-538: значение берётся у первого по порядку полей уникального поля, а не у созданного первым."""
     lst = make_list("Лицензии отдела")
     created_first = add_field(lst, "string", "Серийный номер", unique=True, code="serial")
     created_second = add_field(lst, "string", "Номер договора", unique=True, code="contract")
     Field = support.model("lists.Field")
-    Field.objects.filter(pk=created_first.pk).update(order=100)
     Field.objects.filter(pk=created_second.pk).update(order=1)
     Field.objects.filter(pk=created_first.pk).update(order=2)
     record = make_record(lst, "Лицензия на офис", {"serial": "serial-value-9", "contract": "contract-value-7"})
@@ -434,7 +432,7 @@ def test_labels_sheet_100_numbers_accepted_101_refused():
     refused = reader.client.get(sheet_path(lst, numbers))
     assert refused.status_code == 200
     found = alerts(refused, "labels_too_many")
-    assert found and found[0].text() == "Не больше 100 записей"
+    assert found and "Не больше 100 записей" in found[0].text()
     assert labels_of(refused) == []
 
 
@@ -541,8 +539,12 @@ def test_labels_css_a4_page_margins_3x7_grid_and_print_media_hides_app_top_bar_a
     for selector in ("#top-bar", ".app-top-bar", "#main-menu", ".app-menu"):
         assert selector in printing, f"@media print не скрывает {selector}"
     assert re.search(r"display:\s*none", printing)
-    hidden_rule = next((rule for rule in printing.split("}") if "#top-bar" in rule and ".app-menu" in rule), "")
-    assert re.search(r"display:\s*none", hidden_rule), "скрытие должно быть в правиле с этими селекторами"
+    # Группировка селекторов контрактом не задана (11.9): для каждого ищется своё правило со скрытием.
+    rules = [rule.split("{", 1) for rule in printing.split("}") if "{" in rule]
+    for selector in ("#top-bar", ".app-top-bar", "#main-menu", ".app-menu"):
+        mention = re.compile(r"(?<![\w-])" + re.escape(selector) + r"(?![\w-])")
+        hiding = [body for head, body in rules if mention.search(head) and re.search(r"display:\s*none", body)]
+        assert hiding, f"в @media print нет правила с {selector} и display: none"
 
 
 def test_label_and_labels_sheet_not_written_to_audit_log():

@@ -214,6 +214,10 @@ def test_l10_reader_sees_file_with_checking_mark_if_still_pending_without_downlo
     open_record(page, list_id, number)
     expect(record_file_row(page, big_id).locator('a[data-action="file-download"]')).to_have_count(1)
     assert page.request.get(_file_path(list_id, number, big_id), max_redirects=0).status == 200
+    # контроль: правящему на той же карточке кнопка удаления файла показана (11.7: «правящим»)
+    open_record(editor.page, list_id, number)
+    expect(helpers_lists.files_block(editor.page, code).locator('button[data-action="file-delete"]').first
+           ).to_be_visible()
     # читающий не правит: кнопки удаления файла у него нет (11.7: «правящим»)
     expect(helpers_lists.files_block(page, code).locator('button[data-action="file-delete"]')).to_have_count(0)
 

@@ -198,6 +198,18 @@ def _saved_thresholds(form) -> list:
     return sorted(int(v) for v in _threshold_boxes(form).evaluate_all("els => els.map(e => e.value)") if v.strip())
 
 
+def _item_mail_with(mailpit, to: str, needle: str, *, seen=(), timeout: float = 60.0) -> dict:
+    """Новое письмо `notify.item` на `to`, в тексте которого (с пробелами, сжатыми до одного) есть `needle`: другие
+    новые письма того же шаблона (например, иные уведомления этого получателя, выпущенные тем же `tick`) пропускаются.
+    Ожидание — помощником `helpers_lists.item_mail` (не пришло за `timeout` — `AssertionError`)."""
+    skipped = set(seen)
+    while True:
+        mail = helpers_lists.item_mail(mailpit, to, seen=skipped, timeout=timeout)
+        if needle in " ".join(mail["Text"].split()):
+            return mail
+        skipped.add(mail["ID"])
+
+
 def _grid_numbers(page, list_id, preset: str) -> list:
     """Номера записей в таблице списка с отбором `preset` (по адресу; ссылка отбора обязана быть на странице)."""
     page.goto(f"/lists/{list_id}/?preset={preset}")
@@ -480,9 +492,10 @@ def test_l08_dismissed_employee_named_in_record_gets_no_notification(admin_page,
     shift(1)
     # п. 9: действующий получил уведомление на портале и письмо
     rows = _wait_rows(active.page, title, 1)
-    assert _texts_of(rows) == [_text(EXPIRING, list_name, title, FIELD_DUE, today + timedelta(days=30))]
+    expected = _text(EXPIRING, list_name, title, FIELD_DUE, today + timedelta(days=30))
+    assert _texts_of(rows) == [expected]
     helpers_notify.tick(shift=PAST_ANY_TERM)
-    helpers_lists.item_mail(mailpit, active.email, seen=seen_active)
+    _item_mail_with(mailpit, active.email, expected, seen=seen_active)
     # п. 9: уволенному письма нет (контроль — письмо действующему после того же сдвига срока получено)
     assert helpers_lists.no_item_mail(mailpit, leaving.email, seen=seen_leaving, wait=10), \
         "уволенному ушло письмо о сроке"
@@ -608,10 +621,9 @@ def test_l08_deadline_mail_comes_by_default_with_list_record_field_and_date_text
     assert _texts_of(_wait_rows(worker.page, title, 1)) == [expected]
     # когда: срок письма прошёл
     helpers_notify.tick(shift=PAST_ANY_TERM)
-    mail = helpers_lists.item_mail(mailpit, worker.email, seen=seen)
-    # п. 10: в тексте письма — полный текст уведомления: список, запись, поле, дата срока
-    body = " ".join(mail["Text"].split())
-    assert expected in body, "в письме нет текста уведомления о сроке"
+    # п. 10: в тексте письма — полный текст уведомления: список, запись, поле, дата срока (письмо ищется по этому
+    # тексту среди новых писем `notify.item` получателя; нет такого за минуту — `AssertionError`)
+    mail = _item_mail_with(mailpit, worker.email, expected, seen=seen)
     # в теме письма названий записи и списка нет (внешний текст вида)
     for forbidden in (title, list_name):
         assert forbidden not in mail["Subject"], "в теме письма есть название записи или списка"
@@ -641,11 +653,10 @@ def test_l08_expiring_preset_of_deadline_field_without_thresholds_uses_30_days(a
     """Сценарий 8, п. 15: у поля-срока без заданных порогов отбор «Истекает» берёт 30 дней: записи со сроком в ближайшие
     30 дней или просроченные (FR-520). Границу «ровно 30» тест не берёт (+29 и +31)."""
     page = admin_page
+    # дано: у поля-срока порогов нет (входы порогов очищены при заведении поля, `_deadline_list(thresholds=())`);
+    # повторный показ формы поля не проверяется: «30 и 7» подставляются только при первом включении «срока»
+    # (решение Opus, review-decisions-1, E2)
     list_id, _name_, owner_code, due_code = _deadline_list(page, thresholds=())
-    # дано: у поля-срока порогов нет
-    form = open_field(page, list_id, due_code)
-    expect(form.locator('[data-prop="deadline"] input[name="deadline"]')).to_be_checked()
-    assert _saved_thresholds(form) == [], "у поля-срока остались пороги"
     today = _today()
     plan = {"в 29 днях": 29, "просрочена": -1, "в 31 дне": 31, "в 60 днях": 60}
     numbers = {}

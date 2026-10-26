@@ -290,7 +290,7 @@ def test_l01_readers_unit_and_editors_role_let_unit_and_subunit_members_and_edit
     # п. 6: читающим через подразделение правка не дана, правящей роли — дана (11.3: «Добавить запись» правящим)
     for account in (in_unit, in_sub):
         expect(account.page.locator('a[data-action="record-add"]')).to_have_count(0)
-    expect(editor.page.locator('a[data-action="record-add"]')).to_have_count(1)
+    expect(editor.page.locator('[data-lists-page="grid"] a[data-action="record-add"]').first).to_be_visible()
     # п. 6: сотрудник вне подразделения и без правящей роли списка не читает — ответ как у несуществующего (FR-514)
     assert status_of(outsider.page, f"/lists/{list_id}/") == 404
 
@@ -443,11 +443,13 @@ def test_l01_home_and_settings_have_no_horizontal_scroll_at_360px_and_fields_tab
             narrow.goto(path)
             expect(narrow.locator(f'[data-lists-page="{hook}"]')).to_be_visible()
             assert helpers_lists.page_fits(narrow), f"горизонтальная прокрутка на {path}"
-        # п. 10: таблица полей прокручивается внутри блока
+        # п. 10: таблица полей лежит в блоке `.lists-scroll` (11.2); если она шире блока, прокручивается внутри него
+        # (NFR-507 прокрутку разрешает, но не требует: уместившаяся таблица — тоже верно)
         narrow.goto(f"/lists/{list_id}/settings/fields/")
         block = narrow.locator(".lists-scroll:has([data-lists-fields-grid]), .lists-scroll[data-lists-fields-grid]")
         expect(block).to_have_count(1)
-        assert helpers_lists.scrolls_inside(block), "таблица полей не прокручивается внутри блока"
+        if block.evaluate("el => el.scrollWidth > el.clientWidth"):
+            assert helpers_lists.scrolls_inside(block), "таблица полей шире блока, но не прокручивается внутри него"
         assert helpers_lists.page_fits(narrow)
     finally:
         context.close()

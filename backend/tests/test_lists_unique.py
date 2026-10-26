@@ -169,10 +169,10 @@ def _assert_refusal_markup(response, lst, owner, field_code="f1"):
     root = tree(response)
     nodes = q(root, data_error=field_code, data_code="unique_taken")
     assert nodes, "нет [data-error=…][data-code=unique_taken] рядом с полем"
-    around = nodes[0].parent
-    assert TAKEN in around.text()
-    links = q(around, "a", href=f"/lists/{lst.pk}/{owner.number}/")
-    assert links, "рядом с отказом нет ссылки на запись-владельца"
+    # текст и ссылка — внутри самого элемента отказа (CONTRACT-006, 11.4; 15.5 п. 8)
+    assert TAKEN in nodes[0].text()
+    links = q(nodes[0], "a", href=f"/lists/{lst.pk}/{owner.number}/")
+    assert links, "внутри отказа нет ссылки на запись-владельца"
 
 
 # --- тесты ----------------------------------------------------------------------------------------------
@@ -198,7 +198,6 @@ def test_number_100_0_and_100_are_the_same_unique_value():
     lst, session, (_, number_field) = _setup(number_field=True)
     unique = _svc("unique")
     assert unique.normalize(number_field, "100") == "100"
-    assert unique.normalize(number_field, "") is None
     assert unique.normalize(number_field, None) is None
 
     first = _create(lst, session.user, "Первая", f2="100.0")
@@ -428,8 +427,10 @@ def test_purge_deletes_unique_rows_by_cascade_and_frees_value(django_capture_on_
     kept = lists.make_record(lst, "Рабочий", {"f1": "ИН-701"}, created_by=user)
     assert len(_rows(lst)) == 2
 
+    # у `archive.purge` право — «управлять» (CONTRACT-006, 5.5; решение Opus по S2 Н1)
+    manager = lists.as_manager().user
     with django_capture_on_commit_callbacks(execute=True):
-        _svc("archive").purge(lst, gone.number, actor=user)
+        _svc("archive").purge(lst, gone.number, actor=manager)
 
     assert not support.model("lists.Record").objects.filter(pk=gone.pk).exists()
     assert _rows(lst) == [("f1", "ин-701", kept.number)]

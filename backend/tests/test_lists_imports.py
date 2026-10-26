@@ -389,7 +389,7 @@ def test_job_of_other_author_or_other_list_returns_404():
         if method == "get":
             own = _call(session.client, method, url, data)
             assert own.status_code == 200
-            assert marker in own.content.decode("utf-8")
+            assert len(q(tree(own), "select", data_lists_map_column=True)) == 2
     other_author = lists.as_editor(lst)
     for method, url, data in _job_urls(lst, job):
         response = _call(other_author.client, method, url, data)
@@ -738,9 +738,11 @@ def test_preview_unique_match_will_update_with_record_number_else_will_create():
     author = session.user
     one = lists.make_record(lst, "Ноутбук", {inventory.code: "ИН-1", quantity.code: "100"}, created_by=author)
     two = lists.make_record(lst, "Принтер", {inventory.code: "ИН-2"}, created_by=author)
+    three = lists.make_record(lst, "Сканер", {inventory.code: "ИН-4", quantity.code: "200"}, created_by=author)
     header = ["Название", "Инв. номер", "Номер партии"]
+    # Каждое уникальное значение встречается в файле один раз: повтор в более поздней строке — ошибка (план, шаг 3).
     rows = [["Ноутбук", " ин-1 ", ""], ["Другой", "ИН-3", ""], ["Принтер", "ИН-2", "7"], ["Пусто", "", ""],
-            ["Партия", "", "100,0"], ["Совпали", "ИН-1", "100"]]
+            ["Партия", "", "100,0"], ["Совпали", "ИН-4", "200"]]
     run = _run(session, lst, header, rows, ["title", inventory.code, quantity.code])
     assert [run.rows[n]["result"] for n in range(2, 8)] == [
         "will_update", "will_create", "will_update", "will_create", "will_update", "will_update"]
@@ -749,7 +751,7 @@ def test_preview_unique_match_will_update_with_record_number_else_will_create():
     assert run.rows[4]["number"] == two.number
     assert run.rows[5]["number"] is None
     assert run.rows[6]["number"] == one.number
-    assert run.rows[7]["number"] == one.number
+    assert run.rows[7]["number"] == three.number
     shown = _html_rows(run.response)
     assert shown[2].attrs["data-result"] == "will_update"
     assert str(one.number) in q(shown[2], data_field="number")[0].text()
@@ -771,15 +773,19 @@ def test_preview_archived_match_or_two_unique_fields_on_different_records_is_row
     a = lists.make_record(lst, "А", {first.code: "A1", second.code: "1"}, created_by=author)
     lists.make_record(lst, "Б", {first.code: "B1", second.code: "2"}, created_by=author)
     lists.make_record(lst, "В", {first.code: "C1", second.code: "3"}, archived=True, created_by=author)
-    rows = [["Строка 1", "A1", "2"], ["Строка 2", "A1", "1"], ["Строка 3", "C1", "9"], ["Строка 4", "A1", ""],
-            ["Строка 5", "N1", "3"], ["Строка 6", "A1", "7"]]
+    a2 = lists.make_record(lst, "А2", {first.code: "A2", second.code: "4"}, created_by=author)
+    a3 = lists.make_record(lst, "А3", {first.code: "A3", second.code: "5"}, created_by=author)
+    # Каждое уникальное значение встречается в файле один раз, чтобы правило «повтор в более поздней строке» не
+    # вмешивалось (план, «Загрузка», шаг 3); строка 2 — «Б» по коду и «А2» по номеру.
+    rows = [["Строка 1", "B1", "4"], ["Строка 2", "A1", "1"], ["Строка 3", "C1", "9"], ["Строка 4", "A2", ""],
+            ["Строка 5", "N1", "3"], ["Строка 6", "A3", "7"]]
     run = _run(session, lst, ["Название", "Код", "Номер"], rows, ["title", first.code, second.code])
     assert run.rows[2]["result"] == "error" and TWO_RECORDS in _reason(run, 2)
     assert run.rows[3]["result"] == "will_update" and run.rows[3]["number"] == a.number
     assert run.rows[4]["result"] == "error" and ARCHIVED in _reason(run, 4)
-    assert run.rows[5]["result"] == "will_update" and run.rows[5]["number"] == a.number
+    assert run.rows[5]["result"] == "will_update" and run.rows[5]["number"] == a2.number
     assert run.rows[6]["result"] == "error" and ARCHIVED in _reason(run, 6)
-    assert run.rows[7]["result"] == "will_update" and run.rows[7]["number"] == a.number
+    assert run.rows[7]["result"] == "will_update" and run.rows[7]["number"] == a3.number
     shown = _html_rows(run.response)
     assert TWO_RECORDS in q(shown[2], data_field="reason")[0].text()
     assert ARCHIVED in q(shown[4], data_field="reason")[0].text()
@@ -809,7 +815,8 @@ def test_preview_repeated_unique_value_in_later_row_error_with_row_number():
 
 def test_file_without_title_column_updates_by_unique_field_unmatched_row_has_no_title_error():
     """FR-534, FR-546: файл без столбца «Название» обновляет записи по уникальному полю; строка без совпадения
-    (и с пустым уникальным значением) — ошибка «Не указано название»."""
+    (и с пустым уникальным значением) — ошибка «Не указано название»; пустая ячейка «Название» при существующем
+    столбце — так же, как отсутствие столбца."""
     lst, session = _setup()
     code = lists.add_field(lst, "string", "Код", unique=True)
     lists.add_field(lst, "string", "Примечание")
@@ -822,6 +829,10 @@ def test_file_without_title_column_updates_by_unique_field_unmatched_row_has_no_
     shown = _html_rows(run.response)
     assert NO_TITLE in q(shown[3], data_field="reason")[0].text()
     assert shown[2].attrs["data-result"] == "will_update"
+    # Пустая ячейка «Название» при существующем столбце — как отсутствие столбца (CONTRACT-006, 5.7).
+    titled = _run(session, lst, ["Название", "Код"], [["", "ИН-1"], ["", "ИН-8"]], ["title", code.code])
+    assert titled.rows[2]["result"] == "will_update" and titled.rows[2]["number"] == owner.number
+    assert titled.rows[3]["result"] == "error" and NO_TITLE in _reason(titled, 3)
 
 
 def test_preview_each_record_rule_violation_has_reason_and_row_number():

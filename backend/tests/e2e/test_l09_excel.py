@@ -94,10 +94,21 @@ def _set_columns(page, list_id, wanted=None) -> None:
             continue
         codes.append(code)
         box.set_checked(wanted is None or code in wanted)
-    dialog.locator(SAVE).click()
+    # сохранение — POST `/lists/<id>/columns/` (10.2); ждём его ответ, затем таблицу
+    with page.expect_response(lambda r: r.url.split("?")[0].endswith(f"/lists/{list_id}/columns/")
+                              and r.request.method == "POST"):
+        dialog.locator(SAVE).click()
+    # выбор сохранён (`UserView`): таблица открывается заново, чтобы не читать прежний DOM и не ловить переход по 302
+    page.goto(f"/lists/{list_id}/")
+    expect(page.locator("#lists-grid")).to_be_visible()
+    # столбец ищется по ячейкам `td[data-col]` (11.3): `th[data-sort]` есть только у сортируемых столбцов, у поля
+    # «файл» его нет (решение Opus, review-decisions-1, E2); у всех вызывающих тестов в таблице есть строки
     for code in codes:
-        shown = wanted is None or code in wanted
-        expect(page.locator(f'#lists-grid th[data-sort="{code}"]')).to_have_count(1 if shown else 0)
+        cells = page.locator(f'#lists-grid td[data-col="{code}"]')
+        if wanted is None or code in wanted:
+            expect(cells.first).to_be_attached()
+        else:
+            expect(cells).to_have_count(0)
 
 
 def _read_book(download):
@@ -214,9 +225,13 @@ def test_l09_export_downloads_xlsx_with_field_headers_and_rows_order_and_columns
     _set_columns(rp, list_id, {inv, state})
     assert _found(rp, list_id, f"sort=title&dir=desc&f.{state}={new_id}") == 2
     rows = _grid_rows(rp)
-    headers = [name_ for code, name_ in _grid_headers(rp) if code != "number"]
+    # заголовки выгрузки — названия полей (план «Выгрузка») в порядке столбцов таблицы; текст ссылки заголовка не
+    # берётся: у текущего столбца сортировки в нём может быть знак порядка (11.3 задаёт только `[data-dir]`)
+    names = {"title": "Название", inv: "Инвентарный номер", state: "Состояние", qty: "Количество"}
+    codes = [code for code, _text in _grid_headers(rp) if code != "number"]
+    assert qty not in codes, "столбец «Количество» не скрыт"
+    headers = [names[code] for code in codes]
     assert [r["title"] for r in rows] == [f"Принтер {tag}", f"Ноутбук {tag}"], "порядок таблицы не по убыванию названия"
-    assert "Количество" not in headers
     download = _download(rp, rp.locator('a[data-action="export"]'))
     assert download.suggested_filename == f"{name}.xlsx"
     values = _sheet_values(_read_book(download).worksheets[0])
@@ -353,7 +368,8 @@ def test_l09_import_of_xlsx_and_csv_shows_mapping_of_columns_to_fields_by_names_
         rows = [["название", "  Инвентарный номер ", "МОДЕЛЬ", "Заводской"], [title, number, kind, place]]
         # п. 5: кнопка «Загрузить из таблицы» на странице таблицы ведёт на страницу загрузки
         page.goto(f"/lists/{list_id}/")
-        page.locator('a[data-action="import"]').click()
+        # у пустого списка ссылка может быть и в панели, и в пустом состоянии (план «Таблица записей»)
+        page.locator('a[data-action="import"]').first.click()
         expect(page.locator('[data-lists-page="import"]')).to_be_visible()
         form = page.locator('[data-lists-page="import"] form:has(input[type=file][name=file])')
         _send_file(form, helpers_sd.make_table(rows, fmt), f"import-{tag}.{fmt}", _mime(fmt))
@@ -579,7 +595,7 @@ def test_l09_sample_xlsx_has_headers_of_visible_fields_except_file_and_hints_she
     assert book.sheetnames[1] == "Подсказки"
     first = _sheet_values(book.worksheets[0])
     assert first[0] == ["Название", "Инвентарный номер", "Состояние", "Дата ввода", "Время сдачи", "Цена"]
-    assert len(first) == 1, "в образце есть строки данных"
+    # строк данных образец может не иметь или иметь строку-пример: план этого не задаёт
     # п. 11: лист подсказок — по строке на каждый заголовок (12.4)
     hints = [["" if c is None else str(c) for c in r] for r in _sheet_values(book.worksheets[1])]
     assert hints[0] == ["Поле", "Тип", "Обязательное", "Уникальное", "Значения", "Формат"]

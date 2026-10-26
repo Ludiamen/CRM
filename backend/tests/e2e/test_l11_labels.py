@@ -45,6 +45,20 @@ def _expected_qr_url(portal_url: str, list_id, number) -> str:
     return portal_url.rstrip("/") + _card_path(list_id, number)
 
 
+def _same_card_url(actual, portal_url: str, list_id, number) -> bool:
+    """`actual` — адрес карточки записи из QR: то же имя хоста, что у адреса круга (conftest: имя хоста стенда — как в
+    `PORTAL_URL`), путь `/lists/<id>/<n>/`, без строки запроса и якоря. Схему и порт `PORTAL_URL` стенда приёмка не
+    знает (контракт их равенства адресу круга не называет), поэтому они не сравниваются (R-1-E3, находка 10)."""
+    got, want = urlparse(actual or ""), urlparse(_expected_qr_url(portal_url, list_id, number))
+    return (got.scheme in ("http", "https") and got.hostname == want.hostname and got.path == want.path
+            and not got.query and not got.fragment)
+
+
+def _sibling_card_url(qr_url: str, list_id, number) -> str:
+    """Адрес другой карточки на той же основе (схема, хост, порт), что адрес из QR `qr_url`."""
+    return urlparse(qr_url)._replace(path=_card_path(list_id, number), query="", fragment="").geturl()
+
+
 def _list_with_unique_fields(page, prefix="Этикетки"):
     """Список с тремя строковыми полями: «Модель» (не уникальное), «Инвентарный номер» и «Серийный номер» (уникальные).
     Возвращает `(номер списка, название, код неуникального, [коды уникальных по порядку сетки полей])`."""
@@ -227,21 +241,20 @@ def test_l11_qr_svg_equals_generated_for_card_url_and_data_qr_url_holds_card_url
     list_id, _name, _model, (unique_code, _second) = _list_with_unique_fields(admin_page)
     number = create_record(admin_page, list_id, f"Принтер {unique_word()}", {unique_code: unique_word("inv")})
     other = create_record(admin_page, list_id, f"Принтер {unique_word()}", {unique_code: unique_word("inv")})
-    expected = _expected_qr_url(portal_url, list_id, number)
 
     _open_label(admin_page, list_id, number)
     img = admin_page.locator(LABEL).locator(QR)
-    assert img.get_attribute("data-qr-url") == expected, "data-qr-url — не адрес карточки записи"
-    assert "?" not in expected and "#" not in expected
+    qr_url = img.get_attribute("data-qr-url")
+    assert _same_card_url(qr_url, portal_url, list_id, number), f"data-qr-url — не адрес карточки записи: {qr_url}"
     assert qr_matches(img), "SVG картинки не равен генерации qrcode для data-qr-url"
-    assert qr_image_bytes(img) in qr_svg_variants(expected), "SVG не равен генерации qrcode для адреса карточки"
-    assert qr_image_bytes(img) not in qr_svg_variants(_expected_qr_url(portal_url, list_id, other)), \
-        "QR одинаков у разных записей"
+    assert qr_image_bytes(img) in qr_svg_variants(qr_url), "SVG не равен генерации qrcode для адреса карточки"
+    other_url = _sibling_card_url(qr_url, list_id, other)
+    assert qr_image_bytes(img) not in qr_svg_variants(other_url), "QR одинаков у разных записей"
 
-    # у другой записи — свой адрес и свой рисунок
+    # у другой записи — свой адрес (та же основа, свой путь) и свой рисунок
     _open_label(admin_page, list_id, other)
     img_other = admin_page.locator(LABEL).locator(QR)
-    assert img_other.get_attribute("data-qr-url") == _expected_qr_url(portal_url, list_id, other)
+    assert img_other.get_attribute("data-qr-url") == other_url
     assert qr_matches(img_other)
     assert qr_image_bytes(img_other) != qr_image_bytes(img)
 
@@ -276,7 +289,7 @@ def test_l11_qr_url_opened_without_login_leads_to_login_and_back_to_card_by_next
     page = reader.page
     _open_label(page, list_id, number)
     qr_url = page.locator(LABEL).locator(QR).get_attribute("data-qr-url")
-    assert qr_url == _expected_qr_url(portal_url, list_id, number)
+    assert _same_card_url(qr_url, portal_url, list_id, number), f"data-qr-url — не адрес карточки: {qr_url}"
 
     # п. 3: тот же человек, но не вошедший (выход), открывает адрес из QR
     _own_page_ready(page)
@@ -302,9 +315,9 @@ def test_l11_qr_url_opened_by_employee_not_reading_list_gives_same_answer_as_mis
     list_id, list_name, _model, (unique_code, _second) = _list_with_unique_fields(admin_page)
     title, value = f"Секретный сервер {unique_word()}", unique_word("inv")
     number = create_record(admin_page, list_id, title, {unique_code: value})
-    qr_url = _expected_qr_url(portal_url, list_id, number)
     _open_label(admin_page, list_id, number)
-    assert admin_page.locator(LABEL).locator(QR).get_attribute("data-qr-url") == qr_url
+    qr_url = admin_page.locator(LABEL).locator(QR).get_attribute("data-qr-url")
+    assert _same_card_url(qr_url, portal_url, list_id, number), f"data-qr-url — не адрес карточки: {qr_url}"
     outsider = employee(role=make_list_role(admin_page)[1])
     page = outsider.page
 
@@ -324,9 +337,9 @@ def test_l11_qr_url_opened_by_employee_not_reading_list_gives_same_answer_as_mis
     missing_number = number + 500
     nowhere = list_id + "00000"
     real = answer(qr_url, (_card_path(list_id, number), qr_url))
-    same_list_missing = answer(_expected_qr_url(portal_url, list_id, missing_number),
+    same_list_missing = answer(_sibling_card_url(qr_url, list_id, missing_number),
                                (_card_path(list_id, missing_number),))
-    no_list = answer(_expected_qr_url(portal_url, nowhere, 1), (_card_path(nowhere, 1),))
+    no_list = answer(_sibling_card_url(qr_url, nowhere, 1), (_card_path(nowhere, 1),))
     assert real[0] == 404, f"не читающему открылась карточка или не 404: {real[0]}"
     assert real == same_list_missing == no_list, "ответ не читающему отличается от ответа на несуществующую запись"
     for secret in (title, value, list_name, "Запись удалена"):

@@ -530,6 +530,8 @@ def test_unreadable_list_record_history_file_export_label_and_job_respond_as_non
         assert response.status_code == 404, f"{method} {path}: {response.status_code}"
         body = _html(response)
         assert not [text for text in w.titles if text in body], f"{path}: в отказе есть данные объекта"
+        # К-10: ответ неотличим от ответа на несуществующий адрес тому же клиенту (статус, переход, текст).
+        assert support.same_failure(response, ghost_response), f"{method} {path}: отказ отличается от «нет такого»"
     assert _state(w) == before
 
 
@@ -545,6 +547,7 @@ def test_filter_values_of_unreadable_list_respond_as_nonexistent():
     foreign = ll.make_list()
     foreign_choice = ll.add_field(foreign, "choice", "Чужой статус", choices=("Чужой",))
     who = ll.as_reader(own)
+    ghost = max(own.pk, hidden_target.pk, foreign.pk) + 1000
     ok = who.client.get(f"/lists/{own.pk}/filter-values/{choice.code}/")
     assert ok.status_code == 200 and _q(_tree(ok), "ul", data_lists_pick=True)
     assert "Новый" in _html(ok)
@@ -553,6 +556,10 @@ def test_filter_values_of_unreadable_list_respond_as_nonexistent():
         assert response.status_code == 404, (lst.pk, field.code, response.status_code)
         body = _html(response)
         assert "Запись недоступного списка-цели" not in body and "Тайный" not in body and "Чужой" not in body
+        # К-10: как у несуществующего списка тому же клиенту.
+        ghost_response = who.client.get(f"/lists/{ghost}/filter-values/{field.code}/?q=")
+        assert ghost_response.status_code == 404
+        assert support.same_failure(response, ghost_response), (lst.pk, field.code)
 
 
 def test_forbidden_buttons_are_absent_from_markup_per_actor():
@@ -912,8 +919,9 @@ def test_people_and_units_pickers_are_404_for_who_neither_edits_nor_manages():
     lst = ll.make_list()
     editor, manager = ll.as_editor(lst), ll.as_manager()
     reader, nobody = ll.as_reader(lst), _nobody()
+    org.make_unit("Узел проверки")  # непустой ответ `ul > li` у подсказки узлов (10.2)
     for who in (editor, manager):
-        for path in ("/lists/people/?q=" + quote("Тест"), "/lists/units/?q=" + quote("Узел")):
+        for path in ("/lists/people/?q=" + quote("Тест"), "/lists/units/?q=" + quote("Узел проверки")):
             response = who.client.get(path, **HX)
             assert response.status_code == 200, path
             assert _q(_tree(response), "ul", data_lists_pick=True), path

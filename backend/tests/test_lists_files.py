@@ -395,7 +395,7 @@ def test_file_of_20_mb_plus_one_byte_is_refused_file_over_20_mb(django_capture_o
     with pytest.raises(_errors().ListsError) as caught:
         _files().attach(world.lst, world.record.number, field_code=world.field.code, name="больше.txt",
                         data=b"a" * (20 * MB + 1), actor=world.editor.user)
-    assert caught.value.code == "file_too_big"
+    assert caught.value.code == "file_too_big" and caught.value.field == "file"
     assert _counts() == before and _disk(protected_root) == disk
     assert org.files_jobs() == []
 
@@ -421,7 +421,7 @@ def test_twenty_first_file_across_all_file_fields_is_refused_record_has_20_files
     with pytest.raises(_errors().ListsError) as caught:
         _files().attach(world.lst, world.record.number, field_code=world.field.code, name="лишний.txt", data=b"data",
                         actor=world.editor.user)
-    assert caught.value.code == "files_limit"
+    assert caught.value.code == "files_limit" and caught.value.field == "file"
     assert _counts() == before and _disk(protected_root) == disk
 
 
@@ -439,7 +439,7 @@ def test_second_file_in_field_without_multiple_is_refused_field_already_has_file
     with pytest.raises(_errors().ListsError) as caught:
         _files().attach(world.lst, world.record.number, field_code=world.field.code, name="второй.txt", data=b"two",
                         actor=world.editor.user)
-    assert caught.value.code == "field_has_file"
+    assert caught.value.code == "field_has_file" and caught.value.field == "file"
     assert _counts() == before and _disk(protected_root) == disk
     for name in ("фото1.txt", "фото2.txt"):
         response = _post_file(world.editor.client, world.lst, world.record, world.other, name, b"photo")
@@ -470,7 +470,7 @@ def test_executable_with_foreign_extension_and_encrypted_archive_are_refused_by_
         with pytest.raises(_errors().ListsError) as caught:
             _files().attach(world.lst, world.record.number, field_code=world.field.code, name=name, data=data,
                             actor=world.editor.user)
-        assert caught.value.code == "file_type_refused", name
+        assert caught.value.code == "file_type_refused" and caught.value.field == "file", name
     assert _counts() == before and _disk(protected_root) == [] and org.files_jobs() == []
     plain = _post_file(world.editor.client, world.lst, world.record, world.field, "обычный.zip", sd.sample("plain.zip"))
     assert plain.status_code == 200 and q(tree(plain), data_error=True) == []
@@ -646,7 +646,8 @@ def test_attach_and_delete_do_not_change_record_version(django_capture_on_commit
     assert _state(record) == state and _fresh(record).version == 3
     saved = records.save(world.lst, record.number, {"title": "Версия 3", world.text.code: "SN-10"},
                          base_version=3, actor=world.editor.user)
-    assert saved.version == 4 and _fresh(record).values[world.text.code] == "SN-10"
+    assert saved.changed is True and saved.record.version == 4 and _fresh(record).version == 4
+    assert _fresh(record).values[world.text.code] == "SN-10"
 
 
 def test_attach_and_delete_write_file_added_and_file_removed_history(

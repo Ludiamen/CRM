@@ -196,6 +196,7 @@ def _render(user, ticket):
 
     request = RequestFactory().get(f"/tickets/{ticket.number}/")
     request.user = user
+    request.session = {}  # контекстный процессор оболочки читает сессию (решение Opus Р2)
     return ticket_parts.render(request, _ref(ticket))
 
 
@@ -241,7 +242,7 @@ def test_ticket_section_shown_with_link_button_to_viewer_who_sees_ticket_and_rea
     списков», полем поиска и кнопкой «Привязать запись», даже если связей нет; у строки — кнопка «Отвязать»."""
     queue, ticket = _ticket()
     empty_ticket = sd.make_ticket(queue=queue)
-    lst = lists.make_list("Оборудование")
+    lst = lists.make_list("Оборудование Т")
     record = lists.make_record(lst, "Ноутбук Dell")
     link = _link(record, ticket)
     viewer = _reader(queue, lst)
@@ -302,15 +303,16 @@ def test_ticket_section_row_shows_name_dash_list_linking_to_record_card():
     """FR-528: строка раздела — `li[data-ticket-link-id]` со ссылкой на карточку записи и текстом «Название — Список»;
     у записи не в архиве пометки «в архиве» нет."""
     queue, ticket = _ticket()
-    lst = lists.make_list("Лицензии")
+    lst = lists.make_list("Лицензии Т")
     record = lists.make_record(lst, "Office 2021")
     link = _link(record, ticket)
     viewer = _reader(queue, lst)
 
     row = _section_rows(_page(viewer.client, ticket.number))[link.pk]
-    anchor = q1(row, "a")
-    assert anchor.attrs["href"].rstrip("/").endswith(f"/lists/{lst.pk}/{record.number}")
-    assert anchor.text() == "Office 2021 — Лицензии"
+    anchors = [a for a in q(row, "a")
+               if a.attrs.get("href", "").rstrip("/").endswith(f"/lists/{lst.pk}/{record.number}")]
+    assert anchors, "в строке нет ссылки на карточку записи"
+    assert "Office 2021 — Лицензии Т" in row.text()
     assert q(row, data_lists_archived=True) == []
 
 
@@ -457,7 +459,7 @@ def test_link_post_creates_link_with_who_and_when_and_leaves_record_unchanged(cl
     (`linked_at`); сама запись (поля, версия, история) не меняется."""
     clock.set(lists.moscow(2026, 10, 25, 14, 30))
     queue, ticket = _ticket()
-    lst = lists.make_list("Оборудование")
+    lst = lists.make_list("Оборудование Т")
     record = lists.make_record(lst, "Ноутбук Dell")
     viewer = _reader(queue, lst, full_name="Привязкин Пётр")
     Record, Change = model("lists.Record"), model("lists.Change")
@@ -478,7 +480,7 @@ def test_link_post_creates_link_with_who_and_when_and_leaves_record_unchanged(cl
 def test_link_post_returns_whole_section_fragment_for_htmx():
     """FR-528: ответ на привязку — 200 и фрагмент раздела целиком (без `<html>`): в нём и прежняя, и новая связь."""
     queue, ticket = _ticket()
-    lst = lists.make_list("Оборудование")
+    lst = lists.make_list("Оборудование Т")
     old = lists.make_record(lst, "Старая запись")
     new = lists.make_record(lst, "Новая запись")
     old_link = _link(old, ticket)
@@ -491,7 +493,9 @@ def test_link_post_returns_whole_section_fragment_for_htmx():
     new_link = _links(record=new).get()
     rows = _section_rows(root)
     assert set(rows) == {old_link.pk, new_link.pk}
-    assert q1(rows[new_link.pk], "a").text() == "Новая запись — Оборудование"
+    new_row = rows[new_link.pk]
+    assert any(a.attrs.get("href", "").rstrip("/").endswith(f"/lists/{lst.pk}/{new.number}") for a in q(new_row, "a"))
+    assert "Новая запись — Оборудование Т" in new_row.text()
     assert q1(root, "input", data_lists_picker="ticket") is not None
 
 
@@ -561,7 +565,7 @@ def test_unlink_post_removes_link_and_returns_section_fragment():
     """FR-528: POST `/lists/ticket-links/<id>/delete/` удаляет связь и отдаёт фрагмент раздела без этой строки;
     другая связь и сама запись остаются; повтор — 404."""
     queue, ticket = _ticket()
-    lst = lists.make_list("Оборудование")
+    lst = lists.make_list("Оборудование Т")
     gone = lists.make_record(lst, "Отвязываемая")
     kept = lists.make_record(lst, "Остающаяся")
     gone_link = _link(gone, ticket)
@@ -619,7 +623,7 @@ def test_record_card_related_tickets_show_number_subject_state_only_for_visible_
     невидимая заявка пропускается, её тема в разметке не появляется; `tickets.related` отдаёт те же заявки."""
     queue, mine = _ticket(subject="Не печатает принтер")
     foreign = sd.make_ticket(queue=sd.make_queue(), subject="Чужая секретная тема")
-    lst = lists.make_list("Оборудование")
+    lst = lists.make_list("Оборудование Т")
     record = lists.make_record(lst, "Принтер HP")
     _link(record, mine)
     _link(record, foreign)
@@ -645,7 +649,7 @@ def test_record_card_keeps_anonymized_ticket_with_number_and_subject():
     queue, ticket = _ticket(subject="Старая заявка про сканер", kind="closed", resolution="Починили")
     model("servicedesk.Ticket").objects.filter(pk=ticket.pk).update(
         requester_email=ANONYMIZED, requester_name=ANONYMIZED, requester=None, anonymized_at=timezone.now())
-    lst = lists.make_list("Оборудование")
+    lst = lists.make_list("Оборудование Т")
     record = lists.make_record(lst, "Сканер")
     _link(record, ticket)
     viewer = _reader(queue, lst)
@@ -659,7 +663,7 @@ def test_purge_record_deletes_ticket_links_and_ticket_section_no_longer_shows_it
     """FR-524, FR-528: «Удалить навсегда» записи в архиве удаляет её связи с заявками; раздел заявки больше не
     показывает строку, у читающего список раздел остаётся без строк."""
     queue, ticket = _ticket()
-    lst = lists.make_list("Оборудование")
+    lst = lists.make_list("Оборудование Т")
     record = lists.make_record(lst, "Списанный ноутбук", archived=True)
     survivor = lists.make_record(lst, "Другой ноутбук")
     _link(record, ticket)
@@ -685,7 +689,7 @@ def test_without_servicedesk_record_card_has_no_related_tickets_and_link_urls_re
     """FR-528: без `apps.servicedesk` в карточке записи нет раздела «Связанные заявки», `render` отдаёт `None`,
     `tickets.related` — пустой список, а `/lists/ticket-pick/`, `/lists/ticket-links/` и отвязка отвечают 404."""
     queue, ticket = _ticket(subject="Заявка про ноутбук")
-    lst = lists.make_list("Оборудование")
+    lst = lists.make_list("Оборудование Т")
     record = lists.make_record(lst, "Ноутбук")
     link = _link(record, ticket)
     viewer = _reader(queue, lst)
