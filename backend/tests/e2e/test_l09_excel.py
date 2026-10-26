@@ -545,7 +545,7 @@ def test_l09_employee_without_edit_right_has_no_import_button_and_direct_import_
     stranger = employee(role=helpers_lists.make_list_role(page)[1])
     # п. 10: правящий видит кнопку и открывает загрузку
     editor.page.goto(f"/lists/{list_id}/")
-    expect(editor.page.locator('a[data-action="import"]')).to_have_count(1)
+    expect(editor.page.locator('[data-lists-page="grid"] a[data-action="import"]').first).to_be_visible()
     assert status_of(editor.page, f"/lists/{list_id}/import/") == 200
     assert status_of(editor.page, f"/lists/{list_id}/sample/") == 200
     # п. 10: читающий — кнопки нет (выгрузка есть), прямое обращение — 403

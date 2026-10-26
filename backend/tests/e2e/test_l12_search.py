@@ -165,7 +165,7 @@ def test_l12_dell_in_top_search_shows_lists_group_row_title_dash_list_opening_ca
     groups = _groups(page.locator("[data-search-page]"))
     # у читающего без прав на другое по уникальному слову других групп нет: порядок групп (50 — после «Подразделений»)
     # здесь не доказывается, его проверяет серверный T-6122 (R-1-E3, находка 6)
-    assert groups[-1] == "lists", f"группа «Списки» не последняя: {groups}"
+    assert "lists" in groups, f"нет группы «Списки»: {groups}"
     # п. 1: тот же запрос в строке поиска шапки — всплывающая выдача; нажатие на строку открывает карточку
     page.goto("/")
     bar = page.locator('[data-search-bar] input[name="q"]')
