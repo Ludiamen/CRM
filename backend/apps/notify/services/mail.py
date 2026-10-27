@@ -17,6 +17,7 @@ from apps.integrations.mail import services as mail_services
 
 from ..models import Delivery, Notification
 from . import dispatch, kinds, prefs, quiet
+from .delivery import FALLBACK_TEXT
 from .errors import NotifyError
 
 log = logging.getLogger(__name__)
@@ -101,7 +102,8 @@ def _queue(template: str, to: str, subject: str, delivery_id: int) -> int:
 def queue_item(delivery) -> int:
     """Ставит письмо `notify.item`; тема — внешний текст вида, без номера и темы заявки. Возвращает номер письма."""
     note = delivery.notification
-    return _queue("notify.item", note.user.email, kinds.get(note.kind).external_text, delivery.pk)
+    subject = kinds.external_text(kinds.get(note.kind), note.object_ref) or FALLBACK_TEXT
+    return _queue("notify.item", note.user.email, subject, delivery.pk)
 
 
 def queue_digest(delivery) -> int:

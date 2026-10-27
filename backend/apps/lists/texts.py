@@ -1,1 +1,86 @@
-"""Тексты отказов FR-546 одним словарём (срез 006)."""
+"""Тексты отказов FR-546 одним словарём (срез 006).
+
+Ключ — код отказа (`ListsError.code`, `data-code`); подстановки — `str.format`. Тексты — дословно из CONTRACT-006,
+разделы 12.1–12.3; обычный пробел U+0020 в числах."""
+
+TEXTS = {
+    # 12.1 — SPEC-006 FR-546 и план
+    "unique_taken": "Такое значение уже есть в списке",
+    "required": "Обязательное поле",
+    "too_long": "Предел: {limit} знаков",
+    "required_new_with_records": "Сначала заполните поле у всех записей",
+    "unique_repeats": "Значения повторяются: {items}",
+    "required_missing": "Не заполнено у записей: {items}",
+    "list_has_records": "Нельзя удалить: есть записи",
+    "list_referenced": "Нельзя удалить: на список ссылается поле {field} списка {list}",
+    "unit_in_records": "подразделение указано в {count} записях списков",
+    "unit_in_access": "указано в правах списков: {names}",
+    "role_in_access": "Нельзя удалить: указано в правах списков: {names}.",
+    "record_referenced": "Нельзя удалить: на запись ссылаются записи: {links}",
+    "files_limit": "У записи уже 20 файлов",
+    "file_too_big": "Файл больше 20 МБ",
+    "file_type_refused": "Файл такого типа не принимается",
+    "labels_too_many": "Не больше 100 записей",
+    "export_too_many": "Уточните отбор: записей больше 10 000",
+    "import_too_big": "Файл больше 5 МБ",
+    "import_too_many_rows": "Строк больше 5 000",
+    "import_bad_format": "Формат не поддерживается",
+    "version_conflict": "Запись уже изменил {who} в {when}",
+    "record_archived": "Запись в архиве",
+    "record_gone": "Запись удалена",
+    "query_short": "Введите не меньше 2 знаков",
+    "home_empty": "Списков пока нет. Список — это ваш реестр: оборудование, лицензии, договоры. Создайте первый",
+    "home_empty_reader": "Вам пока не открыт ни один список",
+    "grid_empty": "В списке пока нет записей",
+    # 12.2 — тексты плана, решений задач и И2
+    "field_has_file": "В поле уже есть файл",
+    "import_repeat_in_file": "Значение повторяется в строке {row}",
+    "import_no_title": "Не указано название",
+    "choice_archived_exists": "Такое значение есть в архиве значений — верните его",
+    "field_hidden_meanwhile": "Поле скрыто администратором, значение не сохранится",
+    "bulk_result": "В архив: {archived}, пропущено: {skipped}",
+    "bulk_too_many": "Не больше 50 записей за раз",
+    "vectors_stale": "Поиск по списку обновляется",
+    "query_long": "Запрос не длиннее 200 знаков",
+    # 12.3 — тексты отказов решением контракта
+    "name_taken": "Список с таким названием уже есть",
+    "field_name_taken": "Поле с таким названием уже есть",
+    "choice_name_taken": "Такое значение уже есть",
+    "fields_limit": "Не больше 50 полей",
+    "choices_limit": "Не больше 200 значений",
+    "property_not_allowed": "Это свойство недоступно для такого типа поля",
+    "thresholds_bad": "Порог — целое число от 1 до 365, не больше трёх порогов, без повторов",
+    "currency_bad": "Валюта: RUB, USD или EUR",
+    "target_required": "Выберите список",
+    "field_has_data": "Нельзя удалить: в поле есть данные",
+    "field_locked": "У поля с данными это не меняется",
+    "multiple_in_use": "Нельзя выключить: есть записи с несколькими значениями",
+    "bad_order": "Порядок полей изменился, обновите страницу",
+    "line_break": "Без переносов строк",
+    "bad_number": "Введите число",
+    "number_digits": "Не больше 15 значащих цифр, до и после запятой — не больше 15",
+    "money_digits": "Не больше 13 цифр до запятой и двух после",
+    "bad_date": "Введите дату ДД.ММ.ГГГГ",
+    "bad_datetime": "Введите дату и время ДД.ММ.ГГГГ ЧЧ:ММ",
+    "value_unavailable": "Это значение выбрать нельзя",
+    "import_not_found": "Не найдено: {value}",
+    "import_ambiguous": "Неоднозначно: {value}",
+    "import_two_records": "Уникальные поля указывают на разные записи",
+    "import_time_missing": "Укажите время: ДД.ММ.ГГГГ ЧЧ:ММ",
+    "bad_file_field": "Выберите поле для файла",
+    # ответ 53 (CONTRACT-006, 12.3, 15.3; образец CONTRACT-005, решение 41)
+    "write_failed": "Не удалось сохранить файл",
+}
+
+# Тексты отказов чтения таблицы для `table_file.read` (CONTRACT-006, 12.2 и 5.7, К-7): ключи — `table_file`, не коды
+# `TEXTS`; `imports.upload` переводит их в `import_too_big`, `import_too_many_rows`, `import_bad_format`.
+TABLE_FILE_TEXTS = {
+    "too_big": TEXTS["import_too_big"],
+    "too_many_rows": TEXTS["import_too_many_rows"],
+    "bad_format": TEXTS["import_bad_format"],
+    "bad_format_archive": TEXTS["import_bad_format"],
+    "bad_format_csv": TEXTS["import_bad_format"],
+    "not_utf8": TEXTS["import_bad_format"],
+    "xml_bomb": TEXTS["import_bad_format"],
+    "zip_bomb": TEXTS["import_bad_format"],
+}

@@ -23,7 +23,10 @@ def _hint(name: str) -> ParsedQuery:
 
 
 def parse(q: str | None) -> ParsedQuery:
-    """Разбирает строку запроса: слова, номер заявки, строка `to_tsquery`, подсказка."""
+    """Разбирает строку запроса: слова, номер заявки, строка `to_tsquery`, подсказка, исходная строка `text`.
+
+    `text` — запрос без крайних пробелов (PLAN-006, «Поиск»); при подсказке «short» и «long» — пустая строка.
+    """
     text = (q or "").strip()
     if len(text) > MAX_LENGTH:
         return _hint("long")
@@ -37,4 +40,4 @@ def parse(q: str | None) -> ParsedQuery:
     words = [word for word in _WORD.findall(text.lower()) if len(word) >= MIN_WORD][:MAX_WORDS]
     if not words and number is None:
         return _hint("short")
-    return ParsedQuery(words=words, number=number, raw=" & ".join(f"{word}:*" for word in words), hint="")
+    return ParsedQuery(words=words, number=number, raw=" & ".join(f"{word}:*" for word in words), hint="", text=text)

@@ -91,7 +91,7 @@ def external_text(delivery) -> str:
     if delivery.digest_id is not None:
         return _declension(delivery.digest.count_message)
     try:
-        text = kinds.get(delivery.notification.kind).external_text
+        text = kinds.external_text(kinds.get(delivery.notification.kind), delivery.notification.object_ref)
     except NotifyError:
         text = ""
     return text or FALLBACK_TEXT

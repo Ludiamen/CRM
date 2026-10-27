@@ -305,10 +305,10 @@ Opus по задачам» в конце файла; решения владел
   -> frozenset[int]` (узлы сотрудника и их предки по `Unit.path`), `structure.all_units() -> list[UnitRef]` (дерево по
   `path`), `structure.unit_refs(ids) -> dict[int, UnitRef]`; таблиц нет — backend/apps/org/services/structure.py —
   (FR-507, FR-513, FR-526)
-- [ ] T-6202 [P] [sonnet] поиск: `search/parse.py` заполняет `ParsedQuery.text` (строка запроса без крайних пробелов; при
+- [x] T-6202 [P] [sonnet] поиск: `search/parse.py` заполняет `ParsedQuery.text` (строка запроса без крайних пробелов; при
   подсказке short или long — пусто, как `words` и `raw`) (план: «Модель данных», «Поиск» → «Точное совпадение») —
   backend/apps/search/parse.py — (FR-540)
-- [ ] T-6203 [P] [sonnet] `notify`: внешний текст по `object_ref` (план: «Где живёт код» → `notify/services/`):
+- [x] T-6203 [P] [sonnet] `notify`: внешний текст по `object_ref` (план: «Где живёт код» → `notify/services/`):
   `kinds.external_text(kind, object_ref)` — `external_text_of`, если задана, иначе прежнее `external_text`; два места
   чтения — `delivery.external_text` (Telegram, MAX, Web Push) и тема письма `mail.queue_item`; виды прежних срезов
   работают как раньше — backend/apps/notify/services/ (kinds.py, delivery.py, mail.py) — (FR-531)
@@ -321,7 +321,7 @@ Opus по задачам» в конце файла; решения владел
   PostgreSQL 17 тестового контейнера; если ограничение не создаётся — остановиться, ход решает Opus — backend/apps/lists/
   (models.py, migrations/0001_initial.py) — (FR-502, FR-504, FR-506, FR-508, FR-510, FR-513, FR-522, FR-528, FR-530,
   FR-533, FR-536)
-- [ ] T-6205 [sonnet] миграция данных `lists 0002` (план: «Данные установки и стенд», «Права среза»): функции
+- [x] T-6205 [sonnet] миграция данных `lists 0002` (план: «Данные установки и стенд», «Права среза»): функции
   `seed(apps, schema_editor)` и `unseed` — право `lists.manage` (`get_or_create`) и выдача «Администратору портала» по
   названию (`filter().first()`, нет роли — пропуск); шесть списков по кодам — создаётся только отсутствующий код; поля,
   значения списков значений, признаки (срок и пороги, валюта `RUB` у денег, «Показывать в таблице»: многострочный
@@ -330,12 +330,12 @@ Opus по задачам» в конце файла; решения владел
   списков пусто (решение 34); второй вызов `seed` создаёт заново отсутствующий стартовый список по коду и не дублирует
   существующие (решение 51); строки `Access` «читают» и «правят» у «Сотрудник ИТ» (нет роли — пропуск) —
   backend/apps/lists/migrations/0002_initial_data.py — (FR-505, FR-512, FR-513, FR-545)
-- [ ] T-6206 [sonnet] тексты и права (план: «Тексты отказов», «Права и видимость»): `lists/texts.py` — все тексты
+- [x] T-6206 [sonnet] тексты и права (план: «Тексты отказов», «Права и видимость»): `lists/texts.py` — все тексты
   отказов FR-546, решений плана и решения 33 («Не больше 50 записей за раз») одним словарём (недостижимая фраза хранится); `services/access.py` — `scope` (один раз
   на запрос, `user._lists_scope`, пустой у не `active`; `role_ids` ядра, `unit_chain_ids` под `is_installed("apps.org")`,
   один запрос к `Access`), `can_read`, `can_edit`, `can_manage`, `in_edit_set`, `get_list`, `get_record`, `sees_section` —
   backend/apps/lists/texts.py, backend/apps/lists/services/access.py — (FR-501, FR-512, FR-513, FR-514, FR-546)
-- [ ] T-6206a [sonnet] уникальность: нормализация и строки `UniqueValue` до задач схемы (план: «Уникальность»; решения
+- [x] T-6206a [sonnet] уникальность: нормализация и строки `UniqueValue` до задач схемы (план: «Уникальность»; решения
   45 и 58): `services/unique.py` — `normalize(field, value)` (строка — `strip()` и `lower()`, число — каноническое
   десятичное, пустое значение строки не даёт), `find_owners(list, field, norm_values)` (предварительная проверка до
   вставки: записи-владельцы значений, в том числе в архиве; её подменяет тест гонки T-6107, ею же пользуется
@@ -368,7 +368,7 @@ Opus по задачам» в конце файла; решения владел
   числе записями архива, удаление неиспользованных, сброс умолчания, запрет названия архивного, журнал
   `lists.choices_changed`), сохранение прав «Читают» и «Правят» с журналом `lists.access_changed`; исключительный замок
   списка, как в T-6208a — backend/apps/lists/services/schema.py — (FR-510, FR-513, FR-542, NFR-509)
-- [ ] T-6209 [sonnet] значения (план: «Значения по типам», «Значения и форма записи»): `services/values.py` — `parse(field,
+- [x] T-6209 [sonnet] значения (план: «Значения по типам», «Значения и форма записи»): `services/values.py` — `parse(field,
   raw, *, old)` по типам (числа и деньги с точкой или запятой, пределы цифр, дата ДД.ММ.ГГГГ и ISO через
   `core.widgets.parse_date`, дата и время по Москве в UTC, «да/нет» — только `true`, массивы у многозначных, повторы
   убраны, правило «старое остаётся») и `display(field, value, viewer)` — backend/apps/lists/services/values.py — (FR-507,

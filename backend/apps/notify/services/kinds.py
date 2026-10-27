@@ -37,6 +37,13 @@ def get(code: str):
     raise NotifyError("unknown_kind", "Вид уведомления не найден", field="kind")
 
 
+def external_text(kind, object_ref: str) -> str:
+    """Внешний текст вида по ссылке на объект: `external_text_of(object_ref)`, если задана, иначе `external_text`."""
+    if kind.external_text_of is not None:
+        return kind.external_text_of(object_ref)
+    return kind.external_text
+
+
 def for_event(name: str) -> list:
     """Виды, у которых событие `name` среди `events`, в порядке каталога."""
     return [kind for kind in catalog() if name in kind.events]
