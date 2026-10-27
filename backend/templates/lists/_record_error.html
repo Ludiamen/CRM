@@ -1,0 +1,2 @@
+{% comment %}Отказ у поля формы записи (10.1): `error` — ListsError; у `unique_taken` ссылка на запись-владельца внутри самого отказа (15.5 п. 8).{% endcomment %}
+{% if error %}<div class="text-danger small" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}{% if error.code == "unique_taken" %} <a href="{{ error.params.url }}">№{{ error.params.number }}</a>{% endif %}</div>{% endif %}

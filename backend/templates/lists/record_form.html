@@ -1,0 +1,67 @@
+{% extends layout %}
+{% block title %}{% if mode == "edit" %}{{ record.title }} — правка{% else %}Новая запись — {{ lst.name }}{% endif %}{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="{{ mode }}" class="lists-page">
+  <div class="page-head">
+    <h1 class="page-title">{% if mode == "edit" %}Изменить запись{% else %}Добавить запись{% endif %}</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% if mode == 'edit' %}{% url 'lists:record' lst.pk number %}{% else %}{% url 'lists:grid' lst.pk %}{% endif %}">{% if mode == "edit" %}К карточке{% else %}{{ lst.name }}{% endif %}</a>
+  </div>
+  {% if alert %}{% include "lists/_record_alert.html" %}{% endif %}
+  <form class="lists-form lists-record-form" method="post" action="{% if mode == 'edit' %}{% url 'lists:edit' lst.pk number %}{% else %}{% url 'lists:add' lst.pk %}{% endif %}" data-lists-record-form>{% csrf_token %}
+    {% if mode == "edit" %}<input type="hidden" name="base_version" value="{{ base_version }}">{% endif %}
+    <div class="mb-3" data-lists-field="title" data-required>
+      <label class="form-label" for="lists-f-title">Название</label>
+      <input id="lists-f-title" class="form-control" type="text" name="title" value="{{ title_value }}" autocomplete="off">
+      {% include "lists/_record_error.html" with error=title_error %}
+    </div>
+    {% for row in rows %}{% with field=row.field %}
+    {% if row.hidden_meanwhile %}
+    <div class="mb-3" data-lists-field="{{ field.code }}" data-hidden-meanwhile>
+      <div class="form-label">{{ field.name }}</div>
+      <div class="form-control-plaintext" data-field="value">{{ row.text }}</div>
+      {% include "lists/_record_error.html" with error=row.error %}
+    </div>
+    {% else %}
+    <div class="mb-3" data-lists-field="{{ field.code }}"{% if field.required %} data-required{% endif %}>
+      {% if field.type == "bool" %}
+      <div class="form-check">
+        <input id="lists-f-{{ field.code }}" class="form-check-input" type="checkbox" name="{{ field.code }}" value="on"{% if row.state.checked %} checked{% endif %}>
+        <label class="form-check-label" for="lists-f-{{ field.code }}">{{ field.name }}</label>
+      </div>
+      {% else %}
+      <label class="form-label" for="lists-f-{{ field.code }}">{{ field.name }}</label>
+      {% if field.type == "text" %}
+      <textarea id="lists-f-{{ field.code }}" class="form-control" name="{{ field.code }}" rows="4">
+{{ row.state.text }}</textarea>
+      {% elif field.type == "date" %}{{ row.date_html }}
+      {% elif field.type == "choice" %}
+        {% if field.multiple %}
+        <div class="lists-choices">{% for option in row.options %}
+          <div class="form-check"><input id="lists-f-{{ field.code }}-{{ option.id }}" class="form-check-input" type="checkbox" name="{{ field.code }}" value="{{ option.id }}"{% if option.selected %} checked{% endif %}> <label class="form-check-label" for="lists-f-{{ field.code }}-{{ option.id }}">{{ option.title }}</label></div>{% endfor %}
+        </div>
+        {% else %}
+        <select id="lists-f-{{ field.code }}" class="form-select" name="{{ field.code }}">
+          <option value="">—</option>{% for option in row.options %}
+          <option value="{{ option.id }}"{% if option.selected %} selected{% endif %}>{{ option.title }}</option>{% endfor %}
+        </select>
+        {% endif %}
+      {% elif field.type == "person" or field.type == "unit" or field.type == "record" %}
+      <ul class="list-unstyled lists-selected" data-lists-selected="{{ field.code }}" data-input-name="{{ field.code }}" data-multiple="{% if field.multiple %}true{% else %}false{% endif %}">{% for item in row.selected %}
+        <li data-selected-id="{{ item.id }}"><span>{{ item.text }}</span><input type="hidden" name="{{ field.code }}" value="{{ item.id }}"> <button type="button" class="btn btn-outline-secondary btn-sm" data-action="pick-remove">Убрать</button></li>{% endfor %}
+      </ul>
+      <input type="text" name="q" class="form-control" autocomplete="off" data-lists-picker="{{ row.picker }}" hx-get="{{ row.pick_url }}" hx-trigger="input changed delay:300ms" hx-target="#lists-pick-{{ field.code }}" hx-swap="innerHTML" placeholder="Найти">
+      <div id="lists-pick-{{ field.code }}" data-lists-pick-results></div>
+      {% else %}
+      <input id="lists-f-{{ field.code }}" class="form-control" type="text" name="{{ field.code }}" value="{{ row.state.text }}" autocomplete="off"{% if field.type == "number" or field.type == "money" %} inputmode="decimal"{% endif %}>
+      {% endif %}
+      {% endif %}
+      {% if field.hint %}<div class="form-text">{{ field.hint }}</div>{% endif %}
+      {% include "lists/_record_error.html" with error=row.error %}
+    </div>
+    {% endif %}
+    {% endwith %}{% endfor %}
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+  </form>
+</div>
+{% endblock %}

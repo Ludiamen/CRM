@@ -1,0 +1,37 @@
+{% extends layout %}
+{% block title %}{% if field %}{{ field.name }}{% else %}Новое поле{% endif %} — {{ lst.name }}{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="field" class="lists-page">
+  {% include "lists/_settings_head.html" %}
+  <h2 class="h5">{% if field %}Поле «{{ field.name }}»{% else %}Новое поле{% endif %}</h2>
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  {% include "lists/_field_form.html" %}
+  {% if field and kind == "choice" %}
+  <form class="lists-form lists-choices-form" method="post" action="{% url 'lists:field_choices' lst.pk field.code %}">{% csrf_token %}
+    <section data-lists-choices>
+      <h2 class="h5">Значения</h2>
+      {% include "lists/_field_error.html" with e=inline.choices %}
+      <ul class="list-unstyled lists-choice-list" data-lists-choice-list>
+        {% for c in choice_rows %}
+        <li data-choice-id="{{ c.pk }}"><input type="hidden" name="id" value="{{ c.pk }}"><input type="text" class="form-control" name="title" value="{{ c.title }}" aria-label="Название значения"><button type="button" class="btn btn-outline-secondary btn-sm" data-action="choice-remove">Убрать</button></li>
+        {% endfor %}
+      </ul>
+      <div class="lists-choice-add">
+        <input type="text" class="form-control" name="new_title" data-lists-choice-title placeholder="Новое значение" aria-label="Новое значение" autocomplete="off">
+        <button type="button" class="btn btn-outline-secondary" data-action="choice-add">Добавить значение</button>
+      </div>
+      {% if archived_rows %}
+      <h3 class="h6 mt-3">В архиве значений</h3>
+      <ul class="list-unstyled lists-choice-archive">
+        {% for c in archived_rows %}
+        <li data-choice-id="{{ c.pk }}" data-archived><span>{{ c.title }}</span><input type="hidden" name="id" value="{{ c.pk }}" disabled><input type="hidden" name="title" value="{{ c.title }}" disabled><button type="button" class="btn btn-outline-secondary btn-sm" data-action="choice-restore">Вернуть</button></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+    <button type="submit" class="btn btn-primary">Сохранить значения</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

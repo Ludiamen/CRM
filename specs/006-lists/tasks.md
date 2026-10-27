@@ -404,7 +404,7 @@ Opus по задачам» в конце файла; решения владел
   backend/apps/lists/views/home.py, views/settings.py, views/pickers.py, backend/templates/lists/,
   backend/templates/icons/lists.html, backend/apps/lists/urls.py, backend/apps/lists/extensions.py,
   backend/config/urls.py, backend/static/lists/lists.css — (FR-501, FR-502, FR-503, FR-513, NFR-506, NFR-507, NFR-510)
-- [ ] T-6214b [sonnet] страницы настройки: вкладка «Поля» и значения списка значений (план: «Поля и изменение схемы»,
+- [x] T-6214b [sonnet] страницы настройки: вкладка «Поля» и значения списка значений (план: «Поля и изменение схемы»,
   «Значения по типам» — свойства по типам, «Контракты»; решение 61): вкладка «Поля» в `views/settings.py` — литеральные
   пути `fields/new/` и `fields/order/` раньше `fields/<код>/`; все остальные адреса настройки из таблицы «Контракты»
   плана (`settings/fields/`, `fields/<код>/`, `fields/<код>/hide/`, `show/`, `delete/`, `up/`, `down/`, `choices/`); форма поля со свойствами по типу,
@@ -413,7 +413,7 @@ Opus по задачам» в конце файла; решения владел
   таблицы полей внутри блока — `static/lists/lists.css`; 360 px — backend/apps/lists/views/settings.py,
   backend/templates/lists/, backend/apps/lists/urls.py, backend/static/lists/lists.js, backend/static/lists/lists.css —
   (FR-506, FR-508, FR-509, FR-510, NFR-506, NFR-507, NFR-510)
-- [ ] T-6215 [sonnet] страницы записи (план: «Значения и форма записи», «Запись…», «История записи», «Архив и удаление
+- [x] T-6215 [sonnet] страницы записи (план: «Значения и форма записи», «Запись…», «История записи», «Архив и удаление
   навсегда», «Контракты»): `views/records.py` — форма новой записи и правки (`base_version`, отказ 200 с формой и
   введённым, пометка скрытого поля), карточка (видимые поля — решение владельца 2026-10-25, места `{% include %}` под
   блоки «Файлы» (пустой шаблон-заглушка, наполняет T-6222), «Связанные заявки» (пустой шаблон-заглушка, наполняет T-6218; без заглушек `{% include %}` даёт `TemplateDoesNotExist`) и «История» (свой фрагмент истории), «Ссылаются на эту

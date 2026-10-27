@@ -1,0 +1,46 @@
+{% extends layout %}
+{% block title %}{{ lst.name }} — поля{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="fields" class="lists-page">
+  {% include "lists/_settings_head.html" %}
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  <p><a class="btn btn-primary" data-action="field-add" href="{% url 'lists:field_new' lst.pk %}">Добавить поле</a></p>
+  <div class="lists-scroll">
+    <table class="table lists-fields" data-lists-fields-grid data-order-url="{% url 'lists:field_order' lst.pk %}">
+      <thead><tr><th scope="col"></th><th scope="col">Название</th><th scope="col">Тип</th><th scope="col">Действия</th></tr></thead>
+      <tbody>
+        <tr data-field-code="title" data-system>
+          <td></td>
+          <td data-field="name">Название</td>
+          <td data-field="type">Строка</td>
+          <td class="text-muted small">Системное поле: нельзя удалить, скрыть и сменить тип</td>
+        </tr>
+        {% for row in rows %}
+        <tr data-field-code="{{ row.code }}">
+          <td><span class="lists-drag" data-lists-drag title="Перетащить" aria-hidden="true">⋮⋮</span></td>
+          <td data-field="name" data-hidden="{% if row.hidden %}true{% else %}false{% endif %}" data-has-data="{% if row.has_data %}true{% else %}false{% endif %}">{{ row.name }}{% if row.hidden %} <span class="small text-muted">(скрыто)</span>{% endif %}</td>
+          <td data-field="type">{{ row.type_label }}</td>
+          <td>
+            <div class="lists-field-actions">
+              <a class="btn btn-outline-secondary btn-sm" data-action="field-edit" href="{% url 'lists:field_edit' lst.pk row.code %}">Изменить</a>
+              <form method="post" action="{% url 'lists:field_up' lst.pk row.code %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm" data-action="field-up" title="Выше" aria-label="Поднять выше">↑</button></form>
+              <form method="post" action="{% url 'lists:field_down' lst.pk row.code %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm" data-action="field-down" title="Ниже" aria-label="Опустить ниже">↓</button></form>
+              {% if row.hidden %}
+              <form method="post" action="{% url 'lists:field_show' lst.pk row.code %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm" data-action="field-show">Показать</button></form>
+              {% else %}
+              <form method="post" action="{% url 'lists:field_hide' lst.pk row.code %}">{% csrf_token %}<button type="submit" class="btn btn-outline-secondary btn-sm" data-action="field-hide">Скрыть</button></form>
+              {% endif %}
+              {% if not row.has_data %}
+              <form method="post" action="{% url 'lists:field_delete' lst.pk row.code %}" data-lists-confirm-source>{% csrf_token %}<button type="submit" class="btn btn-outline-danger btn-sm" data-action="field-delete" data-confirm-text="Удалить поле «{{ row.name }}»? Это нельзя отменить.">Удалить</button></form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% include "lists/_confirm.html" %}
+{% endblock %}

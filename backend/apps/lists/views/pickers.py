@@ -8,11 +8,13 @@ CONTRACT-006, 10.2, 15.4 п. 6).
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.http import Http404
 from django.views.decorators.http import require_GET
 
 from apps.core.models import UserState
 from apps.core.views.common import render_page
+from apps.lists.models import Record
 from apps.lists.services import access
 
 LIMIT = 20
@@ -62,3 +64,20 @@ def units(request):
             if len(rows) >= LIMIT:
                 break
     return render_page(request, "lists/_pick.html", {"rows": rows, "kind": "units"})
+
+
+@login_required
+@require_GET
+def record(request, list_id: int):
+    """Записи целевого списка не в архиве по названию или номеру: «Название — №N», до 20 строк (только читающим список)."""
+    lst = access.get_list(request.user, list_id)
+    found = Record.objects.filter(list=lst, archived=False)
+    text = _query(request)
+    if text:
+        match = Q(title__icontains=text)
+        if text.isascii() and text.isdigit() and len(text) <= 9:
+            match |= Q(number=int(text))
+        found = found.filter(match)
+    rows = [{"id": item.pk, "title": f"{item.title} — №{item.number}", "note": ""}
+            for item in found.order_by("title", "number")[:LIMIT]]
+    return render_page(request, "lists/_pick.html", {"rows": rows, "kind": "record"})

@@ -343,14 +343,27 @@ _CHANGEABLE = frozenset({"name", "hint", "type", "required", "multiple", "unique
 MISMATCH_LIMIT = 10
 
 
+def has_data_many(lst, fields) -> set[int]:
+    """Номера полей `fields` списка `lst`, у которых есть данные («поле с данными», план, «Поля и изменение схемы»):
+    ключ в `values` записи этого списка (в том числе в архиве), строка `RecordFile` поля или изменение с этим кодом в
+    истории записей этого списка. Отбор по списку обязателен: код `f3` есть в каждом списке. Три запроса на весь
+    список, сколько бы полей ни было."""
+    fields = list(fields)
+    if not fields:
+        return set()
+    codes = {field.code: field.pk for field in fields}
+    in_values = {f"c{i}": Count("pk", filter=Q(values__has_key=code)) for i, code in enumerate(codes)}
+    in_history = {f"c{i}": Count("pk", filter=Q(changes__contains=[{"field": code}])) for i, code in enumerate(codes)}
+    found = {pk for (code, pk), total in zip(codes.items(), Record.objects.filter(list_id=lst.pk)
+                                             .aggregate(**in_values).values()) if total}
+    found |= {pk for (code, pk), total in zip(codes.items(), Change.objects.filter(record__list_id=lst.pk)
+                                              .aggregate(**in_history).values()) if total}
+    return found | set(RecordFile.objects.filter(field__in=fields).values_list("field_id", flat=True))
+
+
 def has_data(field: Field) -> bool:
-    """«Поле с данными» (план, «Поля и изменение схемы»): ключ в `values` записи этого списка (в том числе в
-    архиве), строка `RecordFile` поля или изменение с этим кодом в истории записей этого списка. Отбор по списку
-    обязателен: код `f3` есть в каждом списке."""
-    return (Record.objects.filter(list_id=field.list_id, values__has_key=field.code).exists()
-            or RecordFile.objects.filter(field=field).exists()
-            or Change.objects.filter(record__list_id=field.list_id,
-                                     changes__contains=[{"field": field.code}]).exists())
+    """«Поле с данными» для одного поля — та же формула, что у `has_data_many`."""
+    return field.pk in has_data_many(field.list, [field])
 
 
 def _is_empty(value) -> bool:

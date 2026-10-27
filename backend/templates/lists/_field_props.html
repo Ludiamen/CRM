@@ -1,0 +1,92 @@
+{% comment %}Свойства поля по типу (FR-508): недоступных типу свойств в разметке нет. Контекст — `_field_form_context`.{% endcomment %}
+{% if "required" in props %}
+<div class="form-check mb-3" data-prop="required">
+  <input class="form-check-input" type="checkbox" name="required" id="lists-field-required"{% if v.required %} checked{% endif %}>
+  <label class="form-check-label" for="lists-field-required">Обязательное</label>
+  {% include "lists/_field_error.html" with e=inline.required %}
+</div>
+{% endif %}
+{% if "multiple" in props %}
+<div class="form-check mb-3" data-prop="multiple">
+  <input class="form-check-input" type="checkbox" name="multiple" id="lists-field-multiple"{% if v.multiple %} checked{% endif %}>
+  <label class="form-check-label" for="lists-field-multiple">Несколько значений</label>
+  {% include "lists/_field_error.html" with e=inline.multiple %}
+</div>
+{% endif %}
+{% if "unique" in props %}
+<div class="form-check mb-3" data-prop="unique">
+  <input class="form-check-input" type="checkbox" name="unique" id="lists-field-unique"{% if v.unique %} checked{% endif %}>
+  <label class="form-check-label" for="lists-field-unique">Уникальное</label>
+  {% include "lists/_field_error.html" with e=inline.unique %}
+</div>
+{% endif %}
+<div class="form-check mb-3" data-prop="show_in_table">
+  <input class="form-check-input" type="checkbox" name="show_in_table" id="lists-field-show-in-table"{% if v.show_in_table %} checked{% endif %}>
+  <label class="form-check-label" for="lists-field-show-in-table">Показывать в таблице</label>
+</div>
+{% if "default" in props %}
+<div class="mb-3" data-prop="default">
+  <span class="form-label d-block">Значение по умолчанию</span>
+  {% if kind == "date" %}
+  <div class="lists-default-date">
+    <select class="form-select" name="default_mode" aria-label="Умолчание даты">
+      <option value=""{% if not v.default_mode %} selected{% endif %}>Нет</option>
+      <option value="today"{% if v.default_mode == "today" %} selected{% endif %}>Сегодня</option>
+      <option value="date"{% if v.default_mode == "date" %} selected{% endif %}>Дата</option>
+    </select>
+    <input type="text" class="form-control" name="default" value="{{ v.default }}" placeholder="ДД.ММ.ГГГГ" autocomplete="off" aria-label="Дата по умолчанию">
+  </div>
+  {% elif kind == "bool" %}
+  <div class="form-check"><input class="form-check-input" type="checkbox" name="default" id="lists-field-default"{% if v.default %} checked{% endif %}><label class="form-check-label" for="lists-field-default">Да</label></div>
+  {% elif kind == "choice" %}
+  <select class="form-select" name="default" aria-label="Значение по умолчанию">
+    <option value="">Нет</option>
+    {% for c in default_choices %}<option value="{{ c.pk }}"{% if v.default == c.pk|stringformat:"s" %} selected{% endif %}>{{ c.title }}</option>{% endfor %}
+  </select>
+  {% if not field %}<div class="form-text">Значения добавляются после сохранения поля.</div>{% endif %}
+  {% else %}
+  <input type="text" class="form-control" name="default" value="{{ v.default }}" aria-label="Значение по умолчанию" autocomplete="off">
+  {% endif %}
+  {% include "lists/_field_error.html" with e=inline.default %}
+</div>
+{% endif %}
+{% if "currency" in props %}
+<div class="mb-3" data-prop="currency">
+  <label class="form-label" for="lists-field-currency">Валюта</label>
+  {% if locked %}
+  <div>{{ v.currency }}</div>
+  {% else %}
+  <select class="form-select" id="lists-field-currency" name="currency">
+    {% for code, label in currencies %}<option value="{{ code }}"{% if v.currency == code %} selected{% endif %}>{{ code }} — {{ label }}</option>{% endfor %}
+  </select>
+  {% include "lists/_field_error.html" with e=inline.currency %}
+  {% endif %}
+</div>
+{% endif %}
+{% if "target" in props %}
+<div class="mb-3" data-prop="target">
+  <label class="form-label" for="lists-field-target">Список, на запись которого ссылается поле</label>
+  {% if locked %}
+  <div>{{ target_name }}</div>
+  {% else %}
+  <select class="form-select" id="lists-field-target" name="target">
+    <option value="">Выберите список</option>
+    {% for item in lists %}<option value="{{ item.pk }}"{% if v.target == item.pk|stringformat:"s" %} selected{% endif %}>{{ item.name }}</option>{% endfor %}
+  </select>
+  {% include "lists/_field_error.html" with e=inline.target %}
+  {% endif %}
+</div>
+{% endif %}
+{% if "deadline" in props %}
+<div class="form-check mb-3" data-prop="deadline">
+  <input class="form-check-input" type="checkbox" name="deadline" id="lists-field-deadline" data-lists-deadline{% if v.deadline %} checked{% endif %}>
+  <label class="form-check-label" for="lists-field-deadline">Срок (напоминать о приближении даты)</label>
+</div>
+<div class="mb-3" data-prop="thresholds" data-deadline-was="{% if field.settings.deadline %}true{% else %}false{% endif %}">
+  <span class="form-label d-block">За сколько дней напомнить (до трёх чисел от 1 до 365)</span>
+  <div class="lists-thresholds">{% for item in v.thresholds %}
+    <input type="text" class="form-control" name="thresholds" value="{{ item }}" inputmode="numeric" autocomplete="off" aria-label="Порог {{ forloop.counter }}">{% endfor %}
+  </div>
+  {% include "lists/_field_error.html" with e=inline.thresholds %}
+</div>
+{% endif %}

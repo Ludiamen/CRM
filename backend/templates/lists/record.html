@@ -1,0 +1,59 @@
+{% extends layout %}
+{% load portal %}
+{% block title %}{{ record.title }} — {{ lst.name }}{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="record" class="lists-page">
+  <div class="page-head">
+    <h1 class="page-title">{{ record.title }}{% if record.archived %} <span class="badge text-bg-secondary" data-lists-archived>в архиве</span>{% endif %}</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:grid' lst.pk %}">{{ lst.name }}</a>
+  </div>
+  {% if alert %}{% include "lists/_record_alert.html" %}{% endif %}
+  <div class="d-flex flex-wrap gap-2 mb-3 lists-record-actions">
+    {% if can_edit and not record.archived %}<a class="btn btn-outline-primary btn-sm" data-action="record-edit" href="{% url 'lists:edit' lst.pk record.number %}">Изменить</a>{% endif %}
+    {% include "lists/_record_label_button.html" %}
+    {% if can_edit and not record.archived %}
+    <form method="post" action="{% url 'lists:archive' lst.pk record.number %}" data-lists-confirm-source>{% csrf_token %}
+      <button type="submit" class="btn btn-outline-secondary btn-sm" data-action="record-archive" data-confirm-text="Перенести запись в архив?">В архив</button>
+    </form>
+    {% endif %}
+    {% if can_edit and record.archived %}
+    <form method="post" action="{% url 'lists:restore' lst.pk record.number %}">{% csrf_token %}
+      <button type="submit" class="btn btn-outline-secondary btn-sm" data-action="record-restore">Вернуть из архива</button>
+    </form>
+    {% endif %}
+    {% if can_purge %}
+    <form method="post" action="{% url 'lists:purge' lst.pk record.number %}" data-lists-confirm-source>{% csrf_token %}
+      <button type="submit" class="btn btn-outline-danger btn-sm" data-action="record-purge" data-confirm-text="Удалить запись навсегда? Это нельзя отменить.">Удалить навсегда</button>
+    </form>
+    {% endif %}
+  </div>
+  <article data-lists-record data-record-number="{{ record.number }}" class="lists-record">
+    <dl class="lists-record-values">
+      {% for cell in cells %}
+      <dt>{{ cell.field.name }}</dt>
+      <dd data-lists-value="{{ cell.field.code }}">{% if cell.kind == "refs" %}{% for item in cell.items %}{% if not forloop.first %}; {% endif %}{% if item.unavailable %}<span data-lists-unavailable>{{ item.text }}</span>{% elif item.url %}<a href="{{ item.url }}">{{ item.text }}</a>{% if item.archived %} <span data-lists-archived>в архиве</span>{% endif %}{% elif item.user %}{% person_name item.user %}{% else %}{{ item.text }}{% endif %}{% endfor %}{% elif cell.kind == "text" %}{{ cell.text|linebreaksbr }}{% else %}{{ cell.text }}{% endif %}</dd>
+      {% endfor %}
+    </dl>
+    <p class="small text-muted mb-3">Создана <time data-at="{{ record.created_at|date:'c' }}" datetime="{{ record.created_at|date:'c' }}">{{ record.created_at|date:'d.m.Y H:i' }}</time>, изменена <time data-at="{{ record.updated_at|date:'c' }}" datetime="{{ record.updated_at|date:'c' }}">{{ record.updated_at|date:'d.m.Y H:i' }}</time></p>
+  </article>
+  {% include "lists/_record_files.html" %}
+  {% include "lists/_record_tickets.html" %}
+  {% if referrers or referrers_hidden %}
+  <section class="mb-3" data-lists-referrers>
+    <h2 class="h5">Ссылаются на эту запись</h2>
+    <ul class="list-unstyled">
+      {% for item in referrers %}
+      <li data-record-ref="{{ item.list_id }}:{{ item.number }}"><a href="{% url 'lists:record' item.list_id item.number %}">{{ item.title }} — №{{ item.number }}</a> <span class="small text-muted">{{ item.list.name }}</span>{% if item.archived %} <span data-lists-archived>в архиве</span>{% endif %}</li>
+      {% endfor %}
+      {% if referrers_hidden %}<li class="text-muted small">и ещё {{ referrers_hidden }}</li>{% endif %}
+    </ul>
+  </section>
+  {% endif %}
+  <section class="mb-3">
+    <h2 class="h5">История</h2>
+    <div data-lists-history>{% include "lists/_history_rows.html" %}</div>
+  </section>
+  {% if can_edit or can_purge %}{% include "lists/_confirm.html" %}{% endif %}
+</div>
+{% endblock %}

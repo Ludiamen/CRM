@@ -735,7 +735,7 @@ test_all_fields_places_from_contract_include_hidden_field идут по стро
 
 | Зацепка | Где и значение | Тесты |
 |---|---|---|
-| `[data-lists-page="<имя>"]` | корень содержимого страницы: `home`, `new`, `grid`, `settings`, `fields`, `field`, `access`, `add`, `record`, `edit`, `archived-edit` (GET правки записи в архиве), `import`, `mapping`, `preview`, `summary`, `label`, `labels`, `gone` (404 «Запись удалена») | T-6140…T-6153 |
+| `[data-lists-page="<имя>"]` | корень содержимого страницы: `home`, `new`, `grid`, `settings`, `fields`, `field`, `access`, `add`, `record`, `edit`, `archived-edit` (GET правки записи в архиве), `history` (полная страница истории `…/history/` без НХ; добавлено Opus при исполнении 2026-10-27, R-6215-2), `import`, `mapping`, `preview`, `summary`, `label`, `labels`, `gone` (404 «Запись удалена») | T-6140…T-6153 |
 | `time[data-at]` | время по Москве, `datetime` — ISO, текст «ДД.ММ.ГГГГ ЧЧ:ММ» | T-6125, T-6109 |
 | Пометка «уволен» | `{% person_name %}`: `span[data-dismissed="true"]` «ФИО (уволен)» | T-6106, T-6109, T-6141 |
 | Пометка «в архиве» | `[data-lists-archived]` с текстом «в архиве» — у карточки, значения-ссылки, строки «Ссылаются», строки раздела заявки; у значения-ссылки на запись в архиве ссылка `a` есть (К-15) | T-6110, T-6113, T-6114 |

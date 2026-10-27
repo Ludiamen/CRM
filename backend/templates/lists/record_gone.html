@@ -1,0 +1,11 @@
+{% extends layout %}
+{% block title %}{{ text }}{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="gone" class="lists-page">
+  <div class="page-head">
+    <h1 class="page-title">{{ text }}</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:grid' lst.pk %}">К таблице</a>
+  </div>
+</div>
+{% endblock %}

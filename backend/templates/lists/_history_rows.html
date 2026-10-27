@@ -1,0 +1,10 @@
+{% comment %}Строки истории записи (11.6): `history_rows` (`Change` с автором), `next_offset`, `lst`, `record`. Тот же фрагмент — в карточке и в ответе `…/history/`; «Показать ещё» заменяет сама себя следующими строками.{% endcomment %}
+{% load portal %}<ul class="list-unstyled lists-history-list">{% for row in history_rows %}
+  <li class="lists-history-row" data-change data-change-kind="{{ row.kind }}"{% if row.via_import %} data-via-import{% endif %}>
+    <div class="small text-muted"><time data-at="{{ row.at|date:'c' }}" datetime="{{ row.at|date:'c' }}">{{ row.at|date:'d.m.Y H:i' }}</time>{% if row.actor %} <span data-field="author">{% person_name row.actor %}</span>{% endif %}</div>
+    <div data-field="kind">{% if row.kind == "created" %}{% if row.via_import %}Создана загрузкой{% else %}Создана{% endif %}{% elif row.kind == "changed" %}Изменена{% elif row.kind == "imported" %}Изменено загрузкой{% elif row.kind == "archived" %}Перенесена в архив{% elif row.kind == "restored" %}Возвращена из архива{% elif row.kind == "file_added" %}Добавлен файл{% for item in row.changes %} {{ item.after }}{% endfor %}{% elif row.kind == "file_removed" %}Удалён файл{% for item in row.changes %} {{ item.before }}{% endfor %}{% endif %}</div>
+    {% for item in row.changes %}
+    <div class="lists-history-change" data-change-field="{{ item.field }}"><span class="text-muted">{{ item.name }}:</span> <span data-field="before">{{ item.before }}</span> → <span data-field="after">{{ item.after }}</span></div>{% endfor %}
+  </li>{% endfor %}
+</ul>{% if next_offset %}
+<button type="button" class="btn btn-outline-secondary btn-sm" data-action="more" data-next-offset="{{ next_offset }}" hx-get="/lists/{{ lst.pk }}/{{ record.number }}/history/?offset={{ next_offset }}" hx-swap="outerHTML">Показать ещё</button>{% endif %}

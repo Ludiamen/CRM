@@ -29,7 +29,36 @@
 }
 
 /* === T-6214b: вкладка «Поля» (сетка полей, форма поля, значения списка значений) === */
+.lists-fields { min-width: 36rem; }
+.lists-drag { display: inline-block; cursor: grab; user-select: none; touch-action: none; padding: 0 .5rem; color: var(--bs-secondary-color, #6c757d); }
+.lists-dragging { opacity: .6; background: var(--bs-tertiary-bg, #f8f9fa); }
+.lists-field-actions { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
+.lists-field-actions form { margin: 0; }
+.lists-default-date { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lists-default-date .form-select, .lists-default-date .form-control { flex: 1 1 10rem; width: auto; min-width: 0; }
+.lists-thresholds { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lists-thresholds .form-control { flex: 0 1 6rem; min-width: 0; }
+.lists-choice-list li, .lists-choice-archive li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .5rem; overflow-wrap: anywhere; }
+.lists-choice-list .form-control { flex: 1 1 12rem; width: auto; min-width: 0; }
+.lists-choice-add { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lists-choice-add .form-control { flex: 1 1 12rem; width: auto; min-width: 0; }
+.lists-choices-form { margin-top: 2rem; }
 
 /* === T-6215: страницы записи (форма, карточка, история) === */
+.lists-record-values { display: grid; grid-template-columns: minmax(8rem, 14rem) 1fr; gap: .25rem 1rem; margin: 0 0 1rem; }
+.lists-record-values dt { font-weight: 600; overflow-wrap: anywhere; }
+.lists-record-values dd { margin: 0; overflow-wrap: anywhere; }
+.lists-record-actions form { margin: 0; }
+.lists-record-form .lists-selected { margin: 0 0 .5rem; padding: 0; }
+.lists-record-form .lists-selected li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .125rem 0; overflow-wrap: anywhere; }
+.lists-record-form [data-lists-pick-results] { margin-top: .25rem; }
+.lists-history-list { margin: 0 0 .5rem; padding: 0; }
+.lists-history-row { padding: .5rem 0; border-bottom: 1px solid var(--bs-border-color, #dee2e6); overflow-wrap: anywhere; }
+.lists-history-change { margin-left: .5rem; }
+@media (max-width: 575.98px) {
+  .lists-record-values { grid-template-columns: 1fr; }
+  .lists-record-values dd { margin-bottom: .5rem; }
+}
+
 
 /* === T-6216: таблица записей (сетка, фильтры, карточки на узком экране) === */

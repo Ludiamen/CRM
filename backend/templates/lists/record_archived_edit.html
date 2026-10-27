@@ -1,0 +1,12 @@
+{% extends layout %}
+{% block title %}{{ record.title }} — {{ text }}{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="archived-edit" class="lists-page">
+  <div class="page-head">
+    <h1 class="page-title">{{ record.title }}</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:record' lst.pk record.number %}">К карточке</a>
+  </div>
+  <p class="text-muted">{{ text }}</p>
+</div>
+{% endblock %}
