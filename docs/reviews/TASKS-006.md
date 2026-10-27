@@ -171,3 +171,48 @@ CONTRACT-006 написан (6957d27), проверен независимо (`c
 ### К сведению при приёмке
 - Спека, сценарий 14 п. 2 («в карточке и истории данные сохранены») расходится с решением владельца 2026-10-25 (значения
   скрытого поля в карточке не показываются); спека подписана и не правится — уточнить формулировку при следующей версии.
+
+### Красный прогон (T-6160) — 2026-10-26…27
+Стенд после T-6159, код среза 006 — только каркас Этапа 1 (вне `apps/lists` и `static/lists` со времени приёмки среза
+005 изменена одна строка — `INSTALLED_APPS` в `config/settings.py`). Файлы прогона — `crm-work/slice006/stage2/red/`.
+
+**Серверный набор** (`red-srv.txt`, 23 мин): 594 упали, 2476 прошли.
+- 569 — новые тесты `test_lists_*.py` (572 теста): падают по ожидаемой причине — нет кода среза (моделей, служб,
+  страниц, заданий). 3 теста `test_lists_*` проходят без кода — проверки границ, верные и до реализации: `test_lists_boundaries.py::test_core_org_servicedesk_notify_knowledge_search_do_not_import_lists`, `::test_points_still_have_seventeen_names`, `test_lists_deploy.py::test_lists_is_in_installed_apps_after_knowledge_and_before_search` (каркас Этапа 1).
+- 25 — тесты срезов 001–005, все из перечня T-6138 (уже исправлены под срез 006, ждут его код):
+  `test_notify_catalog.py` 5, `test_notify_catalog_2.py` 6, `test_notify_prefs.py` 3 (вид «Срок в списке» в каталоге
+  и таблице «Мои уведомления»; три — через общую таблицу `TABLE` правки 12); `test_kb_boundaries.py` 2 (вид каталога без
+  `knowledge`, `lists` — последний в `search_providers` и `ticket_card_parts`); `test_kb_deploy.py` 2,
+  `test_notify_deploy.py` 1, `test_sd_deploy.py` 1 (задание cron `lists_reminders`, порядок сброса стенда);
+  `test_org_permissions.py` 2, `test_permissions.py` 1, `test_sd_access.py` 1 (право `lists.manage`, пункт меню
+  «Списки»); `test_deploy_files.py` 1 (четвёртый `location` 55m).
+- Регрессий нет: прочие тесты срезов 001–005 зелёные.
+- **«Условно» анализа влияния** (У1–У8, `crm-work/slice006/tasks/impact.md`) — все названные тесты зелёные:
+  `test_kb_tickets.py`, `test_kb_boundaries.py` (карточка без `knowledge`, порядок провайдеров поиска),
+  `test_sd_stand_restore.py`, `test_stack.py`, `test_date_field.py`, `test_audit.py`, `test_accounts.py`,
+  `test_notify_deploy.py::test_bots_are_polled_no_webhook_route_or_inbound_port`, `test_core_uploads.py`,
+  `test_search_providers*.py`, `test_notify_digest.py`, `test_notify_texts.py`, `test_kb_notify_2.py`,
+  `test_notify_bots_2.py`, `test_notify_retention.py`, `test_shell.py`, `test_notify_pages.py`,
+  `test_notify_boundaries.py`; приёмка `test_s18_reset.py` зелёная. Окончательно У1–У8 проверяются после реализации
+  (тогда отмечается T-6138).
+
+**Приёмка** (`red-e2e.txt`, `red-e2e.xml`; 10 ч 10 мин, сброс стенда перед каждым кругом): 1790 запусков — срез 006 в
+Chromium, Firefox, Edge и Яндекс Браузере, срезы 001–005 в Chromium и Яндекс Браузере; 726 упали, 1064 прошли.
+- 712 — все тесты `test_l01…l14` (178 × 4 браузера), ни один не прошёл без кода: 704 — «Locator expected to be
+  visible» (нет страниц и элементов списков), 8 — `test_l08` «expected to have count» (нет вида «Срок в списке» в
+  «Мои уведомления»).
+- 8 — перечень T-6138, Chromium и Яндекс: `test_e04_my_settings.py` 3 и
+  `test_e12_criteria.py::…catalog_shows_four_service_desk_kinds…` 1 — ждут вид уведомления списков.
+- 6 — только Chromium, перепрогнаны отдельно 2026-10-27 (`rerun-e2e.txt`, после перезапуска воркеров RQ с разрешения
+  владельца):
+  - `test_o04_find_colleague.py::test_o04_list_search_and_unit_filter_with_nested`,
+    `test_e06_bots.py::test_e06_dismissal_…`, `test_e12_criteria.py::test_e12_zero_notifications_…` — прошли
+    (случайный сбой);
+  - `test_e05_webpush.py::test_e05_two_devices_…`, `test_e07_quiet_digest.py::test_e07_failed_digest_…`,
+    `test_e12_criteria.py::test_e12_assigned_notification_…_real_web_push_…` — снова упали: «подписка устройства не
+    отправлена на портал за 30 с» / второе устройство не получило push. Причина — окружение: настоящий Web Push Chromium
+    идёт через серверы Google (известная зависимость от сети офиса); код уведомлений с приёмки среза 005 не менялся, в
+    первом прогоне и перепрогоне падали разные тесты Web Push. Не регрессия; повторить в зелёном прогоне (T-6260…).
+
+**Эталон для регрессии:** после реализации зелёными должны стать все 594 серверных и 720 приёмочных падений (кроме
+зависимых от сети Web Push — их подтверждать повтором); любое другое падение тестов срезов 001–005 — регрессия.
