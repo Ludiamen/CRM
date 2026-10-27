@@ -1,0 +1,10 @@
+{% comment %}Один диалог подтверждения на страницу (15.5 п. 1–2). Текст и действие подставляет `lists.js`: форма-источник (`data-lists-confirm-source`) называет адрес в `action`, а текст — в `data-confirm-text` кнопки; подтверждение — `button[type=submit][data-action=confirm]`, отправляет форму диалога на этот адрес.{% endcomment %}
+<dialog data-lists-confirm class="lists-confirm">
+  <form method="post" action="" data-lists-confirm-form>{% csrf_token %}
+    <p data-lists-confirm-text></p>
+    <div class="d-flex flex-wrap gap-2 justify-content-end">
+      <button type="button" class="btn btn-outline-secondary" data-action="cancel">Отмена</button>
+      <button type="submit" class="btn btn-danger" data-action="confirm">Подтвердить</button>
+    </div>
+  </form>
+</dialog>

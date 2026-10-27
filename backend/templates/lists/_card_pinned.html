@@ -1,0 +1,11 @@
+<div class="mb-2 small" id="lists-pinned" data-lists-pinned>
+  <div class="fw-semibold mb-1">Закреплённое</div>
+  <ul class="list-unstyled mb-0">
+    {% for row in ctx.rows %}
+    <li data-pinned-record="{{ row.record.pk }}">
+      {% if row.link %}<a href="/lists/{{ row.list.pk }}/{{ row.record.number }}/">{{ row.record.title }}</a>{% else %}{{ row.record.title }}{% endif %}
+      — {{ row.list.name }} — {{ row.field.name }}
+    </li>
+    {% endfor %}
+  </ul>
+</div>

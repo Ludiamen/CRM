@@ -1,0 +1,4 @@
+{% comment %}Подсказка выбора (10.2): `ul[data-lists-pick] > li[data-pick-id]`; сотрудник — ФИО и должность, узел — название и путь. Текст выводится экранированным.{% endcomment %}
+<ul class="list-unstyled lists-pick" data-lists-pick>{% for row in rows %}
+  <li data-pick-id="{{ row.id }}"><span class="lists-pick-title">{{ row.title }}</span>{% if row.note %} <span class="small text-muted lists-pick-note">{{ row.note }}</span>{% endif %}</li>{% endfor %}
+</ul>

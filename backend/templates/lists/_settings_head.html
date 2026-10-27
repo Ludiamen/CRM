@@ -1,0 +1,13 @@
+{% comment %}Общий заголовок настройки списка: название и вкладки «Основное», «Поля», «Права» (текущая — `aria-current`). Контекст: `lst`, `tab`.{% endcomment %}
+<div class="page-head">
+  <h1 class="page-title">{{ lst.name }}</h1>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:grid' lst.pk %}">К таблице</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:home' %}">Все списки</a>
+  </div>
+</div>
+<nav class="lists-tabs" data-lists-tabs aria-label="Настройка списка">
+  <a class="lists-tab{% if tab == 'main' %} active{% endif %}" data-tab="main" href="{% url 'lists:settings' lst.pk %}"{% if tab == 'main' %} aria-current="page"{% endif %}>Основное</a>
+  <a class="lists-tab{% if tab == 'fields' %} active{% endif %}" data-tab="fields" href="{% url 'lists:fields' lst.pk %}"{% if tab == 'fields' %} aria-current="page"{% endif %}>Поля</a>
+  <a class="lists-tab{% if tab == 'access' %} active{% endif %}" data-tab="access" href="{% url 'lists:access' lst.pk %}"{% if tab == 'access' %} aria-current="page"{% endif %}>Права</a>
+</nav>

@@ -1,0 +1,21 @@
+{% extends layout %}
+{% block title %}{{ lst.name }} — настройка{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="settings" class="lists-page">
+  {% include "lists/_settings_head.html" %}
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  <form class="lists-form" method="post" action="{% url 'lists:settings' lst.pk %}">{% csrf_token %}
+    {% include "lists/_list_form.html" %}
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+  </form>
+  <section class="lists-danger">
+    <h2 class="h5">Удаление списка</h2>
+    <form method="post" action="{% url 'lists:delete' lst.pk %}" data-lists-confirm-source>{% csrf_token %}
+      <button type="submit" class="btn btn-outline-danger" data-action="list-delete" data-confirm-text="Удалить список «{{ lst.name }}»? Это нельзя отменить."{% if delete_reason %} disabled{% endif %}>Удалить список</button>
+      {% if delete_reason %}<div class="small text-muted mt-2" data-lists-delete-reason>{{ delete_reason }}</div>{% endif %}
+    </form>
+  </section>
+</div>
+{% include "lists/_confirm.html" %}
+{% endblock %}

@@ -7,6 +7,7 @@ urlpatterns = [
     path("", include("apps.servicedesk.urls")),
     path("", include("apps.notify.urls")),
     path("", include("apps.knowledge.urls")),
+    path("lists/", include("apps.lists.urls")),
     path("", include("apps.search.urls")),
 ]
 

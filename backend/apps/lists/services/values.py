@@ -189,7 +189,7 @@ def _parse_reference(field: Field, raw, old, viewer, source: str, lookups=None) 
     else:
         ids = []
         for item in items:
-            if not item.isdigit():
+            if not (item.isascii() and item.isdigit()):
                 return _fail(field, "value_unavailable")
             ids.append(int(item))
     ids = list(dict.fromkeys(ids))
@@ -316,7 +316,7 @@ def _import_record(field: Field, value: str, viewer, lookups=None):
         if field.pk not in lookups.records:
             return None, ListsError("value_unavailable", field=field.code)
         by_number, by_title = lookups.records[field.pk]
-        if value.isdigit() and int(value) in by_number:
+        if (value.isascii() and value.isdigit()) and int(value) in by_number:
             return by_number[int(value)], None
         found = by_title.get(value.casefold(), [])[:2]
         if not found:
@@ -327,7 +327,7 @@ def _import_record(field: Field, value: str, viewer, lookups=None):
     if not access.can_read(viewer, target):
         return None, ListsError("value_unavailable", field=field.code)
     live = Record.objects.filter(list=target, archived=False)
-    if value.isdigit():
+    if (value.isascii() and value.isdigit()):
         by_number = live.filter(number=int(value)).values_list("pk", flat=True).first()
         if by_number:
             return by_number, None
@@ -432,7 +432,7 @@ def _display_money(field: Field, value) -> str:
     text = str(value)
     sign = "-" if text.startswith("-") else ""
     integer, _, fraction = text.lstrip("-").partition(".")
-    if not integer.isdigit():
+    if not (integer.isascii() and integer.isdigit()):
         return text
     grouped = f"{int(integer):,}".replace(",", " ")
     sign_of_currency = CURRENCY_SIGNS.get((field.settings or {}).get("currency", "RUB"), "₽")

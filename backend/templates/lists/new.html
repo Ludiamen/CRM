@@ -1,0 +1,16 @@
+{% extends layout %}
+{% block title %}Новый список{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="new" class="lists-page">
+  <div class="page-head">
+    <h1 class="page-title">Создать список</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:home' %}">Все списки</a>
+  </div>
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  <form class="lists-form" method="post" action="{% url 'lists:new' %}">{% csrf_token %}
+    {% include "lists/_list_form.html" %}
+    <button type="submit" class="btn btn-primary">Создать</button>
+  </form>
+</div>
+{% endblock %}

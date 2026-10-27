@@ -1,0 +1,3 @@
+{% load static %}{% comment %}Стили и скрипт страниц списков (решение 59): подключает шаблон страницы, общий `_assets.html` файлов среза не знает. Только внешние файлы (CSP).{% endcomment %}
+<link rel="stylesheet" href="{% static 'lists/lists.css' %}">
+<script src="{% static 'lists/lists.js' %}" defer></script>

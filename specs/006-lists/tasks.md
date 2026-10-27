@@ -394,7 +394,7 @@ Opus по задачам» в конце файла; решения владел
   «Закреплено за мной», «Архив», фильтры и сортировка выражениями ORM (`values__contains`, `KeyTextTransform`, `Cast`,
   `nulls_last`, последним ключом `number`), страницы по 50 с 51-й строкой, `count()`, `q` через `search` —
   backend/apps/lists/services/grid.py — (FR-518, FR-519, FR-520, FR-541, NFR-509)
-- [ ] T-6214a [sonnet] страницы раздела и настройки: главная, «Основное» и «Права» (план: «Раздел и настройка списка»,
+- [x] T-6214a [sonnet] страницы раздела и настройки: главная, «Основное» и «Права» (план: «Раздел и настройка списка»,
   «Права и видимость», «Контракты», «Безопасный вывод, язык, узкий экран»; решение 61): `views/home.py`,
   `views/settings.py` (адреса `/lists/new/`, `/lists/<id>/settings/`, `/lists/<id>/delete/`, вкладки «Основное» и «Права», `settings/access/`;
   вкладка «Поля» — место под T-6214b), `views/pickers.py` (`/lists/people/`, `/lists/units/` — 404 не правящему и не
@@ -430,7 +430,7 @@ Opus по задачам» в конце файла; решения владел
   шаблоне страницы таблицы); карточки на узком экране (`data-narrow="cards"`, `.lists-grid`) — `static/lists/lists.css`
   — backend/apps/lists/views/grid.py, backend/templates/lists/, backend/static/lists/lists.js,
   backend/static/lists/lists.css, backend/apps/lists/urls.py — (FR-518, FR-519, FR-520, FR-521, FR-523, FR-539, FR-541, NFR-506, NFR-507)
-- [ ] T-6217 [sonnet] «Закреплённое», подразделение и роль (план: «Связи», «Точки расширения»): `card.py` и шаблон
+- [x] T-6217 [sonnet] «Закреплённое», подразделение и роль (план: «Связи», «Точки расширения»): `card.py` и шаблон
   `lists/_card_pinned.html` с `id="lists-pinned"` (`card_sections`, `profile`, 70), записи `unit_usage` и `role_usage` с
   фразами плана, подписчик `core.user_dismissed` (удаление `UserView`) в `ListsConfig.ready()` после `register_all()` —
   backend/apps/lists/card.py, backend/templates/lists/, backend/apps/lists/extensions.py, backend/apps/lists/apps.py —
@@ -481,7 +481,7 @@ Opus по задачам» в конце файла; решения владел
   ключа `before`/`after` из перечня плана, регистрация в `audit_labels`; сверка, что каждое действие таблицы пишет
   `audit.record` без значений полей записей — backend/apps/lists/audit_labels.py, backend/apps/lists/extensions.py —
   (FR-542, NFR-508)
-- [ ] T-6240 [sonnet] развёртывание (план: «Запуск», «Сроки и напоминания» → «Задание»): `config/cron.py` — запись
+- [x] T-6240 [sonnet] развёртывание (план: «Запуск», «Сроки и напоминания» → «Задание»): `config/cron.py` — запись
   `lists_reminders` (`0 5 * * *`, `maintenance`, `job_timeout=600`, `apps.lists.tasks.remind_deadlines`);
   `location ~ ^/lists/[0-9]+/[0-9]+/files/$` в `deploy/nginx.conf` и `deploy/nginx.prod.conf` (`client_max_body_size
   55m`, повтор директив `proxy_*`); `backup.sh` и `RESTORE.md` не правятся; порядок обновления стенда (решение 26) — в

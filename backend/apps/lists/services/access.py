@@ -104,7 +104,15 @@ def edits_any(user) -> bool:
 
 
 def sees_section(user) -> bool:
-    """Раздел «Списки» виден: управляющему или тому, кому открыт хоть один список (FR-501)."""
+    """Раздел «Списки» виден: управляющему или тому, кому открыт хоть один список (FR-501).
+
+    Зовётся пунктом меню на каждой странице портала: управляющему ответ даёт право из кэша прав, без расчёта наборов
+    (иначе +3–4 запроса на любую страницу, NFR-002 среза 001 — `test_capacity`)."""
+    cached = getattr(user, "_lists_scope", None)
+    if cached is None and getattr(user, "is_authenticated", False) \
+            and getattr(user, "state", None) == UserState.ACTIVE \
+            and permissions.has_permission(user, MANAGE_PERMISSION):
+        return True
     current = scope(user)
     return current.manage or bool(current.readable)
 

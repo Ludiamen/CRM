@@ -973,14 +973,15 @@ def test_without_lists_menu_has_no_lists_item():
     есть и в `menu_for`, и в левом меню страницы."""
     from apps.core.services import permissions
 
-    admin = _fresh(support.make_admin())
+    made = support.make_admin()  # вход — исходным объектом: у прочитанного заново нет тестового пароля (поправка Opus)
+    admin = _fresh(made)
     with_lists = permissions.menu_for(admin)
     assert [m for m in with_lists if m["title"] == "Списки" and m["url"] == "/lists/"], "пункта «Списки» нет и с модулем"
-    page = support.logged_in(admin).get("/lists/")
+    page = support.logged_in(made).get("/lists/")
     assert page.status_code == 200
     with ll.without_lists():
         menu = permissions.menu_for(_fresh(admin))
-        html = _html(support.logged_in(admin).get("/staff/"))
+        html = _html(support.logged_in(made).get("/staff/"))
     assert [m for m in menu if m["title"] == "Списки" or m["url"].startswith("/lists/")] == []
     assert len(menu) == len(with_lists) - 1
     assert any(m["url"] == "/staff/" for m in menu), "пропали прежние пункты меню"

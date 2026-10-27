@@ -1,0 +1,32 @@
+{% extends layout %}
+{% block title %}Списки{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="home" class="lists-page">
+  <div class="page-head">
+    <h1 class="page-title">Списки</h1>
+    {% if can_manage %}{% if rows %}<a class="btn btn-primary btn-sm" data-action="lists-create" href="{% url 'lists:new' %}">Создать список</a>{% endif %}{% endif %}
+  </div>
+  {% if rows %}
+  <ul class="list-unstyled lists-home" data-lists-home>
+    {% for row in rows %}
+    <li class="lists-home-row" data-list-id="{{ row.pk }}">
+      <div class="lists-home-main">
+        <a class="lists-home-name" data-field="name" href="{% url 'lists:grid' row.pk %}">{{ row.name }}</a>
+        {% if row.description %}<div class="text-muted small lists-home-description" data-field="description">{{ row.description|linebreaksbr }}</div>{% endif %}
+      </div>
+      <div class="lists-home-side">
+        <span class="small text-muted">Записей: <span data-field="count">{{ row.live_count }}</span></span>
+        {% if can_manage %}<a class="btn btn-outline-secondary btn-sm" data-action="list-settings" href="{% url 'lists:settings' row.pk %}">Настройка</a>{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="lists-empty" data-empty-state="lists">
+    <p>{{ empty_text }}</p>
+    {% if can_manage %}<a class="btn btn-primary" data-action="lists-create" href="{% url 'lists:new' %}">Создать список</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

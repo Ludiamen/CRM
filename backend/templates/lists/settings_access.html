@@ -1,0 +1,35 @@
+{% extends layout %}
+{% block title %}{{ lst.name }} — права{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="access" class="lists-page">
+  {% include "lists/_settings_head.html" %}
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  <form class="lists-form lists-access" method="post" action="{% url 'lists:access' lst.pk %}">{% csrf_token %}
+    <p class="text-muted small">Управляющие списками видят и правят все списки независимо от наборов. «Правят» читают тоже.</p>
+    {% for box in boxes %}
+    <section class="lists-access-box" data-lists-access="{{ box.level }}">
+      <h2 class="h5">{{ box.title }}</h2>
+      <ul class="list-unstyled lists-access-items" data-lists-subjects>
+        {% for item in box.items %}
+        <li data-subject="{{ item.value }}">
+          <span data-field="name">{{ item.name }}</span>
+          <input type="hidden" name="{{ box.field }}" value="{{ item.value }}">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-action="access-remove">Убрать</button>
+        </li>
+        {% endfor %}
+      </ul>
+      <div class="lists-access-add">
+        <input type="text" class="form-control" data-lists-picker="units" data-pick-url="{% url 'lists:units' %}" placeholder="Подразделение" autocomplete="off">
+        <select class="form-select" data-lists-role-select>
+          <option value="">Роль</option>
+          {% for role in roles %}<option value="{{ role.pk }}">{{ role.name }}</option>{% endfor %}
+        </select>
+        <button type="button" class="btn btn-outline-secondary" data-action="access-add">Добавить</button>
+      </div>
+    </section>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+  </form>
+</div>
+{% endblock %}

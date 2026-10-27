@@ -1,1 +1,35 @@
-/* Стили раздела «Списки»: таблица, карточки на узком экране, настройка (срез 006). */
+/* Стили раздела «Списки»: главная, настройка списка, таблица, карточки на узком экране (срез 006).
+   Разделы-метки ниже принадлежат своим задачам; чужие разделы не правятся. */
+
+/* === T-6214a: главная и настройка списка (страницы «Основное», «Права») === */
+.lists-page { max-width: 100%; }
+.lists-page .page-head { flex-wrap: wrap; gap: .5rem; }
+.lists-home { margin: 0; padding: 0; }
+.lists-home-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: .5rem 1rem; padding: .75rem 0; border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
+.lists-home-main { flex: 1 1 18rem; min-width: 0; overflow-wrap: anywhere; }
+.lists-home-name { font-weight: 600; }
+.lists-home-side { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+.lists-empty { padding: 1.5rem 0; }
+.lists-form { max-width: 40rem; }
+.lists-tabs { display: flex; flex-wrap: wrap; gap: .25rem; margin: 0 0 1rem; border-bottom: 1px solid var(--bs-border-color, #dee2e6); }
+.lists-tab { padding: .5rem .9rem; border: 1px solid transparent; border-radius: .375rem .375rem 0 0; text-decoration: none; }
+.lists-tab.active { font-weight: 600; border-color: var(--bs-border-color, #dee2e6); border-bottom-color: var(--bs-body-bg, #fff); background: var(--bs-body-bg, #fff); }
+.lists-danger { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--bs-border-color, #dee2e6); max-width: 40rem; }
+.lists-access-box { margin-bottom: 1.5rem; }
+.lists-access-items li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .25rem 0; overflow-wrap: anywhere; }
+.lists-access-add { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lists-access-add .form-control, .lists-access-add .form-select { flex: 1 1 12rem; width: auto; min-width: 0; }
+.lists-pick { margin: 0; padding: 0; }
+.lists-pick li { padding: .25rem .5rem; cursor: pointer; overflow-wrap: anywhere; }
+.lists-confirm { max-width: min(28rem, 92vw); border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .5rem; }
+.lists-scroll { max-width: 100%; overflow-x: auto; }
+@media (max-width: 575.98px) {
+  .lists-home-row { flex-direction: column; }
+  .lists-tab { flex: 1 1 auto; text-align: center; }
+}
+
+/* === T-6214b: вкладка «Поля» (сетка полей, форма поля, значения списка значений) === */
+
+/* === T-6215: страницы записи (форма, карточка, история) === */
+
+/* === T-6216: таблица записей (сетка, фильтры, карточки на узком экране) === */

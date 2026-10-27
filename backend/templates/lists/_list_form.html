@@ -1,0 +1,11 @@
+{% comment %}Поля «Название» и «Описание» списка (создание и «Основное»): `values`, `errors` (поле -> ListsError).{% endcomment %}
+<div class="mb-3">
+  <label class="form-label" for="lists-name">Название</label>
+  <input id="lists-name" class="form-control" type="text" name="name" value="{{ values.name }}" autocomplete="off">
+  {% if errors.name %}<div class="text-danger small" data-error="name" data-code="{{ errors.name.code }}">{{ errors.name.message }}</div>{% endif %}
+</div>
+<div class="mb-3">
+  <label class="form-label" for="lists-description">Описание</label>
+  <textarea id="lists-description" class="form-control" name="description" rows="3">{{ values.description }}</textarea>
+  {% if errors.description %}<div class="text-danger small" data-error="description" data-code="{{ errors.description.code }}">{{ errors.description.message }}</div>{% endif %}
+</div>

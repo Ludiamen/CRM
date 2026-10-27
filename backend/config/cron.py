@@ -18,6 +18,7 @@ from apps.core.services.retention import (  # noqa: E402
     purge_expired_links, purge_expired_sessions, purge_login_history)
 from apps.core.tasks import purge_quarantine, requeue_pending_scans  # noqa: E402
 from apps.knowledge.tasks import purge_trash  # noqa: E402
+from apps.lists.tasks import remind_deadlines  # noqa: E402
 from apps.notify.tasks import notify_retention, notify_tick  # noqa: E402
 from apps.org.tasks import purge_previews  # noqa: E402
 from apps.servicedesk.tasks import (  # noqa: E402
@@ -58,3 +59,7 @@ register(notify_retention, queue_name="maintenance", cron="40 23 * * *", name="n
 # База знаний (срез 005, T-5240, FR-417). Окончательное удаление статей из корзины — 23:45 по UTC (02:45 по Москве):
 # между `notify_retention` (23:40) и `purge_orphan_files` (23:50).
 register(purge_trash, queue_name="maintenance", cron="45 23 * * *", name="purge_trash", job_timeout=600)
+
+# Списки (срез 006, T-6240, FR-530). Напоминания о сроках — 05:00 по UTC (08:00 по Москве), когда резервная копия и ночные
+# очистки уже закончились; записи списков хранятся без срока, поэтому задания их очистки нет.
+register(remind_deadlines, queue_name="maintenance", cron="0 5 * * *", name="lists_reminders", job_timeout=600)
