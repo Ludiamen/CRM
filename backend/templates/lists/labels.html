@@ -1,0 +1,30 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Этикетки — {{ lst.name }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'lists/lists.css' %}">
+<link rel="stylesheet" href="{% static 'lists/labels.css' %}">
+<div data-lists-page="{{ page }}" class="lists-page">
+  <div class="page-head lists-labels-head">
+    <h1 class="page-title">Этикетки</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:grid' lst.pk %}">{{ lst.name }}</a>
+  </div>
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  {% if items %}
+  <div data-lists-labels-sheet class="lists-labels">
+    {% for item in items %}
+    <div data-lists-label class="lists-label">
+      <img data-lists-qr data-qr-url="{{ item.url }}" src="{{ item.qr }}" alt="QR-код карточки записи" class="lists-label-qr">
+      <div class="lists-label-text">
+        <div data-field="list" class="lists-label-list">{{ item.list }}</div>
+        <div data-field="title" class="lists-label-title">{{ item.title }}</div>
+        <div data-field="value" class="lists-label-value">{{ item.value }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% elif not alert %}
+  <p class="text-muted lists-labels-head">Нет записей для печати.</p>
+  {% endif %}
+</div>
+{% endblock %}

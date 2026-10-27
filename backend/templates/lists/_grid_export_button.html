@@ -1,1 +1,2 @@
-{% comment %}Кнопка «Выгрузить в Excel» (`a[data-action="export"]`, читающим): заглушка, наполняет T-6220.{% endcomment %}
+{% comment %}Кнопка «Выгрузить в Excel» (`a[data-action="export"]`, читающим): выгружает набор таблицы с теми же параметрами адреса страницы (отбор, фильтры, поиск, сортировка); T-6220.{% endcomment %}
+<a class="btn btn-outline-secondary btn-sm" data-action="export" href="{% url 'lists:export' lst.pk %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}">Выгрузить в Excel</a>

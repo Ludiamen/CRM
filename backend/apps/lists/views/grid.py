@@ -20,6 +20,7 @@ from apps.core.views.common import is_fragment, render_page
 from apps.core.widgets import PortalDateInput
 from apps.lists.models import Choice, List, Record, RecordFile, UserView
 from apps.lists.services import access, archive as archive_service, grid as grid_service, schema
+from apps.lists.services import export as export_service
 from apps.lists.services import values as values_service
 from apps.lists.services.errors import ListsError
 from apps.lists.texts import TEXTS
@@ -301,3 +302,16 @@ def _unit_rows(wanted: str) -> list[dict]:
         if len(rows) >= PICK_LIMIT:
             break
     return rows
+
+
+# --- выгрузка в Excel (T-6220) ----------------------------------------------------------------------------
+
+@login_required
+@require_GET
+def export(request, list_id: int):
+    """Выгрузка набора таблицы в XLSX (параметры те же); записей больше предела — страница таблицы с отказом."""
+    lst = access.get_list(request.user, list_id)
+    try:
+        return export_service.build(lst, request.user, request.GET)
+    except ListsError as error:
+        return _render(request, lst, request.GET, alert=error)

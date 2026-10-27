@@ -6,7 +6,7 @@
 """
 from django.urls import path
 
-from apps.lists.views import files, grid, home, pickers, records, settings, tickets
+from apps.lists.views import files, grid, home, imports, labels, pickers, records, settings, tickets
 
 app_name = "lists"
 
@@ -38,9 +38,9 @@ urlpatterns = [
     path("<int:list_id>/", grid.grid, name="grid"),
     path("<int:list_id>/columns/", grid.columns, name="columns"),
     path("<int:list_id>/filter-values/<str:code>/", grid.filter_values, name="filter_values"),
-    path("<int:list_id>/export/", home.pending, {"task": "T-6220"}, name="export"),
+    path("<int:list_id>/export/", grid.export, name="export"),
     path("<int:list_id>/bulk-archive/", grid.bulk_archive, name="bulk_archive"),
-    path("<int:list_id>/labels/", home.pending, {"task": "T-6223"}, name="labels"),
+    path("<int:list_id>/labels/", labels.sheet, name="labels"),
     # Запись (T-6215), файлы (T-6222), этикетка (T-6223)
     path("<int:list_id>/add/", records.add, name="add"),
     path("<int:list_id>/<int:number>/", records.record, name="record"),
@@ -52,12 +52,12 @@ urlpatterns = [
     path("<int:list_id>/<int:number>/files/", files.attach, name="files"),
     path("<int:list_id>/<int:number>/files/<int:file_id>/", files.download, name="file"),
     path("<int:list_id>/<int:number>/files/<int:file_id>/delete/", files.delete, name="file_delete"),
-    path("<int:list_id>/<int:number>/label/", home.pending, {"task": "T-6223"}, name="label"),
+    path("<int:list_id>/<int:number>/label/", labels.label, name="label"),
     # Загрузка из таблицы и образец (T-6221)
-    path("<int:list_id>/import/", home.pending, {"task": "T-6221"}, name="import"),
-    path("<int:list_id>/import/<int:job>/", home.pending, {"task": "T-6221"}, name="import_job"),
-    path("<int:list_id>/import/<int:job>/confirm/", home.pending, {"task": "T-6221"}, name="import_confirm"),
-    path("<int:list_id>/sample/", home.pending, {"task": "T-6221"}, name="sample"),
+    path("<int:list_id>/import/", imports.upload, name="import"),
+    path("<int:list_id>/import/<int:job>/", imports.job, name="import_job"),
+    path("<int:list_id>/import/<int:job>/confirm/", imports.confirm, name="import_confirm"),
+    path("<int:list_id>/sample/", imports.sample, name="sample"),
     # Подбор записи для поля-ссылки (T-6215)
     path("<int:list_id>/pick/", pickers.record, name="pick"),
 ]

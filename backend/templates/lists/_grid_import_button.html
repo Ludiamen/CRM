@@ -1,1 +1,2 @@
-{% comment %}Кнопка «Загрузить из таблицы» (`a[data-action="import"]`, правящим): заглушка, наполняет T-6221.{% endcomment %}
+{% comment %}Кнопка «Загрузить из таблицы» (`a[data-action="import"]`, правящим): первый шаг загрузки; T-6221.{% endcomment %}
+<a class="btn btn-outline-secondary btn-sm" data-action="import" href="{% url 'lists:import' lst.pk %}">Загрузить из таблицы</a>

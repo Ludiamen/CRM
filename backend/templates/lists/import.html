@@ -1,0 +1,61 @@
+{% extends layout %}
+{% block title %}Загрузка из таблицы — {{ lst.name }}{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="{% if mode == 'upload' %}import{% elif job.state == 'preview' %}preview{% else %}mapping{% endif %}" class="lists-page" data-list-id="{{ lst.pk }}">
+  <div class="page-head">
+    <h1 class="page-title">Загрузка из таблицы</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:grid' lst.pk %}">{{ lst.name }}</a>
+  </div>
+  <p class="small text-muted">Файл CSV или XLSX до 5 МБ и 5 000 строк; читается первый лист. Файл не сохраняется.
+    <a data-action="sample" href="{% url 'lists:sample' lst.pk %}">Скачать образец</a></p>
+  {% if mode == "upload" %}
+  <form class="lists-form" method="post" enctype="multipart/form-data" action="{% url 'lists:import' lst.pk %}" data-lists-import-form>{% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label" for="lists-import-file">Файл</label>
+      <input id="lists-import-file" class="form-control" type="file" name="file" accept=".csv,.xlsx">
+      {% include "lists/_field_error.html" with e=refused %}
+    </div>
+    <button type="submit" class="btn btn-primary">Загрузить</button>
+  </form>
+  {% else %}
+  <p class="small">Файл: <span data-field="file-name">{{ job.file_name }}</span></p>
+  <form class="lists-form" method="post" action="{% url 'lists:import_job' lst.pk job.pk %}" data-lists-import-map>{% csrf_token %}
+    {% for column in columns %}
+    <div class="mb-2">
+      <label class="form-label" for="lists-map-{{ column.index }}">Столбец «{{ column.header }}»</label>
+      <select id="lists-map-{{ column.index }}" class="form-select" name="map.{{ column.index }}" data-lists-map-column="{{ column.index }}">
+        {% for option in options %}<option value="{{ option.code }}"{% if option.code == column.selected %} selected{% endif %}>{{ option.name }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-primary">Проверить</button>
+  </form>
+  {% if job.state == "preview" %}
+  <div class="my-3" data-lists-import-counts>
+    <span class="me-3" data-import-count="will_create">Будет создано: {{ counts.will_create }}</span>
+    <span class="me-3" data-import-count="will_update">Будет обновлено: {{ counts.will_update }}</span>
+    <span data-import-count="error">С ошибками: {{ counts.error }}</span>
+  </div>
+  <div class="lists-scroll">
+    <table class="table table-sm" data-lists-import-preview>
+      <thead><tr><th>Строка</th><th>Итог</th><th>Запись</th><th>Причина</th></tr></thead>
+      <tbody>
+        {% for row in rows %}
+        <tr data-import-row="{{ row.row }}" data-result="{{ row.result }}">
+          <td>{{ row.row }}</td>
+          <td>{% if row.result == "will_create" %}Будет создана{% elif row.result == "will_update" %}Будет обновлена{% else %}Ошибка{% endif %}</td>
+          <td data-field="number">{% if row.number %}{{ row.number }}{% endif %}</td>
+          <td data-field="reason">{{ row.reason }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form method="post" action="{% url 'lists:import_confirm' lst.pk job.pk %}" class="my-3">{% csrf_token %}
+    <button type="submit" class="btn btn-primary" data-action="import-confirm">Загрузить</button>
+  </form>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

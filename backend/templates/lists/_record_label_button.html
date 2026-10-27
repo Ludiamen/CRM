@@ -1,1 +1,2 @@
-{% comment %}Кнопка «Этикетка» карточки: место для T-6223. Контекст: `lst`, `record`.{% endcomment %}
+{% comment %}Кнопка «Этикетка» карточки (читающим): страница печати одной этикетки. Контекст: `lst`, `record`.{% endcomment %}
+<a class="btn btn-outline-secondary btn-sm" data-action="record-label" href="{% url 'lists:label' lst.pk record.number %}">Этикетка</a>

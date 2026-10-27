@@ -1,1 +1,2 @@
-{% comment %}Кнопка «Этикетки» (`button[data-action="bulk-labels"]`, читающим; внутри формы флажков): заглушка, наполняет T-6223.{% endcomment %}
+{% comment %}Кнопка «Этикетки» (`button[data-action="bulk-labels"]`, читающим; внутри формы флажков): GET на лист этикеток с отмеченными `n`. Без `data-confirm-text` — диалог подтверждения не открывается. Контекст: `lst`.{% endcomment %}
+<button type="submit" class="btn btn-outline-secondary btn-sm" data-action="bulk-labels" formmethod="get" formaction="{% url 'lists:labels' lst.pk %}">Этикетки</button>

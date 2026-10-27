@@ -1,0 +1,15 @@
+{% extends layout %}
+{% block title %}Итог загрузки — {{ lst.name }}{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="summary" class="lists-page" data-list-id="{{ lst.pk }}">
+  <div class="page-head">
+    <h1 class="page-title">Итог загрузки</h1>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:grid' lst.pk %}">{{ lst.name }}</a>
+  </div>
+  <div class="alert alert-info" data-lists-notice="import-summary">
+    Создано: <span data-import-summary="created">{{ summary.created }}</span>, обновлено: <span data-import-summary="updated">{{ summary.updated }}</span>, с ошибками: <span data-import-summary="errors">{{ summary.errors }}</span>.
+    Завершено: <time data-at="{{ finished_at|date:'c' }}" datetime="{{ finished_at|date:'c' }}">{{ finished_at|date:'d.m.Y H:i' }}</time>
+  </div>
+</div>
+{% endblock %}

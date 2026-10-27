@@ -57,7 +57,7 @@ def _parse_title(data: dict):
     return title, None
 
 
-def _parse_values(data: dict, fields, hidden_fields, old_values: dict, actor, *, source: str):
+def _parse_values(data: dict, fields, hidden_fields, old_values: dict, actor, *, source: str, lookups=None):
     """Разбор значений видимых полей: возвращает (новые значения видимых полей, отказы по кодам).
 
     Скрытое поле с присланным непустым значением — отказ `field_hidden_meanwhile` (FR-517); пустое и отсутствующее
@@ -67,7 +67,8 @@ def _parse_values(data: dict, fields, hidden_fields, old_values: dict, actor, *,
     for field in fields:
         if field.type == "file":
             continue
-        result = values.parse(field, data.get(field.code), old=old_values.get(field.code), viewer=actor, source=source)
+        result = values.parse(field, data.get(field.code), old=old_values.get(field.code), viewer=actor, source=source,
+                              lookups=lookups)
         if result.error is not None:
             errors[field.code] = result.error
         elif result.value is None and field.required:
@@ -114,12 +115,13 @@ def _ordered(errors: dict[str, ListsError], title_error) -> dict[str, ListsError
 
 # --- создание ---------------------------------------------------------------------------------------------------
 
-def create(lst, data: dict, actor, *, via_import: bool = False) -> Record:
+def create(lst, data: dict, actor, *, via_import: bool = False, lookups=None) -> Record:
     """Создаёт запись списка: замок списка (разделяемый) → `FOR UPDATE` строки списка → проверки → `Record` →
     `unique.sync` → `vectors.refresh` → событие `created`.
 
     `data` — «код → строка или список строк» и `"title"`. При `via_import=True` вектор не считается: его пересчитывает
-    `imports.confirm` пакетно в конце (CONTRACT-006, 5.4, К-4)."""
+    `imports.confirm` пакетно в конце (CONTRACT-006, 5.4, К-4). `lookups` — справочники загрузки
+    (`values.import_lookups`, один раз на файл): без них справочники берутся запросами, как прежде."""
     _require_edit(actor, lst)
     source = "import" if via_import else "form"
     with transaction.atomic():
@@ -131,7 +133,7 @@ def create(lst, data: dict, actor, *, via_import: bool = False) -> Record:
         visible = [field for field in every if not field.hidden]
         hidden = [field for field in every if field.hidden]
         title, title_error = _parse_title(data)
-        new_values, errors = _parse_values(data, visible, hidden, {}, actor, source=source)
+        new_values, errors = _parse_values(data, visible, hidden, {}, actor, source=source, lookups=lookups)
         stored = {code: value for code, value in new_values.items() if value is not None}
         _precheck_unique(None, locked, visible, stored, errors)
         if title_error is not None or errors:

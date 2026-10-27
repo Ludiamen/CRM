@@ -451,11 +451,11 @@ Opus по задачам» в конце файла; решения владел
   до 299 знаков и «…» — решение 53) и регистрация — backend/apps/lists/services/reminders.py, backend/apps/lists/tasks.py,
   backend/apps/lists/notify_kinds.py, backend/apps/lists/extensions.py — (FR-529, FR-530, FR-531, FR-533, FR-544,
   NFR-511)
-- [ ] T-6220 [sonnet] выгрузка (план: «Выгрузка в Excel»): `services/export.py` и адрес `/lists/<id>/export/` —
+- [x] T-6220 [sonnet] выгрузка (план: «Выгрузка в Excel»): `services/export.py` и адрес `/lists/<id>/export/` —
   тот же набор, что у таблицы; `Workbook(write_only=True)`, `WriteOnlyCell` с форматами по итогу T-6005, `iterator(
   chunk_size=500)`, защита от формул по `FORMULA_START`, предел 10 000, `filename*` — backend/apps/lists/services/export.py,
   views/grid.py, backend/templates/lists/ (кнопка «Выгрузить в Excel» на странице таблицы), backend/apps/lists/urls.py — (FR-532, NFR-503)
-- [ ] T-6221 [sonnet] загрузка и образец (план: «Загрузка из таблицы и образец»): `services/imports.py` и
+- [x] T-6221 [sonnet] загрузка и образец (план: «Загрузка из таблицы и образец»): `services/imports.py` и
   `views/imports.py` — шаги «файл → сопоставление → предпросмотр → подтверждение → итог» (`table_file.read` с пределами
   и текстами, задание по паре и автору, сутки, справочники в памяти, правила загрузки, итоги строк, подтверждение с
   замками и точками сохранения, `rows` обнуляются, журнал `lists.import_done`; повторы уникальных значений в
@@ -469,7 +469,7 @@ Opus по задачам» в конце файла; решения владел
   (прикрепить, скачать «чистый» через `file_response.download`, «проверяется» и «карантин» — 404, удалить; файл по паре
   с записью и списком) — backend/apps/lists/services/files.py, views/files.py, backend/templates/lists/ (блок «Файлы» карточки: прикрепить, скачать, удалить), backend/apps/lists/extensions.py,
   backend/apps/lists/urls.py — (FR-536, FR-537, NFR-505, NFR-512)
-- [ ] T-6223 [sonnet] этикетки (план: «Этикетки»): `services/labels.py` (`qr_data_uri` — `SvgPathImage`, `box_size=10`,
+- [x] T-6223 [sonnet] этикетки (план: «Этикетки»): `services/labels.py` (`qr_data_uri` — `SvgPathImage`, `box_size=10`,
   `border=4`, `data:image/svg+xml;base64,…`; у `<img>` атрибут `data-qr-url` с адресом карточки — решения 10 и 50), `views/labels.py` (одна этикетка, лист до 100, недоступные пропускаются),
   шаблоны печати, кнопки «Этикетка» в карточке и «Этикетки» для отмеченных строк таблицы (решение 60),
   `static/lists/labels.css` — подключается `<link>` только шаблонами страниц этикеток (`@page { size: A4; margin: 10mm

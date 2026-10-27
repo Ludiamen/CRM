@@ -1,1 +1,33 @@
-/* Стили печати этикеток списков (срез 006). */
+/* Этикетки: лист A4, сетка 3 × 7 по 63,5 × 38,1 мм (PLAN-006, «Этикетки»; решение 59). Подключается только страницами этикеток. */
+@page { size: A4; margin: 10mm 9mm; }
+
+.lists-labels {
+  display: grid;
+  grid-template-columns: repeat(3, 63.5mm);
+  grid-auto-rows: 38.1mm;
+  width: 190.5mm;
+}
+
+.lists-label {
+  box-sizing: border-box;
+  width: 63.5mm;
+  height: 38.1mm;
+  padding: 2mm;
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  overflow: hidden;
+  border: 1px dashed #bbb;
+  break-inside: avoid;
+}
+
+.lists-label-qr { width: 26mm; height: 26mm; flex: none; }
+.lists-label-text { min-width: 0; font-size: 9pt; line-height: 1.2; overflow-wrap: anywhere; }
+.lists-label-list { color: #555; font-size: 7pt; }
+.lists-label-title { font-weight: 600; }
+.lists-label-value { font-size: 8pt; }
+
+@media print {
+  #top-bar, .app-top-bar, #main-menu, .app-menu, .lists-labels-head { display: none; }
+  .lists-label { border-color: transparent; }
+}
