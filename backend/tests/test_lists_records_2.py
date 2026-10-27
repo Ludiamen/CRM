@@ -220,8 +220,8 @@ def test_card_shows_visible_field_values_but_not_hidden_ones_files_related_ticke
     # `data-file-id` — `RecordFile.pk` (ответ Opus О1); номер строки уводится от номера `StoredFile`, чтобы реализация
     # на `StoredFile.pk` не прошла случайно
     RecordFile = support.model("lists.RecordFile")
-    RecordFile.objects.filter(pk=clean.pk).update(id=clean.file_id + 7919)
-    clean = RecordFile.objects.get(pk=clean.file_id + 7919)
+    RecordFile.objects.filter(pk=clean.pk).update(id=clean.pk + 7919)
+    clean = RecordFile.objects.get(pk=clean.pk + 7919)
     lists.attach_file(record, pending_field, "фото-стойки.png", status="pending")
     Change = support.model("lists.Change")
     started = timezone.now()
@@ -236,8 +236,8 @@ def test_card_shows_visible_field_values_but_not_hidden_ones_files_related_ticke
     mine = sd.make_ticket(queue=sd.make_queue(), subject="Замена картриджа", assignee=viewer.user)
     foreign = sd.make_ticket(queue=sd.make_queue(), subject="Закупка серверов отдела")
     TicketLink = support.model("lists.TicketLink")
-    TicketLink.objects.create(record=record, ticket_number=mine.number)
-    TicketLink.objects.create(record=record, ticket_number=foreign.number)
+    TicketLink.objects.create(record=record, ticket_number=mine.number, linked_by=author)
+    TicketLink.objects.create(record=record, ticket_number=foreign.number, linked_by=author)
 
     response = _card(viewer, lst, record.number)
 

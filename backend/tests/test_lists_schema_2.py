@@ -556,7 +556,7 @@ def test_schema_and_access_changes_take_exclusive_list_lock_and_record_save_shar
         ("show_field", lst, lambda: schema.show_field(string_field, actor=user)),
         ("delete_field", lst, lambda: schema.delete_field(empty, actor=user)),
         ("move_field", lst, lambda: schema.move_field(string_field, "down", actor=user)),
-        ("set_order", lst, lambda: schema.set_order(lst, reversed_codes(), actor=user)),
+        ("set_order", lst, lambda codes: schema.set_order(lst, codes, actor=user)),
         ("save_choices", lst, lambda: schema.save_choices(
             choice_field, [(lists.choice_id(choice_field, "А"), "А"), (None, "В")], actor=user)),
         ("save_access", lst, lambda: schema.save_access(lst, readers=[("role", role.pk)], editors=[], actor=user)),
@@ -564,8 +564,10 @@ def test_schema_and_access_changes_take_exclusive_list_lock_and_record_save_shar
     ]
     field_table = f'"{support.model("lists.Field")._meta.db_table}"'
     for name, target, call in calls:
+        # новый порядок читается до перехвата SQL: иначе чтение полей самим тестом стоит раньше замка
+        codes = reversed_codes() if name == "set_order" else None
         with lists.capture_sql() as sqls:
-            call()
+            call(codes) if name == "set_order" else call()
         locks = lists.list_locks(sqls)
         assert lists.ListLock("exclusive", lists.list_no(target.pk)) in locks, (name, locks)
         assert all(lock.kind == "exclusive" for lock in locks), (name, locks)

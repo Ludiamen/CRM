@@ -339,7 +339,7 @@ _CHANGEABLE = frozenset({"name", "hint", "type", "required", "multiple", "unique
 MISMATCH_LIMIT = 10
 
 
-def _field_has_data(field: Field) -> bool:
+def has_data(field: Field) -> bool:
     """«Поле с данными» (план, «Поля и изменение схемы»): ключ в `values` записи этого списка (в том числе в
     архиве), строка `RecordFile` поля или изменение с этим кодом в истории записей этого списка. Отбор по списку
     обязателен: код `f3` есть в каждом списке."""
@@ -439,7 +439,7 @@ def update_field(field, *, actor, **changes) -> Field:
 
         def with_data() -> bool:
             if not data_known:
-                data_known.append(_field_has_data(current))
+                data_known.append(has_data(current))
             return data_known[0]
 
         if retyped and with_data():
@@ -595,3 +595,68 @@ def _audit_value(prop: str, state: dict, field: Field, actor):
     if prop == "thresholds" or prop == "deadline":
         return list(state["thresholds"]) if state["deadline"] else []
     return value
+
+
+# --- скрыть, показать, удалить поле -----------------------------------------------------------------------------
+
+_VECTOR_TYPES = ("string", "text")
+
+
+def _set_hidden(field, hidden: bool, *, actor) -> None:
+    """Общая часть `hide_field` и `show_field`: признак `hidden` под исключительным замком списка. У поля «строка» и
+    «многострочный текст» — `List.vectors_stale_since = now` и после фиксации задание `refresh_vectors` (И2); у прочих
+    типов вектор от поля не зависит — признака и задания нет (Н11). Признак уже такой — ничего не меняется."""
+    _require_manage(actor)
+    with transaction.atomic():
+        access.lock_list(field.list_id, shared=False)
+        current = Field.objects.select_related("list").filter(pk=field.pk).first()
+        if current is None:
+            raise Http404("Поле не найдено")
+        if current.hidden == hidden:
+            field.hidden = hidden
+            return
+        Field.objects.filter(pk=current.pk).update(hidden=hidden)
+        if current.type in _VECTOR_TYPES:
+            List.objects.filter(pk=current.list_id).update(vectors_stale_since=timezone.now())
+            transaction.on_commit(lambda: _enqueue_refresh(current.list_id, current.pk))
+        audit.record("lists.field_hidden" if hidden else "lists.field_shown", actor=actor, object_type=FIELD_TYPE,
+                     object_id=current.pk,
+                     before={"list": current.list.name, "field": current.name, "hidden": not hidden},
+                     after={"list": current.list.name, "field": current.name, "hidden": hidden})
+    field.hidden = hidden
+
+
+def _enqueue_refresh(list_id: int, field_id: int) -> None:
+    """Ставит задание пересчёта векторов в очередь `maintenance` (после фиксации транзакции)."""
+    import django_rq
+
+    from apps.lists import tasks  # отложенный импорт: `tasks` зовёт `vectors`, а тот — `schema`
+
+    django_rq.get_queue("maintenance").enqueue(tasks.refresh_vectors, list_id, field_id, job_timeout=600)
+
+
+def hide_field(field, *, actor) -> None:
+    """Скрывает поле (управляющий): признак `hidden`, журнал `lists.field_hidden`; пересчёт векторов — заданием."""
+    _set_hidden(field, True, actor=actor)
+
+
+def show_field(field, *, actor) -> None:
+    """Показывает скрытое поле (управляющий): признак `hidden`, журнал `lists.field_shown`; пересчёт — заданием."""
+    _set_hidden(field, False, actor=actor)
+
+
+def delete_field(field, *, actor) -> None:
+    """Удаляет пустое поле (управляющий) под исключительным замком списка; поле с данными (`has_data`) —
+    `field_has_data`. Журнал `lists.field_deleted` (`before`: список, поле, тип)."""
+    _require_manage(actor)
+    with transaction.atomic():
+        access.lock_list(field.list_id, shared=False)
+        current = Field.objects.select_related("list").filter(pk=field.pk).first()
+        if current is None:
+            raise Http404("Поле не найдено")
+        if has_data(current):
+            raise ListsError("field_has_data")
+        before = {"list": current.list.name, "field": current.name, "type": Field.Type(current.type).label}
+        pk = current.pk
+        current.delete()
+        audit.record("lists.field_deleted", actor=actor, object_type=FIELD_TYPE, object_id=pk, before=before)
