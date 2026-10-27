@@ -85,8 +85,10 @@ def _commit_callbacks(capture):
 
 def _list_on_migrate(name: str, **extra):
     now = timezone.now()
-    return _on("lists.List").create(name=name, description="", code="", created_by=None, next_number=1,
-                                    next_field_no=1, created_at=now, updated_at=now, **extra)
+    # `extra` может переопределить умолчания (например `description`) — без повторного аргумента (поправка Opus)
+    fields = {"description": "", "code": "", "created_by": None, "next_number": 1, "next_field_no": 1,
+              "created_at": now, "updated_at": now, **extra}
+    return _on("lists.List").create(name=name, **fields)
 
 
 def _field_on_migrate(lst, code: str, type: str, *, order: int = 1, target=None, unique: bool = False,
@@ -204,8 +206,9 @@ def test_lists_stand_reset_wipes_record_files_rows_stored_files_and_disk_after_c
         for stored, path, write in made:
             assert not _on("core.StoredFile").filter(pk=stored.pk).exists(), "StoredFile записи остался"
             assert path.exists() == write, "файл на диске тронут до фиксации"
-        # К-9, раздел 1.3: `on_commit` — на алиасе транзакции сброса, то есть `migrate`
-        assert on_migrate, "стирание файлов с диска не поставлено в on_commit соединения migrate"
+    # К-9, раздел 1.3: `on_commit` — на алиасе транзакции сброса, то есть `migrate`; список колбэков наполняется при
+    # выходе из блока перехвата (поправка Opus при исполнении)
+    assert on_migrate, "стирание файлов с диска не поставлено в on_commit соединения migrate"
 
     assert _on("lists.RecordFile").count() == 0
     for stored, path, _ in made:

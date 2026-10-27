@@ -528,3 +528,151 @@ def _check_kb_p95(environment, **_kwargs):
         print(f"NFR-401/402 (срез 005) не выполнено: p95 выше предела или нет замера {over}, "
               f"ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1
+
+
+class ListsUser(HttpUser):
+    """Срез 006 (T-6241, NFR-501…NFR-504, NFR-513): вошедший сотрудник работает со списками — таблица с фильтрами, отбором и
+    сортировками, карточка записи, сквозной поиск и поиск внутри списка, выгрузка в Excel, предпросмотр загрузки 5 000 строк.
+    Модель нагрузки та же (PLAN-001 версия 4); данные — `prepare_users.py` и `fill_lists.py` (10 000 записей «Оборудования»,
+    50 000 всего). Каждая учётка читает только часть списков (случайная половина доступных ей, не меньше одного), поэтому
+    нагрузка ложится на разные списки; учётка без доступа ни к одному списку (строка `creds.csv` с четвёртым столбцом
+    `plain`) видит пустой раздел и пользуется только сквозным поиском: выдача отфильтрована по правам, ошибок быть не
+    должно. Запуск только этого класса (Этап 4; только на свободной машине и по согласию владельца):
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+            --reset-stats --host https://127.0.0.1:8031 ListsUser
+    (имя класса — в конце команды: без него locust запускает все классы файла и делит `-u` между ними)
+    Номера списков и записей берутся из разметки (`data-list-id`, `data-record-number`). Слова поиска —
+    LOAD_LISTS_FREQUENT, LOAD_LISTS_RARE, LOAD_LISTS_MIXED (по умолчанию слова словаря `fill_lists.py`). Пределы:
+    таблица и карточка p95 не больше 500 мс (`P95_LIMIT_MS`), поиск — 1000 мс, выгрузка — 10 с, предпросмотр — 15 с."""
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        self.client.verify = False
+        row = _next_credentials()
+        self.email, self.password, self.key = row[:3]
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        home = self.client.get("/lists/", name="setup /lists/").text
+        every = sorted(set(re.findall(r'data-list-id="(\d+)"', home)))
+        self.lists = random.sample(every, max(1, (len(every) + 1) // 2)) if every else []
+        self.numbers = {}
+        for list_id in self.lists:
+            page = self.client.get(f"/lists/{list_id}/", name="setup /lists/<n>/").text
+            self.numbers[list_id] = sorted(set(re.findall(r'data-record-number="(\d+)"', page))) or ["1"]
+        self.words = {
+            "frequent": os.environ.get("LOAD_LISTS_FREQUENT", "принтер"),
+            "rare": os.environ.get("LOAD_LISTS_RARE", "гарнитура"),
+            "mixed": os.environ.get("LOAD_LISTS_MIXED", "принтер сертификат"),
+        }
+
+    def _query(self) -> str:
+        return random.choice(list(self.words.values()))
+
+    def _list(self):
+        return random.choice(self.lists) if self.lists else None
+
+    @task(3)
+    def home(self):
+        self.client.get("/lists/", name="/lists/")
+
+    @task(6)
+    def grid(self):
+        list_id = self._list()
+        if list_id:
+            self.client.get(f"/lists/{list_id}/", name="/lists/<n>/")
+
+    @task(4)
+    def grid_filtered(self):
+        list_id = self._list()
+        if list_id:
+            params = random.choice((
+                {"sort": "title", "dir": "asc"}, {"sort": "title", "dir": "desc"}, {"sort": "number", "dir": "desc"},
+                {"f.title": random.choice(self.words["frequent"].split()), "page": "1"},
+                {"preset": "expiring"}, {"preset": "archive"}, {"page": "3"}))
+            self.client.get(f"/lists/{list_id}/", params=params, name="/lists/<n>/?filter")
+
+    @task(5)
+    def record(self):
+        list_id = self._list()
+        if list_id:
+            self.client.get(f"/lists/{list_id}/{random.choice(self.numbers[list_id])}/", name="/lists/<n>/<n>/")
+
+    @task(3)
+    def list_search(self):
+        list_id = self._list()
+        if list_id:
+            self.client.get(f"/lists/{list_id}/", params={"q": self._query()}, name="/lists/<n>/?q")
+
+    @task(4)
+    def search(self):
+        self.client.get("/search/", params={"q": self._query()}, name="/search/?q")
+
+    @task(3)
+    def popup(self):
+        self.client.get("/search/popup/", params={"q": self._query()}, headers={"HX-Request": "true"},
+                        name="/search/popup/")
+
+    @task(1)
+    def export(self):
+        list_id = self._list()
+        if list_id:
+            with self.client.get(f"/lists/{list_id}/export/", name="/lists/<n>/export/", catch_response=True) as response:
+                if response.status_code >= 500:
+                    response.failure(f"/lists/<n>/export/: {response.status_code}")
+                else:
+                    response.success()
+
+    @task(1)
+    def import_preview(self):
+        """Загрузка файла в 5 000 строк и проверка (предпросмотр); подтверждение не нажимается: данные не меняются."""
+        list_id = self._list()
+        if not list_id:
+            return
+        token = self.client.cookies.get("csrftoken", "")
+        referer = {"Referer": self.host + f"/lists/{list_id}/import/"}
+        body = "Название\n" + "".join(f"Нагрузка {n}\n" for n in range(1, 5001))
+        with self.client.post(f"/lists/{list_id}/import/", data={"csrfmiddlewaretoken": token}, headers=referer,
+                              files={"file": ("load.csv", body.encode("utf-8"), "text/csv")},
+                              name="POST /lists/<n>/import/", allow_redirects=False, catch_response=True) as response:
+            target = response.headers.get("Location", "")
+            if response.status_code >= 500:
+                response.failure(f"/lists/<n>/import/: {response.status_code}")
+            else:  # 4xx — учётка без права «Правят»: ответ сайта, не сбой
+                response.success()
+        found = re.fullmatch(r"/lists/\d+/import/(\d+)/", target)
+        if not found:
+            return
+        with self.client.post(target, data={"map.0": "title", "csrfmiddlewaretoken": token}, headers=referer,
+                              name="POST /lists/<n>/import/<n>/", catch_response=True) as response:
+            if response.status_code >= 400:
+                response.failure(f"/lists/<n>/import/<n>/: {response.status_code}")
+
+
+LISTS_PAGES = ("/lists/", "/lists/<n>/", "/lists/<n>/?filter", "/lists/<n>/<n>/", "/lists/<n>/?q")
+LISTS_SEARCH_PAGES = ("/search/?q", "/search/popup/")
+LISTS_EXPORT_LIMIT_MS = 10000
+LISTS_PREVIEW_LIMIT_MS = 15000
+
+
+@events.quitting.add_listener
+def _check_lists_p95(environment, **_kwargs):
+    """NFR-501…NFR-504 для страниц среза 006: таблица и карточка p95 не больше 500 мс, поиск — 1000 мс, выгрузка — 10 с,
+    предпросмотр — 15 с; ни одной ошибки."""
+    if ListsUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    checks = [(name, "GET", P95_LIMIT_MS) for name in LISTS_PAGES]
+    checks += [(name, "GET", SEARCH_LIMIT_MS) for name in LISTS_SEARCH_PAGES]
+    checks += [("/lists/<n>/export/", "GET", LISTS_EXPORT_LIMIT_MS),
+               ("POST /lists/<n>/import/<n>/", "POST", LISTS_PREVIEW_LIMIT_MS)]
+    for name, method, limit in checks:
+        entry = stats.entries.get((name, method))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > limit:
+            over[name] = p95
+    if stats.total.num_failures or over:
+        print(f"NFR-501…504 (срез 006) не выполнено: p95 выше предела или нет замера {over}, "
+              f"ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1
