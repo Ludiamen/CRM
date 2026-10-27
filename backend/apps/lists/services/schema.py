@@ -8,13 +8,14 @@
 """
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
-from django.db.models import F, Max
+from django.db.models import Case, CharField, Count, F, Func, IntegerField, Max, Value, When
+from django.db.models.fields.json import KeyTransform
 from django.http import Http404
 from django.utils import timezone
 
 from apps.core.services import audit
-from apps.lists.models import Field, List, Record
-from apps.lists.services import access, values
+from apps.lists.models import Change, Choice, Field, List, Record, RecordFile, UniqueValue
+from apps.lists.services import access, unique, values
 from apps.lists.services.errors import ListsError
 
 LIST_TYPE = "lists.list"
@@ -277,6 +278,16 @@ def add_field(lst, *, name, type, actor, hint="", required=False, multiple=False
     return field
 
 
+def visible_fields(lst) -> list[Field]:
+    """Поля списка с `hidden=False` по `order` (CONTRACT-006, 5.3; места V1–V20 раздела 6)."""
+    return list(Field.objects.filter(list_id=lst.pk, hidden=False).order_by("order", "pk"))
+
+
+def all_fields(lst) -> list[Field]:
+    """Все поля списка по `order`, со скрытыми (места A1–A9 раздела 6)."""
+    return list(Field.objects.filter(list_id=lst.pk).order_by("order", "pk"))
+
+
 def _locked_fields(list_id: int) -> list[Field]:
     """Все строки `Field` списка (в том числе скрытые) по порядку; читается после исключительного замка."""
     return list(Field.objects.filter(list_id=list_id).order_by("order", "pk"))
@@ -319,3 +330,268 @@ def set_order(lst, codes, *, actor) -> None:
         for number, code in enumerate(codes, start=1):
             if by_code[code].order != number:
                 Field.objects.filter(pk=by_code[code].pk).update(order=number)
+
+
+# --- изменение поля --------------------------------------------------------------------------------------------
+
+_CHANGEABLE = frozenset({"name", "hint", "type", "required", "multiple", "unique", "show_in_table", "default",
+                         "currency", "target", "deadline", "thresholds"})
+MISMATCH_LIMIT = 10
+
+
+def _field_has_data(field: Field) -> bool:
+    """«Поле с данными» (план, «Поля и изменение схемы»): ключ в `values` записи этого списка (в том числе в
+    архиве), строка `RecordFile` поля или изменение с этим кодом в истории записей этого списка. Отбор по списку
+    обязателен: код `f3` есть в каждом списке."""
+    return (Record.objects.filter(list_id=field.list_id, values__has_key=field.code).exists()
+            or RecordFile.objects.filter(field=field).exists()
+            or Change.objects.filter(record__list_id=field.list_id,
+                                     changes__contains=[{"field": field.code}]).exists())
+
+
+def _is_empty(value) -> bool:
+    return value is None or value == [] or (isinstance(value, str) and not value.strip())
+
+
+def _snapshot(field: Field) -> dict:
+    """Изменяемые свойства поля для сравнения «было / стало»."""
+    settings = field.settings or {}
+    return {
+        "name": field.name, "hint": field.hint, "type": field.type, "required": field.required,
+        "multiple": field.multiple, "unique": field.unique, "show_in_table": field.show_in_table,
+        "default": field.default, "currency": settings.get("currency"), "target": field.target,
+        "deadline": bool(settings.get("deadline")), "thresholds": list(settings.get("thresholds") or []),
+    }
+
+
+def _unique_repeats(field: Field, actor) -> ListsError | None:
+    """Повторы нормализованных значений по всем записям списка (и в архиве): первые 10 пар «№номер — значение»."""
+    groups: dict[str, list] = {}
+    rows = Record.objects.filter(list_id=field.list_id).order_by("number").values_list("number", "values")
+    for number, data in rows.iterator():
+        raw = (data or {}).get(field.code)
+        norm = unique.normalize(field, raw)
+        if norm is not None:
+            groups.setdefault(norm, []).append((number, raw))
+    repeated = sorted((item for group in groups.values() if len(group) > 1 for item in group), key=lambda x: x[0])
+    if not repeated:
+        return None
+    items = "; ".join(f"№{number} — {values.display(field, raw, actor)}" for number, raw in repeated[:MISMATCH_LIMIT])
+    return ListsError("unique_repeats", field="unique", params={"items": items})
+
+
+def _required_missing(field: Field) -> ListsError | None:
+    """Записи списка (и архива) без значения: первые 10 номеров через «, »."""
+    rows = Record.objects.filter(list_id=field.list_id).order_by("number").values_list("number", "values")
+    missing = [number for number, data in rows.iterator() if _is_empty((data or {}).get(field.code))]
+    if not missing:
+        return None
+    items = ", ".join(f"№{number}" for number in missing[:MISMATCH_LIMIT])
+    return ListsError("required_missing", field="required", params={"items": items})
+
+
+def _multiple_in_use(field: Field) -> bool:
+    """Есть запись (в том числе в архиве) с двумя и более значениями; у «файла» — с двумя и более файлами."""
+    if field.type == "file":
+        return (RecordFile.objects.filter(field=field).values("record_id").annotate(n=Count("pk"))
+                .filter(n__gt=1).exists())
+    node = KeyTransform(field.code, "values")
+    kind = Func(node, function="jsonb_typeof", output_field=CharField())
+    length = Func(node, function="jsonb_array_length", output_field=IntegerField())
+    found = (Record.objects.filter(list_id=field.list_id).annotate(_kind=kind)
+             .annotate(_n=Case(When(_kind="array", then=length), default=Value(0), output_field=IntegerField()))
+             .filter(_n__gt=1))
+    return found.exists()
+
+
+def update_field(field, *, actor, **changes) -> Field:
+    """Изменяет поле (управляющий) под исключительным замком списка; ключи `changes` — имена параметров `add_field`.
+
+    У поля с данными разрешены название, подсказка, «показывать в таблице», значение по умолчанию, срок и пороги,
+    включение «несколько значений»; тип, валюта и целевой список — `field_locked` у поля `type`, `currency` или
+    `target` (FR-509). Пустое поле меняет и их: свойства, недоступные новому типу, сбрасываются, значения списка
+    значений старого типа удаляются. «Уникальное» включается без повторов по всем записям (`unique_repeats`, первые
+    10) — строки `UniqueValue` создаются здесь же; выключение стирает их. «Обязательное» — без пустых (`required_missing`,
+    первые 10). «Несколько» выключается без записей с двумя значениями (`multiple_in_use`). Свойство не своего типа —
+    `property_not_allowed`. Ничего не изменилось — записи журнала нет; иначе `lists.field_changed` с «было / стало»
+    только изменённых свойств."""
+    _require_manage(actor)
+    unknown = set(changes) - _CHANGEABLE
+    if unknown:
+        raise TypeError(f"update_field: неизвестные свойства {sorted(unknown)}")
+    with transaction.atomic():
+        access.lock_list(field.list_id, shared=False)
+        current = Field.objects.select_related("list", "target").filter(pk=field.pk).first()
+        if current is None:
+            raise Http404("Поле не найдено")
+        lst = current.list
+        old = _snapshot(current)
+        new = dict(old)
+
+        # тип
+        if "type" in changes:
+            new["type"] = str(getattr(changes["type"], "value", changes["type"]))
+        if new["type"] not in _TYPES:
+            raise _not_allowed("type")
+        kind = new["type"]
+        retyped = kind != old["type"]
+        data_known: list = []
+
+        def with_data() -> bool:
+            if not data_known:
+                data_known.append(_field_has_data(current))
+            return data_known[0]
+
+        if retyped and with_data():
+            raise ListsError("field_locked", field="type")
+
+        # свойства не своего типа: проверяются явно присланные значения (как в add_field)
+        if changes.get("required") and kind in _NO_REQUIRED:
+            raise _not_allowed("required")
+        if changes.get("multiple") and kind not in _MULTIPLE:
+            raise _not_allowed("multiple")
+        if "default" in changes and _has_default(changes["default"]) and kind not in _DEFAULT:
+            raise _not_allowed("default")
+        if changes.get("unique") and kind not in _UNIQUE:
+            raise _not_allowed("unique")
+        if changes.get("deadline") and kind not in _DEADLINE:
+            raise _not_allowed("deadline")
+        if changes.get("currency") and kind != "money":
+            raise _not_allowed("currency")
+        if changes.get("target") is not None and kind != "record":
+            raise _not_allowed("target")
+
+        # сброс свойств, которых нет у нового типа (пустое поле)
+        if retyped:
+            new["default"] = None
+            if kind in _NO_REQUIRED:
+                new["required"] = False
+            if kind not in _MULTIPLE:
+                new["multiple"] = False
+            if kind not in _UNIQUE:
+                new["unique"] = False
+            if kind != "money":
+                new["currency"] = None
+            if kind != "record":
+                new["target"] = None
+            if kind not in _DEADLINE:
+                new["deadline"], new["thresholds"] = False, []
+
+        if "name" in changes:
+            new["name"] = _clean_text(changes["name"], "name", FIELD_NAME_LIMIT, required=True)
+        if "hint" in changes:
+            new["hint"] = _clean_text(changes["hint"], "hint", HINT_LIMIT, required=False)
+        for prop in ("required", "multiple", "unique", "show_in_table"):
+            if prop in changes:
+                new[prop] = bool(changes[prop])
+        if "default" in changes:
+            new["default"] = changes["default"] if _has_default(changes["default"]) else None
+
+        # валюта и целевой список
+        if changes.get("currency") and changes["currency"] != new["currency"]:
+            if changes["currency"] not in CURRENCIES:
+                raise ListsError("currency_bad", field="currency")
+            if not retyped and with_data():
+                raise ListsError("field_locked", field="currency")
+            new["currency"] = changes["currency"]
+        if kind == "money" and not new["currency"]:
+            new["currency"] = "RUB"
+        if changes.get("target") is not None and (new["target"] is None or changes["target"].pk != new["target"].pk):
+            if not retyped and with_data():
+                raise ListsError("field_locked", field="target")
+            new["target"] = changes["target"]
+        if kind == "record" and new["target"] is None:
+            raise ListsError("target_required", field="target")
+
+        # срок и пороги: при выключенном «сроке» пороги не хранятся; «30 и 7» подставляет только форма
+        if "deadline" in changes:
+            new["deadline"] = bool(changes["deadline"])
+        if changes.get("thresholds") and not new["deadline"]:
+            raise _not_allowed("thresholds")
+        if not new["deadline"]:
+            new["thresholds"] = []
+        elif "thresholds" in changes:
+            new["thresholds"] = _checked_thresholds(changes["thresholds"])
+        elif not old["deadline"]:
+            new["thresholds"] = []
+
+        diff = [prop for prop in old if prop == "target" and (old[prop] and old[prop].pk) != (new[prop] and new[prop].pk)
+                or prop != "target" and old[prop] != new[prop]]
+        if not diff:
+            return field
+
+        if "name" in diff and Field.objects.filter(list_id=current.list_id, name__iexact=new["name"]).exclude(
+                pk=current.pk).exists():
+            raise ListsError("field_name_taken", field="name")
+
+        # проверки по записям списка, в том числе в архиве
+        if "unique" in diff and new["unique"]:
+            refusal = _unique_repeats(current, actor)
+            if refusal is not None:
+                raise refusal
+        if "required" in diff and new["required"]:
+            refusal = _required_missing(current)
+            if refusal is not None:
+                raise refusal
+        if "multiple" in diff and not new["multiple"] and not retyped and _multiple_in_use(current):
+            raise ListsError("multiple_in_use", field="multiple")
+
+        before = {}
+        after = {"list": lst.name, "field": new["name"]}
+        for prop in diff:
+            before[_AUDIT_KEY.get(prop, prop)] = _audit_value(prop, old, current, actor)
+        # значение по умолчанию «стало» показывается по новому типу
+        settings = dict(current.settings or {})
+        settings.pop("currency", None)
+        settings.pop("deadline", None)
+        settings.pop("thresholds", None)
+        if new["currency"]:
+            settings["currency"] = new["currency"]
+        if new["deadline"]:
+            settings["deadline"], settings["thresholds"] = True, new["thresholds"]
+        current.name, current.hint, current.type = new["name"], new["hint"], new["type"]
+        current.required, current.multiple, current.unique = new["required"], new["multiple"], new["unique"]
+        current.show_in_table, current.default = new["show_in_table"], new["default"]
+        current.target, current.settings = new["target"], settings
+        for prop in diff:
+            after[_AUDIT_KEY.get(prop, prop)] = _audit_value(prop, new, current, actor)
+        try:
+            with transaction.atomic():
+                current.save()
+        except IntegrityError as error:
+            if _constraint_failed(error, "lists_field_list_name_ci_uniq"):
+                raise ListsError("field_name_taken", field="name") from None
+            raise
+        if retyped and old["type"] == "choice":
+            Choice.objects.filter(field=current).delete()
+        if old["unique"] and not new["unique"]:
+            UniqueValue.objects.filter(field=current).delete()
+        if new["unique"] and not old["unique"]:
+            for record in Record.objects.filter(list_id=current.list_id, values__has_key=current.code):
+                if unique.normalize(current, record.values.get(current.code)) is not None:
+                    unique.sync(record, [current])
+        audit.record("lists.field_changed", actor=actor, object_type=FIELD_TYPE, object_id=current.pk,
+                     before=before, after=after)
+    for attr in ("name", "hint", "type", "required", "multiple", "unique", "show_in_table", "default", "settings"):
+        setattr(field, attr, getattr(current, attr))
+    field.target = current.target
+    return field
+
+
+_AUDIT_KEY = {"name": "field", "deadline": "thresholds"}
+
+
+def _audit_value(prop: str, state: dict, field: Field, actor):
+    """Значение свойства для журнала «было / стало» (`state` — снимок свойств, `field` — поле для показа умолчания)."""
+    value = state[prop]
+    if prop == "type":
+        return Field.Type(value).label
+    if prop == "default":
+        return _shown_default(field, value, actor) if value is not None else ""
+    if prop == "target":
+        return value.name if value is not None else ""
+    if prop in ("currency", "hint", "name"):
+        return value or ""
+    if prop == "thresholds" or prop == "deadline":
+        return list(state["thresholds"]) if state["deadline"] else []
+    return value
