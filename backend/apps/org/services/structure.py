@@ -193,6 +193,31 @@ def _unit_ref(unit: Unit) -> UnitRef:
     return UnitRef(id=unit.pk, name=unit.name, kind=unit.kind, path=unit.path)
 
 
+def unit_chain_ids(user) -> frozenset[int]:
+    """Узлы, где `user` состоит, и все их предки по `Unit.path`, включая корень; без членства — `frozenset()`.
+
+    Права подразделений в `lists` действуют по цепочке: право узла покрывает вложенные узлы. Два запроса.
+    """
+    paths = list(Unit.objects.filter(memberships__user=user).values_list("path", flat=True).distinct())
+    result: set[int] = set()
+    for path in paths:
+        result.update(_chain_ids(path))
+    return frozenset(result)
+
+
+def all_units() -> list[UnitRef]:
+    """Все узлы по возрастанию `path` (байтовый порядок, поле с `db_collation="C"`): для выбора и загрузки."""
+    return [_unit_ref(u) for u in Unit.objects.order_by("path")]
+
+
+def unit_refs(ids) -> dict[int, UnitRef]:
+    """Узлы по номерам: `id` -> `UnitRef`; несуществующих номеров в словаре нет. Один запрос."""
+    wanted = {int(i) for i in ids}
+    if not wanted:
+        return {}
+    return {u.pk: _unit_ref(u) for u in Unit.objects.filter(pk__in=wanted)}
+
+
 def _person_ref(person) -> PersonRef:
     return PersonRef(id=person.pk, full_name=person.full_name, position=person.position)
 

@@ -295,13 +295,13 @@ Opus по задачам» в конце файла; решения владел
 (решение 60). Стили страниц списков — `static/lists/lists.css` (тег `<link>` в шаблоне страницы), скрипт `static/lists/lists.js` — тегом
 `<script defer>` в шаблоне страницы, `static/lists/labels.css` — только на страницах этикеток (решение 59).
 
-- [ ] T-6200 [sonnet] ядро (план: «Модель данных» → «Ядро и прежние модули», «Где живёт код»): значение
+- [x] T-6200 [sonnet] ядро (план: «Модель данных» → «Ядро и прежние модули», «Где живёт код»): значение
   `StoredFile.Purpose.LISTS` «Файл записи списка» миграцией ядра `0009` (`AlterField` вариантов, как `0008`); публичная
   `core.services.permissions.role_ids(user) -> frozenset[int]` (обёртка над `_role_ids`: личные роли и роли из
   `role_sources`); поле `ParsedQuery.text: str = ""` и поле `NotificationKind.external_text_of: Callable[[str], str] |
   None = None` — последними в записях. Прежние тесты, кроме перечня T-6138, зелёные — backend/apps/core/ (models/,
   migrations/0009_*, services/permissions.py, extensions.py) — (FR-513, FR-531, FR-536, FR-540)
-- [ ] T-6201 [sonnet] `org`: публичные функции (план: «Где живёт код», «Модель данных»): `structure.unit_chain_ids(user)
+- [x] T-6201 [sonnet] `org`: публичные функции (план: «Где живёт код», «Модель данных»): `structure.unit_chain_ids(user)
   -> frozenset[int]` (узлы сотрудника и их предки по `Unit.path`), `structure.all_units() -> list[UnitRef]` (дерево по
   `path`), `structure.unit_refs(ids) -> dict[int, UnitRef]`; таблиц нет — backend/apps/org/services/structure.py —
   (FR-507, FR-513, FR-526)
@@ -312,7 +312,7 @@ Opus по задачам» в конце файла; решения владел
   `kinds.external_text(kind, object_ref)` — `external_text_of`, если задана, иначе прежнее `external_text`; два места
   чтения — `delivery.external_text` (Telegram, MAX, Web Push) и тема письма `mail.queue_item`; виды прежних срезов
   работают как раньше — backend/apps/notify/services/ (kinds.py, delivery.py, mail.py) — (FR-531)
-- [ ] T-6204 [sonnet] модели `lists` и миграция `0001` (план: «Модель данных» → «Приложение `lists`»): все модели
+- [x] T-6204 [sonnet] модели `lists` и миграция `0001` (план: «Модель данных» → «Приложение `lists`»): все модели
   таблицы плана с ограничениями и индексами (`UniqueConstraint(Lower("name"))` и `UniqueConstraint("code",
   condition=~Q(code=""))` у `List`; уникальности и проверка «`target` задан ⇔ тип `record`» у `Field`; `Lower(title)` у
   `Choice`; «`archived` ⇔ `archived_at`», GIN по `search` у `Record`; ограничение (`list`, `field`, `norm_value`) у

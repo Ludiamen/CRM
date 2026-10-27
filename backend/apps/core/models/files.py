@@ -15,6 +15,7 @@ class StoredFile(models.Model):
         PHOTO = "photo", "фото"
         ATTACHMENT = "attachment", "вложение"
         KNOWLEDGE = "knowledge", "файл статьи"
+        LISTS = "lists", "файл записи списка"
 
     class Status(models.TextChoices):
         PENDING = "pending", "проверяется"

@@ -44,6 +44,13 @@ def _role_ids(user) -> set[int]:
     return ids
 
 
+def role_ids(user) -> frozenset[int]:
+    """Номера ролей записи: личные и из точки `role_sources` (роли узлов от `org`); без ролей — пустое множество."""
+    if not getattr(user, "is_authenticated", False):
+        return frozenset()
+    return frozenset(_role_ids(user))
+
+
 def permissions_of(user, *, fresh: bool = False) -> frozenset[str]:
     """Коды прав записи: права личных ролей и ролей из точки `role_sources`.
 

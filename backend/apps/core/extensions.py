@@ -152,7 +152,8 @@ class NotificationKind:
     """Вид уведомления (PLAN-004, «Точки расширения ядра и шина событий»; CONTRACT-004, § 3.1).
 
     `build(event, data)` возвращает список `Draft`; `available(user)` — показывать ли строку вида
-    сотруднику; `still_relevant(user_id, object_ref)` — проверка перед письмом и сводкой.
+    сотруднику; `still_relevant(user_id, object_ref)` — проверка перед письмом и сводкой;
+    `external_text_of(object_ref)` — внешний текст по ссылке на объект (`None` — прежний `external_text`).
     """
     code: str
     title: str
@@ -166,6 +167,7 @@ class NotificationKind:
     still_relevant: Callable[[int, str], bool] = _always
     order: int = 0
     coalesce: bool = False
+    external_text_of: Callable[[str], str] | None = None
 
 
 @dataclass(frozen=True)
@@ -182,11 +184,13 @@ class ParsedQuery:
     """Разобранный запрос поиска (PLAN-005, «Сквозной поиск»): слова, номер, строка `to_tsquery`, подсказка.
 
     `hint` — `""` (разбор удался), `"short"` или `"long"`; разбор делает `search.parse`.
+    `text` — исходная строка запроса без крайних пробелов (пустая при `hint` `"short"` и `"long"`).
     """
     words: list[str]
     number: int | None = None
     raw: str = ""
     hint: str = ""
+    text: str = ""
 
 
 @dataclass(frozen=True)
