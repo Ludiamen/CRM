@@ -130,7 +130,6 @@ def _everything() -> dict:
     lst.refresh_from_db()
     schema.update_list(lst, name=lst.name, description="Второе описание", actor=manager.user)
     lst.refresh_from_db()
-    editor = lp.as_editor(lst)
 
     old_reader = factories.make_role(name="Старая")
     lp.grant_list(lst, old_reader, "read")
@@ -140,6 +139,8 @@ def _everything() -> dict:
                        editors=[("role", melon.pk)], actor=manager.user)
     schema.save_access(lst, readers=[("role", apple.pk)], editors=[("role", melon.pk), ("unit", unit.pk)],
                        actor=manager.user)
+    # редактор — после замены наборов: `save_access` заменяет «Правят» целиком (поправка Opus при исполнении)
+    editor = lp.as_editor(lst)
 
     other = lp.make_list("Список-цель журнала")
     linked = schema.add_field(lst, name="Связь", type="record", target=other, required=True, hint="Подсказка",

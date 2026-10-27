@@ -8,7 +8,7 @@
 import re
 
 from django.contrib.postgres.search import SearchQuery, SearchRank
-from django.db.models import F
+from django.db.models import F, Q
 
 from apps.core.extensions import ParsedQuery, SearchProvider, SearchRow
 from apps.lists.models import Field, List, Record, UniqueValue
@@ -63,24 +63,55 @@ def _usable(parsed: ParsedQuery) -> bool:
     return not parsed.hint and bool(parsed.raw or parsed.text)
 
 
-def _exact_ids(user, parsed: ParsedQuery) -> list[int]:
-    """Записи с точным совпадением: запрос целиком равен нормализованному значению видимого уникального поля."""
-    text = parsed.text
-    if not text:
-        return []
+def _norms(text: str) -> dict:
+    """Нормализованные значения запроса по типам уникальных полей (`string`, `number`); единственное место правила."""
     by_type = {}
     for kind in ("string", "number"):
         norm = unique.normalize(Field(type=kind), text)
         if norm is not None:
             by_type[kind] = norm
+    return by_type
+
+
+def _unique_rows(kind: str, norm: str, *, archived: bool):
+    """Строки `UniqueValue` видимых уникальных полей типа `kind` с этим значением у записей с признаком архива."""
+    return UniqueValue.objects.filter(
+        field__type=kind, field__hidden=False, field__unique=True, norm_value=norm, record__archived=archived)
+
+
+def _vector_query(parsed: ParsedQuery) -> SearchQuery:
+    return SearchQuery(parsed.raw, config=CONFIG, search_type="raw")
+
+
+def record_condition(parsed: ParsedQuery, list_ids, *, archived: bool) -> Q | None:
+    """Условие на `Record`: точное совпадение с видимым уникальным полем ИЛИ совпадение вектора, по записям списков
+    `list_ids` с признаком архива `archived`. Запрос не годен (подсказка, пусто) — `None`. Нужно таблице списка (FR-541)."""
+    if not _usable(parsed):
+        return None
+    ids = list(list_ids)
+    found = Q(pk__in=[])
+    if parsed.raw:
+        found |= Q(search=_vector_query(parsed))
+    if parsed.text:
+        for kind, norm in _norms(parsed.text).items():
+            rows = _unique_rows(kind, norm, archived=archived).filter(list_id__in=ids)
+            found |= Q(pk__in=rows.values("record_id"))
+    return found & Q(list_id__in=ids, archived=archived)
+
+
+def _exact_ids(user, parsed: ParsedQuery) -> list[int]:
+    """Записи с точным совпадением: запрос целиком равен нормализованному значению видимого уникального поля."""
+    text = parsed.text
+    if not text:
+        return []
+    by_type = _norms(text)
     if not by_type:
         return []
     current = access.scope(user)
     ids: list[tuple[int, int, int]] = []
     seen: set[int] = set()
     for kind, norm in by_type.items():
-        values = UniqueValue.objects.filter(
-            field__type=kind, field__hidden=False, field__unique=True, norm_value=norm, record__archived=False)
+        values = _unique_rows(kind, norm, archived=False)
         if not current.manage:
             values = values.filter(list_id__in=current.readable)
         for number, list_id, record_id in values.values_list("record__number", "list_id", "record_id"):
@@ -95,8 +126,7 @@ def _vector(user, parsed: ParsedQuery, skip: list[int]):
     """Записи читаемых списков, найденные по вектору, кроме `skip` (уже выданных точным совпадением)."""
     if not parsed.raw:
         return Record.objects.none()
-    query = SearchQuery(parsed.raw, config=CONFIG, search_type="raw")
-    return _readable(user).filter(search=query).exclude(pk__in=skip)
+    return _readable(user).filter(search=_vector_query(parsed)).exclude(pk__in=skip)
 
 
 def _row(record: Record, names: dict) -> SearchRow:
@@ -122,7 +152,7 @@ def search(user, parsed: ParsedQuery, limit: int, offset: int) -> list[SearchRow
     if room > 0:
         start = max(0, offset - len(exact))
         found = (_vector(user, parsed, exact)
-                 .annotate(rank=SearchRank(F("search"), SearchQuery(parsed.raw, config=CONFIG, search_type="raw")))
+                 .annotate(rank=SearchRank(F("search"), _vector_query(parsed)))
                  .order_by("-rank", "number", "pk")[start:start + room])
         records.extend(found)
     names = _names(records)

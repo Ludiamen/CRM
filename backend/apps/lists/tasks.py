@@ -30,3 +30,16 @@ def refresh_vectors(list_id: int, field_id: int) -> None:
                 break
             last = ids[-1]
     List.objects.filter(pk=list_id, vectors_stale_since=started).update(vectors_stale_since=None)
+
+
+def remind_deadlines() -> None:
+    """Ночное задание сроков (cron `lists_reminders`, 05:00 UTC = 08:00 по Москве): обход, уведомления, уборка.
+
+    Сбой одной записи обход не прерывает; если сбои были, задание после обхода завершается ошибкой с номерами записей
+    (`Record.pk`) — так сбой виден в очереди (FR-530, NFR-511)."""
+    from apps.core.widgets import moscow_today
+    from apps.lists.services import reminders
+
+    result = reminders.run(moscow_today())
+    if result.failed:
+        raise RuntimeError("Напоминания о сроках: сбой по записям " + ", ".join(str(pk) for pk in result.failed))

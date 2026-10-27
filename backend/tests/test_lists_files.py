@@ -165,7 +165,7 @@ def _post_file(client, lst, record, field, name: str, data: bytes, *, hx: bool =
 def _distinct(made):
     """Номер строки `RecordFile` уводится от номера её `StoredFile`: `<file_id>` — `RecordFile.pk` (ответ Opus О1),
     и при совпавших номерах тест не отличил бы реализацию на `StoredFile.pk`."""
-    distinct_id = made.file_id + 7919
+    distinct_id = made.pk + 7919  # от `RecordFile.pk`: `file_id` — UUID `StoredFile` (поправка Opus при исполнении)
     _m("RecordFile").objects.filter(pk=made.pk).update(id=distinct_id)
     return _m("RecordFile").objects.get(pk=distinct_id)
 

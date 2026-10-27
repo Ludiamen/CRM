@@ -6,15 +6,17 @@
 списка `access.lock_list(list_id, shared=False)` (CONTRACT-006, 5.2); схема читается после замка. Каждое изменение —
 запись журнала с «было / стало» (FR-542); значений полей записей в журнал не попадает.
 """
+from django.apps import apps
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
-from django.db.models import Case, CharField, Count, F, Func, IntegerField, Max, Value, When
+from django.db.models import Case, CharField, Count, F, Func, IntegerField, Max, Q, Value, When
 from django.db.models.fields.json import KeyTransform
 from django.http import Http404
 from django.utils import timezone
 
+from apps.core.models import Role
 from apps.core.services import audit
-from apps.lists.models import Change, Choice, Field, List, Record, RecordFile, UniqueValue
+from apps.lists.models import Access, Change, Choice, Field, List, Record, RecordFile, UniqueValue
 from apps.lists.services import access, unique, values
 from apps.lists.services.errors import ListsError
 
@@ -28,6 +30,8 @@ HINT_LIMIT = 200
 FIELDS_LIMIT = 50
 CURRENCIES = ("RUB", "USD", "EUR")
 MAX_THRESHOLDS = 3
+CHOICES_LIMIT = 200
+CHOICE_LIMIT = 100
 
 # Свойства по типам (план, «Значения по типам», абзац «Свойства по типам»; FR-508).
 _TYPES = frozenset(Field.Type.values)
@@ -660,3 +664,173 @@ def delete_field(field, *, actor) -> None:
         pk = current.pk
         current.delete()
         audit.record("lists.field_deleted", actor=actor, object_type=FIELD_TYPE, object_id=pk, before=before)
+
+
+# --- значения списка значений ----------------------------------------------------------------------------------
+
+def _choice_in_use(field: Field, choice_id: int) -> bool:
+    """Значение есть хотя бы у одной записи списка (в том числе в архиве): id в массиве значений поля."""
+    key = f"values__{field.code}"
+    return Record.objects.filter(Q(**{f"{key}__contains": [choice_id]}) | Q(**{key: choice_id}),
+                                 list_id=field.list_id).exists()
+
+
+def _checked_choices(items, existing: dict[int, Choice]) -> list[tuple[int | None, str]]:
+    """Пары (id, название) после проверок: не больше 200, название не пустое и не длиннее 100 знаков, id — только
+    значения этого поля, названия не повторяются без учёта регистра."""
+    items = list(items)
+    if len(items) > CHOICES_LIMIT:
+        raise ListsError("choices_limit")
+    checked, seen_ids, seen_titles = [], set(), set()
+    for choice_id, title in items:
+        title = "" if title is None else str(title).strip()
+        if not title:
+            raise ListsError("required", field="choices")
+        if len(title) > CHOICE_LIMIT:
+            raise ListsError("too_long", field="choices", params={"limit": str(CHOICE_LIMIT)})
+        if choice_id is not None:
+            if choice_id not in existing:
+                raise Http404("Значение не найдено")
+            if choice_id in seen_ids:
+                raise ListsError("choice_name_taken", field="choices")
+            seen_ids.add(choice_id)
+        if title.lower() in seen_titles:
+            raise ListsError("choice_name_taken", field="choices")
+        seen_titles.add(title.lower())
+        checked.append((choice_id, title))
+    return checked
+
+
+def _choice_names(field: Field) -> str:
+    return ", ".join(Choice.objects.filter(field=field, archived=False).order_by("order", "pk")
+                     .values_list("title", flat=True))
+
+
+def save_choices(field, items, *, actor) -> list[Choice]:
+    """Сохраняет значения поля «список значений» (управляющий) под исключительным замком списка: `items` — пары (id или
+    `None`, название) в новом порядке. Убранное значение, которое есть у записи (в том числе в архиве), уходит в
+    архив значений (`archived=True`), прочее удаляется; значение из архива, названное в `items`, возвращается;
+    умолчание поля, ушедшее в архив или удалённое, сбрасывается. Название нового или переименованного значения,
+    совпадающее с названием значения в архиве, — `choice_archived_exists`. Журнал `lists.choices_changed`
+    (названия не в архиве по порядку)."""
+    _require_manage(actor)
+    with transaction.atomic():
+        access.lock_list(field.list_id, shared=False)
+        current = Field.objects.select_related("list").filter(pk=field.pk).first()
+        if current is None:
+            raise Http404("Поле не найдено")
+        if current.type != "choice":
+            raise _not_allowed("choices")
+        existing = {c.pk: c for c in Choice.objects.filter(field=current)}
+        checked = _checked_choices(items, existing)
+        kept = {choice_id for choice_id, _ in checked if choice_id is not None}
+        leaving = [c for pk, c in existing.items() if pk not in kept]
+        archived_now = [c for c in leaving if c.archived or _choice_in_use(current, c.pk)]
+        deleted = [c for c in leaving if c not in archived_now]
+        stays = {c.title.lower() for c in archived_now}
+        for _, title in checked:
+            if title.lower() in stays:
+                raise ListsError("choice_archived_exists", field="choices")
+        before_names = _choice_names(current)
+        Choice.objects.filter(pk__in=[c.pk for c in deleted]).delete()
+        # переименования идут через временные названия: обмен названиями местами не должен упираться в ограничение
+        renamed = [(pk, title) for pk, title in checked if pk is not None and existing[pk].title != title]
+        for pk, _ in renamed:
+            Choice.objects.filter(pk=pk).update(title=f"\x01{pk}")
+        for pk, title in renamed:
+            Choice.objects.filter(pk=pk).update(title=title)
+        for order, (pk, title) in enumerate(checked, start=1):
+            if pk is None:
+                try:
+                    with transaction.atomic():
+                        Choice.objects.create(field=current, title=title, order=order)
+                except IntegrityError as error:
+                    if _constraint_failed(error, "lists_choice_field_title_ci_uniq"):
+                        raise ListsError("choice_name_taken", field="choices") from None
+                    raise
+            else:
+                Choice.objects.filter(pk=pk).update(order=order, archived=False)
+        for order, choice in enumerate(sorted(archived_now, key=lambda c: (c.order, c.pk)), start=len(checked) + 1):
+            Choice.objects.filter(pk=choice.pk).update(order=order, archived=True)
+        gone = {c.pk for c in deleted} | {c.pk for c in archived_now}
+        if isinstance(current.default, list) and gone.intersection(current.default):
+            Field.objects.filter(pk=current.pk).update(default=None)
+            field.default = None
+        after_names = _choice_names(current)
+        if before_names != after_names:
+            audit.record("lists.choices_changed", actor=actor, object_type=FIELD_TYPE, object_id=current.pk,
+                         before={"list": current.list.name, "field": current.name, "choices": before_names},
+                         after={"list": current.list.name, "field": current.name, "choices": after_names})
+        return list(Choice.objects.filter(field=current, archived=False).order_by("order", "pk"))
+
+
+# --- права списка ----------------------------------------------------------------------------------------------
+
+def _subject_names(rows) -> str:
+    """Названия ролей и подразделений через «, » по алфавиту (подразделение без `org` или удалённое — «узел №<id>»)."""
+    rows = list(rows)
+    roles = {r.pk: r.name for r in Role.objects.filter(pk__in=[r.role_id for r in rows if r.role_id])}
+    unit_ids = [r.unit_id for r in rows if r.unit_id]
+    refs = {}
+    if unit_ids and apps.is_installed("apps.org"):
+        from apps.org.services import structure
+
+        refs = structure.unit_refs(unit_ids)
+    names = [roles.get(r.role_id, "") if r.role_id else (refs[r.unit_id].name if r.unit_id in refs
+                                                         else f"узел №{r.unit_id}") for r in rows]
+    return ", ".join(sorted(names, key=lambda name: (name.casefold(), name)))
+
+
+def _checked_subjects(pairs) -> list[tuple[str, int]]:
+    """Пары ("role" | "unit", id) без повторов; неизвестный вид, несуществующая роль или подразделение — `Http404`."""
+    result: list[tuple[str, int]] = []
+    for kind, pk in pairs or ():
+        if kind not in ("role", "unit"):
+            raise Http404("Субъект не найден")
+        pair = (kind, int(pk))
+        if pair not in result:
+            result.append(pair)
+    role_ids = {pk for kind, pk in result if kind == "role"}
+    if role_ids and Role.objects.filter(pk__in=role_ids).count() != len(role_ids):
+        raise Http404("Роль не найдена")
+    unit_ids = {pk for kind, pk in result if kind == "unit"}
+    if unit_ids:
+        if not apps.is_installed("apps.org"):
+            raise Http404("Подразделение не найдено")
+        from apps.org.services import structure
+
+        if len(structure.unit_refs(unit_ids)) != len(unit_ids):
+            raise Http404("Подразделение не найдено")
+    return result
+
+
+def save_access(lst, *, readers, editors, actor) -> None:
+    """Сохраняет наборы «Читают» и «Правят» (управляющий) под исключительным замком списка: строки `Access`
+    приводятся к присланным наборам. Журнал `lists.access_changed` — названия ролей и подразделений; набор не
+    изменился — записи нет."""
+    _require_manage(actor)
+    wanted = {Access.Level.READ: _checked_subjects(readers), Access.Level.EDIT: _checked_subjects(editors)}
+    with transaction.atomic():
+        access.lock_list(lst.pk, shared=False)
+        current = List.objects.filter(pk=lst.pk).first()
+        if current is None:
+            raise Http404("Список не найден")
+        rows = list(Access.objects.filter(list=current))
+        before, after, changed = {}, {}, False
+        for level, key in ((Access.Level.READ, "readers"), (Access.Level.EDIT, "editors")):
+            old_rows = [r for r in rows if r.level == level]
+            old = {("role", r.role_id) if r.role_id else ("unit", r.unit_id): r for r in old_rows}
+            new = wanted[level]
+            before[key] = _subject_names(old_rows)
+            if set(old) != set(new):
+                changed = True
+                Access.objects.filter(pk__in=[r.pk for pair, r in old.items() if pair not in new]).delete()
+                created = [Access(list=current, level=level, role_id=pk if kind == "role" else None,
+                                  unit_id=pk if kind == "unit" else None) for kind, pk in new if (kind, pk) not in old]
+                Access.objects.bulk_create(created)
+                after[key] = _subject_names(Access.objects.filter(list=current, level=level))
+            else:
+                after[key] = before[key]
+        if changed:
+            audit.record("lists.access_changed", actor=actor, object_type=LIST_TYPE, object_id=current.pk,
+                         before={"list": current.name, **before}, after={"list": current.name, **after})

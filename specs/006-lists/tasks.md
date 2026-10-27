@@ -363,7 +363,7 @@ Opus по задачам» в конце файла; решения владел
   `hide_field`/`show_field` с пересчётом векторов `vectors.refresh` порциями по 500; `visible_fields` и места «все поля»
   по перечню контракта; исключительный замок списка, как в T-6208a — backend/apps/lists/services/schema.py —
   (FR-509, FR-511, FR-540, FR-542, NFR-509)
-- [ ] T-6208c [sonnet] схема: значения списка значений и права списка (план: «Поля и изменение схемы» — значения списка
+- [x] T-6208c [sonnet] схема: значения списка значений и права списка (план: «Поля и изменение схемы» — значения списка
   значений; «Права и видимость» — сохранение наборов; решение 61): `save_choices` (архив использованных значений, в том
   числе записями архива, удаление неиспользованных, сброс умолчания, запрет названия архивного, журнал
   `lists.choices_changed`), сохранение прав «Читают» и «Правят» с журналом `lists.access_changed`; исключительный замок
@@ -379,7 +379,7 @@ Opus по задачам» в конце файла; решения владел
   события»; до вставки — `unique.find_owners` для понятного отказа со ссылкой на запись-владельца, затем `unique.sync`
   во вложенной точке сохранения — обе из T-6206a, решение 45), `services/history.py` (`write`, строки показа) —
   backend/apps/lists/services/records.py, history.py — (FR-504, FR-508, FR-515, FR-516, FR-517, FR-522, NFR-512)
-- [ ] T-6211 [sonnet] архив и ссылки (план: «Архив и удаление навсегда», «Связи» → «Ссылаются на эту запись», «Показ
+- [x] T-6211 [sonnet] архив и ссылки (план: «Архив и удаление навсегда», «Связи» → «Ссылаются на эту запись», «Показ
   значения-ссылки»): `services/archive.py` (`archive`, `restore`, `purge` — замки, запрет при ссылках с числом нечитаемых,
   каскад, файлы с диска после фиксации через `core_files.remove_paths`, журнал), `services/links.py` (`referrers` с
   фильтром чтения и без него); заданий очистки записей нет (FR-544) — backend/apps/lists/services/archive.py, links.py —
@@ -389,7 +389,7 @@ Opus по задачам» в конце файла; решения владел
   `count` без повторов; `parse_local` по правилам SPEC-005 FR-443); регистрация в `search_providers` —
   backend/apps/lists/services/search.py, backend/apps/lists/extensions.py — (FR-540, FR-541, NFR-502,
   NFR-509)
-- [ ] T-6213 [sonnet] таблица: служба (план: «Таблица записей», «Значения по типам» → фильтр и сортировка):
+- [x] T-6213 [sonnet] таблица: служба (план: «Таблица записей», «Значения по типам» → фильтр и сортировка):
   `services/grid.py` — `read(params, schema)` (коды только из `visible_fields`, строгий разбор), отборы «Все», «Истекает»,
   «Закреплено за мной», «Архив», фильтры и сортировка выражениями ORM (`values__contains`, `KeyTextTransform`, `Cast`,
   `nulls_last`, последним ключом `number`), страницы по 50 с 51-й строкой, `count()`, `q` через `search` —
@@ -441,7 +441,7 @@ Opus по задачам» в конце файла; решения владел
   T-6215) через `public.briefs`; всё под
   `apps.is_installed("apps.servicedesk")` — backend/apps/lists/services/tickets.py, ticket_parts.py, views/tickets.py,
   backend/templates/lists/, backend/apps/lists/extensions.py, backend/apps/lists/urls.py — (FR-528)
-- [ ] T-6219 [sonnet] сроки и напоминания (план: «Сроки и напоминания»): `services/reminders.py` и
+- [x] T-6219 [sonnet] сроки и напоминания (план: «Сроки и напоминания»): `services/reminders.py` и
   `tasks.remind_deadlines` (шаги 1–5: один запрос кандидатов — функция `reminders.select_candidates(today)`, её
   подменяет T-6115 (решение 45), наименьший кандидат и отметки `notified=false`, транзакция
   на запись с разделяемым замком списка и `FOR UPDATE`, получатели, два вызова `dispatch.create` под

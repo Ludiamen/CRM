@@ -137,7 +137,7 @@ def _file(record, field, *, status="clean", write=False, name="акт.pdf"):
     """Файл записи. `<file_id>` в адресах — `RecordFile.pk` (ответ Opus О1, CONTRACT-006, 15.3); номер строки
     `RecordFile` уводится от номера её `StoredFile`, чтобы реализация на `StoredFile.pk` не прошла случайно."""
     made = lists.attach_file(record, field, name, status=status, write=write)
-    distinct_id = made.file_id + 7919
+    distinct_id = made.pk + 7919  # от `RecordFile.pk`: `file_id` — UUID `StoredFile` (поправка Opus при исполнении)
     _m("RecordFile").objects.filter(pk=made.pk).update(id=distinct_id)
     return _m("RecordFile").objects.get(pk=distinct_id)
 
@@ -177,8 +177,9 @@ def _changes(record, kind=None):
     return rows.filter(kind=kind) if kind else rows
 
 
-def _get(session, path, **extra):
-    return session.client.get(path, **extra)
+def _get(session, path, data=None, **extra):
+    # параметры запроса третьим аргументом (поправка Opus при исполнении: их передают `_grid_numbers`, `_pick_texts`)
+    return session.client.get(path, data, **extra)
 
 
 def _post(session, path, data=None, **extra):
