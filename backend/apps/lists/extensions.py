@@ -16,13 +16,17 @@ def register_all() -> None:
     from apps.lists import audit_labels  # подписи журнала (T-6224, CONTRACT-006 8.2)
     from apps.lists import card  # «Закреплённое» в карточке сотрудника (T-6217)
     from apps.lists import notify_kinds  # вид уведомления о сроке (T-6219, CONTRACT-006 раздел 7)
+    from apps.lists import ticket_parts  # раздел «Записи списков» в карточке заявки (T-6218, CONTRACT-006 3.2)
+    from apps.lists.services import files  # назначение файлов записей (T-6222, CONTRACT-006 3.2)
     from apps.lists.services import links  # фразы запрета удаления узла и роли (T-6211, CONTRACT-006 3.2)
     from apps.lists.services import search  # поставщик поиска (T-6212, CONTRACT-006 раздел 9)
 
     extensions.register("menu_items", menu_items)  # порядок регистраций — CONTRACT-006, 3.2
     extensions.register("search_providers", search.search_providers)
     extensions.register("card_sections", card.card_sections)
+    extensions.register("ticket_card_parts", ticket_parts.ticket_card_parts)
     extensions.register("notification_kinds", notify_kinds.notification_kinds)
+    extensions.register("file_purposes", files.file_purposes)
     extensions.register("audit_labels", audit_labels.audit_labels)
     extensions.register("unit_usage", links.unit_usage)
     extensions.register("role_usage", links.role_usage)

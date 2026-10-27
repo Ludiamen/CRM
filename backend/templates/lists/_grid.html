@@ -1,0 +1,47 @@
+{% comment %}Сетка таблицы (цель `HX-Target: lists-grid`): итог и отказ группового действия, «Найдено», строки, страницы. Флажки и кнопки групповых действий — в одной форме; диалог подтверждения — общий, на странице.{% endcomment %}
+<div id="lists-grid" class="lists-grid" data-narrow="cards">
+  {% if stale %}<div class="alert alert-info" data-lists-notice="vectors-stale">{{ stale_text }}</div>{% endif %}
+  {% if notice %}<div class="alert alert-success" data-lists-notice="bulk-result">{{ notice }}</div>{% endif %}
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  <p class="small text-muted mb-2" data-lists-found>Найдено: {{ found }}</p>
+  {% if rows %}
+  <form method="post" action="{% url 'lists:bulk_archive' lst.pk %}" class="lists-bulk" data-lists-confirm-source data-lists-bulk>{% csrf_token %}
+    <div class="d-flex flex-wrap gap-2 mb-2 lists-bulk-actions">
+      {% if can_edit %}<button type="submit" class="btn btn-outline-secondary btn-sm" data-action="bulk-archive" data-confirm-text="Перенести отмеченные записи в архив?">В архив</button>{% endif %}
+      {% include "lists/_grid_labels_button.html" %}
+    </div>
+    <div class="lists-scroll">
+      <table class="table table-sm align-middle lists-table">
+        <thead>
+          <tr>
+            <th data-cell="select"><input type="checkbox" class="form-check-input" data-lists-check-all aria-label="Отметить все строки"></th>
+            {% for head in headers %}
+            <th data-col="{{ head.code }}"{% if head.sortable %} data-sort="{{ head.code }}"{% if head.current %} data-dir="{{ head.dir }}"{% endif %}{% endif %}>{% if head.sortable %}<a href="{{ head.href }}">{{ head.name }}</a>{% else %}{{ head.name }}{% endif %}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr data-record-number="{{ row.record.number }}"{% if row.record.archived %} data-archived{% endif %}>
+            <td data-cell="select"><input type="checkbox" class="form-check-input" name="n" value="{{ row.record.number }}" data-lists-row-check aria-label="Отметить запись {{ row.record.number }}"></td>
+            <td data-col="title"><a data-field="title" href="{% url 'lists:record' lst.pk row.record.number %}">{{ row.record.title }}</a>{% if row.record.archived %} <span class="badge text-bg-secondary" data-lists-archived>в архиве</span>{% endif %}</td>
+            {% for cell in row.cells %}<td data-col="{{ cell.code }}">{% if cell.long %}{{ cell.text|truncatechars:200 }}{% else %}{{ cell.text }}{% endif %}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </form>
+  {% elif empty_plain %}
+  <div class="lists-empty" data-empty-state="lists-grid"><p>{{ empty_text }}</p></div>
+  {% else %}
+  <div class="lists-empty" data-empty-state="lists-grid-filtered"><p>По этим условиям записей нет.</p></div>
+  {% endif %}
+  {% if has_next or page_number > 1 %}
+  <nav class="d-flex flex-wrap gap-2 my-2 lists-pages">
+    {% if page_number > 1 %}<a class="btn btn-outline-secondary btn-sm" data-action="prev-page" href="{{ prev_url }}">Назад</a>{% endif %}
+    {% if has_next %}<a class="btn btn-outline-secondary btn-sm" data-action="next-page" href="{{ next_url }}">Дальше</a>{% endif %}
+  </nav>
+  {% endif %}
+</div>

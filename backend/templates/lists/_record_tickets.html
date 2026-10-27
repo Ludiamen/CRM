@@ -1,1 +1,9 @@
-{% comment %}Блок «Связанные заявки» карточки: место для T-6218. Контекст: `lst`, `record`.{% endcomment %}
+{% comment %}Блок «Связанные заявки» карточки записи (11.5). Контекст: `lst`, `record`, `related_tickets` (список `TicketBrief` из `services.tickets.related`; пусто — блока нет, в том числе без сервис-деска).{% endcomment %}
+{% if related_tickets %}
+<section class="mb-3" data-lists-related-tickets>
+  <h2 class="h5">Связанные заявки</h2>
+  <ul class="list-unstyled">{% for ticket in related_tickets %}
+    <li data-ticket-number="{{ ticket.number }}"><a href="/tickets/{{ ticket.number }}/">#{{ ticket.number }} {{ ticket.subject }}</a>, {{ ticket.state }}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}

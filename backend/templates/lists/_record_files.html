@@ -1,1 +1,7 @@
-{% comment %}Блок «Файлы» карточки: место для T-6222. Контекст: `lst`, `record`, `file_fields`, `can_edit`.{% endcomment %}
+{% comment %}Блок «Файлы» карточки (T-6222): по блоку на каждое видимое поле «файл». Контекст: `lst`, `record`, `file_fields`, `can_edit`; отказ при обычном запросе — `file_error` и `file_error_field`. Список файлов записи читается один раз на все блоки.{% endcomment %}
+{% if file_fields %}{% with all_files=record.files.all|dictsort:"uploaded_at" %}
+<section class="mb-3" data-lists-files-section>
+  <h2 class="h5">Файлы</h2>
+  {% for field in file_fields %}{% include "lists/_record_file_block.html" %}{% endfor %}
+</section>
+{% endwith %}{% endif %}

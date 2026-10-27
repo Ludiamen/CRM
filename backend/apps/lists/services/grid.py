@@ -173,7 +173,7 @@ def _read_filters(params, fields) -> tuple[list[Filter], dict]:
     return found, shown
 
 
-def _sortable(field: Field, viewer) -> bool:
+def sortable(field: Field, viewer) -> bool:
     if field.type == "file":
         return False
     if field.type == "record":
@@ -194,7 +194,7 @@ def read(params, lst, viewer) -> GridParams:
     sort = params.get("sort", "")
     if sort in ("title", "number"):
         pass
-    elif sort in by_code and _sortable(by_code[sort], viewer):
+    elif sort in by_code and sortable(by_code[sort], viewer):
         pass
     else:
         sort = ""

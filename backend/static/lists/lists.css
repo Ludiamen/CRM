@@ -62,3 +62,31 @@
 
 
 /* === T-6216: таблица записей (сетка, фильтры, карточки на узком экране) === */
+.lists-presets { display: flex; flex-wrap: wrap; gap: .25rem; margin: 0 0 .75rem; }
+.lists-preset { padding: .25rem .75rem; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 1rem; text-decoration: none; }
+.lists-preset.active { font-weight: 600; background: var(--bs-tertiary-bg, #f8f9fa); }
+.lists-search { margin-bottom: 1rem; }
+.lists-search-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+.lists-search-row .form-control { flex: 1 1 14rem; width: auto; min-width: 0; }
+.lists-filters { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: .5rem 1rem; margin-top: .75rem; }
+.lists-filter { min-width: 0; }
+.lists-filter-range { display: flex; flex-wrap: wrap; gap: .25rem; }
+.lists-filter-range .form-control { flex: 1 1 6rem; width: auto; min-width: 0; }
+.lists-filter .lists-selected { margin: 0 0 .25rem; padding: 0; }
+.lists-filter .lists-selected li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; overflow-wrap: anywhere; }
+.lists-table th a { text-decoration: none; }
+.lists-table th[data-dir="asc"] a::after { content: " \2191"; }
+.lists-table th[data-dir="desc"] a::after { content: " \2193"; }
+.lists-table td { overflow-wrap: anywhere; }
+.lists-bulk .form-check-input { margin: 0; }
+.lists-column-choice { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; padding: .25rem 0; }
+.lists-columns { width: min(28rem, 92vw); }
+@media (min-width: 576px) { .lists-grid .lists-table { min-width: 40rem; } }
+@media (max-width: 575.98px) {
+  .lists-grid[data-narrow="cards"] .lists-table { min-width: 0; }
+  .lists-grid[data-narrow="cards"] .lists-table thead { display: none; }
+  .lists-grid[data-narrow="cards"] .lists-table tbody tr { display: block; border-bottom: 1px solid var(--bs-border-color, #dee2e6); padding: .5rem .25rem; }
+  .lists-grid[data-narrow="cards"] .lists-table tbody td { display: block; border: 0; padding: .1rem .5rem; }
+  .lists-grid[data-narrow="cards"] .lists-table tbody td[data-col="title"] { font-weight: 600; }
+  .lists-grid[data-narrow="cards"] .lists-table tbody td[data-cell="select"] { float: right; width: auto; }
+}

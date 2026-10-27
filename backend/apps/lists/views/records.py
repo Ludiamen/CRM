@@ -8,14 +8,16 @@
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
+from django.db.models import Prefetch, prefetch_related_objects
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.core.views.common import is_fragment, render_page
 from apps.core.widgets import PortalDateInput, moscow_today
-from apps.lists.models import Choice, Field, Record
+from apps.lists.models import Choice, Field, Record, RecordFile
 from apps.lists.services import access, archive as archive_service, history as history_service, links, schema
+from apps.lists.services import tickets as tickets_service
 from apps.lists.services import records as records_service
 from apps.lists.services import values as values_service
 from apps.lists.services.errors import (ListsError, RecordArchived, RecordGone, ValuesInvalid, VersionConflict)
@@ -283,6 +285,8 @@ def _card_context(request, lst, record, *, alert=None) -> dict:
     can_edit = access.can_edit(user, lst)
     found = links.referrers(record, user)
     page = history_service.page(record, 0)
+    # файлы карточки — одним запросом вместе с `StoredFile` (блок «Файлы», T-6222; сборка Opus)
+    prefetch_related_objects([record], Prefetch("files", queryset=RecordFile.objects.select_related("file")))
     return {
         "lst": lst, "record": record, "can_edit": can_edit,
         "can_purge": record.archived and access.can_manage(user),
@@ -290,6 +294,7 @@ def _card_context(request, lst, record, *, alert=None) -> dict:
         "file_fields": [f for f in fields if f.type == "file"],
         "referrers": found.rows, "referrers_hidden": found.hidden,
         "history_rows": page.rows, "next_offset": page.next_offset,
+        "related_tickets": tickets_service.related(user, record),  # «Связанные заявки», T-6218; сборка Opus
         **(_alert_context(alert) or {}),
     }
 

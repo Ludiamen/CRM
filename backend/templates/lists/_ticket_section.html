@@ -1,0 +1,18 @@
+{% comment %}Раздел «Записи списков» карточки заявки (11.8). Контекст: `ticket_number`, `rows` (TicketLink с `record` и `record.list`), `alert`. Оболочку `[data-card-part]` рисует сервис-деск; ответ привязки и отвязки приходит в такой же оболочке.{% endcomment %}
+<section class="card-section" data-lists-ticket-section data-ticket="{{ ticket_number }}">
+  <h3 class="card-section-title">Записи списков</h3>
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  <ul class="card-list">{% for row in rows %}
+    <li data-ticket-link-id="{{ row.pk }}"><a href="{% url 'lists:record' row.record.list_id row.record.number %}">{{ row.record.title }} — {{ row.record.list.name }}</a>{% if row.record.archived %} <span class="badge text-bg-secondary" data-lists-archived>в архиве</span>{% endif %}
+      <button class="btn btn-link btn-sm" type="button" data-action="ticket-unlink" hx-post="{% url 'lists:ticket_link_delete' row.pk %}" hx-target="closest [data-card-part]" hx-swap="outerHTML">Отвязать</button>
+    </li>{% endfor %}
+  </ul>
+  <div class="card-form" data-lists-ticket-form>
+    <input type="hidden" name="ticket" value="{{ ticket_number }}">
+    <label class="form-label small mb-1" for="lists-ticket-q-{{ ticket_number }}">Найти запись</label>
+    <ul class="list-unstyled lists-selected" data-lists-selected="record" data-input-name="record" data-multiple="false"></ul>
+    <input id="lists-ticket-q-{{ ticket_number }}" type="text" name="q" class="form-control form-control-sm" maxlength="200" autocomplete="off" data-lists-picker="ticket" hx-get="{% url 'lists:ticket_pick' %}?ticket={{ ticket_number }}" hx-trigger="input changed delay:300ms" hx-target="#lists-ticket-pick-{{ ticket_number }}" hx-swap="innerHTML" placeholder="Название, номер или уникальное значение">
+    <div id="lists-ticket-pick-{{ ticket_number }}" data-lists-pick-results></div>
+    <button class="btn btn-outline-primary btn-sm mt-2" type="button" data-action="ticket-link" hx-post="{% url 'lists:ticket_links' %}" hx-include="closest [data-lists-ticket-form]" hx-target="closest [data-card-part]" hx-swap="outerHTML">Привязать запись</button>
+  </div>
+</section>

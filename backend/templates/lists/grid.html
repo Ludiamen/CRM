@@ -1,0 +1,87 @@
+{% extends layout %}
+{% block title %}{{ lst.name }}{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="grid" class="lists-page" data-list-id="{{ lst.pk }}">
+  <div class="page-head">
+    <h1 class="page-title">{{ lst.name }}</h1>
+    <div class="d-flex flex-wrap gap-2 lists-grid-actions">
+      {% if can_edit %}<a class="btn btn-primary btn-sm" data-action="record-add" href="{% url 'lists:add' lst.pk %}">Добавить запись</a>{% endif %}
+      {% if can_edit %}{% include "lists/_grid_import_button.html" %}{% endif %}
+      {% include "lists/_grid_export_button.html" %}
+      <button type="button" class="btn btn-outline-secondary btn-sm" data-action="columns">Выбрать столбцы</button>
+      {% if can_manage %}<a class="btn btn-outline-secondary btn-sm" data-action="list-settings" href="{% url 'lists:settings' lst.pk %}">Настройка</a>{% endif %}
+    </div>
+  </div>
+  {% if lst.description %}<p class="text-muted small lists-grid-description">{{ lst.description|linebreaksbr }}</p>{% endif %}
+  <nav class="lists-presets" data-lists-presets>{% for preset in presets %}
+    <a class="lists-preset{% if preset.current %} active{% endif %}" data-preset="{{ preset.code }}" href="{{ preset.href }}"{% if preset.current %} aria-current="page"{% endif %}>{{ preset.name }}</a>{% endfor %}
+  </nav>
+  <form method="get" action="{% url 'lists:grid' lst.pk %}" class="lists-search" data-lists-search>
+    <input type="hidden" name="preset" value="{{ gp.preset }}">
+    <input type="hidden" name="sort" value="{{ gp.sort }}">
+    <input type="hidden" name="dir" value="{% if gp.sort %}{{ gp.dir }}{% endif %}">
+    <div class="lists-search-row">
+      <input type="search" class="form-control" name="q" value="{{ gp.q }}" maxlength="400" autocomplete="off" placeholder="Поиск по списку" aria-label="Поиск по списку">
+      <button type="submit" class="btn btn-primary">Применить</button>
+      <a class="btn btn-outline-secondary" data-action="filters-reset" href="{{ reset_url }}">Сбросить</a>
+    </div>
+    <div class="form-text" data-lists-search-hint>{{ hint }}</div>
+    <div class="lists-filters" data-lists-filters>
+      {% for item in filters %}
+      <div class="lists-filter" data-lists-filter="{{ item.code }}">
+        <label class="form-label small">{{ item.name }}</label>
+        {% if item.kind == "text" %}
+        <input type="text" class="form-control form-control-sm" name="f.{{ item.code }}" value="{{ item.value }}" autocomplete="off">
+        {% elif item.kind == "range" %}
+        <div class="lists-filter-range">
+          {% if item.date %}{{ item.start_html }}{{ item.end_html }}
+          {% else %}
+          <input type="text" class="form-control form-control-sm" name="f.{{ item.code }}.from" value="{{ item.start }}" autocomplete="off" aria-label="{{ item.name }}: от"{% if item.kind == "datetime" %} placeholder="ДД.ММ.ГГГГ ЧЧ:ММ"{% else %} inputmode="decimal"{% endif %}>
+          <input type="text" class="form-control form-control-sm" name="f.{{ item.code }}.to" value="{{ item.end }}" autocomplete="off" aria-label="{{ item.name }}: до"{% if item.kind == "datetime" %} placeholder="ДД.ММ.ГГГГ ЧЧ:ММ"{% else %} inputmode="decimal"{% endif %}>
+          {% endif %}
+        </div>
+        {% elif item.kind == "bool" %}
+        <select class="form-select form-select-sm" name="f.{{ item.code }}">
+          <option value="">—</option>
+          <option value="yes"{% if item.value == "yes" %} selected{% endif %}>Да</option>
+          <option value="no"{% if item.value == "no" %} selected{% endif %}>Нет</option>
+        </select>
+        {% elif item.kind == "file" %}
+        <select class="form-select form-select-sm" name="{{ item.param }}">
+          <option value="">—</option>
+          <option value="yes"{% if item.value == "yes" %} selected{% endif %}>Есть файлы</option>
+          <option value="no"{% if item.value == "no" %} selected{% endif %}>Нет файлов</option>
+        </select>
+        {% else %}
+        <ul class="list-unstyled lists-selected" data-lists-selected="f.{{ item.code }}" data-input-name="f.{{ item.code }}" data-multiple="true">{% for chosen in item.selected %}
+          <li data-selected-id="{{ chosen.id }}"><span>{{ chosen.text }}</span><input type="hidden" name="f.{{ item.code }}" value="{{ chosen.id }}"> <button type="button" class="btn btn-outline-secondary btn-sm" data-action="pick-remove">Убрать</button></li>{% endfor %}
+        </ul>
+        <input type="text" class="form-control form-control-sm" autocomplete="off" data-lists-picker="filter" hx-get="{{ item.url }}" hx-trigger="input changed delay:300ms" hx-target="#lists-pick-f-{{ item.code }}" hx-swap="innerHTML" placeholder="Найти" aria-label="{{ item.name }}: найти значение">
+        <div id="lists-pick-f-{{ item.code }}" data-lists-pick-results></div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </form>
+  {% include "lists/_grid.html" %}
+  <dialog data-lists-columns class="lists-confirm lists-columns">
+    <form method="post" action="{% url 'lists:columns' lst.pk %}" data-lists-columns-form>{% csrf_token %}
+      <p class="mb-2">Столбцы таблицы: «Название» показывается всегда.</p>
+      <input type="hidden" name="columns" value="title">
+      <ul class="list-unstyled lists-column-choices" data-lists-column-list>{% for item in column_choices %}
+        <li class="lists-column-choice">
+          <label><input type="checkbox" name="columns" value="{{ item.field.code }}" data-lists-column-choice="{{ item.field.code }}"{% if item.checked %} checked{% endif %}> {{ item.field.name }}</label>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-action="column-up" aria-label="Выше">↑</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-action="column-down" aria-label="Ниже">↓</button>
+        </li>{% endfor %}
+      </ul>
+      <div class="d-flex flex-wrap gap-2 justify-content-end">
+        <button type="button" class="btn btn-outline-secondary" data-action="columns-cancel">Отмена</button>
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+      </div>
+    </form>
+  </dialog>
+  {% if can_edit %}{% include "lists/_confirm.html" %}{% endif %}
+</div>
+{% endblock %}

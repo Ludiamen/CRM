@@ -14,7 +14,8 @@
   // --- общий диалог подтверждения (15.5 пп. 1–2): текст — data-confirm-text кнопки, действие — action формы-источника
   document.addEventListener("click", function (event) {
     var button = event.target.closest ? event.target.closest("form[data-lists-confirm-source] button[type=submit]") : null;
-    if (!button) { return; }
+    // кнопка без `data-confirm-text` (например, «Этикетки» с `formmethod=get` в форме флажков) подтверждения не просит
+    if (!button || !button.hasAttribute("data-confirm-text")) { return; }
     var dialog = document.querySelector("dialog[data-lists-confirm]");
     if (!dialog || typeof dialog.showModal !== "function" || button.disabled) { return; }
     var source = button.form;
@@ -259,5 +260,98 @@
     }
   });
 
-  /* === T-6216: таблица записей (столбцы, отметка строк) === */
+  /* === T-6216: таблица записей (столбцы, отметка строк) и выбор значений (форма записи, фильтры, заявка) === */
+
+  // --- выбор столбцов: диалог, порядок стрелками (порядок отправки — порядок строк в списке)
+  document.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target.closest) { return; }
+    var open = target.closest("button[data-action=columns]");
+    if (open) {
+      var dialog = document.querySelector("dialog[data-lists-columns]");
+      if (dialog && typeof dialog.showModal === "function") { dialog.showModal(); }
+      return;
+    }
+    if (target.closest("button[data-action=columns-cancel]")) {
+      target.closest("dialog").close();
+      return;
+    }
+    var move = target.closest("dialog[data-lists-columns] button[data-action=column-up], dialog[data-lists-columns] button[data-action=column-down]");
+    if (move) {
+      var row = move.closest("li");
+      if (move.getAttribute("data-action") === "column-up") {
+        if (row.previousElementSibling) { row.parentNode.insertBefore(row, row.previousElementSibling); }
+      } else if (row.nextElementSibling) {
+        row.parentNode.insertBefore(row.nextElementSibling, row);
+      }
+    }
+  });
+
+  // --- отметка строк: «все строки страницы»
+  document.addEventListener("change", function (event) {
+    var all = event.target;
+    if (!all.matches || !all.matches("input[data-lists-check-all]")) { return; }
+    var form = all.closest("form");
+    if (!form) { return; }
+    Array.prototype.forEach.call(form.querySelectorAll("input[data-lists-row-check]"), function (box) {
+      box.checked = all.checked;
+    });
+  });
+
+  // --- подсказка значений фильтра: строка запроса уходит параметром `q` (у поля нет имени — оно не попадёт в форму поиска)
+  document.addEventListener("htmx:configRequest", function (event) {
+    var element = event.detail && event.detail.elt;
+    if (element && element.matches && element.matches("input[data-lists-picker=filter]")) {
+      event.detail.parameters["q"] = element.value;
+    }
+  });
+
+  // --- выбор значений: строка подсказки добавляется в `ul[data-lists-selected]` своего блока (поле формы записи,
+  // фильтр таблицы, раздел заявки); у одиночного выбора прежнее значение заменяется
+  function selectedList(item) {
+    var block = item.closest("[data-lists-field], [data-lists-filter], [data-lists-ticket-section]");
+    return block ? block.querySelector("ul[data-lists-selected]") : null;
+  }
+
+  document.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target.closest) { return; }
+    var remove = target.closest("button[data-action=pick-remove]");
+    if (remove) {
+      var gone = remove.closest("li");
+      if (gone) { gone.remove(); }
+      return;
+    }
+    var item = target.closest("ul[data-lists-pick] li[data-pick-id]");
+    if (!item || item.closest("[data-lists-access]")) { return; }
+    var list = selectedList(item);
+    if (!list) { return; }
+    var id = item.getAttribute("data-pick-id");
+    var title = item.querySelector(".lists-pick-title");
+    var text = (title || item).textContent.trim();
+    var single = list.getAttribute("data-multiple") === "false";
+    var name = list.getAttribute("data-input-name") || "";
+    var exists = Array.prototype.some.call(list.querySelectorAll("li[data-selected-id]"), function (row) {
+      return row.getAttribute("data-selected-id") === id;
+    });
+    if (single) { list.replaceChildren(); }
+    if (!exists || single) {
+      var row = document.createElement("li");
+      row.setAttribute("data-selected-id", id);
+      var label = document.createElement("span");
+      label.textContent = text;
+      var hidden = document.createElement("input");
+      hidden.type = "hidden"; hidden.name = name; hidden.value = id;
+      var button = document.createElement("button");
+      button.type = "button"; button.className = "btn btn-outline-secondary btn-sm";
+      button.setAttribute("data-action", "pick-remove"); button.textContent = "Убрать";
+      row.appendChild(label); row.appendChild(hidden); row.appendChild(document.createTextNode(" ")); row.appendChild(button);
+      list.appendChild(row);
+    }
+    var block = item.closest("[data-lists-field], [data-lists-filter], [data-lists-ticket-section]");
+    var holder = item.closest("ul[data-lists-pick]");
+    if (holder) { holder.replaceChildren(); }
+    var input = block.querySelector("input[data-lists-picker]");
+    if (input) { input.value = ""; }
+  });
 })();

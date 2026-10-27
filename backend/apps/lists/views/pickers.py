@@ -46,23 +46,24 @@ def people(request):
 @login_required
 @require_GET
 def units(request):
-    """Узлы структуры: название и путь словами от корня; без модуля `org` список пуст."""
+    """Узлы структуры: название и путь словами от корня; без модуля `org` — 404 (CONTRACT-006, 4.1; правка Opus)."""
     _gate(request)
+    if not apps.is_installed("apps.org"):
+        raise Http404
     rows = []
-    if apps.is_installed("apps.org"):
-        from apps.org.services import structure
+    from apps.org.services import structure
 
-        refs = structure.all_units()
-        names = {ref.id: ref.name for ref in refs}
-        wanted = _query(request).casefold()
-        for ref in refs:
-            chain = [names.get(int(part), "") for part in ref.path.strip("/").split("/") if part.isdigit()]
-            path = " / ".join(chain)
-            if wanted and wanted not in ref.name.casefold() and wanted not in path.casefold():
-                continue
-            rows.append({"id": ref.id, "title": ref.name, "note": path})
-            if len(rows) >= LIMIT:
-                break
+    refs = structure.all_units()
+    names = {ref.id: ref.name for ref in refs}
+    wanted = _query(request).casefold()
+    for ref in refs:
+        chain = [names.get(int(part), "") for part in ref.path.strip("/").split("/") if part.isdigit()]
+        path = " / ".join(chain)
+        if wanted and wanted not in ref.name.casefold() and wanted not in path.casefold():
+            continue
+        rows.append({"id": ref.id, "title": ref.name, "note": path})
+        if len(rows) >= LIMIT:
+            break
     return render_page(request, "lists/_pick.html", {"rows": rows, "kind": "units"})
 
 

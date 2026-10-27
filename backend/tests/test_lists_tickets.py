@@ -466,13 +466,14 @@ def test_link_post_creates_link_with_who_and_when_and_leaves_record_unchanged(cl
     before = Record.objects.filter(pk=record.pk).values().get()
     changes = Change.objects.filter(record=record).count()
 
-    clock.set(lists.moscow(2026, 10, 25, 15, 45))
+    # 20 минут спустя: больше 60 минут простоя — выход по тайм-ауту (поправка Opus при исполнении)
+    clock.set(lists.moscow(2026, 10, 25, 14, 50))
     assert _post_link(viewer.client, ticket, record).status_code == 200
 
     link = _links().get()
     assert (link.record_id, link.ticket_number) == (record.pk, ticket.number)
     assert link.linked_by == viewer.user
-    assert link.linked_at == lists.moscow(2026, 10, 25, 15, 45)
+    assert link.linked_at == lists.moscow(2026, 10, 25, 14, 50)
     assert Record.objects.filter(pk=record.pk).values().get() == before
     assert Change.objects.filter(record=record).count() == changes
 

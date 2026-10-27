@@ -422,7 +422,7 @@ Opus по задачам» в конце файла; решения владел
   backend/apps/lists/views/records.py, pickers.py, backend/static/lists/lists.css,
   backend/templates/lists/, backend/apps/lists/urls.py — (FR-511, FR-515, FR-516, FR-517, FR-522, FR-523, FR-524, FR-527,
   NFR-506)
-- [ ] T-6216 [sonnet] страница таблицы (план: «Таблица записей», «Контракты»): `views/grid.py` — полная страница и
+- [x] T-6216 [sonnet] страница таблицы (план: «Таблица записей», «Контракты»): `views/grid.py` — полная страница и
   фрагмент при `HX-Target: lists-grid` с `Vary: HX-Request`, форма `form[data-lists-search]`, отборы и условия их показа,
   выбор столбцов (`/columns/`, `UserView`), значения фильтра (`/filter-values/<код>/`), групповое «В архив»
   (`/bulk-archive/`, итог «В архив: N, пропущено: M»), пустая таблица; кнопки «Этикетки» и «Выгрузить в Excel»
@@ -435,7 +435,7 @@ Opus по задачам» в конце файла; решения владел
   фразами плана, подписчик `core.user_dismissed` (удаление `UserView`) в `ListsConfig.ready()` после `register_all()` —
   backend/apps/lists/card.py, backend/templates/lists/, backend/apps/lists/extensions.py, backend/apps/lists/apps.py —
   (FR-525, FR-526, FR-543)
-- [ ] T-6218 [sonnet] связь с заявками (план: «Связь с заявками»): `services/tickets.py`, `ticket_parts.py`
+- [x] T-6218 [sonnet] связь с заявками (план: «Связь с заявками»): `services/tickets.py`, `ticket_parts.py`
   (`TicketCardPart("lists-records", "section", 20, render)`), `views/tickets.py` (`/lists/ticket-pick/`,
   `/lists/ticket-links/`, `…/<id>/delete/`, ответ — фрагмент раздела), блок «Связанные заявки» карточки записи (место из
   T-6215) через `public.briefs`; всё под
@@ -463,7 +463,7 @@ Opus по задачам» в конце файла; решения владел
   кнопка загрузки на странице таблицы (текст — по контракту). Если задача не укладывается в ~50 вызовов — остановиться: Opus делит её на
   службу и страницы с образцом (решение 61) — backend/apps/lists/services/imports.py, views/imports.py, backend/templates/lists/, backend/apps/lists/urls.py —
   (FR-522, FR-533, FR-534, FR-535, FR-542, NFR-504)
-- [ ] T-6222 [sonnet] файлы записи (план: «Файлы записи»): `services/files.py` поверх ядра (`uploads.reject_reason` с
+- [x] T-6222 [sonnet] файлы записи (план: «Файлы записи»): `services/files.py` поверх ядра (`uploads.reject_reason` с
   20 МБ, `uploads.store(…, "lists")`, предел 20 по записи под `FOR UPDATE`, «В поле уже есть файл», события истории,
   сбой записи — откат и стирание), запись `FilePurpose("lists", …)` с веткой `Heuristics.Encrypted.*`, `views/files.py`
   (прикрепить, скачать «чистый» через `file_response.download`, «проверяется» и «карантин» — 404, удалить; файл по паре

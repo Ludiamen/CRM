@@ -517,6 +517,8 @@ def test_query_text_marker_is_absent_in_database_audit_and_app_log(caplog):
         assert marker not in str(values)
     holders = []
     for model_class in registry.get_models():
+        if not model_class._meta.managed:  # без таблицы (`django_rq.Dashboard`) — поправка Opus при исполнении
+            continue
         for row in model_class._default_manager.values():
             if marker in str(row):
                 holders.append(model_class._meta.label)

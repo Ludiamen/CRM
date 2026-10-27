@@ -1,0 +1,23 @@
+{% comment %}Блок файлов одного поля «файл» (11.7). Контекст: `lst`, `record`, `field`, `all_files` (файлы записи), `can_edit`; отказ — `file_error` (в карточке ещё `file_error_field`, номер поля, у которого он показан) или общий `block_alert` (запись в архиве). Загрузка и удаление — HTMX: ответ заменяет этот блок.{% endcomment %}
+<div class="mb-2" data-lists-files="{{ field.code }}">
+  <h3 class="h6">{{ field.name }}</h3>
+  {% if block_alert %}{% include "lists/_record_alert.html" with alert=block_alert refs_alert=None %}{% endif %}
+  {% if file_error and not file_error_field or file_error_field == field.pk %}<div class="text-danger small" data-error="{{ file_error.field }}" data-code="{{ file_error.code }}">{{ file_error.message }}</div>{% endif %}
+  <ul class="list-unstyled lists-files-list">{% for item in all_files %}{% if item.field_id == field.pk %}
+    <li class="d-flex flex-wrap gap-2 align-items-baseline" data-file-id="{{ item.pk }}" data-scan="{{ item.file.status }}">
+      {% if item.file.status == "clean" %}<a data-action="file-download" href="{% url 'lists:file' lst.pk record.number item.pk %}">{{ item.name }}</a>{% else %}<span>{{ item.name }}</span> <span class="badge text-bg-secondary">{% if item.file.status == "pending" %}проверяется{% else %}в карантине{% endif %}</span>{% endif %}
+      {% if can_edit and not record.archived %}
+      <form method="post" action="{% url 'lists:file_delete' lst.pk record.number item.pk %}" hx-post="{% url 'lists:file_delete' lst.pk record.number item.pk %}" hx-target="closest [data-lists-files]" hx-swap="outerHTML">{% csrf_token %}
+        <button type="submit" class="btn btn-link btn-sm text-danger p-0" data-action="file-delete">Удалить</button>
+      </form>
+      {% endif %}
+    </li>{% endif %}{% endfor %}
+  </ul>
+  {% if can_edit and not record.archived %}
+  <form method="post" action="{% url 'lists:files' lst.pk record.number %}" enctype="multipart/form-data" hx-post="{% url 'lists:files' lst.pk record.number %}" hx-encoding="multipart/form-data" hx-target="closest [data-lists-files]" hx-swap="outerHTML" class="d-flex flex-wrap gap-2" data-action="file-attach">{% csrf_token %}
+    <input type="hidden" name="field" value="{{ field.code }}">
+    <input type="file" name="file" class="form-control form-control-sm w-auto" required>
+    <button type="submit" class="btn btn-outline-primary btn-sm">Прикрепить</button>
+  </form>
+  {% endif %}
+</div>
