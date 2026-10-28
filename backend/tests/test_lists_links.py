@@ -650,6 +650,25 @@ def test_record_value_of_unreadable_list_is_shown_as_unavailable_record_without_
     assert f"/lists/{closed.pk}/" not in body
 
 
+def test_referrers_of_unreadable_lists_are_neither_listed_nor_counted_on_card():
+    """FR-527, сценарий 6 п. 6: записи списков, которых смотрящий не читает, в «Ссылаются на эту запись» не показаны —
+    ни строкой, ни числом («и ещё N»); если читаемых ссылающихся нет, раздела нет совсем (найдено проходом T-6301)."""
+    w = _ref_world()
+    reader = ll.as_reader(w["target_list"])
+    ll.grant_list(w["list_b"], reader.user.roles.get(), "read")
+    response = reader.client.get(f"/lists/{w['target_list'].pk}/{w['target'].number}/")
+    (section,) = _q(_tree(response), data_lists_referrers=True)
+    assert "и ещё" not in section.text()
+    author = w["target_list"].created_by
+    lonely = ll.make_record(w["target_list"], "Одинокий сервер", created_by=author)
+    closed_field = ll.add_field(w["list_c"], "record", "Ещё сервер", target=w["target_list"])
+    ll.make_record(w["list_c"], "Тайная ссылка на одинокий", {closed_field.code: [lonely.pk]}, created_by=author)
+    response = reader.client.get(f"/lists/{w['target_list'].pk}/{lonely.number}/")
+    assert response.status_code == 200
+    assert not _q(_tree(response), data_lists_referrers=True)
+    assert "и ещё" not in _html(response)
+
+
 def test_history_value_of_unreadable_list_is_shown_as_unavailable_record_to_reader_and_by_name_to_manager():
     """FR-514, FR-527 (SC «0 записей… в истории»): строка истории хранит «Название — №N» глазами автора; читающему
     список A, но не целевой список поля-ссылки, в карточке и на странице истории значение показывается как «запись

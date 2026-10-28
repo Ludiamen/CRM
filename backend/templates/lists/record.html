@@ -39,14 +39,13 @@
   </article>
   {% include "lists/_record_files.html" %}
   {% include "lists/_record_tickets.html" %}
-  {% if referrers or referrers_hidden %}
+  {% if referrers %}{# записи нечитаемых списков не показываются и не считаются (FR-527, сц. 6 п. 6) #}
   <section class="mb-3" data-lists-referrers>
     <h2 class="h5">Ссылаются на эту запись</h2>
     <ul class="list-unstyled">
       {% for item in referrers %}
       <li data-record-ref="{{ item.list_id }}:{{ item.number }}"><a href="{% url 'lists:record' item.list_id item.number %}">{{ item.title }} — №{{ item.number }}</a> <span class="small text-muted">{{ item.list.name }}</span>{% if item.archived %} <span data-lists-archived>в архиве</span>{% endif %}</li>
       {% endfor %}
-      {% if referrers_hidden %}<li class="text-muted small">и ещё {{ referrers_hidden }}</li>{% endif %}
     </ul>
   </section>
   {% endif %}

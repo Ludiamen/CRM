@@ -25,6 +25,7 @@
 .lists-scroll { max-width: 100%; overflow-x: auto; }
 @media (max-width: 575.98px) {
   .lists-home-row { flex-direction: column; }
+  .lists-home-main { flex-basis: auto; }  /* в колонке основа 18rem стала бы высотой строки */
   .lists-tab { flex: 1 1 auto; text-align: center; }
 }
 
@@ -72,6 +73,10 @@
 .lists-filter { min-width: 0; }
 .lists-filter-range { display: flex; flex-wrap: wrap; gap: .25rem; }
 .lists-filter-range .form-control { flex: 1 1 6rem; width: auto; min-width: 0; }
+.lists-filter-range .datefield { flex: 1 1 100%; min-width: 0; }  /* поле даты с кнопкой — по строке на границу, как .filter-bar ядра */
+.lists-filter-range .datefield .input-group { flex-wrap: wrap; gap: .25rem; }
+.lists-filter-range .datefield .input-group > .form-control { flex: 1 1 100%; width: 100%; border-radius: var(--bs-border-radius); }
+.lists-filter-range .datefield .input-group > .btn { margin-left: 0; border-radius: var(--bs-border-radius); white-space: nowrap; }
 .lists-filter .lists-selected { margin: 0 0 .25rem; padding: 0; }
 .lists-filter .lists-selected li { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; overflow-wrap: anywhere; }
 .lists-table th a { text-decoration: none; }

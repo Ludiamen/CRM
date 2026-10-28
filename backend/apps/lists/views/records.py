@@ -292,7 +292,7 @@ def _card_context(request, lst, record, *, alert=None) -> dict:
         "can_purge": record.archived and access.can_manage(user),
         "cells": [_value_cell(f, stored.get(f.code), user) for f in fields if f.type != "file"],
         "file_fields": [f for f in fields if f.type == "file"],
-        "referrers": found.rows, "referrers_hidden": found.hidden,
+        "referrers": found.rows,
         "history_rows": history_service.for_viewer(page.rows, lst, user), "next_offset": page.next_offset,
         "related_tickets": tickets_service.related(user, record),  # «Связанные заявки», T-6218; сборка Opus
         **(_alert_context(alert) or {}),
