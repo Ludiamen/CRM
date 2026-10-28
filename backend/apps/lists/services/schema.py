@@ -596,6 +596,8 @@ def update_field(field, *, actor, **changes) -> Field:
 
 
 _AUDIT_KEY = {"name": "field", "deadline": "thresholds"}
+# Журнал показывает у события только изменившиеся ключи (ядро, `audit_labels.side_pairs`): названия списка и поля,
+# по которым событие узнают в журнале, пишутся только в «стало» — иначе на странице `/audit/` их не видно (FR-542).
 
 
 def _audit_value(prop: str, state: dict, field: Field, actor):
@@ -638,7 +640,7 @@ def _set_hidden(field, hidden: bool, *, actor) -> None:
             transaction.on_commit(lambda: _enqueue_refresh(current.list_id, current.pk))
         audit.record("lists.field_hidden" if hidden else "lists.field_shown", actor=actor, object_type=FIELD_TYPE,
                      object_id=current.pk,
-                     before={"list": current.list.name, "field": current.name, "hidden": not hidden},
+                     before={"hidden": not hidden},
                      after={"list": current.list.name, "field": current.name, "hidden": hidden})
     field.hidden = hidden
 
@@ -772,7 +774,7 @@ def save_choices(field, items, *, actor) -> list[Choice]:
         after_names = _choice_names(current)
         if before_names != after_names:
             audit.record("lists.choices_changed", actor=actor, object_type=FIELD_TYPE, object_id=current.pk,
-                         before={"list": current.list.name, "field": current.name, "choices": before_names},
+                         before={"choices": before_names},
                          after={"list": current.list.name, "field": current.name, "choices": after_names})
         return list(Choice.objects.filter(field=current, archived=False).order_by("order", "pk"))
 
@@ -846,4 +848,4 @@ def save_access(lst, *, readers, editors, actor) -> None:
                 after[key] = before[key]
         if changed:
             audit.record("lists.access_changed", actor=actor, object_type=LIST_TYPE, object_id=current.pk,
-                         before={"list": current.name, **before}, after={"list": current.name, **after})
+                         before=before, after={"list": current.name, **after})

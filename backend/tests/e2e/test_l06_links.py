@@ -448,7 +448,8 @@ def test_l06_hidden_employee_field_gives_no_rows_in_pinned_section(admin_page, e
     _set_field_hidden(admin_page, list_id, code, True)
     _open_colleague_card(admin_page, person.id)
     expect(admin_page.locator(ROW)).to_have_count(0)
-    expect(admin_page.locator(PINNED)).not_to_contain_text(title)
+    # без строк раздела нет совсем (card_sections == [], 5.5)
+    expect(admin_page.locator(PINNED)).to_have_count(0)
     _open_own_card(person.page, person.id)
     expect(person.page.locator(ROW)).to_have_count(0)
     # поле возвращено — строка вернулась

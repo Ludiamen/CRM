@@ -27,7 +27,14 @@
 .lists-label-title { font-weight: 600; }
 .lists-label-value { font-size: 8pt; }
 
+/* На экране лист не шире окна (360 px): сетка прокручивается внутри себя. */
+@media screen {
+  .lists-labels { max-width: 100%; overflow-x: auto; }
+}
+
 @media print {
   #top-bar, .app-top-bar, #main-menu, .app-menu, .lists-labels-head { display: none; }
+  /* оболочка портала — сетка высотой в экран: внутри неё Chromium не делит лист на страницы */
+  .app-shell { display: block; min-height: 0; }
   .lists-label { border-color: transparent; }
 }

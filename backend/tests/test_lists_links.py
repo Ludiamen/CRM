@@ -650,6 +650,40 @@ def test_record_value_of_unreadable_list_is_shown_as_unavailable_record_without_
     assert f"/lists/{closed.pk}/" not in body
 
 
+def test_history_value_of_unreadable_list_is_shown_as_unavailable_record_to_reader_and_by_name_to_manager():
+    """FR-514, FR-527 (SC «0 записей… в истории»): строка истории хранит «Название — №N» глазами автора; читающему
+    список A, но не целевой список поля-ссылки, в карточке и на странице истории значение показывается как «запись
+    недоступного списка» (`[data-lists-unavailable]`) без названия; управляющему — с названием. Строка `Change` не
+    меняется (найдено зелёной приёмкой T-6260, `test_l13`)."""
+    from apps.lists.services import history
+
+    author = support.make_employee()
+    closed = ll.make_list("Закрытый реестр И", created_by=author)
+    closed_record = ll.make_record(closed, "Тайная запись ИИ", created_by=author)
+    open_list = ll.make_list("Открытый реестр И", created_by=author)
+    link_field = ll.add_field(open_list, "record", "Связь", target=closed)
+    holder = ll.make_record(open_list, "Запись с историей", {link_field.code: [closed_record.pk]}, created_by=author)
+    shown = f"Тайная запись ИИ — №{closed_record.number}"
+    change = history.write(holder, "changed", [{"field": link_field.code, "name": link_field.name, "before": "",
+                                                 "after": shown}], author)
+    reader = ll.as_reader(open_list)
+    for path, headers in ((f"/lists/{open_list.pk}/{holder.number}/", {}),
+                          (f"/lists/{open_list.pk}/{holder.number}/history/", {}),
+                          (f"/lists/{open_list.pk}/{holder.number}/history/", HX)):
+        response = reader.client.get(path, **headers)
+        assert response.status_code == 200, path
+        rows = [node for node in _q(_tree(response), data_change_field=link_field.code)]
+        assert len(rows) == 1, path
+        assert _q(rows[0], data_lists_unavailable=True) and "недоступного списка" in rows[0].text(), path
+        assert "Тайная запись ИИ" not in _html(response), path
+    manager = ll.as_manager()
+    response = manager.client.get(f"/lists/{open_list.pk}/{holder.number}/history/")
+    rows = _q(_tree(response), data_change_field=link_field.code)
+    assert len(rows) == 1 and shown in rows[0].text() and not _q(rows[0], data_lists_unavailable=True)
+    change.refresh_from_db()
+    assert change.changes[0]["after"] == shown
+
+
 def test_record_value_pointing_to_archived_record_is_marked_in_archive():
     """FR-527: значение-ссылка на запись в архиве показывается с пометкой «в архиве» (и названием «Название —
     №N», если список читается); значение-ссылка на живую запись пометки не имеет."""

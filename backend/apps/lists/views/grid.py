@@ -84,15 +84,19 @@ def _cells(rows, fields, viewer) -> list[dict]:
         cells = []
         for field in fields:
             stored = (row.values or {}).get(field.code)
+            parts = None
             if field.type == "file":
                 total = counts.get((row.pk, field.pk), 0)
                 text = str(total) if total else ""
             elif field.type in REFERENCE_TYPES:
                 names = labels[field.pk]
-                text = "; ".join(names[pk] for pk in stored or [] if isinstance(pk, int) and pk in names)
+                parts = [{"text": names[pk], "unavailable": field.type == "record" and names[pk] == UNAVAILABLE}
+                         for pk in stored or [] if isinstance(pk, int) and pk in names]
+                text = "; ".join(part["text"] for part in parts)
             else:
                 text = values_service.display(field, stored, viewer)
-            cells.append({"code": field.code, "text": text, "long": field.type == "text"})
+            # `parts` — значения ссылочного поля по одному: запись нечитаемого списка выводится с пометкой (11.5)
+            cells.append({"code": field.code, "text": text, "long": field.type == "text", "parts": parts})
         result.append({"record": row, "cells": cells})
     return result
 

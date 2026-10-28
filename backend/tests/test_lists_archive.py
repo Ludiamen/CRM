@@ -752,7 +752,8 @@ def test_purge_keeps_display_strings_of_purged_record_in_other_records_history()
     assert list(_m("Change").objects.filter(record=holder).order_by("pk").values_list("pk", "kind", "changes")) \
         == snapshot
     assert display in json.dumps([row[2] for row in snapshot], ensure_ascii=False)
-    shown = _get(lists.as_editor(other), f"/lists/{other.pk}/{holder.number}/history/")
+    # показ — управляющему: сотруднику без права на список цели название скрыто (FR-514; правка при T-6260)
+    shown = _get(manager, f"/lists/{other.pk}/{holder.number}/history/")
     assert shown.status_code == 200 and display in tree(shown).text()
 
 

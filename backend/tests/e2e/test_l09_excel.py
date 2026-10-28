@@ -112,10 +112,14 @@ def _set_columns(page, list_id, wanted=None) -> None:
 
 
 def _read_book(download):
-    """Книга выгруженного файла (с форматами ячеек)."""
+    """Книга выгруженного файла (с форматами ячеек). Playwright хранит скачанное под именем без расширения, а openpyxl
+    по пути без `.xlsx` книгу не открывает — читаем байты."""
+    import io
+
     import openpyxl
 
-    return openpyxl.load_workbook(download.path())
+    with open(download.path(), "rb") as handle:
+        return openpyxl.load_workbook(io.BytesIO(handle.read()))
 
 
 def _sheet_values(sheet) -> list:

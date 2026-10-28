@@ -5,11 +5,13 @@
 """
 from typing import NamedTuple
 
-from apps.lists.models import Change
+from apps.lists.models import Change, Field
+from apps.lists.services import access
 from apps.lists.services import values as values_service
 
 PAGE_SIZE = 50
 TITLE_NAME = "Название"
+UNAVAILABLE = "запись недоступного списка"
 
 
 class HistoryPage(NamedTuple):
@@ -54,3 +56,24 @@ def page(record, offset: int = 0) -> HistoryPage:
         offset:offset + PAGE_SIZE + 1])
     more = len(rows) > PAGE_SIZE
     return HistoryPage(rows[:PAGE_SIZE], offset + PAGE_SIZE if more else None)
+
+
+def for_viewer(rows, lst, viewer) -> list:
+    """Строки страницы истории для смотрящего: значения полей-ссылок на записи списка, которого он не читает, —
+    «запись недоступного списка» с пометкой `unavailable` (FR-514, FR-527).
+
+    Строки показа сохранены на момент изменения глазами автора. У поля «запись» один целевой список, и сменить его у
+    поля с историей нельзя (`schema.has_data`), поэтому решение принимается по полю. Строки `Change` не меняются:
+    подменяется только `changes` загруженных объектов для вывода."""
+    closed = {field.code for field in Field.objects.filter(list=lst, type="record").select_related("target")
+              if not access.can_read(viewer, field.target)}
+    if not closed:
+        return rows
+    for row in rows:
+        if any(item.get("field") in closed for item in row.changes or []):
+            row.changes = [
+                {**item, "before": UNAVAILABLE if item.get("before") else "",
+                 "after": UNAVAILABLE if item.get("after") else "", "unavailable": True}
+                if item.get("field") in closed else item
+                for item in row.changes]
+    return rows

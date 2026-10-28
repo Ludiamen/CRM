@@ -400,7 +400,7 @@ def test_l14_turning_on_unique_with_repeated_values_is_refused_with_first_record
     expect(error).to_be_visible()
     text = error.inner_text()
     assert "Значения повторяются:" in text, text
-    pairs = re.findall(r"№(\d+)\s+—\s+(\S+)", text)
+    pairs = re.findall(r"№(\d+)\s+—\s+([^;\s]+)", text)  # пары через «; » (12.1)
     assert pairs and {n for n, _ in pairs} <= {str(first), str(second)}, text
     assert all(v.lower() == word.lower() for _, v in pairs), text
     # отказ ничего не включил

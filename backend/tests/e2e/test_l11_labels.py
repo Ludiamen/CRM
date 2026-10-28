@@ -249,14 +249,15 @@ def test_l11_qr_svg_equals_generated_for_card_url_and_data_qr_url_holds_card_url
     assert qr_matches(img), "SVG картинки не равен генерации qrcode для data-qr-url"
     assert qr_image_bytes(img) in qr_svg_variants(qr_url), "SVG не равен генерации qrcode для адреса карточки"
     other_url = _sibling_card_url(qr_url, list_id, other)
-    assert qr_image_bytes(img) not in qr_svg_variants(other_url), "QR одинаков у разных записей"
+    first_bytes = qr_image_bytes(img)  # локатор ленивый: после перехода он указал бы на картинку другой записи
+    assert first_bytes not in qr_svg_variants(other_url), "QR одинаков у разных записей"
 
     # у другой записи — свой адрес (та же основа, свой путь) и свой рисунок
     _open_label(admin_page, list_id, other)
     img_other = admin_page.locator(LABEL).locator(QR)
     assert img_other.get_attribute("data-qr-url") == other_url
     assert qr_matches(img_other)
-    assert qr_image_bytes(img_other) != qr_image_bytes(img)
+    assert qr_image_bytes(img_other) != first_bytes
 
 
 def test_l11_qr_url_opened_by_logged_in_reader_shows_record_card(admin_page, employee):

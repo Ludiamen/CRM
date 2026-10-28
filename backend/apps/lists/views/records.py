@@ -293,7 +293,7 @@ def _card_context(request, lst, record, *, alert=None) -> dict:
         "cells": [_value_cell(f, stored.get(f.code), user) for f in fields if f.type != "file"],
         "file_fields": [f for f in fields if f.type == "file"],
         "referrers": found.rows, "referrers_hidden": found.hidden,
-        "history_rows": page.rows, "next_offset": page.next_offset,
+        "history_rows": history_service.for_viewer(page.rows, lst, user), "next_offset": page.next_offset,
         "related_tickets": tickets_service.related(user, record),  # «Связанные заявки», T-6218; сборка Opus
         **(_alert_context(alert) or {}),
     }
@@ -325,7 +325,8 @@ def history(request, list_id: int, number: int):
     if found is None:
         raise Http404("Запись не найдена")
     page = history_service.page(found, _ascii_int(request.GET.get("offset")))
-    context = {"lst": lst, "record": found, "history_rows": page.rows, "next_offset": page.next_offset}
+    context = {"lst": lst, "record": found, "history_rows": history_service.for_viewer(page.rows, lst, request.user),
+               "next_offset": page.next_offset}
     if is_fragment(request):
         return render_page(request, "lists/_history_rows.html", context)
     return render_page(request, "lists/record_history.html", context)

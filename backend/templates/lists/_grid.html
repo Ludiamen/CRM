@@ -25,7 +25,7 @@
           <tr data-record-number="{{ row.record.number }}"{% if row.record.archived %} data-archived{% endif %}>
             <td data-cell="select"><input type="checkbox" class="form-check-input" name="n" value="{{ row.record.number }}" data-lists-row-check aria-label="Отметить запись {{ row.record.number }}"></td>
             <td data-col="title"><a data-field="title" href="{% url 'lists:record' lst.pk row.record.number %}">{{ row.record.title }}</a>{% if row.record.archived %} <span class="badge text-bg-secondary" data-lists-archived>в архиве</span>{% endif %}</td>
-            {% for cell in row.cells %}<td data-col="{{ cell.code }}">{% if cell.long %}{{ cell.text|truncatechars:200 }}{% else %}{{ cell.text }}{% endif %}</td>
+            {% for cell in row.cells %}<td data-col="{{ cell.code }}">{% if cell.parts %}{% for part in cell.parts %}{% if not forloop.first %}; {% endif %}{% if part.unavailable %}<span data-lists-unavailable>{{ part.text }}</span>{% else %}{{ part.text }}{% endif %}{% endfor %}{% elif cell.long %}{{ cell.text|truncatechars:200 }}{% else %}{{ cell.text }}{% endif %}</td>
             {% endfor %}
           </tr>
           {% endfor %}

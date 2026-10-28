@@ -1,4 +1,5 @@
-{% comment %}Раздел «Записи списков» карточки заявки (11.8). Контекст: `ticket_number`, `rows` (TicketLink с `record` и `record.list`), `alert`. Оболочку `[data-card-part]` рисует сервис-деск; ответ привязки и отвязки приходит в такой же оболочке.{% endcomment %}
+{% comment %}Раздел «Записи списков» карточки заявки (11.8). Контекст: `ticket_number`, `rows` (TicketLink с `record` и `record.list`), `alert`. Оболочку `[data-card-part]` рисует сервис-деск; ответ привязки и отвязки приходит в такой же оболочке. Карточка заявки — страница сервис-деска, `lists.js` на ней подключает сам раздел (выбор записи в подсказке, 11.8; повторный тег в ответе HTMX обработчики второй раз не навешивает).{% endcomment %}{% load static %}
+<script src="{% static 'lists/lists.js' %}" defer></script>
 <section class="card-section" data-lists-ticket-section data-ticket="{{ ticket_number }}">
   <h3 class="card-section-title">Записи списков</h3>
   {% if alert %}{% include "lists/_alert.html" %}{% endif %}

@@ -4,6 +4,7 @@
 {% block content %}
 {% include "lists/_assets.html" %}
 <div data-lists-page="record" class="lists-page">
+  <article data-lists-record data-record-number="{{ record.number }}" class="lists-record">{# корень карточки (11.5): название, действия и значения #}
   <div class="page-head">
     <h1 class="page-title">{{ record.title }}{% if record.archived %} <span class="badge text-bg-secondary" data-lists-archived>в архиве</span>{% endif %}</h1>
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:grid' lst.pk %}">{{ lst.name }}</a>
@@ -28,7 +29,6 @@
     </form>
     {% endif %}
   </div>
-  <article data-lists-record data-record-number="{{ record.number }}" class="lists-record">
     <dl class="lists-record-values">
       {% for cell in cells %}
       <dt>{{ cell.field.name }}</dt>
