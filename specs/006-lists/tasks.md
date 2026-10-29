@@ -552,7 +552,7 @@ Opus по задачам» в конце файла; решения владел
 - [ ] T-6309 [человек] принять срез по отчёту docs/reviews/TASKS-006.md (T-6307) и проходам T-6301, T-6308. Отметки
   выполнения на отпечаток не влияют. Если по итогам среза менялся текст задач, подписать их заново —
   docs/reviews/TASKS-006.md — (инвариант «спека-прежде-кода»)
-- [ ] T-6310 [opus] тесты до кода к решению 63 (падают на коде db956a2): в backend/tests/test_lists_deploy.py (файл среза) добавляются —
+- [x] T-6310 [opus] тесты до кода к решению 63 (падают на коде db956a2): в backend/tests/test_lists_deploy.py (файл среза) добавляются —
   `test_compose_web_heavy_service_like_web` (служба `web-heavy`: образ `crm-portal:local`, тот же запуск gunicorn с
   `UvicornWorker`, что у `web`, число процессов `${WEB_HEAVY_WORKERS:-2}`, `DATABASE_POOL: "1"`, `TRUSTED_PROXIES`,
   тома `media` и `protected`, ожидание `migrate`, `postgres`, `valkey`, проверка здоровья как у `web`;

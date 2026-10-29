@@ -225,6 +225,114 @@ def test_lists_files_location_repeats_proxy_directives_in_both_configs():
         assert names(own) == names(directives(tickets_location_body(name))), f"{name}: набор директив не как у tickets"
 
 
+# --- служба web-heavy (решение 63 задач, T-6310) ----------------------------------------------------------------------
+
+HEAVY_PATTERN = "^/lists/[0-9]+/(export|import|sample)/"
+HEAVY_PATHS = ("/lists/7/export/", "/lists/7/import/", "/lists/7/import/12/", "/lists/7/import/12/confirm/",
+               "/lists/7/sample/")
+LIGHT_PATHS = ("/lists/", "/lists/7/", "/lists/7/columns/", "/lists/7/labels/", "/lists/7/bulk-archive/",
+               "/lists/7/12/", "/lists/7/12/files/", "/lists/7/12/label/", "/lists/7/pick/", "/lists/7/add/")
+
+
+def compose_services() -> dict[str, str]:
+    """Блоки служб docker-compose.yml: имя → текст без комментариев (свой помощник: общие файлы тестов не правятся)."""
+    blocks, current, inside = {}, None, False
+    for line in uncommented(deploy_text("docker-compose.yml")).splitlines():
+        if re.match(r"^services:\s*$", line):
+            inside = True
+        elif re.match(r"^\S", line):
+            inside = False
+        elif inside and (found := re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)):
+            current = found.group(1)
+            blocks[current] = ""
+        elif inside and current:
+            blocks[current] += line + "\n"
+    return blocks
+
+
+def compose_section(block: str, key: str) -> str:
+    """Строки раздела `key:` блока службы (отступ 4) — до следующего ключа того же уровня."""
+    lines, inside = [], False
+    for line in block.splitlines():
+        if re.match(rf"^    {key}:", line):
+            inside = True
+        elif inside and re.match(r"^ {0,4}\S", line):
+            break
+        if inside and line.strip():
+            lines.append(line.rstrip())
+    assert lines, f"нет раздела {key}"
+    return "\n".join(lines)
+
+
+def heavy_location(name: str) -> tuple[str, str]:
+    """(шаблон адреса, тело) единственного `location`, ведущего в группу `portal_web_heavy`."""
+    text = uncommented(deploy_text(name))
+    headers = [header for header in re.findall(r"location\s+([^{]+?)\s*\{", text)
+               if "proxy_pass http://portal_web_heavy" in directives(location_body(text, re.escape(header)))]
+    assert len(headers) == 1, f"{name}: в группу portal_web_heavy ведёт {len(headers)} location, нужен один"
+    header = headers[0]
+    return header.split(None, 1)[-1], location_body(text, re.escape(header))
+
+
+def test_compose_web_heavy_service_like_web():
+    """NFR-503, NFR-504, NFR-513, решение 63: служба `web-heavy` — тот же образ и тот же запуск gunicorn с
+    `UvicornWorker`, что у `web`, но число процессов `${WEB_HEAVY_WORKERS:-2}`; пул соединений, доверенные прокси,
+    тома `media` и `protected`, ожидание `migrate`, `postgres`, `valkey` и проверка здоровья — как у `web`; без
+    `container_name` и `profiles`; `nginx` ждёт и `web-heavy` (CONTRACT-006, 1.2)."""
+    services = compose_services()
+    assert "web-heavy" in services, "в docker-compose.yml нет службы web-heavy"
+    web, heavy = services["web"], services["web-heavy"]
+    assert re.search(r"^    image: crm-portal:local\s*$", heavy, re.M)
+    web_command = compose_section(web, "command")
+    assert "${WEB_WORKERS:-4}" in web_command
+    assert compose_section(heavy, "command") == web_command.replace("${WEB_WORKERS:-4}", "${WEB_HEAVY_WORKERS:-2}")
+    assert re.search(r'^      DATABASE_POOL:\s*"1"', heavy, re.M), "у web-heavy нет пула соединений"
+    trusted = re.search(r"^      TRUSTED_PROXIES:.*$", web, re.M).group(0)
+    assert trusted in heavy.splitlines(), "TRUSTED_PROXIES не как у web"
+    volumes = compose_section(heavy, "volumes")
+    for volume in ("media:/app/media", "protected:/app/protected"):
+        assert volume in volumes, f"у web-heavy нет тома {volume}"
+    for key in ("depends_on", "healthcheck"):
+        assert compose_section(heavy, key) == compose_section(web, key), f"{key} у web-heavy не как у web"
+    assert not re.search(r"^    (container_name|profiles):", heavy, re.M)
+    nginx_depends = compose_section(services["nginx"], "depends_on")
+    assert re.search(r"^      web-heavy:\s*\n        condition: service_healthy", nginx_depends, re.M), \
+        "nginx не ждёт web-heavy"
+
+
+def test_nginx_heavy_list_routes_go_to_web_heavy():
+    """NFR-503, NFR-504, решение 63: в `nginx.conf` и `nginx.prod.conf` — группа `portal_web_heavy` на `web-heavy:8000`
+    и ровно один `location ~ ^/lists/[0-9]+/(export|import|sample)/` с `proxy_pass http://portal_web_heavy`, теми же
+    директивами `proxy_*`, что у `location /`, и `proxy_read_timeout 75s`, без своего `client_max_body_size` (загрузка до
+    5 МБ укладывается в общий 6m). Шаблон берёт выгрузку, шаги загрузки и образец и не берёт другие адреса списков
+    (CONTRACT-006, 1.2)."""
+    for name in NGINX_FILES:
+        text = uncommented(deploy_text(name))
+        upstream = re.search(r"upstream\s+portal_web_heavy\s*\{([^}]*)\}", text)
+        assert upstream, f"{name}: нет upstream portal_web_heavy"
+        assert directives(upstream.group(1)) == ["server web-heavy:8000"], f"{name}: {upstream.group(1)!r}"
+        pattern, body = heavy_location(name)
+        assert pattern == HEAVY_PATTERN, f"{name}: шаблон {pattern!r}"
+        for path in HEAVY_PATHS:
+            assert re.search(pattern, path), f"{name}: {path} не попал в web-heavy"
+        for path in LIGHT_PATHS:
+            assert not re.search(pattern, path), f"{name}: {path} попал в web-heavy"
+        own = directives(body)
+        root = [item.replace("portal_web", "portal_web_heavy", 1) if item.startswith("proxy_pass") else item
+                for item in directives(location_body(text, "/"))]
+        assert own == root, f"{name}: директивы не как у location /: {own}"
+        assert "proxy_read_timeout 75s" in own
+        assert not any(item.startswith("client_max_body_size") for item in own), f"{name}: свой предел тела"
+
+
+def test_only_heavy_list_routes_use_web_heavy():
+    """Решение 63: группу `portal_web_heavy` использует только этот `location`; остальные — `portal_web`, как прежде."""
+    for name in NGINX_FILES:
+        text = uncommented(deploy_text(name))
+        assert len(re.findall(r"proxy_pass\s+http://portal_web_heavy\s*;", text)) == 1, \
+            f"{name}: portal_web_heavy вне location тяжёлых адресов"
+
+
 # --- CSP --------------------------------------------------------------------------------------------------------------
 
 def _csp(response, path: str) -> dict[str, list[str]]:
