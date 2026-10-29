@@ -58,6 +58,18 @@ def _taken(record, field, norm_value) -> ListsError:
         params={"number": number, "url": f"/lists/{record.list_id}/{number}/" if owner else f"/lists/{record.list_id}/"})
 
 
+def rows_for(record, fields) -> list:
+    """Строки `UniqueValue` записи по уникальным полям `fields` — без записи в базу (пакетная вставка загрузки)."""
+    found = []
+    for field in fields:
+        if not field.unique:
+            continue
+        norm_value = normalize(field, (record.values or {}).get(field.code))
+        if norm_value is not None:
+            found.append(UniqueValue(list_id=record.list_id, field=field, norm_value=norm_value, record=record))
+    return found
+
+
 def sync(record, fields) -> None:
     """Перезаписывает строки `UniqueValue` записи по уникальным полям из `fields` (видимым и скрытым — FR-508).
 

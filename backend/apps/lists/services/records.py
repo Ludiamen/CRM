@@ -200,3 +200,23 @@ def save(lst, number: int, data: dict, *, base_version: int, actor) -> SaveResul
         vectors.refresh([record.pk])
         history.write(record, "changed", entries, actor)
     return SaveResult(record, True)
+
+
+# --- внутренний вход для загрузки таблицы ---------------------------------------------------------------------------
+# Список уже заблокирован и прочитан вызывающим (`imports.confirm`: замок, `FOR UPDATE` списка, поля один раз): права,
+# замки, схема и вложенные точки сохранения здесь не берутся. Публичные `create` и `save` выше не меняются.
+
+def create_locked(locked, number: int, title: str, stored: dict, actor) -> Record:
+    """Создаёт запись с заданным номером; счётчик `next_number` ведёт вызывающий. `unique.sync` и история — пакетно."""
+    now = timezone.now()
+    return Record.objects.create(
+        list=locked, number=number, title=title, values=stored, created_at=now, created_by=actor,
+        updated_at=now, updated_by=actor)
+
+
+def update_locked(record, title: str, new_values: dict, actor) -> None:
+    """Записывает изменённые название и значения записи, уже взятой под `FOR UPDATE`; версия растёт."""
+    record.title, record.values = title, new_values
+    record.version += 1
+    record.updated_by, record.updated_at = actor, timezone.now()
+    record.save(update_fields=["title", "values", "version", "updated_by", "updated_at"])

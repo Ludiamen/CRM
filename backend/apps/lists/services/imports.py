@@ -11,13 +11,13 @@ from datetime import timedelta
 from urllib.parse import quote
 
 from django.core.exceptions import PermissionDenied
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.utils import timezone
 
 from apps.core.services import audit, table_file
 from apps.core.services.audit_search import FORMULA_START
-from apps.lists.models import Field, ImportJob, List, Record
+from apps.lists.models import Change, Field, ImportJob, List, Record, UniqueValue
 from apps.lists.services import access, history, records, schema, unique, values, vectors
 from apps.lists.services.errors import ListsError
 from apps.lists.texts import TABLE_FILE_TEXTS, TEXTS
@@ -239,15 +239,45 @@ def counts(job: ImportJob) -> dict:
 
 # --- подтверждение --------------------------------------------------------------------------------------------
 
-def _create_row(lst, entry, actor, lookups) -> int:
-    data = {"title": entry["title"]}
-    data.update({code: text for code, text in entry["texts"].items() if code != TITLE})
-    return records.create(lst, data, actor, via_import=True, lookups=lookups).pk
+CHUNK = 250
 
 
-def _update_row(lst, entry, every, actor) -> tuple[int, bool]:
-    """Обновляет запись по свежим данным в точке сохранения вызывающего; возвращает (номер записи, изменена ли)."""
-    record = Record.objects.select_for_update().filter(pk=entry["owner"].pk, list_id=lst.pk).first()
+class _Batch:
+    """Накопитель порции: строки `UniqueValue`, записи с устаревшими строками и события истории — на пакетную вставку."""
+
+    def __init__(self):
+        self.unique_rows: list = []
+        self.stale: list = []
+        self.changes: list = []
+        self.touched: list = []
+        self.created = 0
+        self.updated = 0
+
+    def flush(self) -> None:
+        """Одна пачка вставок; `IntegrityError` ограничения уникальности — `ListsError` (порция откатывается вызывающим)."""
+        try:
+            if self.stale:
+                UniqueValue.objects.filter(record_id__in=self.stale).delete()
+            if self.unique_rows:
+                UniqueValue.objects.bulk_create(self.unique_rows)
+        except IntegrityError:
+            raise ListsError("unique_taken") from None
+        if self.changes:
+            Change.objects.bulk_create(self.changes)
+
+
+def _apply_row(locked, entry, result, actor, every, batch: _Batch, counter: list) -> None:
+    """Создаёт или обновляет одну строку без проверки прав и замков; вставки уникальности и истории — в `batch`."""
+    if result == "will_create":
+        stored = {code: value for code, value in entry["parsed"].items() if value is not None}
+        record = records.create_locked(locked, counter[0], entry["title"], stored, actor)
+        counter[0] += 1
+        batch.unique_rows.extend(unique.rows_for(record, every))
+        batch.changes.append(history.make(record, "created", [], actor, via_import=True))
+        batch.touched.append(record.pk)
+        batch.created += 1
+        return
+    record = Record.objects.select_for_update().filter(pk=entry["owner"].pk, list_id=locked.pk).first()
     if record is None or record.archived:
         raise ListsError("record_archived")
     old = dict(record.values or {})
@@ -260,22 +290,57 @@ def _update_row(lst, entry, every, actor) -> tuple[int, bool]:
         else:
             new[code] = value
     title = entry["title"] or record.title
+    batch.touched.append(record.pk)
+    batch.updated += 1
     if title == record.title and new == old:
-        return record.pk, False
+        return
     shown = [entry["fields"][code] for code in entry["parsed"]]
     entries = history.build_changes(shown, old, new, actor, old_title=record.title, new_title=title)
-    record.title, record.values = title, new
-    record.version += 1
-    record.updated_by, record.updated_at = actor, timezone.now()
-    record.save(update_fields=["title", "values", "version", "updated_by", "updated_at"])
-    unique.sync(record, every)
-    history.write(record, "imported", entries, actor, via_import=True)
-    return record.pk, True
+    records.update_locked(record, title, new, actor)
+    batch.stale.append(record.pk)
+    batch.unique_rows.extend(unique.rows_for(record, every))
+    batch.changes.append(history.make(record, "imported", entries, actor, via_import=True))
+
+
+def _run_chunk(locked, chunk, actor, every, counter: list, summary: dict, touched: list) -> None:
+    """Порция в одной точке сохранения; при ошибке строки порция откатывается (с ней — счётчик номеров) и повторяется
+    по одной строке, каждая в своей точке сохранения: строки с ошибками не загружаются, остальные загружаются (FR-534)."""
+    start = counter[0]
+    batch = _Batch()
+    try:
+        with transaction.atomic():
+            for result, entry in chunk:
+                _apply_row(locked, entry, result, actor, every, batch, counter)
+            batch.flush()
+    except (ListsError, IntegrityError):
+        counter[0] = start
+    else:
+        summary["created"] += batch.created
+        summary["updated"] += batch.updated
+        touched.extend(batch.touched)
+        return
+    for result, entry in chunk:
+        start = counter[0]
+        single = _Batch()
+        try:
+            with transaction.atomic():
+                _apply_row(locked, entry, result, actor, every, single, counter)
+                single.flush()
+        except (ListsError, IntegrityError):
+            counter[0] = start
+            summary["errors"] += 1
+        else:
+            summary["created"] += single.created
+            summary["updated"] += single.updated
+            touched.extend(single.touched)
 
 
 def confirm(lst, job_id, actor) -> dict:
-    """Выполняет загрузку: замок списка (разделяемый) → `FOR UPDATE` задания → `FOR UPDATE` списка (5.2); каждая строка
-    перепроверяется по свежим данным и выполняется в точке сохранения; вектор — один раз в конце. Повтор — прежний итог."""
+    """Выполняет загрузку: замок списка (разделяемый) → `FOR UPDATE` задания → `FOR UPDATE` списка (5.2) — по одному разу
+    на всё подтверждение; поля читаются один раз. Строки идут порциями по `CHUNK` в точке сохранения, каждая
+    перепроверяется по свежим данным; ошибка строки откатывает порцию (и счётчик номеров), порция повторяется по одной
+    строке. История и значения уникальности — пакетно; `next_number` обновляется один раз; вектор — в конце. Повтор —
+    прежний итог (решение 63)."""
     require_edit(actor, lst.pk)
     with transaction.atomic():
         access.lock_list(lst.pk, shared=True)
@@ -294,21 +359,17 @@ def confirm(lst, job_id, actor) -> dict:
         summary = {"created": 0, "updated": 0, "errors": 0}
         touched: list[int] = []
         lookups = _lookups_for(locked, job.mapping, actor)
+        todo = []
         for public, entry in _evaluate(locked, job.rows, job.mapping, actor, lookups):
             if public["result"] == "error":
                 summary["errors"] += 1
-                continue
-            try:
-                with transaction.atomic():
-                    if public["result"] == "will_create":
-                        touched.append(_create_row(locked, entry, actor, lookups))
-                        summary["created"] += 1
-                    else:
-                        pk, _changed = _update_row(locked, entry, every, actor)
-                        touched.append(pk)
-                        summary["updated"] += 1
-            except ListsError:
-                summary["errors"] += 1
+            else:
+                todo.append((public["result"], entry))
+        counter = [locked.next_number]
+        for index in range(0, len(todo), CHUNK):
+            _run_chunk(locked, todo[index:index + CHUNK], actor, every, counter, summary, touched)
+        if counter[0] != locked.next_number:
+            List.objects.filter(pk=locked.pk).update(next_number=counter[0])
         vectors.refresh(touched)
         job.state, job.rows, job.summary = ImportJob.State.DONE, [], summary
         job.save(update_fields=["state", "rows", "summary"])

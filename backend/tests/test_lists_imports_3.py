@@ -98,8 +98,9 @@ def test_confirm_chunk_with_failing_row_loads_the_rest(monkeypatch):
     """FR-534, решение 63: 600 строк; строка в середине первой порции падает на ограничении уникальности при записи
     (предварительная проверка обойдена подменой `unique.find_owners`, как в `test_lists_imports_2.py`). Итог — ошибка
     этой строки, остальные 599 загружены; номера без пропусков (владелец значения — №1, загруженные — №2…600),
-    история «создана загрузкой» у 599; точек сохранения не больше числа порций плюс строк одной повторённой порции —
-    на коде db956a2 точка сохранения на каждую строку (600)."""
+    история «создана загрузкой» у 599; точек сохранения не больше числа порций плюс строк одной повторённой порции и
+    одной точки самого подтверждения (тест идёт внутри транзакции, поэтому `atomic` подтверждения — тоже точка
+    сохранения) — на коде db956a2 по нескольку точек на строку (1 797)."""
     lst, uniq, room, author = _world()
     rows = _rows("Узел", 600)
     job = _job(lst, author.user, rows, uniq, room)
@@ -121,4 +122,4 @@ def test_confirm_chunk_with_failing_row_loads_the_rest(monkeypatch):
     values = support.model("lists.UniqueValue").objects.filter(field=uniq)
     assert values.count() == 600 and values.filter(record=owner).count() == 1
     chunks = -(-600 // CHUNK)
-    assert _savepoints(sqls) <= chunks + CHUNK, f"точек сохранения {_savepoints(sqls)}"
+    assert _savepoints(sqls) <= chunks + CHUNK + 1, f"точек сохранения {_savepoints(sqls)}"

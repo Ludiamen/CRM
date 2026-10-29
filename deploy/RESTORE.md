@@ -6,10 +6,10 @@
 
 ## Шаг 1. Остановить службы
 
-Остановите службы, которые пишут в базу и тома: `web`, `worker`, `worker-mail`, `worker-inbox`, `worker-notify`, `notify-poller`, `scheduler`. Остановите и службу
+Остановите службы, которые пишут в базу и тома: `web`, `web-heavy`, `worker`, `worker-mail`, `worker-inbox`, `worker-notify`, `notify-poller`, `scheduler`. Остановите и службу
 `backup`: иначе ночная копия в 01:30 может снять полувосстановленную базу.
 
-    docker compose stop web worker worker-mail worker-inbox worker-notify notify-poller scheduler backup
+    docker compose stop web web-heavy worker worker-mail worker-inbox worker-notify notify-poller scheduler backup
 
 База (`postgres`), `valkey` и остальные службы продолжают работать.
 
@@ -52,9 +52,9 @@
 
 Запустите остановленные службы, включая `backup`, и проверьте вход и список заявок:
 
-    docker compose up -d web worker worker-mail worker-inbox worker-notify notify-poller scheduler backup
+    docker compose up -d web web-heavy worker worker-mail worker-inbox worker-notify notify-poller scheduler backup
 
-Затем перезапустите `nginx`: он запоминает адрес службы `web` при своём запуске, а после остановки и запуска `web` может
+Затем перезапустите `nginx`: он запоминает адреса служб `web` и `web-heavy` (она обслуживает выгрузку и загрузку списков) при своём запуске, а после остановки и запуска этих служб может
 получить другой адрес во внутренней сети — без перезапуска `nginx` портал отвечает 502 (проверено при восстановлении на
 стенде 2026-10-22):
 

@@ -30,6 +30,11 @@ def write(record, kind: str, changes, actor, *, via_import: bool = False) -> Cha
         record=record, kind=kind, actor=actor, changes=list(changes or []), via_import=via_import)
 
 
+def make(record, kind: str, changes, actor, *, via_import: bool = False) -> Change:
+    """Строка истории без записи в базу — для пакетной вставки (`Change.objects.bulk_create`, загрузка таблицы)."""
+    return Change(record=record, kind=kind, actor=actor, changes=list(changes or []), via_import=via_import)
+
+
 def build_changes(fields, old_values: dict, new_values: dict, viewer, *, old_title=None, new_title=None) -> list[dict]:
     """Изменённые поля по `fields` («было / стало» строками показа) в порядке полей; «Название» — первым.
 

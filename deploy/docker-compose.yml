@@ -90,6 +90,42 @@ services:
       retries: 12
       start_period: 60s
 
+  # Тяжёлые адреса списков (выгрузка, загрузка, образец) — в своих процессах: счётная работа не задерживает
+  # другие запросы (решение 63, T-6311). Всё как у web, кроме числа процессов; nginx направляет сюда только их.
+  web-heavy:
+    image: crm-portal:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_MIGRATE_URL: ""   # владелец схемы портала не нужен: миграции — служба migrate
+      DATABASE_POOL: "1"         # пул соединений psycopg (ASGI), см. config/settings.py
+      # внутренняя сеть compose (там стоит наш nginx) в списке всегда
+      TRUSTED_PROXIES: "${TRUSTED_PROXIES:-},${CRM_SUBNET:-172.31.77.0/24}"
+      CLAMAV_HOST: "${CLAMAV_HOST:-clamav}"
+      CLAMAV_PORT: "${CLAMAV_PORT:-3310}"
+      CLAMAV_TIMEOUT: "${CLAMAV_TIMEOUT:-120}"
+    command: >-
+      gunicorn config.asgi:application --bind 0.0.0.0:8000
+      --worker-class uvicorn_worker.UvicornWorker
+      --workers ${WEB_HEAVY_WORKERS:-2} --timeout 60 --graceful-timeout 30
+      --keep-alive 30 --error-logfile - --no-control-socket
+    volumes:
+      - media:/app/media
+      - protected:/app/protected
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "/app/healthcheck.py"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
   # Миграции под crm_owner (DATABASE_MIGRATE_URL): выполняются один раз и завершаются,
   # web ждёт их успеха. Учётные данные владельца схемы есть только здесь и у standtools
   # (профиль dev): иначе взлом портала обходил бы запрет crm_app менять журнал.
@@ -278,6 +314,8 @@ services:
       - protected:/srv/protected:ro
     depends_on:
       web:
+        condition: service_healthy
+      web-heavy:
         condition: service_healthy
     healthcheck:
       # запрос к /health/ с тем же именем хоста, что в PORTAL_URL; самоподписанный сертификат не проверяется
