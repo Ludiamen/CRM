@@ -95,8 +95,14 @@ services:
   web-heavy:
     image: crm-portal:local
     restart: unless-stopped
+    # Квота процессора: всплеск выгрузок не отнимает его у обычных страниц (решение 65);
+    # на боевом сервере значение подбирается переменной WEB_HEAVY_CPUS.
+    cpus: ${WEB_HEAVY_CPUS:-0.5}
     env_file: .env
     environment:
+      # Ожидание соединения пула — меньше proxy_read_timeout 75s у nginx (решение 64):
+      # запрос не обрывается раньше пула; процессов 4 по 4 соединения = 16 в пуле.
+      DATABASE_POOL_TIMEOUT: "70"
       DATABASE_MIGRATE_URL: ""   # владелец схемы портала не нужен: миграции — служба migrate
       DATABASE_POOL: "1"         # пул соединений psycopg (ASGI), см. config/settings.py
       # внутренняя сеть compose (там стоит наш nginx) в списке всегда
@@ -107,7 +113,7 @@ services:
     command: >-
       gunicorn config.asgi:application --bind 0.0.0.0:8000
       --worker-class uvicorn_worker.UvicornWorker
-      --workers ${WEB_HEAVY_WORKERS:-2} --timeout 60 --graceful-timeout 30
+      --workers ${WEB_HEAVY_WORKERS:-4} --timeout 60 --graceful-timeout 30
       --keep-alive 30 --error-logfile - --no-control-socket
     volumes:
       - media:/app/media

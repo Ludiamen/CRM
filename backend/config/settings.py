@@ -114,8 +114,25 @@ DATABASES = {"default": env.db("DATABASE_URL")}
 # только у web (DATABASE_POOL=1 в compose); CONN_MAX_AGE остаётся 0.
 if env.bool("DATABASE_POOL", default=False):
     DATABASES["default"].setdefault("OPTIONS", {})["pool"] = True
+    # Ожидание свободного соединения пула, с (у web-heavy 70, меньше proxy_read_timeout nginx);
+    # без переменной остаётся пул с настройками psycopg по умолчанию (30 с).
+    _pool_timeout = env.int("DATABASE_POOL_TIMEOUT", default=0)
+    if _pool_timeout > 0:
+        DATABASES["default"]["OPTIONS"]["pool"] = {"timeout": _pool_timeout}
 if env("DATABASE_MIGRATE_URL", default=""):
     DATABASES["migrate"] = env.db("DATABASE_MIGRATE_URL")
+
+# Ошибки запросов (500) — в вывод контейнера, но без текста исключения (config/log_format.py).
+# propagate и корневой логгер не трогаем: прежние тесты считают записи django.request.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"no_exc_text": {"()": "config.log_format.NoExceptionTextFormatter"}},
+    "handlers": {
+        "container": {"class": "logging.StreamHandler", "level": "ERROR", "formatter": "no_exc_text"},
+    },
+    "loggers": {"django.request": {"handlers": ["container"], "level": "ERROR"}},
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

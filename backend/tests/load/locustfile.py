@@ -542,7 +542,8 @@ class ListsUser(HttpUser):
             --reset-stats --host https://127.0.0.1:8031 ListsUser
     (имя класса — в конце команды: без него locust запускает все классы файла и делит `-u` между ними)
     Номера списков и записей берутся из разметки (`data-list-id`, `data-record-number`). Слова поиска —
-    LOAD_LISTS_FREQUENT, LOAD_LISTS_RARE, LOAD_LISTS_MIXED (по умолчанию слова словаря `fill_lists.py`). Пределы:
+    LOAD_LISTS_FREQUENT, LOAD_LISTS_RARE, LOAD_LISTS_MIXED (по умолчанию слова словаря `fill_lists.py`). Частота (решение 65): выгрузка и предпросмотр — около раза в час на пользователя при паузе 5–15 с (~100 в час на всех
+    при 100 пользователях). Пределы:
     таблица и карточка p95 не больше 500 мс (`P95_LIMIT_MS`), поиск — 1000 мс, выгрузка — 10 с, предпросмотр — 15 с."""
 
     wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
@@ -572,17 +573,17 @@ class ListsUser(HttpUser):
     def _list(self):
         return random.choice(self.lists) if self.lists else None
 
-    @task(3)
+    @task(36)
     def home(self):
         self.client.get("/lists/", name="/lists/")
 
-    @task(6)
+    @task(72)
     def grid(self):
         list_id = self._list()
         if list_id:
             self.client.get(f"/lists/{list_id}/", name="/lists/<n>/")
 
-    @task(4)
+    @task(48)
     def grid_filtered(self):
         list_id = self._list()
         if list_id:
@@ -592,23 +593,23 @@ class ListsUser(HttpUser):
                 {"preset": "expiring"}, {"preset": "archive"}, {"page": "3"}))
             self.client.get(f"/lists/{list_id}/", params=params, name="/lists/<n>/?filter")
 
-    @task(5)
+    @task(60)
     def record(self):
         list_id = self._list()
         if list_id:
             self.client.get(f"/lists/{list_id}/{random.choice(self.numbers[list_id])}/", name="/lists/<n>/<n>/")
 
-    @task(3)
+    @task(36)
     def list_search(self):
         list_id = self._list()
         if list_id:
             self.client.get(f"/lists/{list_id}/", params={"q": self._query()}, name="/lists/<n>/?q")
 
-    @task(4)
+    @task(48)
     def search(self):
         self.client.get("/search/", params={"q": self._query()}, name="/search/?q")
 
-    @task(3)
+    @task(36)
     def popup(self):
         self.client.get("/search/popup/", params={"q": self._query()}, headers={"HX-Request": "true"},
                         name="/search/popup/")

@@ -613,7 +613,7 @@ Opus по задачам» в конце файла; решения владел
   `${WEB_HEAVY_WORKERS:-4}`, квота, ожидание пула). Прежние тесты не
   меняются: строка `["pool"] = True` в настройках остаётся (`test_deploy_files.py::test_database_pool_only_for_web`) —
   (NFR-501, NFR-502, NFR-503, NFR-504, NFR-513; решения 64, 65)
-- [ ] T-6315 [sonnet] пул, журнал ошибок, квота и модель нагрузки по решениям 64 и 65: `deploy/docker-compose.yml` (у
+- [x] T-6315 [sonnet] пул, журнал ошибок, квота и модель нагрузки по решениям 64 и 65: `deploy/docker-compose.yml` (у
   `web-heavy` — `${WEB_HEAVY_WORKERS:-4}`, `cpus: ${WEB_HEAVY_CPUS:-0.5}`, `DATABASE_POOL_TIMEOUT: "70"`, комментарий
   «зачем»), `backend/config/settings.py` (`DATABASE_POOL_TIMEOUT` — второй строкой после `["pool"] = True`; `LOGGING`
   с `disable_existing_loggers: False`: логгеру `django.request` добавляется обработчик вывода уровня ERROR, `propagate`
