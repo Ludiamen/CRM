@@ -1,7 +1,7 @@
 ---
 id: SPEC-007
 вид: спека
-статус: черновик
+статус: на-проверке
 версия: 1
 зависит_от: CONST, REF-CAP, REF-UX, REF-SRC, REQ-CTX, ADR-0003, ADR-0004, ADR-0011, ADR-0012, ADR-0015, TGT-ARCH, TGT-NFR, SPEC-001, SPEC-002, SPEC-003, SPEC-004, SPEC-005, SPEC-006
 ---
