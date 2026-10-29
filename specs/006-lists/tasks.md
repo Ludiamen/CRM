@@ -589,7 +589,7 @@ Opus по задачам» в конце файла; решения владел
   Opus имя теста — backend/apps/lists/services/
   imports.py, records.py, unique.py, history.py; тесты T-6310 (`test_lists_imports_3.py`), `test_lists_imports.py`,
   `test_lists_imports_2.py`, `test_lists_records.py`, `test_lists_unique.py`, `test_lists_history.py` — (FR-534; решение 63)
-- [ ] T-6313 [opus] стенд и проверка решения 63 (по разрешению владельца на обновление стенда, после копии данных):
+- [x] T-6313 [opus] стенд и проверка решения 63 (по разрешению владельца на обновление стенда, после копии данных):
   сборка образа (web, nginx), `up -d --no-deps` служб решения 26 и `web-heavy`, перезапуск `nginx`; проверка
   `max_connections` базы с учётом пула второй службы; полный серверный набор без регрессий против эталона; приёмка
   `test_l09_excel.py` в Chromium, Firefox, Edge и Яндекс Браузере и прежняя приёмка, затрагивающая загрузку файлов
