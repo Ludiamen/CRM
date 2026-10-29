@@ -789,5 +789,6 @@ purge_record.py, check.py, log.txt, check-*.txt). Стенд — код c803a1c,
    После запуска `web`, `web-heavy`, `nginx` здоровы, квота `web-heavy` 0,5 сохранилась.
 5. После восстановления: карточка №10001 — 200, ссылки на файлы есть; PNG — 200, тот же файл 666 байт; текст — 200,
    содержимое на месте (check-restored.txt). **NFR-514 выполнен.** Замечание: оба файла отдаются как скачивание
-   (PNG — `application/octet-stream`), это поведение FR-536/CONTRACT-006 для файлов записей, а не следствие восстановления.
+   (PNG — `application/octet-stream`): по CONTRACT-006 (маршрут `/lists/<id>/<n>/files/<file_id>/`) «чистый» файл
+   отдаёт `nginx` по `X-Accel-Redirect` с `Content-Disposition: attachment` — так было и до копии, восстановление ни при чём.
 T-6305 отмечена.
