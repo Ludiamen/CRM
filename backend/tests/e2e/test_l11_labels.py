@@ -464,8 +464,9 @@ def test_l11_print_media_shows_only_labels_without_menu_and_panels(admin_page):
 
 
 def test_l11_print_sheet_places_21_labels_in_3_by_7_grid_on_a4(admin_page, browser):
-    """Сценарий 11, п. 5 и 7: 21 этикетка при печати стоит сеткой 3 × 7 по 63,5 × 38,1 мм; в Chromium-браузерах круга
-    это ровно одна страница PDF формата A4, а 22 этикетки дают две (FR-539)."""
+    """Сценарий 11, п. 5 и 7: 21 этикетка при печати стоит сеткой 3 × 7 по 63,5 × 38,1 мм от самого начала области печати
+    (без отступов оболочки портала — иначе сетка сдвигается с наклеек листа: замечание ручного прохода T-6308, отступ
+    `.app-main` ~5 мм); в Chromium-браузерах круга это ровно одна страница PDF формата A4, а 22 этикетки дают две (FR-539)."""
     list_id, _name, _model, (unique_code, _second) = _list_with_unique_fields(admin_page)
     word = unique_word()
     numbers = [create_record(admin_page, list_id, f"Метка {i} {word}", {unique_code: unique_word("inv")})
@@ -488,6 +489,8 @@ def test_l11_print_sheet_places_21_labels_in_3_by_7_grid_on_a4(admin_page, brows
         assert box["w"] <= CELL_W + 2 and box["h"] <= CELL_H + 2, f"этикетка больше ячейки 63,5 × 38,1 мм: {box}"
     for row in rows:
         assert sum(1 for b in boxes if abs(b["y"] - row) <= 2) == 3
+    # лист начинается в начале области печати: первая этикетка — в левом верхнем углу, не дальше 1 мм (T-6308)
+    assert min(columns) <= MM and min(rows) <= MM, f"лист сдвинут от начала области печати: x={min(columns):.1f}, y={min(rows):.1f} px"
     grid = admin_page.locator(SHEET).evaluate(
         "el => { const s = getComputedStyle(el); return {display: s.display, columns: s.gridTemplateColumns}; }")
     assert grid["display"] == "grid", f"лист этикеток при печати не сетка: {grid}"

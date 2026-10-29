@@ -36,5 +36,7 @@
   #top-bar, .app-top-bar, #main-menu, .app-menu, .lists-labels-head { display: none; }
   /* оболочка портала — сетка высотой в экран: внутри неё Chromium не делит лист на страницы */
   .app-shell { display: block; min-height: 0; }
+  /* отступ области содержимого портала (~5 мм) сдвигал сетку с наклеек листа и выводил её за поля печати (T-6308) */
+  .app-main { padding: 0; }
   .lists-label { border-color: transparent; }
 }
