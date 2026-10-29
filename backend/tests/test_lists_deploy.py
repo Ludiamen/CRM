@@ -8,8 +8,14 @@
 ставятся на 21:30 UTC, когда по Москве уже следующие сутки (00:30 11-го числа). Код среза импортируется внутри тестов.
 """
 import ast
+import io
+import json
+import logging
+import os
 import re
 import string
+import subprocess
+import sys
 from datetime import datetime, timezone as dt_timezone
 
 import pytest
@@ -275,8 +281,8 @@ def heavy_location(name: str) -> tuple[str, str]:
 
 
 def test_compose_web_heavy_service_like_web():
-    """NFR-503, NFR-504, NFR-513, решение 63: служба `web-heavy` — тот же образ и тот же запуск gunicorn с
-    `UvicornWorker`, что у `web`, но число процессов `${WEB_HEAVY_WORKERS:-2}`; пул соединений, доверенные прокси,
+    """NFR-503, NFR-504, NFR-513, решения 63 и 64: служба `web-heavy` — тот же образ и тот же запуск gunicorn с
+    `UvicornWorker`, что у `web`, но число процессов `${WEB_HEAVY_WORKERS:-4}` (решение 64: 16 соединений пула); пул соединений, доверенные прокси,
     тома `media` и `protected`, ожидание `migrate`, `postgres`, `valkey` и проверка здоровья — как у `web`; без
     `container_name` и `profiles`; `nginx` ждёт и `web-heavy` (CONTRACT-006, 1.2)."""
     services = compose_services()
@@ -285,7 +291,7 @@ def test_compose_web_heavy_service_like_web():
     assert re.search(r"^    image: crm-portal:local\s*$", heavy, re.M)
     web_command = compose_section(web, "command")
     assert "${WEB_WORKERS:-4}" in web_command
-    assert compose_section(heavy, "command") == web_command.replace("${WEB_WORKERS:-4}", "${WEB_HEAVY_WORKERS:-2}")
+    assert compose_section(heavy, "command") == web_command.replace("${WEB_WORKERS:-4}", "${WEB_HEAVY_WORKERS:-4}")
     assert re.search(r'^      DATABASE_POOL:\s*"1"', heavy, re.M), "у web-heavy нет пула соединений"
     trusted = re.search(r"^      TRUSTED_PROXIES:.*$", web, re.M).group(0)
     assert trusted in heavy.splitlines(), "TRUSTED_PROXIES не как у web"
@@ -331,6 +337,113 @@ def test_only_heavy_list_routes_use_web_heavy():
         text = uncommented(deploy_text(name))
         assert len(re.findall(r"proxy_pass\s+http://portal_web_heavy\s*;", text)) == 1, \
             f"{name}: portal_web_heavy вне location тяжёлых адресов"
+
+
+# --- пул, квота и журнал ошибок web-heavy (решения 64 и 65 задач, T-6314) ---------------------------------------------
+
+def _pool_option(extra: dict):
+    """`DATABASES["default"]["OPTIONS"]["pool"]` настроек, прочитанных в отдельном процессе с переменными `extra`."""
+    env = {key: value for key, value in os.environ.items() if key not in ("DATABASE_POOL", "DATABASE_POOL_TIMEOUT")}
+    env.update(extra)
+    env.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+    code = ("import json; from django.conf import settings; "
+            "print(json.dumps(settings.DATABASES['default'].get('OPTIONS', {}).get('pool')))")
+    done = subprocess.run([sys.executable, "-c", code], cwd=BACKEND_DIR, env=env, capture_output=True, text=True,
+                          timeout=120)
+    assert done.returncode == 0, done.stderr[-2000:]
+    return json.loads(done.stdout.strip().splitlines()[-1])
+
+
+def test_web_heavy_pool_wait_below_nginx_timeout():
+    """NFR-503, NFR-504, решение 64: у `web-heavy` ожидание соединения пула — `DATABASE_POOL_TIMEOUT: "70"`, меньше
+    `proxy_read_timeout` тяжёлого `location` в обоих файлах nginx (запрос не обрывается раньше пула, а пул не отказывает
+    через 30 с по умолчанию); у `web` переменной нет. Настройки при `DATABASE_POOL=1` и `DATABASE_POOL_TIMEOUT=70` дают
+    пулу `{"timeout": 70}`, без второй переменной — прежнее `True` (CONTRACT-006, 1.2). На коде 529675d — 500 через 30 с
+    ожидания (crm-work/slice006/stage4/t6304/pool-probe.txt)."""
+    services = compose_services()
+    found = re.search(r'^      DATABASE_POOL_TIMEOUT:\s*"(\d+)"\s*$', services["web-heavy"], re.M)
+    assert found, "у web-heavy нет DATABASE_POOL_TIMEOUT"
+    wait = int(found.group(1))
+    assert wait == 70, f"ожидание пула {wait} с"
+    assert "DATABASE_POOL_TIMEOUT" not in services["web"], "у web не должно быть DATABASE_POOL_TIMEOUT"
+    for name in NGINX_FILES:
+        _, body = heavy_location(name)
+        read = re.search(r"\bproxy_read_timeout (\d+)s\b", " ; ".join(directives(body)))
+        assert read and wait < int(read.group(1)), f"{name}: ожидание пула {wait} с не меньше proxy_read_timeout"
+    assert _pool_option({"DATABASE_POOL": "1", "DATABASE_POOL_TIMEOUT": "70"}) == {"timeout": 70}
+    assert _pool_option({"DATABASE_POOL": "1"}) is True
+
+
+def test_web_heavy_cpu_quota():
+    """NFR-501, NFR-502, решение 65: у `web-heavy` — квота процессора `cpus: ${WEB_HEAVY_CPUS:-0.5}` (всплеск выгрузок
+    не отнимает процессор у обычных страниц; на боевом сервере значение — переменной); у `web` квоты нет
+    (CONTRACT-006, 1.2)."""
+    services = compose_services()
+    assert re.search(r'^    cpus:\s*"?\$\{WEB_HEAVY_CPUS:-0\.5\}"?\s*$', services["web-heavy"], re.M), \
+        "у web-heavy нет cpus: ${WEB_HEAVY_CPUS:-0.5}"
+    assert not re.search(r"^    cpus:", services["web"], re.M), "у web не должно быть квоты"
+
+
+@PLAIN
+def test_request_errors_logged_without_exception_text(monkeypatch):
+    """Решение 64: ошибка запроса попадает в вывод контейнера — у логгера `django.request` есть обработчик вывода; его
+    строка содержит метод и путь, класс исключения и строки стека, но не текст исключения и не текст исключения цепочки
+    (`__cause__`): в тексте ошибок базы бывают значения полей записей (решение Opus, «пдн-152фз»). Вывод ловится подменой
+    потока обработчика (`capsys` поток, привязанный при настройке, не видит, `caplog` не применяет форматтер
+    обработчика). На коде 529675d `LOGGING` пуст — обработчика нет (CONTRACT-006, 1.2)."""
+    lst = lists.make_list()
+    reader = lists.as_reader(lst)
+    marker = "МЕТКА-Иванов-4510-1234"
+
+    def broken(*args, **kwargs):
+        try:
+            raise KeyError(marker + "-причина")
+        except KeyError as cause:
+            raise ValueError(marker) from cause
+
+    monkeypatch.setattr("apps.lists.services.export.build", broken)
+    handlers = [handler for handler in logging.getLogger("django.request").handlers
+                if isinstance(handler, logging.StreamHandler)]
+    assert handlers, "у логгера django.request нет обработчика вывода (LOGGING)"
+    buffer = io.StringIO()
+    previous = [handler.setStream(buffer) for handler in handlers]
+    try:
+        reader.client.raise_request_exception = False
+        response = reader.client.get(f"/lists/{lst.pk}/export/")
+    finally:
+        for handler, stream in zip(handlers, previous):
+            handler.setStream(stream)
+    assert response.status_code == 500
+    text = buffer.getvalue()
+    assert f"/lists/{lst.pk}/export/" in text and "GET" in text, text
+    assert "ValueError" in text, text
+    assert 'File "' in text and "broken" in text, "нет строк стека"
+    assert marker not in text, "в журнал попал текст исключения"
+
+
+def test_lists_user_heavy_tasks_about_once_per_hour():
+    """NFR-513, решение 65: веса `@task` класса `ListsUser` и пауза `LOAD_WAIT` по умолчанию дают выгрузку и предпросмотр
+    загрузки от 0,8 до 1,2 раза в час на пользователя (3600 / средняя пауза × вес / сумма весов); на коде 529675d —
+    12 раз в час. `locustfile.py` читается через `ast`: импорт `locust` подменяет сеть gevent (CONTRACT-006, 1.2)."""
+    text = (BACKEND_DIR / "tests" / "load" / "locustfile.py").read_text(encoding="utf-8")
+    cls = next(node for node in ast.parse(text).body if isinstance(node, ast.ClassDef) and node.name == "ListsUser")
+    weights = {}
+    for node in cls.body:
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        for deco in node.decorator_list:
+            if isinstance(deco, ast.Call) and getattr(deco.func, "id", "") == "task":
+                weights[node.name] = deco.args[0].value if deco.args else 1
+            elif isinstance(deco, ast.Name) and deco.id == "task":
+                weights[node.name] = 1
+    assert {"export", "import_preview"} <= set(weights), weights
+    pause = re.search(r'os\.environ\.get\("LOAD_WAIT",\s*"([\d.]+),([\d.]+)"\)', ast.get_source_segment(text, cls))
+    assert pause, "нет паузы LOAD_WAIT по умолчанию"
+    mean = (float(pause.group(1)) + float(pause.group(2))) / 2
+    total = sum(weights.values())
+    for name in ("export", "import_preview"):
+        per_hour = 3600 / mean * weights[name] / total
+        assert 0.8 <= per_hour <= 1.2, f"{name}: {per_hour:.2f} раза в час на пользователя"
 
 
 # --- CSP --------------------------------------------------------------------------------------------------------------

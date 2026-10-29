@@ -598,7 +598,7 @@ Opus по задачам» в конце файла; решения владел
   (`test_l10_files.py`, `test_k*` с файлами — по выбору Opus в отчёте) в Chromium; замер подтверждения 5 000 строк по HTTP
   на свободном стенде (цель — не дольше 15 с) и под моделью L1 (ответ без 504); затем T-6304 повторяет L1 и L2 —
   docs/reviews/TASKS-006.md, раздел «Нагрузка» — (FR-534, NFR-503, NFR-504, NFR-513; решение 63)
-- [ ] T-6314 [opus] тесты до кода к решениям 64 и 65 (падают на коде 529675d): в backend/tests/test_lists_deploy.py —
+- [x] T-6314 [opus] тесты до кода к решениям 64 и 65 (падают на коде 529675d): в backend/tests/test_lists_deploy.py —
   правка `test_compose_web_heavy_service_like_web` (тест среза; число процессов `${WEB_HEAVY_WORKERS:-4}` вместо `:-2`),
   новые `test_web_heavy_pool_wait_below_nginx_timeout` (у `web-heavy` — `DATABASE_POOL_TIMEOUT: "70"`, у `web` её нет;
   70 меньше `proxy_read_timeout` тяжёлого `location` в `nginx.conf` и `nginx.prod.conf`; настройки при `DATABASE_POOL=1` и
