@@ -109,7 +109,22 @@ TASKS-007 подписан владельцем 2026-10-30 10:17 (T-7008, 9dd291
 `crm-work/slice007/stage1/T-700N.md`, сюда переносит Opus.
 
 ### Подготовка: каркас (T-7001)
+Выполнено 2026-10-30 (`crm-work/slice007/stage1/T-7001.md`): приложение `backend/apps/feed/` по блоку плана «Где живёт
+код» (пустые модули, пакеты `services/`, `views/`, `migrations/`, `management/commands/`), `templates/feed/`,
+`static/feed/feed.js`, `feed.css`; `apps.feed` последним в `INSTALLED_APPS`; в `config/urls.py` — `include("apps.feed.urls")`
+без префикса под `apps.is_installed("apps.feed")`. Исполнитель поставил префикс `feed/`; Opus убрал его: план
+держит адреса модуля целиком, в том числе `/settings/feed/` вне `/feed/` (как `notify`: `notifications/…` и
+`settings/notifications/` при пустом префиксе). Сбор тестов — 3082 без ошибок; в шести файлах развёртывания и стека
+падают ровно три проверки хвоста `INSTALLED_APPS` (`test_kb_deploy`, `test_notify_deploy`, `test_lists_deploy` — решение 3,
+правит T-7138). Первый прогон исполнителя дал 98 ошибок создания тестовой базы — одновременно с ним шёл прогон T-7002 в
+той же тестовой базе; повтор прошёл (параллельные прогоны тестов одной базы впредь не запускаются).
 ### Подготовка: зависимости (T-7002)
+Выполнено 2026-10-30, расхождений нет (`crm-work/slice007/stage1/T-7002.md`). Версии в тестовом контейнере (Python
+3.12.14, `/opt/venv`) и в хостовом `CRM/.venv` (Python 3.12.3) равны закреплённым: channels 4.3.2, channels-redis 4.3.0,
+redis 8.1.0, Pillow 13.0.0, uvicorn 0.54.0, uvicorn-worker 0.4.0, gunicorn 26.2.0, websockets 17.2, locust 2.46.6,
+websocket-client 1.9.2, playwright 1.63.0. Pillow: WebP пишется и читается, `exif_transpose` поворачивает по EXIF,
+`draft` уменьшает JPEG при чтении, первый кадр GIF берётся. Вендорные `htmx-2.0.11.min.js` и `htmx-ext-ws-2.0.4.min.js` на
+месте, sha256 совпадают с `VERSIONS.md`. `requirements*.txt` не менялись; `test_stack.py` — 11 passed.
 ### Ранние факты: T-7003
 ### Ранние факты: T-7004
 ### Ранние факты: T-7005

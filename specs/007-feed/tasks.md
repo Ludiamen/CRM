@@ -100,7 +100,7 @@ Opus по задачам» в конце файла; решения владел
 
 ## Этап 1 — подготовка
 
-- [ ] T-7001 [sonnet] каркас по блоку «Где живёт код» плана; сверх блока — ничего: `backend/apps/feed/` (`apps.py` с
+- [x] T-7001 [sonnet] каркас по блоку «Где живёт код» плана; сверх блока — ничего: `backend/apps/feed/` (`apps.py` с
   классом `FeedConfig` и меткой `feed`, пустые `models.py`, `texts.py`, `notify_kinds.py`, `audit_labels.py`,
   `extensions.py` с пустой `register_all()`, `stand.py`, `tasks.py`, `consumers.py`, `routing.py` с пустым
   `websocket_urlpatterns`, `urls.py` с пустым `urlpatterns`; пакеты `migrations/`, `management/commands/`, `views/` с
@@ -118,7 +118,7 @@ Opus по задачам» в конце файла; решения владел
   `test_notify_deploy.py`, `test_lists_deploy.py` — тесты места приложения; решение 3) — backend/apps/feed/,
   backend/templates/feed/, backend/static/feed/, backend/config/settings.py, backend/config/urls.py — (план: «Где живёт
   код», «Модуль и выключение», «Прежние тесты, которые придётся поправить»; FR-641)
-- [ ] T-7002 [P] [sonnet] проверка «новых зависимостей нет» (план: «Новые компоненты и лицензии»): в тестовом контейнере и
+- [x] T-7002 [P] [sonnet] проверка «новых зависимостей нет» (план: «Новые компоненты и лицензии»): в тестовом контейнере и
   в хостовом `CRM/.venv` импортируются и совпадают с `backend/requirements.txt` и `requirements-dev.txt` версии
   `channels` 4.3.2, `channels_redis` 4.3.0, `redis` 8.1.0, `Pillow` 13.0.0 (в том числе `PIL.ImageOps.exif_transpose`,
   `Image.draft`, запись WebP — `PIL.features.check("webp")`, первый кадр GIF), `uvicorn` 0.54.0, `uvicorn-worker` 0.4.0,

@@ -1,4 +1,5 @@
 """Маршруты портала. Разделы администратора (`/staff/`, `/roles/`, `/audit/`, `/settings/`) подключают следующие проходы; срез 003 — `apps.servicedesk.urls`."""
+from django.apps import apps
 from django.urls import include, path
 
 urlpatterns = [
@@ -10,6 +11,9 @@ urlpatterns = [
     path("lists/", include("apps.lists.urls")),
     path("", include("apps.search.urls")),
 ]
+
+if apps.is_installed("apps.feed"):
+    urlpatterns.append(path("", include("apps.feed.urls")))  # /feed/…, /settings/feed/
 
 handler400 = "apps.core.views.pages.bad_request"
 handler403 = "apps.core.views.pages.forbidden"

@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "apps.knowledge",
     "apps.lists",
     "apps.search",
+    "apps.feed",
 ]
 # Встроенной админки Django нет: администрирование — свой раздел с проверкой
 # прав и журналом (PLAN-001, «Решения плана»).
