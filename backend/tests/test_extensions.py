@@ -66,13 +66,14 @@ def test_core_without_registered_extensions_behaves_as_slice_001(no_extensions):
 
 
 def test_org_registers_all_nine_extension_points():
-    """FR-120, FR-122, FR-123: `POINTS` — девять имён среза 002, четыре среза 003, два среза 004 и два среза 005 (всего семнадцать); `org` при запуске регистрирует по функции в каждой из девяти точек среза 002, в `search_providers` («Подразделения») и не регистрируется в двух точках среза 004 и в `ticket_card_parts`; неизвестная точка — `ValueError`, повтор той же функции не дублируется, `empty()` очищает и возвращает прежнее, `clear()` очищает все точки."""
+    """FR-120, FR-122, FR-123: `POINTS` — девять имён среза 002, четыре среза 003, два среза 004, два среза 005 и `home_body` среза 007 (всего восемнадцать); `org` при запуске регистрирует по функции в каждой из девяти точек среза 002, в `search_providers` («Подразделения») и не регистрируется в двух точках среза 004 и в `ticket_card_parts`; неизвестная точка — `ValueError`, повтор той же функции не дублируется, `empty()` очищает и возвращает прежнее, `clear()` очищает все точки."""
     from apps.core import extensions
     from tests.support_kb import POINTS_005
+    from tests.support_feed import POINTS_007
     from tests.support_notify import POINTS_004
 
-    assert tuple(extensions.POINTS) == POINTS + POINTS_003 + POINTS_004 + POINTS_005
-    all_points = POINTS + POINTS_003 + POINTS_004 + POINTS_005
+    assert tuple(extensions.POINTS) == POINTS + POINTS_003 + POINTS_004 + POINTS_005 + POINTS_007
+    all_points = POINTS + POINTS_003 + POINTS_004 + POINTS_005 + POINTS_007
     for point in POINTS:
         funcs = extensions.registered(point)
         # в реестре могут быть и функции ядра; от `org` нужна хотя бы одна обычная функция модуля apps.org (доп. 39)
@@ -100,7 +101,7 @@ def test_org_registers_all_nine_extension_points():
             extensions.register(point, before[point][0])
         assert all(extensions.registered(point) for point in POINTS)
         extensions.clear()
-        assert all(extensions.registered(point) == [] for point in all_points), "clear() очищает все семнадцать точек"
+        assert all(extensions.registered(point) == [] for point in all_points), "clear() очищает все восемнадцать точек"
     # `stand_reset`: здесь проверяется только регистрация; очистку данных модуля проверяет стенд (T-2242)
     assert {point: extensions.registered(point) for point in all_points} == before
 

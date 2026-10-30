@@ -30,6 +30,7 @@ from playwright.sync_api import expect
 from tests import factories
 from tests.e2e import helpers, helpers_notify, helpers_org, helpers_sd
 from tests.e2e.helpers_sd import MAILBOX
+from tests.support_feed import FEED_KINDS, FEED_MODULE
 from tests.support_servicedesk import build_mail
 
 NEW_IN_QUEUE = "servicedesk.new_in_queue"
@@ -55,6 +56,8 @@ KB_KINDS = (
 # очереди и таблицы умолчаний администратора
 LISTS_MODULE = "Списки"
 LISTS_KINDS = (("lists.deadline", "Срок в записи списка"),)
+# срез 007: восемь видов «Ленты» (CONTRACT-007, раздел 15.3) — по строке у каждого сотрудника и в таблице умолчаний
+FEED_KINDS_E2E = tuple((row[0], row[1]) for row in FEED_KINDS)
 EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mandatory, внешний текст)
     NEW_IN_QUEUE: ("Новая заявка в моей очереди", MODULE, False, "Новая заявка в вашей очереди"),
     ASSIGNED: ("Мне назначили заявку", MODULE, False, "Вам назначена заявка"),
@@ -66,6 +69,15 @@ EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mand
     RUBRIC: ("Статья в рубрике по подписке", KB_MODULE, False, "Новая статья в рубрике по подписке"),
     # CONTRACT-006, раздел 7.1: `external_text` — запасной текст; текст по порогу (`external_text_of`) здесь не читается
     "lists.deadline": ("Срок в записи списка", LISTS_MODULE, False, "Истекает срок в записи списка"),
+    # CONTRACT-007, раздел 7.1: восемь видов «Ленты»; у `feed.like` внешнего текста нет
+    "feed.for_you": ("Запись для вас", FEED_MODULE, False, "Новая запись в ленте для вас"),
+    "feed.mention": ("Вас упомянули", FEED_MODULE, False, "Вас упомянули в ленте"),
+    "feed.comment": ("Новый комментарий", FEED_MODULE, False, "Новый комментарий в ленте"),
+    "feed.important": ("Важная запись", FEED_MODULE, False, "Новая важная запись в ленте"),
+    "feed.invite": ("Приглашение на событие", FEED_MODULE, False, "Приглашение на событие в ленте"),
+    "feed.event_changed": ("Событие изменено", FEED_MODULE, False, "Событие в ленте изменено"),
+    "feed.event_reminder": ("Напоминание о событии", FEED_MODULE, False, "Скоро событие в ленте"),
+    "feed.like": ("Нравится", FEED_MODULE, False, ""),
     "core.new_device": ("Вход с нового устройства", "Ядро", True, ""),
     "core.password_changed": ("Пароль изменён", "Ядро", True, ""),
     "core.second_factor_reset": ("Второй фактор сброшен", "Ядро", True, ""),
@@ -926,26 +938,28 @@ def test_e12_catalog_shows_four_service_desk_kinds_three_security_kinds_and_chan
     assert len([c for c in catalog if c.startswith("servicedesk.")]) == 4
     assert len([c for c in catalog if c.startswith("knowledge.")]) == 3
     assert len([c for c in catalog if c.startswith("lists.")]) == 1
+    assert len([c for c in catalog if c.startswith("feed.")]) == len(FEED_KINDS_E2E)
     assert sorted(c for c in catalog if c.startswith("core.")) == [
         "core.new_device", "core.password_changed", "core.second_factor_reset"]
     # таблица «Мои уведомления»: четыре вида сервис-деска, три вида базы знаний, вид списков и две сводные строки
     member.page.goto("/me/notifications/")
-    for code, title in KINDS + KB_KINDS + LISTS_KINDS:
+    for code, title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E:
         row = member.page.locator(f'table[data-notify-table] tr[data-notify-kind="{code}"]')
         expect(row).to_have_count(1)
         expect(row.locator('[data-field="title"]')).to_have_text(title)
-        module = KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.") else MODULE
+        module = (KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.")
+                  else FEED_MODULE if code.startswith("feed.") else MODULE)
         expect(row.locator('[data-field="module"]')).to_have_text(module)
     # видимый результат: четыре вида сервис-деска, три вида базы знаний и вид списков; видов безопасности и «Канал отвязан» среди строк видов нет
     expect(member.page.locator("table[data-notify-table] tr[data-notify-kind]")).to_have_count(
-        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS))
+        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E))
     expect(member.page.locator('table[data-notify-table] tr[data-notify-kind^="core."], '
                                'table[data-notify-table] tr[data-notify-kind^="notify."]')).to_have_count(0)
     # страница администратора: все не обязательные виды — четыре сервис-деска, три базы знаний и вид списков (§ 14.4)
     page.goto("/settings/notifications/")
     expect(page.locator("table[data-defaults-table] tr[data-notify-kind]")).to_have_count(
-        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS))
-    for code, _title in KINDS + KB_KINDS + LISTS_KINDS:
+        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E))
+    for code, _title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E:
         expect(page.locator(f'table[data-defaults-table] tr[data-notify-kind="{code}"]')).to_have_count(1)
     expect(member.page.locator('tr[data-notify-fixed="security"]')).to_contain_text(FIXED_SECURITY)
     expect(member.page.locator('tr[data-notify-fixed="channel_unbound"]')).to_contain_text(FIXED_UNBOUND)

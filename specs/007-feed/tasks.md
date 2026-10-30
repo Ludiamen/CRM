@@ -1634,7 +1634,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/e2e/test_f15_pdn.py::test_f15_post_edit_adding_email_shows_warning_with_save_anyway_which_saves
   (FR-612); backend/tests/e2e/test_f15_pdn.py::test_f15_email_or_phone_in_event_title_or_place_shows_warning (FR-612);
   backend/tests/e2e/test_f15_pdn.py::test_f15_email_inside_backticks_still_shows_warning (FR-612) — (FR-612)
-- [ ] T-7138 [sonnet] (после T-7101: нужны `support_feed.without_feed()` и константы `PERMISSIONS_007`, `TITLES_007`,
+- [x] T-7138 [sonnet] (после T-7101: нужны `support_feed.without_feed()` и константы `PERMISSIONS_007`, `TITLES_007`,
   `POINTS_007`, `APPS_TAIL`, `FEED_KINDS`, `FEED_CODES`, `FEED_TITLES`, `FEED_MODULE`, `FEED_LIKE`, `FEED_BOXED`, `FEED_JOBS`; без
   `[P]` — решение 31) правка тестов срезов 001–006, которые меняются вместе со срезом 007, тремя заданиями агенту
   (первое — пункты 1–26: точки, поля, хвост `INSTALLED_APPS`, сброс стенда, cron, nginx, слой каналов, права, меню;

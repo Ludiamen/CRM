@@ -348,20 +348,23 @@ def test_lists_stand_reset_keeps_ticket_and_article_files(protected_root, django
 
 
 def test_lists_stand_reset_is_registered_after_knowledge_and_runs_before_it():
-    """FR-545: в точке `stand_reset` функция `apps.lists.stand.stand_reset` зарегистрирована последней, сразу после
-    `apps.knowledge.stand.stand_reset`; команда зовёт функции в обратном порядке, поэтому `lists` стирается раньше
-    `knowledge` (раздел 1.3)."""
+    """FR-545, CONTRACT-007 (раздел 15): в точке `stand_reset` функция `apps.lists.stand.stand_reset` зарегистрирована
+    предпоследней, сразу после `apps.knowledge.stand.stand_reset`; последней стоит `apps.feed.stand` среза 007; команда
+    зовёт функции в обратном порядке, поэтому `feed` стирается первой, `lists` — второй, раньше `knowledge`
+    (раздел 1.3)."""
     from apps.core import extensions
     from apps.lists.stand import stand_reset
 
     registered = list(extensions.registered("stand_reset"))
     names = [func.__module__ for func in registered]
     assert registered.count(stand_reset) == 1, "stand_reset модуля lists не зарегистрирован ровно один раз"
-    assert registered[-1] is stand_reset, "stand_reset модуля lists не последний"
-    assert names[-2] == "apps.knowledge.stand", f"перед lists стоит {names[-2]}, а не knowledge"
+    assert registered[-2] is stand_reset, "stand_reset модуля lists не предпоследний"
+    assert names[-1] == "apps.feed.stand", f"после lists стоит {names[-1]}, а не feed"
+    assert names[-3] == "apps.knowledge.stand", f"перед lists стоит {names[-3]}, а не knowledge"
     call_order = [func.__module__ for func in reversed(registered)]
     assert call_order.index("apps.lists.stand") < call_order.index("apps.knowledge.stand")
-    assert call_order[0] == "apps.lists.stand", "lists вызывается не первым"
+    assert call_order[0] == "apps.feed.stand", "feed вызывается не первым"
+    assert call_order[1] == "apps.lists.stand", "lists вызывается не вторым"
 
 
 @PLAIN

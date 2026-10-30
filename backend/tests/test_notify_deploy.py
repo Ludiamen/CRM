@@ -316,10 +316,10 @@ def test_rq_queues_include_notify():
 
 def test_cron_notify_tick_interval_30_queue_notify_timeout_120():
     """FR-333: `config/cron.py` регистрирует `notify_tick` (функция `apps.notify.tasks.notify_tick`): очередь `notify`,
-    `interval=30` без строки `cron`, `job_timeout=120`; всего в файле восемнадцать вызовов `register` (§ 1.3, § 12.3; `purge_trash` среза 005 — семнадцатый, `lists_reminders` среза 006 — восемнадцатый)."""
+    `interval=30` без строки `cron`, `job_timeout=120`; всего в файле двадцать вызовов `register` (§ 1.3, § 12.3; `purge_trash` среза 005 — семнадцатый, `lists_reminders` среза 006 — восемнадцатый, два задания среза 007 — девятнадцатый и двадцатый)."""
     registrations = cron_registrations()
-    assert len(registrations) == 18, (
-        f"вызовов register {len(registrations)}, ожидается 18 (14 прежних, 2 среза 004, 1 среза 005 и 1 среза 006)")
+    assert len(registrations) == 20, (
+        f"вызовов register {len(registrations)}, ожидается 20 (14 прежних, 2 среза 004, 1 среза 005, 1 среза 006 и 2 среза 007)")
     assert "lists_reminders" in cron_by_name(), "нет задания lists_reminders среза 006"
     item = cron_by_name().get("notify_tick")
     assert item, "нет задания notify_tick"
@@ -349,12 +349,13 @@ def test_cron_notify_retention_at_23_40_utc_queue_maintenance_timeout_600():
 
 def test_notify_is_last_in_installed_apps():
     """FR-301, CONTRACT-005 (решение 3), CONTRACT-006 (раздел 1.1): `apps.notify` стоит сразу после `apps.servicedesk`;
-    за ним — `apps.knowledge`, `apps.lists`, затем `apps.search` — последний элемент `INSTALLED_APPS`. Имя теста
+    за ним — `apps.knowledge`, `apps.lists`, `apps.search`; последний элемент `INSTALLED_APPS` — `apps.feed` (CONTRACT-007). Имя теста
     прежнее (TASKS-004, T-4130)."""
     from django.conf import settings
+    from tests.support_feed import APPS_TAIL
 
     apps = list(settings.INSTALLED_APPS)
-    assert apps[-5:] == ["apps.servicedesk", "apps.notify", "apps.knowledge", "apps.lists", "apps.search"]
+    assert apps[-6:] == APPS_TAIL
 
 
 def test_asgi_has_protocol_type_router_origin_validator_and_session_auth():
@@ -376,17 +377,25 @@ def test_asgi_has_protocol_type_router_origin_validator_and_session_auth():
 
 
 def test_channel_layers_use_valkey_with_socket_timeout_30_max_connections_300_connect_timeout_2_and_prefix():
-    """NFR-305: `CHANNEL_LAYERS` — `channels_redis.core.RedisChannelLayer` на `VALKEY_URL` (в тестах база 15) с
-    `socket_timeout` 30, `max_connections` 300, `socket_connect_timeout` 2 и префиксом `crm-asgi` (F1 Ф4)."""
+    """NFR-305: `CHANNEL_LAYERS` — два слоя (`default` и `publish`, CONTRACT-007), оба `channels_redis.core.RedisChannelLayer`
+    на `VALKEY_URL` (в тестах база 15) с `max_connections` 300, `socket_connect_timeout` 2 и префиксом `crm-asgi`;
+    у `default` `socket_timeout` 30 (F1 Ф4), у `publish` — 2."""
     from django.conf import settings
 
     assert settings.VALKEY_URL.endswith("/15"), "в тестах слой каналов — база 15"
-    assert settings.CHANNEL_LAYERS == {"default": {
+    assert set(settings.CHANNEL_LAYERS) == {"default", "publish"}
+    assert settings.CHANNEL_LAYERS["default"] == {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {"hosts": [{"address": settings.VALKEY_URL, "socket_timeout": 30, "max_connections": 300,
                               "socket_connect_timeout": 2}],
                    "prefix": "crm-asgi"},
-    }}
+    }
+    assert settings.CHANNEL_LAYERS["publish"] == {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [{"address": settings.VALKEY_URL, "socket_timeout": 2, "max_connections": 300,
+                              "socket_connect_timeout": 2}],
+                   "prefix": "crm-asgi"},
+    }
 
 
 # --- nginx и CSP ----------------------------------------------------------------------------------------------------

@@ -22,6 +22,7 @@ POINTS_15 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_
              "day_marks", "home_notices", "stand_reset", "unit_usage", "file_purposes", "mail_renderers", "login_links",
              "notification_kinds", "top_bar_items")
 POINTS_17 = POINTS_15 + ("search_providers", "ticket_card_parts")
+POINTS_18 = POINTS_17 + ("home_body",)
 MODULE_PATH = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+")
 PUBLIC = "apps.servicedesk.services.public"
 DISPATCH = "apps.notify.services.dispatch"
@@ -251,13 +252,13 @@ def test_core_org_servicedesk_notify_knowledge_search_do_not_import_lists():
 # --- FR-543: точки расширения (CONTRACT-006, 3.2) ------------------------------------------------------------------
 
 def test_points_still_have_seventeen_names():
-    """FR-543: `POINTS` ядра — по-прежнему ровно семнадцать имён в порядке контракта; `_registry` содержит ключ на
-    каждое имя (срез 006 новых точек не вводит)."""
+    """FR-543, CONTRACT-007: `POINTS` ядра — ровно восемнадцать имён в порядке контракта; `_registry` содержит ключ
+    на каждое имя (срез 006 новых точек не вводит; срез 007 вводит `home_body`)."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_17
-    assert len(extensions.POINTS) == 17
-    assert set(extensions._registry) == set(POINTS_17)
+    assert tuple(extensions.POINTS) == POINTS_18
+    assert len(extensions.POINTS) == 18
+    assert set(extensions._registry) == set(POINTS_18)
 
 
 def test_lists_registers_menu_8_search_50_card_70_ticket_part_20():

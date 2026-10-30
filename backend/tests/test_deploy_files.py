@@ -354,7 +354,7 @@ def test_test_service_waits_for_healthy_clamav():
 
 def test_nginx_body_size_6m_and_protected_location_internal_with_headers():
     """FR-132, NFR-108: в nginx.conf и nginx.prod.conf лимит тела запроса 6m в `http` (фото до 5 МБ в форме), 55m — только
-    в четырёх `location` формы, ответа, загрузки файлов статьи и файлов записи списка (срезы 003, 005 и 006), а /protected/ — внутреннее расположение с alias на том, nosniff, типом
+    в четырёх `location` формы, ответа, загрузки файлов статьи и файлов записи списка (срезы 003, 005 и 006), 25m — в `location` загрузки файла ленты (срез 007), а /protected/ — внутреннее расположение с alias на том, nosniff, типом
     image/jpeg и Cache-Control private, max-age=86400 (общий /protected/ для фото срезом 003 не меняется)."""
     form_locations = (r"location\s*=\s*/request/\s*\{([^{}]*)\}",
                       r"location\s*~\s*\^/tickets/\(new/\|\[0-9\]\+/reply/\)\$\s*\{([^{}]*)\}",
@@ -367,6 +367,12 @@ def test_nginx_body_size_6m_and_protected_location_internal_with_headers():
             assert len(found) == 1, f"{name}: нет ровно одного location {pattern}"
             assert re.findall(r"client_max_body_size\s+([^;]+);", found[0]) == ["55m"], f"{name}: в location формы нужен 55m"
             text = re.sub(pattern, "", text, count=1)
+        feed_pattern = r"location\s*~\s*\^/feed/files/\$\s*\{([^{}]*)\}"
+        found = re.findall(feed_pattern, text)
+        assert len(found) == 1, f"{name}: нет ровно одного location {feed_pattern}"
+        assert re.findall(r"client_max_body_size\s+([^;]+);", found[0]) == ["25m"], (
+            f"{name}: в location загрузки файла ленты нужен 25m")
+        text = re.sub(feed_pattern, "", text, count=1)
         sizes = re.findall(r"client_max_body_size\s+([^;]+);", text)
         assert sizes == ["6m"], f"{name}: вне location формы и ответа client_max_body_size один и равен 6m, найдено {sizes}"
         location = re.search(r"location\s+/protected/\s*\{(.*?)\n\s*\}", text, re.S)

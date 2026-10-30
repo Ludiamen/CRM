@@ -836,7 +836,7 @@ def test_without_org_unit_rights_do_not_apply_and_role_rights_stay(monkeypatch):
 def test_menu_item_lists_has_order_8_empty_permissions_and_is_visible_by_sees_section():
     """FR-501, FR-543: пункт «Списки» — `menu_items` с пустыми `permissions`, `/lists/`, `icons/lists.html`, `order`
     8, без `badge`; видим читающему и управляющему, не виден сотруднику без прав; у администратора меню из
-    двенадцати пунктов, «Списки» между «Базой знаний» и «Сотрудниками»; в левом меню страницы есть ссылка."""
+    четырнадцати пунктов (с «Лентой» и «Настройками ленты» среза 007), «Списки» между «Базой знаний» и «Сотрудниками»; в левом меню страницы есть ссылка."""
     from apps.core import extensions
     from apps.core.services import permissions
 
@@ -860,7 +860,7 @@ def test_menu_item_lists_has_order_8_empty_permissions_and_is_visible_by_sees_se
         assert nav and 'href="/lists/"' in nav.group(0), "в левом меню нет ссылки на /lists/"
     assert not [e for e in permissions.menu_for(_fresh(nobody.user)) if e["title"] == "Списки"]
     titles = [e["title"] for e in permissions.menu_for(_fresh(support.make_admin()))]
-    assert len(titles) == 12, titles
+    assert len(titles) == 14, titles
     assert titles.index("База знаний") < titles.index("Списки") < titles.index("Сотрудники")
 
 

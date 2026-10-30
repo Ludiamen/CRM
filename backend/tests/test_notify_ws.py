@@ -629,24 +629,38 @@ def test_presence_removed_after_disconnect_and_stays_with_other_tab():
 
 def test_live_push_survives_channel_layer_failure_without_raising(monkeypatch, caplog):
     """FR-318: сбой слоя каналов (нет слоя, сбой отправки в группу) `live.push` перехватывает: исключения нет,
-    в логгер `apps.notify.services.live` пишется предупреждение, запись уведомления остаётся."""
+    в логгер `apps.notify.services.live` пишется предупреждение, запись уведомления остаётся; `push` берёт слой
+    `publish` (CONTRACT-007): `get_channel_layer` зовётся с аргументом `"publish"`."""
     from apps.notify.services import live
 
     user = support.make_employee()
     note = _note(user)
 
-    def broken_layer():
+    def broken_layer(*args):
         raise ConnectionError("слой каналов недоступен")
 
     class BrokenLayer:
+        def __init__(self, *args):
+            pass
+
         async def group_send(self, group, message):
             raise OSError("отправка в группу не удалась")
 
+    calls = []
+
+    def spying(factory):
+        def get_channel_layer(*args):
+            calls.append(args)
+            return factory(*args)
+        return get_channel_layer
+
     for factory in (broken_layer, BrokenLayer):
         caplog.clear()
-        monkeypatch.setattr("apps.notify.services.live.get_channel_layer", factory)
+        calls.clear()
+        monkeypatch.setattr("apps.notify.services.live.get_channel_layer", spying(factory))
         with caplog.at_level(logging.WARNING, logger="apps.notify.services.live"):
             assert live.push([user.pk]) is None
+        assert calls == [("publish",)], f"live.push должен брать слой publish, вызовы: {calls}"
         warnings = [r for r in caplog.records if r.name == "apps.notify.services.live" and r.levelno == logging.WARNING]
         assert warnings, "сбой слоя должен попасть в журнал приложения предупреждением"
     assert model("notify.Notification").objects.filter(pk=note.pk).exists()

@@ -396,13 +396,15 @@ def test_deadline_external_text_of_reached_for_zero_threshold_and_expiring_other
 
 
 def test_notify_kinds_external_text_uses_external_text_of_and_falls_back_to_former_external_text():
-    """FR-531: у `NotificationKind` тринадцать полей, последнее — `external_text_of` (по умолчанию `None`);
+    """FR-531: у `NotificationKind` пятнадцать полей: тринадцатое — `external_text_of` (по умолчанию `None`), последние — `channels` и
+    `coalesce_text` (CONTRACT-007);
     `kinds.external_text(kind, object_ref)` берёт текст из `external_text_of`, а без него — прежний `external_text`;
     у вида `lists.deadline` — текст по порогу из ссылки; у видов базы знаний текст прежний."""
     from apps.core.extensions import NotificationKind
 
     names = [field.name for field in dataclasses.fields(NotificationKind)]
-    assert len(names) == 13 and names[-1] == "external_text_of" and names[-2] == "coalesce"
+    assert len(names) == 15 and names[11:13] == ["coalesce", "external_text_of"]
+    assert names[-2:] == ["channels", "coalesce_text"]
 
     plain = NotificationKind(code="x.plain", title="Простой", module="Проба", external_text="Прежний текст")
     assert plain.external_text_of is None

@@ -426,12 +426,12 @@ def test_four_servicedesk_events_are_published_by_ticket_services(bus_spy, djang
 # --- FR-292: точки расширения и меню (§ 3.2) ------------------------------------------------------------
 
 def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_links():
-    """FR-292: `POINTS` — семнадцать имён в порядке контракта; `org` — в девяти первых и в `search_providers`, `servicedesk` — в своих
+    """FR-292: `POINTS` — восемнадцать имён в порядке контракта (семнадцать прежних и `home_body` среза 007); `org` — в девяти первых и в `search_providers`, `servicedesk` — в своих
     одиннадцати точках (девять прежних, `notification_kinds` и `search_providers`) функциями `apps.servicedesk…`; зарегистрированное отдаёт то, что описано
     в контракте, в том числе ровно четыре вида уведомлений с кодами CONTRACT-004 § 3.2."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_17
+    assert tuple(extensions.POINTS) == POINTS_17 + ("home_body",)
 
     def owned(point, prefix):
         return [f for f in extensions.registered(point) if getattr(f, "__module__", "").startswith(prefix)]
@@ -669,7 +669,8 @@ def _check_core_and_org_slice_002(admin, monkeypatch, *, org_present: bool) -> N
 
 def test_without_servicedesk_registrations_core_and_org_behave_as_slice_002(bus, monkeypatch):
     """FR-292: без регистраций и подписчиков `servicedesk` (реестры пусты, шина пуста) ядро и `org` ведут себя как в
-    срезе 002: меню — пункты ядра (при `org` — и его пункты), без `badge`, ссылок на входе нет, узел удаляется, а у узла-очереди
+    срезе 002: меню — пункты ядра (при `org` — и его пункты), без `badge` (регистрации `apps.feed` среза 007, у «Ленты» есть `badge` и
+    `live_badge`, в блок не возвращаются: тест о срезе 002 — решение 43 (д) TASKS-007), ссылок на входе нет, узел удаляется, а у узла-очереди
     остаётся только защита `PROTECT`, назначение `attachment` ядро не знает, префикс `ticket.` отказывает `ValueError`."""
     from apps.core import extensions
 
@@ -680,6 +681,6 @@ def test_without_servicedesk_registrations_core_and_org_behave_as_slice_002(bus,
     with extensions.empty():
         for point, funcs in registered.items():
             for func in funcs:
-                if not getattr(func, "__module__", "").startswith("apps.servicedesk"):
+                if not getattr(func, "__module__", "").startswith(("apps.servicedesk", "apps.feed")):
                     extensions.register(point, func)
         _check_core_and_org_slice_002(admin, monkeypatch, org_present=True)

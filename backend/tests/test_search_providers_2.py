@@ -303,10 +303,11 @@ def test_knowledge_disabled_has_no_articles_group_others_work():
     person = _person(full_name="Мельников Глеб", position="Мониторинг")
     support_org.make_member(person, unit)
     support_kb.make_published(title="Мониторинг сети", text="Текст про мониторинг")
-    assert [p.key for p in services.providers(viewer)] == ["articles", "staff", "units"]
+    # CONTRACT-007: поставщик `feed` (order 60) доступен каждому вошедшему; групп выдачи он не добавляет — записей ленты нет
+    assert [p.key for p in services.providers(viewer)] == ["articles", "staff", "units", "feed"]
     assert _group_keys(viewer, "мониторинг") == ["articles", "staff", "units"]
     with support_kb.without_knowledge():
-        assert [p.key for p in services.providers(viewer)] == ["staff", "units"]
+        assert [p.key for p in services.providers(viewer)] == ["staff", "units", "feed"]
         groups = services.page(viewer, _parsed("мониторинг"))
         assert [g.key for g in groups] == ["staff", "units"]
         by_group = {g.key: g for g in groups}
@@ -325,8 +326,8 @@ def test_provider_available_false_hides_group():
     support_kb.make_published(title="Мониторинг сети")
     no_rights = support.make_with_permissions(totp=False)
     viewer = _viewer()
-    assert [p.key for p in services.providers(no_rights)] == ["articles"]
-    assert [p.key for p in services.providers(viewer)] == ["articles", "staff", "units"]
+    assert [p.key for p in services.providers(no_rights)] == ["articles", "feed"]   # `feed` доступен каждому вошедшему
+    assert [p.key for p in services.providers(viewer)] == ["articles", "staff", "units", "feed"]
     assert _group_keys(no_rights, "мониторинг") == ["articles"]
     assert _provider("tickets").available(no_rights) is False
     assert "tickets" not in [p.key for p in services.providers(viewer)]

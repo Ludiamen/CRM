@@ -21,6 +21,7 @@ POINTS_15 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_
              "day_marks", "home_notices", "stand_reset", "unit_usage", "file_purposes", "mail_renderers", "login_links",
              "notification_kinds", "top_bar_items")
 POINTS_17 = POINTS_15 + ("search_providers", "ticket_card_parts")
+POINTS_18 = POINTS_17 + ("home_body",)
 MODULE_PATH = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+")
 PUBLIC = "apps.servicedesk.services.public"
 KB_MODELS = ("Article", "ArticleVersion", "Rubric", "Tag", "ArticleFile", "TicketLink", "RubricSubscription",
@@ -261,8 +262,9 @@ def test_ticket_card_without_knowledge_has_no_article_button_section_or_link_too
 # --- FR-433: каталог уведомлений, поиск, меню без knowledge ---------------------------------------------------------
 
 def test_notification_catalog_without_knowledge_has_no_knowledge_kinds():
-    """FR-433: без регистраций `knowledge` каталог видов уведомлений — прежние восемь видов трёх модулей и вид
-    `lists.deadline` модуля «Списки» (срез 006, CONTRACT-006, раздел 7.3), видов с кодом `knowledge.*` и модулем
+    """FR-433: без регистраций `knowledge` каталог видов уведомлений — прежние восемь видов трёх модулей, вид
+    `lists.deadline` модуля «Списки» (срез 006, CONTRACT-006, раздел 7.3) и восемь видов «Ленты» (срез 007,
+    CONTRACT-007, раздел 7.1; `feed` от `knowledge` не зависит), видов с кодом `knowledge.*` и модулем
     «База знаний» нет, проверка каталога проходит; с включённым модулем добавляются ровно три."""
     from apps.notify.services import kinds
 
@@ -275,7 +277,7 @@ def test_notification_catalog_without_knowledge_has_no_knowledge_kinds():
     assert [k.code for k in rest if k.code.startswith("knowledge.") or k.module == "База знаний"] == []
     assert {k.code for k in rest} == set(full) - added
     assert "lists.deadline" in {k.code for k in rest}, "вид среза 006 не зависит от knowledge"
-    assert len(rest) == 9, "прежних видов срезов 003 и 004 — восемь и вид lists.deadline среза 006"
+    assert len(rest) == 17, "прежних видов срезов 003 и 004 — восемь, вид lists.deadline среза 006 и восемь видов ленты"
 
 
 def test_search_without_knowledge_has_no_articles_group():
@@ -350,23 +352,24 @@ def test_menu_without_knowledge_has_no_knowledge_item():
 # --- FR-432, FR-445: точки расширения (CONTRACT-005, 3.1) -----------------------------------------------------------
 
 def test_points_has_seventeen_names():
-    """FR-445: `POINTS` ядра — ровно семнадцать имён в порядке контракта (пятнадцать прежних и две новые); `_registry`
-    содержит ключ на каждое имя."""
+    """FR-445, CONTRACT-007: `POINTS` ядра — ровно восемнадцать имён в порядке контракта (пятнадцать прежних, две
+    новые среза 005 и `home_body` среза 007); `_registry` содержит ключ на каждое имя."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_17
-    assert len(extensions.POINTS) == 17
-    assert set(extensions._registry) == set(POINTS_17)
+    assert tuple(extensions.POINTS) == POINTS_18
+    assert len(extensions.POINTS) == 18
+    assert set(extensions._registry) == set(POINTS_18)
 
 
 def test_points_new_names_search_providers_and_ticket_card_parts_are_last_two():
     """FR-432, FR-445: прежние пятнадцать имён и их порядок не изменились, новые `search_providers` и `ticket_card_parts`
-    стоят последними (в таком порядке); в `ticket_card_parts` регистрируются только `knowledge` и `lists` (срез 006,
+    стоят перед `home_body` среза 007 (в таком порядке), последняя точка — `home_body`; в `ticket_card_parts` регистрируются только `knowledge` и `lists` (срез 006,
     CONTRACT-006, раздел 3.2), `servicedesk` её не регистрирует; неизвестная точка отказывает `ValueError`."""
     from apps.core import extensions
 
     assert tuple(extensions.POINTS[:15]) == POINTS_15
-    assert tuple(extensions.POINTS[-2:]) == ("search_providers", "ticket_card_parts") == support_kb.POINTS_005
+    assert tuple(extensions.POINTS[-3:-1]) == ("search_providers", "ticket_card_parts") == support_kb.POINTS_005
+    assert extensions.POINTS[-1] == "home_body"
     parts = extensions.registered("ticket_card_parts")
     assert parts, "knowledge не зарегистрировал части карточки"
     owners = {".".join(getattr(f, "__module__", "").split(".")[:2]) for f in parts}
@@ -479,5 +482,7 @@ def test_search_providers_registered_by_servicedesk_knowledge_core_org_in_order(
         assert callable(records[group].search) and callable(records[group].count) and callable(records[group].available)
     user = support.make_with_permissions("staff.view", "servicedesk.all")
     support_kb.grant(user, "knowledge.edit")
-    assert [p.key for p in services.providers(user)] == ["tickets", "articles", "staff", "units"]
-    assert [p.title for p in services.providers(user)] == ["Заявки", "Статьи", "Сотрудники", "Подразделения"]
+    # CONTRACT-007: пятый поставщик `feed` («Лента», order 60, доступен каждому вошедшему) от `apps.feed`; `owners` и
+    # `expected` выше — прежние четыре, `SearchProvider("feed", "Лента", 60)` проверяет test_feed_search.py
+    assert [p.key for p in services.providers(user)] == ["tickets", "articles", "staff", "units"] + ["feed"]
+    assert [p.title for p in services.providers(user)] == ["Заявки", "Статьи", "Сотрудники", "Подразделения"] + ["Лента"]

@@ -154,9 +154,9 @@ def _get_list(client, **params):
     return response
 
 
-def _bell(client, **extra):
-    response = client.get("/", **extra)
-    assert response.status_code == 200, f"GET /: {response.status_code}"
+def _bell(client, path="/", **extra):
+    response = client.get(path, **extra)
+    assert response.status_code == 200, f"GET {path}: {response.status_code}"
     doc = doc_of(response)
     return doc, one(doc, None, {"id": "notify-bell", "data-bell": True})
 
@@ -209,9 +209,10 @@ def test_bell_in_top_bar_has_count_and_toast_elements():
 
 def test_bell_carries_ws_connect_to_notify_socket():
     """FR-318: корень колокольчика несёт `hx-ext="ws"`, `ws-connect="/ws/notify/"` и `data-ws="connecting"`
-    (решение E21); других `ws-connect` на странице нет."""
+    (решение E21); других `ws-connect` на странице нет. Страница — `/me/`, а не `/`: на главной среза 007 два узла
+    `ws-connect` (колокольчик и `#feed-live`, решение 43 (г) TASKS-007; их проверяет test_feed_home.py)."""
     user, client = _employee_client()
-    doc, bell = _bell(client)
+    doc, bell = _bell(client, "/me/")
 
     assert bell.attrs.get("hx-ext") == "ws"
     assert bell.attrs.get("ws-connect") == "/ws/notify/"
