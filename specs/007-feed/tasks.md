@@ -47,7 +47,7 @@ Opus по задачам» в конце файла; решения владел
 - **Границы модуля `feed`** (план: «Модуль и выключение», «Где живёт код», «Сверка с конституцией»). `feed` не
   импортирует модели `org`, `notify`, `knowledge`, `servicedesk`, `lists`, `search`; из ядра зовёт только публичные
   функции (`core.services.comments.add/update/list_for/delete/delete_for`, `core.services.pdn_patterns`,
-  `core.views.pages.collect_notices`, `core.ws.SessionGuardMixin`, `core.uploads`, `core.services.files`,
+  `core.views.pages.collect_notices`, `core.ws.SessionGuardMixin`, `core.services.uploads`, `core.services.files`,
   `core.services.permissions`, `audit.record`, файловые ответы ядра), из `org` — только `apps.org.services.structure`
   (`unit_chain_ids`, `subtree_member_ids`, `unit_chains`, `all_units`, `unit_refs`), из `notify` — только
   `apps.notify.services.dispatch.create` и `apps.notify.services.live.group`; каждый вызов `org` и `notify` — под
@@ -62,7 +62,7 @@ Opus по задачам» в конце файла; решения владел
   тестов — не больше ~25 тестов; большее делится на задачи и файлы `test_x.py`, `test_x_2.py`. Задача Этапа 3, которая
   не укладывается, останавливается; Opus делит её буквами (`T-72NNa`, `T-72NNb`) и вписывает это в решения.
 - **Общие файлы тестов** — у каждого один автор: `backend/tests/CONTRACT-007.md` пишет только T-7100,
-  `backend/tests/support_feed.py` — только T-7101, `backend/tests/e2e/helpers_feed.py` — только T-7140. Параллельные
+  `backend/tests/support_feed.py` — только T-7101, `backend/tests/e2e/helpers_feed.py` — только T-7140a. Параллельные
   исполнители держат свои помощники внутри своего файла теста, а общие файлы не правят; недостающее имя — вопрос Opus.
 - **Общие файлы кода** (Этап 3) — у каждого один автор за раз; задачи, которые их правят, идут без `[P]` (перечень —
   решение 29 в конце файла). Тексты отказов, адреса, зацепки `data-*`, коды закрытия и сообщения слоя каналов
@@ -130,18 +130,18 @@ Opus по задачам» в конце файла; решения владел
 - [ ] T-7003 [P] [opus] ранний замер видимости варианта B для числа непрочитанных и блока важных и замер числа многим
   (план: «Риски» — «вариант видимости B для счётчика непрочитанных не мерили … замер в Этапе 1», «`unread.counts` …
   замер — задача Этапа 1, предел — 50 мс на 100 получателей»; docs/reviews/PLAN-007.md, «Что не проверялось»): на
-  временном контейнере `postgres:17-alpine` (имя `tasks007-db`, порт 127.0.0.1:315xx; стенд и контейнер `postgres` не
-  трогать; контейнер остаётся до конца T-7007 и удаляется ею) — таблицы по модели плана («Модель данных» →
-  «Приложение `feed`»: `Post`, `Recipient` с частичными индексами, `Shown` без индекса по записи, `ReadMark`,
+  временном контейнере `postgres:17-alpine` (имя `tasks007-db`, порт из диапазона 127.0.0.1:31600–31619; стенд и
+  контейнер `postgres` не трогать; контейнер остаётся до конца T-7007 и удаляется ею) — таблицы по модели плана («Модель
+  данных» → «Приложение `feed`»: `Post`, `Recipient` с частичными индексами, `Shown` без индекса по записи, `ReadMark`,
   комментарии со ссылкой `object_ref`) и данные по условиям F1 (50 000 записей, 200 000 комментариев, 100 сотрудников,
   30 узлов глубиной до 4; скрипты `/tmp/facts007-db/01_schema.sql`, `02_data.sql`, если ещё на месте, иначе заново по
-  `crm-work/slice007/plan/facts/F1-db.md`, «Условия замера»); замер функцией по образцу F1 (29 сотрудников × 3, медиана /
-  p95 / макс, первый прогон отброшен, `EXPLAIN (ANALYZE, BUFFERS)` у худшего): (1) `unread.count` литералом плана
+  `crm-work/slice007/plan/facts/F1-db.md`, «Условия замера»); замер функцией по образцу F1 (29 сотрудников × 3, медиана
+  / p95 / макс, первый прогон отброшен, `EXPLAIN (ANALYZE, BUFFERS)` у худшего): (1) `unread.count` литералом плана
   («Непрочитанное» → «Число», `LIMIT 100`, видимость B с цепочкой массивом); (2) блок важных литералом плана («Лента,
   курсор…» → «Блок важных»); (3) `unread.counts` на 100 получателей одним запросом по описанию плана (пары «сотрудник —
   узел» массивами, ветки «Всем», «узел», «человек», минус показы и свои, потолок 100) — сверка с сотней одиночных
-  `count` (равенство по каждому) и время. Пределы — решение 42: p95 числа или блока больше 10 мс либо `counts` больше
-  50 мс (предел плана) — остановиться: запасной ход плана (ветки UNION ALL для счётчика; для `counts` — ход «Рисков»)
+  `count` (равенство по каждому) и время. Пределы — решение 42: p95 числа или блока больше 10 мс либо `counts` больше 50
+  мс (предел плана) — остановиться: запасной ход плана (ветки UNION ALL для счётчика; для `counts` — ход «Рисков»)
   выбирает Opus с владельцем до Этапа 3; машина в момент замера записывается (`/proc/loadavg`) — отчёт
   docs/reviews/TASKS-007.md, раздел «Ранние факты: T-7003» — (FR-602, FR-614, FR-626, NFR-601, NFR-608; план: «Риски»)
 - [ ] T-7004 [P] [opus] ранний замер `permissions_of` на 100 получателей (план: «Живые обновления» → «Рассылка», шаг 3 —
@@ -166,22 +166,23 @@ Opus по задачам» в конце файла; решения владел
   до сервера при каждом открытии, в том числе после переподключения; (2) ответный кадр `hx-swap-oob` (служебный
   `#feed-synced`) вставляется, кадр без цели даёт `htmx:oobErrorNoTarget` в консоли (подтверждение F2 Ф6);
   (3) `htmx:oobBeforeSwap` позволяет отменить вставку `beforeend`, если элемент с тем же `id` уже есть; (4) закрытие
-  сервером кодами 1006, 1011, 1012, 1013 — переподключение и задержка, 1000 и 1001 — нет, событие `htmx:wsClose`
-  приходит; (5) вставленный `<script>` под CSP не исполняется. Расхождение с планом в любом браузере — остановиться и
-  спросить Opus (план: «Риски», запасной ход для 1000/1001) — отчёт docs/reviews/TASKS-007.md, раздел «Ранние факты:
-  T-7005» — (FR-627, FR-628, NFR-605; план: «Живые обновления», «CSP», «Риски»)
+  сервером кодами 1011, 1012, 1013 и обрывом соединения без кадра закрытия (клиент видит 1006) — переподключение и
+  задержка, 1000 и 1001 — нет, событие `htmx:wsClose` приходит; (5) вставленный `<script>` под CSP не исполняется.
+  Расхождение с планом в любом браузере — остановиться и спросить Opus (план: «Риски», запасной ход для 1000/1001) —
+  отчёт docs/reviews/TASKS-007.md, раздел «Ранние факты: T-7005» — (FR-627, FR-628, NFR-605; план: «Живые обновления»,
+  «CSP», «Риски»)
 - [ ] T-7006 [P] [opus] ранняя проверка кода закрытия соединений при плавном перезапуске (план: «Риски» —
   «Переподключение вкладок после выкладки: код закрытия uvicorn при плавном перезапуске не проверен (1012 — вернутся,
   1000/1001 — нет)»): малое приложение ASGI с сокетом во временном каталоге вне репозитория; запуск тем же способом, что
   служба `web` (`gunicorn` с `uvicorn_worker.UvicornWorker`, число процессов и тайм-ауты — как в
   `deploy/docker-compose.yml`), во временном контейнере образа `crm-portal:local` (имя `tasks007-uv`, порт
-  127.0.0.1:315xx, без сети стенда, каталог пробы смонтирован вне `backend/`, контейнер удаляется после работы; решение
-  27); клиент — `websocket-client` хостового окружения, десять соединений; события: `SIGHUP` главному процессу
-  (перезагрузка процессов), `SIGTERM` (как `docker stop` и пересоздание контейнера при `up -d`), остановка одного
-  процесса-исполнителя; записать код и причину закрытия у клиента и время до закрытия. Итог задаёт обработку
-  `htmx:wsClose` в `feed.js` (T-7223): при 1000/1001 — переподключение по запасному ходу плана; повторная проверка на
-  стенде — при первом обновлении стенда в Этапе 4 (T-7305) — отчёт docs/reviews/TASKS-007.md, раздел «Ранние факты:
-  T-7006» — (FR-627, NFR-614; план: «Риски»)
+  из диапазона 127.0.0.1:31620–31639, без сети стенда, каталог пробы смонтирован вне `backend/`, контейнер удаляется
+  после работы; решение 27); клиент — `websocket-client` хостового окружения, десять соединений; события: `SIGHUP`
+  главному процессу (перезагрузка процессов), `SIGTERM` (как `docker stop` и пересоздание контейнера при `up -d`),
+  остановка одного процесса-исполнителя; записать код и причину закрытия у клиента и время до закрытия. Итог задаёт
+  обработку `htmx:wsClose` в `feed.js` (T-7223): при 1000/1001 — переподключение по запасному ходу плана; повторная
+  проверка на стенде — при первом обновлении стенда в Этапе 4 (T-7305) — отчёт docs/reviews/TASKS-007.md, раздел «Ранние
+  факты: T-7006» — (FR-627, NFR-614; план: «Риски»)
 - [ ] T-7007 [opus] (после T-7003, на её контейнере) ранний замер ORM-каскада ночной очистки на 1 000 записей (план:
   «Срок хранения и ночное задание», шаг 2 — «замер Ф12 шёл сырым SQL, время ORM-пачки с каскадом не мерили»; «Риски»;
   docs/reviews/PLAN-007.md, «Что не проверялось»; решение 27): во временном каталоге вне репозитория — одноразовый
@@ -241,34 +242,53 @@ Opus по задачам» в конце файла; решения владел
   `fill_feed.py` и строка итога `fill_feed: posts=… comments=… likes=…`, числа среза (восемнадцать точек, двадцать
   вызовов `register` cron, восемнадцать прав, двадцать видов уведомлений, пятнадцать полей `NotificationKind`, `order`
   группы поиска 60, четырнадцать пунктов меню администратора, один `location` 25m, два ключа `CHANNEL_LAYERS`,
-  `apps.feed` последним). Сверх перечня плана — уточнения решений по задачам: перечень публичных функций ядра и прежних
-  модулей, которые зовёт `feed` (решение 46; на него опирается тест границ T-7136); `mentions.sync(...)` возвращает
-  множество впервые упомянутых номеров (решение 47); текст отказа «Укажите начало и конец события» (решение 48); раздел
-  «Точки подмены для тестов гонок и сбоев» — `dispatch.create` из `feed.services.reminders` и логгер `apps.feed.tasks`,
-  `ws_state` в цикле проверки, ошибка слоя в `FeedConsumer`, тестовый потребитель на примеси `SessionGuardMixin`
-  (решение 49), вход `notify_rules.decide` (решение 51); `support_feed.reload_asgi_without_feed()` (решение 52); зацепки
-  «Ответить» `data-reply-id`, `data-reply-name` (решение 13); 403 у `/settings/feed/` без права `settings.portal`
-  (решение 11); границы команд стенда (решение 10), ключ `--posts` и сдвиг `important_until` (решение 54); раздел
-  «Помощники приёмки» — имена `helpers_feed.py` по строке T-7140, в том числе `block_ws(context)` (решения 8, 55). Там
-  же — «что меняется в прежних контрактах» (таблица «было / стало» для T-7138; сами `CONTRACT.md` и `CONTRACT-002…006`
-  не правятся). Контракт проверяется до запуска T-7101 — backend/tests/CONTRACT-007.md — (FR-642; план: «Контракты»,
-  «Тексты отказов», «Проверка»)
+  `apps.feed` последним), значения констант `support_feed.py` для правок T-7138 (`TITLES_007`, `POINTS_007`,
+  `APPS_TAIL`, `FEED_KINDS`, `FEED_JOBS` и производные; источник — `impact.md`, «Общее»). Сверх перечня плана —
+  уточнения решений по задачам: перечень публичных функций ядра и прежних модулей, которые зовёт `feed` (решение 46; на
+  него опирается тест границ T-7136); `mentions.sync(...)` возвращает множество впервые упомянутых номеров (решение 47);
+  текст отказа «Укажите начало и конец события» (решение 48); раздел «Точки подмены для тестов гонок и сбоев» —
+  `dispatch.create` из `feed.services.reminders` и `feed.services.posts`, логгер `apps.feed.tasks`,
+  `apps.feed.consumers.CHECK_INTERVAL` (интервал проверки сессии, читается при каждом ожидании, решение 7), `ws_state` в
+  цикле проверки, ошибка слоя в `FeedConsumer`, тестовый потребитель на примеси `SessionGuardMixin` (решение 49), вход
+  `notify_rules.decide` (решение 51), подмена «запись удалена между проверкой видимости и вставкой `FeedComment`»
+  (`feed.services.comments`), подмена «отметка уже создана другим запросом» (`feed.services.likes`), шпион слоя
+  `publish` `support_feed.layer_spy()` (считает `group_send` по группам), `support_feed.without_org()` (подмена
+  `apps.is_installed("apps.org")`); `support_feed.reload_asgi_without_feed()` (решение 52); тест `asgi` (T-7126a)
+  сверяет включение списка `feed.routing.websocket_urlpatterns` в маршруты, а не его содержимое, маршрут `ws/feed/`
+  проверяют тесты потребителя T-7124 после T-7223; зацепки «Ответить» `data-reply-id`, `data-reply-name` (решение 13);
+  403 у `/settings/feed/` без права `settings.portal` (решение 11); границы команд стенда (решение 10), ключ `--posts` и
+  сдвиг `important_until` (решение 54); время в SQL — только параметром из `timezone.now()`, один раз на действие
+  (решение 59); раздел «Помощники приёмки» — имена `helpers_feed.py` по строке T-7140a, в том числе `block_ws(context)`
+  на `BrowserContext.route_web_socket` Playwright 1.63 (перехват `/ws/feed/` и `/ws/notify/` с закрытием; решения 8,
+  55). Там же — «что меняется в прежних контрактах» (таблица «было / стало» для T-7138; сами `CONTRACT.md` и
+  `CONTRACT-002…006` не правятся). Контракт проверяется до запуска T-7101 — backend/tests/CONTRACT-007.md — (FR-642;
+  план: «Контракты», «Тексты отказов», «Проверка»)
 - [ ] T-7101 [sonnet] общие помощники тестов по принятому контракту T-7100: `backend/tests/support_feed.py` по образцу
   `support_lists.py` (без `@pytest.fixture`, без импорта `apps.feed` на уровне модуля — модели лениво, код среза внутри
-  функций, сбор тестов проходит до появления кода): `PERMISSIONS_007`, `make_post(author, kind, to=…, mentions=…)`,
-  `make_event`, `make_important`, `comment`, `like`, `attach(post|comment)` (с подменой ClamAV, состояния «чистый»,
-  «проверяется», «карантин»), `as_moderator`, `without_post_all(role)`, `without_feed()` (снятие регистраций `apps.feed`
-  из реестра точек на время теста, как `without_lists`), `run_seed()` (функция `seed` миграции `feed 0002` напрямую),
-  `run_reminders(now)`, `run_retention(now)`, `ws_client(user, query)` (обёртка над `support_notify.WsHub.connect` с
-  путём `/ws/feed/?…`), `layer_down()` (подмена слоя `publish` таймаутом), `reload_asgi_without_feed()` (перезагрузка
-  `config.asgi` с подменой `django.apps.apps.is_installed` и возвратом модуля после теста, решение 52), `capture_sql`,
-  подмена «действие между выборкой и замком» (задание напоминаний, пачка ночного задания), сбор картинок в памяти для
-  эскизов (JPEG с EXIF, PNG с прозрачностью, GIF из нескольких кадров, картинка больше 40 Мп), `email_of`/`phone_of`,
-  список страниц среза для проверок «тексты по-русски» и «без `style=`». Писатели T-7102… стартуют после неё —
-  backend/tests/support_feed.py — (план: «Проверка» → «Серверные тесты»)
-- [ ] T-7102 [P] [sonnet] тесты видимость, аудитория, права действий, строка адресатов (план: «Видимость и аудитория
-  записи», «Запись в ленте и карточка» — строка адресатов, «Модель данных» — `Recipient`, «Контракты» — `/feed/<id>/`,
-  `/feed/<id>/to/`) —
+  функций, сбор тестов проходит до появления кода): `PERMISSIONS_007`, `TITLES_007`, `POINTS_007`, `APPS_TAIL`,
+  `FEED_KINDS` (восемь строк формата `TABLE` из `test_notify_catalog.py`: код, название, модуль «Лента», `order` 70…77
+  по порядку таблицы плана, обязательность, каналы по умолчанию, события, внешний текст; у `feed.like` текст пустой и
+  `channels=("portal",)`, решение 43 (а)), `FEED_CODES`, `FEED_TITLES`, `FEED_MODULE`, `FEED_LIKE`, `FEED_BOXED` (все
+  виды ленты, кроме `feed.like`), `FEED_JOBS` (формат `LISTS_JOBS` из `test_sd_deploy.py`), `make_post(author, kind,
+  to=…, mentions=…)`, `make_event`, `make_important`, `comment`, `like`, `attach(post|comment)` (с подменой ClamAV,
+  состояния «чистый», «проверяется», «карантин»), `as_moderator`, `without_post_all(role)`, `without_feed()` (снятие
+  регистраций `apps.feed` из реестра точек на время теста, как `without_lists`), `run_seed()` (функция `seed` миграции
+  `feed 0002` напрямую), `run_reminders(now)`, `run_retention(now)`, `ws_client(user, query)` (своё подключение по
+  образцу `support_notify.WsHub.connect` (тот кладёт `query_string` пустым, а `support_notify.py` не правится:
+  `ws_client` строит свой `scope`, берёт оттуда `WsClient`, `_application()` и приёмы `ws_run`) с путём `/ws/feed/` и
+  строкой запроса из `query` в `query_string`), `layer_down()` (подмена слоя `publish` таймаутом), `layer_spy()` (шпион
+  слоя `publish`: считает `group_send` по группам), `without_org()` (подмена `apps.is_installed("apps.org")` на время
+  теста), `reload_asgi_without_feed()` (перезагрузка `config.asgi` с подменой `django.apps.apps.is_installed` и
+  возвратом модуля после теста, решение 52), `capture_sql`, подмена «действие между выборкой и замком» (задание
+  напоминаний, пачка ночного задания), подмена «запись удалена между проверкой видимости и вставкой `FeedComment`» в
+  `feed.services.comments` (проверка отката — под `SET CONSTRAINTS ALL IMMEDIATE`, иначе внешний ключ в тесте
+  проверяется только в конце) и подмена «отметка уже создана другим запросом между проверкой и вставкой» в
+  `feed.services.likes` (записи и комментария), сбор картинок в памяти для эскизов (JPEG с EXIF, PNG с прозрачностью,
+  GIF из нескольких кадров, картинка больше 40 Мп), `email_of`/`phone_of`, список страниц среза для проверок «тексты
+  по-русски» и «без `style=`». Писатели T-7102… стартуют после неё — backend/tests/support_feed.py — (план: «Проверка» →
+  «Серверные тесты»)
+- [ ] T-7102a [P] [sonnet] тесты видимость, аудитория, права действий (план: «Видимость и аудитория записи», «Модель
+  данных» — `Recipient`, «Контракты» — `/feed/<id>/`; деление — решение 45) —
   backend/tests/test_feed_visibility.py::test_visibility_table_post_by_employee_parametrized_authors_and_addressees_only
   (FR-605, FR-606);
   backend/tests/test_feed_visibility.py::test_unit_newcomer_sees_earlier_post_and_transferred_employee_stops_seeing
@@ -276,10 +296,8 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_visibility.py::test_unit_and_person_from_other_department_both_see_post_and_line_shows_unit_and_person
   (FR-603, FR-605);
   backend/tests/test_feed_visibility.py::test_deleted_unit_grants_nobody_while_person_and_author_still_see (FR-605,
-  FR-607);
-  backend/tests/test_feed_visibility.py::test_recipients_line_shows_unit_deleted_for_removed_unit_and_keeps_person
-  (FR-603, FR-607); backend/tests/test_feed_visibility.py::test_moderator_not_addressee_gets_404_on_card_like_everyone
-  (FR-604, FR-606);
+  FR-607); backend/tests/test_feed_visibility.py::test_unit_with_addressed_post_is_deleted_without_refusal (FR-607);
+  backend/tests/test_feed_visibility.py::test_moderator_not_addressee_gets_404_on_card_like_everyone (FR-604, FR-606);
   backend/tests/test_feed_visibility.py::test_moderator_mentioned_in_comment_then_sees_card_and_may_delete_post (FR-606,
   FR-611);
   backend/tests/test_feed_visibility.py::test_user_mentioned_in_comment_becomes_addressee_and_sees_card_with_all_comments
@@ -297,28 +315,35 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_visibility.py::test_audience_to_all_is_every_active_employee_and_author_without_dismissed_or_blocked
   (FR-605);
   backend/tests/test_feed_visibility.py::test_audience_unions_subtree_members_person_recipients_and_author_then_drops_inactive
-  (FR-605); backend/tests/test_feed_visibility.py::test_can_edit_post_only_author_not_moderator_or_addressee (FR-603,
-  FR-620);
+  (FR-605); backend/tests/test_feed_visibility.py::test_dismissed_or_blocked_viewer_gets_no_posts_from_visible_posts
+  (FR-605, FR-606); backend/tests/test_feed_visibility.py::test_can_edit_post_only_author_not_moderator_or_addressee
+  (FR-603, FR-620);
   backend/tests/test_feed_visibility.py::test_can_delete_post_author_or_moderator_who_sees_not_moderator_who_does_not
   (FR-603, FR-606, FR-621);
   backend/tests/test_feed_visibility.py::test_comment_edit_by_its_author_only_delete_by_author_or_moderator_who_sees
   (FR-603, FR-606, FR-622);
   backend/tests/test_feed_visibility.py::test_comment_like_and_answer_allowed_to_every_viewer_and_denied_to_non_viewer
-  (FR-606); backend/tests/test_feed_visibility.py::test_recipients_line_all_unit_names_people_once_and_dismissed_marked
+  (FR-606) — (FR-603, FR-604, FR-605, FR-606, FR-607, FR-611, FR-620, FR-621, FR-622)
+- [ ] T-7102b [P] [sonnet] тесты строка адресатов и полный список адресатов (план: «Запись в ленте и карточка» — строка
+  адресатов, «Контракты» — `/feed/<id>/to/`; деление — решение 45) —
+  backend/tests/test_feed_visibility_3.py::test_recipients_line_shows_unit_deleted_for_removed_unit_and_keeps_person
   (FR-603, FR-607);
-  backend/tests/test_feed_visibility.py::test_recipients_line_over_five_shows_first_five_and_more_four_counting_comment_mention
+  backend/tests/test_feed_visibility_3.py::test_recipients_line_all_unit_names_people_once_and_dismissed_marked (FR-603,
+  FR-607);
+  backend/tests/test_feed_visibility_3.py::test_recipients_line_over_five_shows_first_five_and_more_four_counting_comment_mention
   (FR-603, FR-607, FR-611);
-  backend/tests/test_feed_visibility.py::test_recipients_full_list_fragment_includes_comment_mention_unit_deleted_and_dismissed
-  (FR-603, FR-607, FR-611); backend/tests/test_feed_visibility.py::test_recipients_full_list_returns_404_for_non_viewer
-  (FR-604, FR-606) — (FR-603, FR-604, FR-605, FR-606, FR-607, FR-611, FR-620, FR-621, FR-622)
+  backend/tests/test_feed_visibility_3.py::test_recipients_full_list_fragment_includes_comment_mention_unit_deleted_and_dismissed
+  (FR-603, FR-607, FR-611);
+  backend/tests/test_feed_visibility_3.py::test_recipients_full_list_returns_404_for_non_viewer (FR-604, FR-606) —
+  (FR-603, FR-604, FR-606, FR-607, FR-611)
 - [ ] T-7103 [P] [sonnet] тесты одна функция видимости во всех местах (план: «Видимость и аудитория записи» — перечень
   мест, «Контракты») — backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_from_first_feed_page
   (FR-606); backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_from_more_posts (FR-606);
   backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_under_important_filter (FR-606);
   backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_under_events_filter (FR-606);
-  backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_under_mine_filter (FR-606);
-  backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_under_mentions_filter (FR-606);
-  backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_under_author_filter (FR-606);
+  backend/tests/test_feed_visibility_2.py::test_mine_filter_excludes_post_of_other_author_where_i_am_addressee (FR-635);
+  backend/tests/test_feed_visibility_2.py::test_mentions_filter_excludes_post_where_i_am_addressee_via_to_but_not_mentioned
+  (FR-635); backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_under_author_filter (FR-606);
   backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_under_period_filter (FR-606);
   backend/tests/test_feed_visibility_2.py::test_invisible_post_card_returns_404_like_missing (FR-604, FR-606);
   backend/tests/test_feed_visibility_2.py::test_invisible_post_and_its_comments_absent_from_search_without_count
@@ -337,7 +362,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_visibility_2.py::test_new_comment_edit_and_delete_on_invisible_post_return_404 (FR-606);
   backend/tests/test_feed_visibility_2.py::test_edit_delete_and_like_of_comment_on_invisible_post_return_404 (FR-606);
   backend/tests/test_feed_visibility_2.py::test_invisible_post_response_same_code_page_and_not_found_text_as_missing
-  (FR-604, FR-606) — (FR-604, FR-606, FR-628, FR-630, FR-634, FR-636)
+  (FR-604, FR-606) — (FR-604, FR-606, FR-628, FR-630, FR-634, FR-635, FR-636)
 - [ ] T-7104 [P] [sonnet] тесты главная, меню, узел числа (план: «Главная, меню и число у „Ленты“», «Точки расширения
   ядра и шина событий» — `menu_items`, `home_body`, «Модуль и выключение») —
   backend/tests/test_feed_home.py::test_home_body_order_notices_form_filters_empty_banner_important_block_feed (FR-601);
@@ -447,10 +472,10 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_posts_2.py::test_pick_returns_htmx_fragment (FR-610);
   backend/tests/test_feed_posts_2.py::test_card_shows_post_with_all_comments_and_comment_anchors (FR-604);
   backend/tests/test_feed_posts_2.py::test_card_has_ws_node_with_post_query (FR-604);
-  backend/tests/test_feed_posts_2.py::test_card_publishes_object_viewed_for_post_and_each_own_comment (FR-604);
+  backend/tests/test_feed_posts_2.py::test_card_publishes_object_viewed_for_post_and_each_own_comment (FR-604, FR-630);
   backend/tests/test_feed_posts_2.py::test_card_for_non_viewer_same_404_as_nonexistent (FR-604);
   backend/tests/test_feed_posts_2.py::test_literal_paths_not_confused_with_post_id_route (FR-604) — (FR-604, FR-610,
-  FR-635)
+  FR-630, FR-635)
 - [ ] T-7109 [P] [sonnet] тесты вывод текста и безопасный вывод на странице (план: «Текст и упоминания» — вывод,
   отрывок; «Безопасный вывод, язык, узкий экран» — проба NFR-605) —
   backend/tests/test_feed_text.py::test_render_plain_evil_inputs_leave_only_allowed_tags_and_attributes (FR-609,
@@ -602,6 +627,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-618, NFR-610);
   backend/tests/test_feed_reminders.py::test_failing_event_id_is_excluded_from_selection_as_sql_parameter_until_end_of_run
   (FR-618); backend/tests/test_feed_reminders.py::test_event_started_while_job_was_idle_gets_no_reminder (FR-618);
+  backend/tests/test_feed_reminders.py::test_reschedule_exactly_one_hour_later_sends_no_second_reminder (FR-619);
   backend/tests/test_feed_reminders.py::test_one_run_reminds_at_most_200_events_and_next_run_takes_the_rest (FR-618) —
   (FR-606, FR-618, FR-619, NFR-610)
 - [ ] T-7115 [P] [sonnet] тесты ночного задания срока хранения (план: «Срок хранения и ночное задание» — граница, три
@@ -619,17 +645,18 @@ Opus по задачам» в конце файла; решения владел
   NFR-610);
   backend/tests/test_feed_retention.py::test_repeated_retention_run_deletes_nothing_writes_no_journal_and_raises_no_error
   (FR-638, FR-639, NFR-610);
-  backend/tests/test_feed_retention.py::test_2500_old_posts_are_deleted_in_three_batches_of_1000_by_batch_spy_and_limit_1000_selects
+  backend/tests/test_feed_retention.py::test_2500_old_posts_are_deleted_in_three_batches_of_1000_by_batch_spy_and_limit_1000_selects_and_journal_posts_is_2500
   (FR-638);
-  backend/tests/test_feed_retention.py::test_post_deleted_between_batch_selection_and_delete_is_skipped_without_error
+  backend/tests/test_feed_retention.py::test_post_deleted_between_batch_selection_and_delete_is_skipped_without_error_and_not_counted_in_journal_posts
   (NFR-610);
   backend/tests/test_feed_retention.py::test_shown_rows_of_posts_published_over_31_days_ago_are_deleted_and_younger_kept_by_post_published_at
   (FR-626, FR-638);
   backend/tests/test_feed_retention.py::test_unattached_feed_files_older_than_24_hours_are_deleted_with_stored_file_and_disk_and_younger_kept
   (FR-633, FR-638);
   backend/tests/test_feed_retention.py::test_portal_notification_of_post_deleted_by_term_remains_and_its_link_is_404
-  (FR-632); backend/tests/test_feed_retention.py::test_retention_job_runs_no_vacuum (FR-638) — (FR-621, FR-626, FR-632,
-  FR-633, FR-638, FR-639, NFR-610)
+  (FR-632); backend/tests/test_feed_retention.py::test_retention_job_runs_no_vacuum (FR-638);
+  backend/tests/test_feed_retention.py::test_retention_steps_run_in_order_shown_cleanup_then_post_batches_then_unattached_files_by_sql_order
+  (FR-626, FR-633, FR-638) — (FR-621, FR-626, FR-632, FR-633, FR-638, FR-639, NFR-610)
 - [ ] T-7116 [P] [sonnet] тесты настройки срока хранения (план: «Срок хранения и ночное задание» — настройка, «Точки
   расширения ядра и шина событий» — `menu_items` «Настройки ленты», «Контракты» — `/settings/feed/`) —
   backend/tests/test_feed_settings.py::test_settings_feed_page_has_portal_settings_feed_title_and_retention_years_field_for_settings_portal
@@ -703,6 +730,8 @@ Opus по задачам» в конце файла; решения владел
   (FR-622, FR-639); backend/tests/test_feed_edit_2.py::test_post_author_cannot_delete_others_comment_403 (FR-622);
   backend/tests/test_feed_edit_2.py::test_comment_delete_removes_its_likes_files_and_stored_files_and_erases_disk_after_commit
   (FR-622); backend/tests/test_feed_edit_2.py::test_comment_delete_keeps_mentioned_people_as_post_recipients (FR-622);
+  backend/tests/test_feed_edit_2.py::test_comment_edit_adds_new_file_up_to_limit_3_and_removes_marked_file_with_stored_file_and_disk_after_commit
+  (FR-622);
   backend/tests/test_feed_edit_2.py::test_comment_on_post_deleted_between_check_and_insert_rolls_back_without_orphan_core_comment
   (FR-621, FR-622) — (FR-621, FR-622, FR-632, FR-639)
 - [ ] T-7119 [P] [sonnet] тесты комментарии; комментарии базы знаний не меняются (план: «Комментарии», «Модель данных» —
@@ -724,11 +753,11 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_comments.py::test_comment_menu_edit_delete_shown_by_right (FR-623);
   backend/tests/test_feed_comments.py::test_comment_has_escaped_reply_hook_with_author_id_and_name (FR-623);
   backend/tests/test_feed_comments.py::test_comment_with_mentions_files_and_notifications_rolls_back_together_on_dispatch_error
-  (FR-623); backend/tests/test_feed_comments.py::test_comment_live_frame_sent_only_after_commit (FR-623);
+  (FR-623); backend/tests/test_feed_comments.py::test_comment_live_frame_sent_only_after_commit (FR-623, FR-627);
   backend/tests/test_feed_comments.py::test_article_comment_edit_like_and_files_via_feed_urls_return_404 (FR-624);
   backend/tests/test_feed_comments.py::test_core_comment_get_fields_unchanged (FR-624);
   backend/tests/test_feed_comments.py::test_article_comments_stay_without_edit_mentions_likes_and_files (FR-624) —
-  (FR-623, FR-624, FR-633, FR-642)
+  (FR-623, FR-624, FR-627, FR-633, FR-642)
 - [ ] T-7120 [P] [sonnet] тесты «Нравится» (план: «„Нравится“», «Контракты» — `/feed/<id>/like/`, `/feed/<id>/likes/`,
   `/feed/comments/<cid>/like/`, `/feed/comments/<cid>/likes/`) —
   backend/tests/test_feed_likes.py::test_post_like_first_press_sets_mark_second_removes (FR-625);
@@ -780,16 +809,17 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_live.py::test_post_delete_sends_oob_delete_frame_to_those_who_saw_post_before_delete (FR-627,
   FR-628);
   backend/tests/test_feed_live.py::test_post_delete_frame_reaches_personal_addressee_although_cascade_removes_addressees
-  (FR-628); backend/tests/test_feed_live.py::test_post_delete_sends_new_feed_count_to_same_viewers (FR-628, FR-627);
-  backend/tests/test_feed_live.py::test_post_edit_frame_has_action_post_and_reaches_page_with_post_in_ids (FR-627);
-  backend/tests/test_feed_live.py::test_new_comment_frame_has_action_comment_and_reaches_page_with_post_in_ids (FR-627);
+  (FR-628); backend/tests/test_feed_live.py::test_post_delete_sends_new_feed_count_to_same_viewers (FR-628, FR-627,
+  FR-626); backend/tests/test_feed_live.py::test_post_edit_frame_has_action_post_and_reaches_page_with_post_in_ids
+  (FR-627); backend/tests/test_feed_live.py::test_new_comment_frame_has_action_comment_and_reaches_page_with_post_in_ids
+  (FR-627);
   backend/tests/test_feed_live.py::test_comment_edit_and_comment_delete_frames_have_comment_edit_and_comment_delete_actions
   (FR-627); backend/tests/test_feed_live.py::test_post_like_and_comment_like_frames_have_like_and_comment_like_actions
   (FR-627); backend/tests/test_feed_live.py::test_read_and_event_answer_frames_have_read_and_answer_actions (FR-627);
   backend/tests/test_feed_live.py::test_broadcast_goes_through_publish_layer_one_message_per_recipient_group (FR-627);
   backend/tests/test_feed_live.py::test_post_card_socket_gets_frames_about_its_post (FR-627);
-  backend/tests/test_feed_live.py::test_socket_on_page_without_feed_gets_no_feed_frames (FR-627) — (FR-606, FR-627,
-  FR-628)
+  backend/tests/test_feed_live.py::test_socket_on_page_without_feed_gets_no_feed_frames (FR-627) — (FR-606, FR-626,
+  FR-627, FR-628)
 - [ ] T-7123 [P] [sonnet] тесты кадров: классы рендера, безопасность, слой `publish`, число «Ленты» (план: «Живые
   обновления» (шаги 2–3, формат кадров, CSP, без WebSocket), «Главная, меню и число у «Ленты»» (живое число),
   «Непрочитанное» (обновление числа), «Контракты» («Сообщения слоя каналов»)) —
@@ -834,6 +864,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-627); backend/tests/test_feed_consumers.py::test_password_expiry_closes_socket_with_4401_within_check_interval
   (FR-627); backend/tests/test_feed_consumers.py::test_closed_socket_gets_no_frames_about_post_published_afterwards
   (FR-627); backend/tests/test_feed_consumers.py::test_check_interval_change_applies_on_next_wait (FR-627);
+  backend/tests/test_feed_consumers.py::test_feed_check_interval_default_is_25_seconds_not_over_30 (FR-627);
   backend/tests/test_feed_consumers.py::test_ws_state_error_in_check_loop_closes_with_1013 (FR-627);
   backend/tests/test_feed_consumers.py::test_channel_layer_error_in_consumer_closes_with_1011 (FR-627);
   backend/tests/test_feed_consumers.py::test_connect_adds_socket_to_personal_group_feed_u_id (FR-627);
@@ -870,8 +901,8 @@ Opus по задачам» в конце файла; решения владел
   FR-602); backend/tests/test_feed_consumers_2.py::test_feed_new_puts_important_on_top_with_regular_when_block_hidden
   (FR-627, FR-602, FR-635);
   backend/tests/test_feed_consumers_2.py::test_feed_new_replaces_banner_with_empty_one_with_new_since (FR-627);
-  backend/tests/test_feed_consumers_2.py::test_feed_new_records_shown_and_count_only_with_hx_request (FR-627, FR-602) —
-  (FR-602, FR-627, FR-628, FR-635, NFR-608)
+  backend/tests/test_feed_consumers_2.py::test_feed_new_records_shown_and_count_only_with_hx_request (FR-627, FR-602,
+  FR-626) — (FR-602, FR-626, FR-627, FR-628, FR-635, NFR-608)
 - [ ] T-7126a [P] [sonnet] тесты изменений `core/ws.py`, `notify/consumers.py`, `notify/services/live.py`,
   `config/asgi.py`, `CHANNEL_LAYERS`; прежнее поведение (план: «Проверка» → «Изменения кода прежних срезов» (строки
   `config/asgi.py`, `config/settings.py`, `core/ws.py`, `notify/consumers.py`, `notify/services/live.py`), «Живые
@@ -967,7 +998,8 @@ Opus по задачам» в конце файла; решения владел
   NFR-611); backend/tests/test_feed_notify_2.py::test_title_and_place_200_cut_to_60_snippet_100_total_at_most_300
   (FR-631); backend/tests/test_feed_notify_2.py::test_snippet_without_markup_marker_becomes_at_full_name (FR-631);
   backend/tests/test_feed_notify_2.py::test_external_text_of_each_kind_constant_without_name_title_place_snippet
-  (FR-631, NFR-609); backend/tests/test_feed_notify_2.py::test_telegram_mention_sends_only_external_text_and_link
+  (FR-631, NFR-609);
+  backend/tests/test_feed_notify_2.py::test_external_channel_mention_sends_only_external_text_and_link_parametrized_telegram_max_webpush
   (FR-631, NFR-609); backend/tests/test_feed_notify_2.py::test_browser_tab_system_notification_uses_portal_text (FR-631,
   NFR-609); backend/tests/test_feed_notify_2.py::test_email_sent_only_if_unread_after_delay_with_author_and_snippet
   (FR-631);
@@ -1017,8 +1049,9 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_files_2.py::test_clean_scan_moves_file_to_attachments_and_builds_thumb (FR-634);
   backend/tests/test_feed_files_2.py::test_found_scan_puts_file_to_quarantine (FR-634);
   backend/tests/test_feed_files_2.py::test_clamav_unavailable_post_and_comment_intact_file_pending_requeued (NFR-614);
-  backend/tests/test_feed_files_2.py::test_thumb_built_for_jpeg_png_gif_webp_not_for_other_files (FR-634);
-  backend/tests/test_feed_files_2.py::test_thumb_at_most_1280_px_longer_side_saved_as_jpeg (FR-634);
+  backend/tests/test_feed_files_2.py::test_storage_failure_on_clean_move_keeps_post_comment_and_file_pending_requeued
+  (FR-633, NFR-614); backend/tests/test_feed_files_2.py::test_thumb_built_for_jpeg_png_gif_webp_not_for_other_files
+  (FR-634); backend/tests/test_feed_files_2.py::test_thumb_at_most_1280_px_longer_side_saved_as_jpeg (FR-634);
   backend/tests/test_feed_files_2.py::test_thumb_png_with_transparency_saved_as_webp (FR-634);
   backend/tests/test_feed_files_2.py::test_thumb_rotated_by_exif_and_saved_without_exif (FR-634);
   backend/tests/test_feed_files_2.py::test_thumb_gif_uses_first_frame (FR-634);
@@ -1038,8 +1071,9 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_files_2.py::test_display_quarantine_name_and_mark_without_link (FR-634);
   backend/tests/test_feed_files_2.py::test_display_clean_image_as_thumb_linking_original (FR-634);
   backend/tests/test_feed_files_2.py::test_display_clean_other_file_name_size_download (FR-634);
-  backend/tests/test_feed_files_2.py::test_display_file_state_data_attribute_for_each_state (FR-634) — (FR-606, FR-634,
-  FR-642, NFR-613, NFR-614)
+  backend/tests/test_feed_files_2.py::test_display_clean_image_without_thumb_shows_name_size_download (FR-634);
+  backend/tests/test_feed_files_2.py::test_display_file_state_data_attribute_for_each_state (FR-634) — (FR-606, FR-633,
+  FR-634, FR-642, NFR-613, NFR-614)
 - [ ] T-7131 [P] [sonnet] тесты сквозного поиска и векторов (план: «Поиск»; «Точки расширения ядра» —
   `search_providers`) — backend/tests/test_feed_search.py::test_provider_key_feed_title_order_60_after_lists (FR-636,
   FR-641); backend/tests/test_feed_search.py::test_provider_available_to_every_logged_in_employee (FR-636);
@@ -1055,7 +1089,8 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_search.py::test_edited_comment_not_found_by_old_text_found_by_new (FR-637);
   backend/tests/test_feed_search.py::test_stop_word_query_returns_empty_without_error (FR-636);
   backend/tests/test_feed_search.py::test_results_ordered_newest_first_across_posts_and_comments (FR-636);
-  backend/tests/test_feed_search.py::test_provider_returns_at_most_limit_plus_one_rows (NFR-603);
+  backend/tests/test_feed_search.py::test_second_page_with_offset_continues_without_gaps_or_repeats_across_posts_and_comments
+  (FR-636); backend/tests/test_feed_search.py::test_provider_returns_at_most_limit_plus_one_rows (NFR-603);
   backend/tests/test_feed_search.py::test_count_two_branches_limit_301_capped_at_300 (NFR-603);
   backend/tests/test_feed_search.py::test_without_feed_module_no_feed_group (FR-641);
   backend/tests/test_feed_search.py::test_query_words_passed_as_parameters_not_in_sql_text (NFR-608);
@@ -1132,7 +1167,8 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_stand.py::test_e2e_feed_retention_runs_night_job_in_process_and_prints_single_line_with_aged_and_deleted
   (FR-638) — (FR-613, FR-618, FR-638, FR-640)
 - [ ] T-7135 [P] [sonnet] тесты развёртывание (план: «Запуск», «Новые компоненты и лицензии», «Безопасный вывод, язык,
-  узкий экран», «Нагрузка», «Проверка» — `test_feed_deploy.py`, «Модуль и выключение») —
+  узкий экран», «Нагрузка», «Проверка» — `test_feed_deploy.py`, «Модуль и выключение»; прежние записи cron сверяются по
+  имени и минуте, у `notify_tick` — интервал 30 с) —
   backend/tests/test_feed_deploy.py::test_feed_is_last_in_installed_apps_after_search (FR-641);
   backend/tests/test_feed_deploy.py::test_feed_reminders_cron_entry_runs_remind_events_every_minute_in_notify_with_timeout_120
   (FR-618);
@@ -1163,7 +1199,8 @@ Opus по задачам» в конце файла; решения владел
 - [ ] T-7136 [P] [sonnet] тесты границы модуля (план: «Модуль и выключение», «Точки расширения ядра и шина событий»,
   «Сверка с конституцией», «Модель данных») —
   backend/tests/test_feed_boundaries.py::test_core_org_notify_knowledge_servicedesk_lists_search_do_not_import_feed
-  (FR-641); backend/tests/test_feed_boundaries.py::test_feed_does_not_import_models_of_org_notify_or_other_apps
+  (FR-641);
+  backend/tests/test_feed_boundaries.py::test_feed_does_not_import_models_of_org_notify_or_other_apps_and_imports_nothing_from_servicedesk_knowledge_lists_search
   (FR-641); backend/tests/test_feed_boundaries.py::test_feed_imports_org_only_through_services_structure (FR-641);
   backend/tests/test_feed_boundaries.py::test_feed_imports_notify_only_through_dispatch_and_live_group (FR-641);
   backend/tests/test_feed_boundaries.py::test_feed_has_is_installed_guard_for_each_org_and_notify_import (FR-641);
@@ -1211,29 +1248,31 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_core_changes.py::test_pdn_patterns_email_and_phone_keep_previous_expressions_and_knowledge_imports_them
   (FR-612); backend/tests/test_feed_core_changes.py::test_knowledge_find_and_mask_plain_give_same_results_on_string_set
   (FR-612);
-  backend/tests/test_feed_core_changes.py::test_subtree_member_ids_equals_descendants_direct_members_with_secondary_jobs_without_dismissed_with_blocked
+  backend/tests/test_feed_core_changes.py::test_subtree_member_ids_equals_descendants_direct_members_with_secondary_jobs_without_dismissed_with_blocked_and_no_invited_in_data
   (FR-605); backend/tests/test_feed_core_changes.py::test_unit_chains_equals_unit_chain_ids_for_each_user_in_two_queries
   (FR-605); backend/tests/test_feed_core_changes.py::test_previous_structure_functions_keep_names_signatures_and_results
   (FR-605, FR-641) — (FR-601, FR-605, FR-612, FR-624, FR-626, FR-633, FR-641)
-- [ ] T-7140 [sonnet] тесты приёмка: обвязка приёмки и сценарий 1, публикация всем, подразделению и людям; кто видит,
-  кто нет (план: «Проверка», «Проход в браузере», «Стенд и приёмка», «Публикация: форма, «Кому», подсказки», «Видимость
-  и аудитория записи», «Запись в ленте и карточка», «Текст и упоминания», «Лента, курсор, блок важных, фильтры»,
-  «Безопасный вывод, язык, узкий экран», «Тексты отказов»). Общие помощники backend/tests/e2e/helpers_feed.py (пишет
-  только эта задача): роли и учётки сценариев (роль с правом «Писать всем», модератор ленты, сотрудник без прав ленты;
-  подразделения «Отдел ИТ» с вложенной «Группой сети» и «Бухгалтерия», совместитель, Петров, Сидоров — через helpers.py
-  и helpers_org.py); open_feed(context, account) — ждёт `#feed-live[data-ws="open"]`; open_card(context, account,
-  post_id); публикация формой publish / try_publish (вид, текст, «Кому» через подсказку, срок важного, поля события,
-  файлы) и публикация запросом той же формы для объёмов; выбор из подсказки «Кому» и «@»; комментарий, «Нравится»,
-  «Прочитано», ответ на событие; чтение числа `#menu-badge-feed[data-count]` и ожидание его значения; ожидание плашки
-  `#feed-new`; номера записей страницы и блока важных; загрузка файла и ожидание «проверяется → чистый» на ClamAV
-  стенда, EICAR из частей; обёртки shift(minutes) над `e2e_feed_shift --minutes N` (сдвигает и `important_until` важных
-  записей) и age(days, posts=None) над `e2e_feed_retention --age-days N [--posts <номера через запятую>]` через
-  helpers_sd._stand_command с разбором строк `feed_shift: shifted=<N> reminded=<M> important=<K>` и `feed_retention:
-  aged=<N> deleted=<M>` (решение 54); block_ws(context) — перехват `/ws/feed/` и `/ws/notify/` с закрытием через
-  `BrowserContext.route_web_socket` Playwright 1.63 (решение 55); Mailpit, колокольчик и «Мои уведомления», учебная
-  служба fakebots для Telegram, helpers_notify.tick для писем через 15 минут; проверка ширины 360 px; имена помощников —
-  одни для T-7140…T-7154, их закрепляет контракт T-7100 в разделе «Помощники приёмки» (решение 8) —
-  backend/tests/e2e/helpers_feed.py;
+- [ ] T-7140a [sonnet] обвязка приёмки (план: «Проверка», «Проход в браузере», «Стенд и приёмка»; деление — решение 45).
+  Общие помощники backend/tests/e2e/helpers_feed.py (пишет только эта задача): роли и учётки сценариев (роль с правом
+  «Писать всем», модератор ленты, сотрудник без прав ленты; подразделения «Отдел ИТ» с вложенной «Группой сети» и
+  «Бухгалтерия», совместитель, Петров, Сидоров — через helpers.py и helpers_org.py); open_feed(context, account,
+  live=True) — при live=True ждёт `#feed-live[data-ws="open"]`, при live=False (после block_ws, приёмка f08) ждёт только
+  загрузки страницы; open_card(context, account, post_id); публикация формой publish / try_publish (вид, текст, «Кому»
+  через подсказку, срок важного, поля события, файлы) и публикация запросом той же формы для объёмов; выбор из подсказки
+  «Кому» и «@»; комментарий, «Нравится», «Прочитано», ответ на событие; чтение числа `#menu-badge-feed[data-count]` и
+  ожидание его значения; ожидание плашки `#feed-new`; номера записей страницы и блока важных; загрузка файла и ожидание
+  «проверяется → чистый» на ClamAV стенда, EICAR из частей; обёртки shift(minutes) над `e2e_feed_shift --minutes N`
+  (сдвигает и `important_until` важных записей) и age(days, posts=None) над `e2e_feed_retention --age-days N [--posts
+  <номера через запятую>]` через helpers_sd._stand_command с разбором строк `feed_shift: shifted=<N> reminded=<M>
+  important=<K>` и `feed_retention: aged=<N> deleted=<M>` (решение 54); block_ws(context) — перехват `/ws/feed/` и
+  `/ws/notify/` с закрытием через `BrowserContext.route_web_socket` Playwright 1.63 (решение 55); Mailpit, колокольчик и
+  «Мои уведомления», учебная служба fakebots для Telegram, helpers_notify.tick для писем через 15 минут; проверка ширины
+  360 px; имена помощников — одни для T-7140b…T-7154, их закрепляет контракт T-7100 в разделе «Помощники приёмки»
+  (решение 8) — backend/tests/e2e/helpers_feed.py — (план: «Проверка» → «Проход в браузере»)
+- [ ] T-7140b [P] [sonnet] тесты приёмка сценария 1: публикация всем, подразделению и людям; кто видит, кто нет (план:
+  «Проверка», «Проход в браузере», «Стенд и приёмка», «Публикация: форма, «Кому», подсказки», «Видимость и аудитория
+  записи», «Запись в ленте и карточка», «Текст и упоминания», «Лента, курсор, блок важных, фильтры», «Безопасный вывод,
+  язык, узкий экран», «Тексты отказов»; помощники — T-7140a) —
   backend/tests/e2e/test_f01_publish.py::test_f01_form_of_post_all_holder_opens_with_message_kind_and_all_in_to (FR-608,
   FR-610);
   backend/tests/e2e/test_f01_publish.py::test_f01_kind_switch_shows_term_field_for_important_and_event_fields_for_event_only
@@ -1439,7 +1478,8 @@ Opus по задачам» в конце файла; решения владел
   (FR-602, FR-627);
   backend/tests/e2e/test_f08_live.py::test_f08_edit_and_comment_of_shown_post_do_not_make_it_unread_or_raise_feed_badge
   (FR-626); backend/tests/e2e/test_f08_live.py::test_f08_new_posts_2_banner_click_lowers_feed_badge_by_2 (FR-626,
-  FR-627) — (FR-602, FR-626, FR-627, FR-628, NFR-602)
+  FR-627); backend/tests/e2e/test_f08_live.py::test_f08_own_comment_in_same_tab_is_shown_once_after_frame_arrives
+  (FR-627) — (FR-602, FR-626, FR-627, FR-628, NFR-602)
 - [ ] T-7148 [P] [sonnet] тесты приёмка сценария 9: уведомления ленты по каналам (план: «Проверка», «Проход в браузере»,
   «Уведомления») —
   backend/tests/e2e/test_f09_notify.py::test_f09_personal_addressee_gets_record_for_you_on_bell_with_author_and_snippet_up_to_100_chars
@@ -1526,7 +1566,8 @@ Opus по задачам» в конце файла; решения владел
   (FR-602, FR-635); backend/tests/e2e/test_f11_search.py::test_f11_search_results_and_filters_do_not_widen_page_at_360px
   (NFR-606) — (FR-602, FR-606, FR-635, FR-636, FR-637, NFR-606, NFR-608)
 - [ ] T-7151 [P] [sonnet] тесты приёмка сценария 12: срок хранения и ночное задание (план: «Проверка», «Проход в
-  браузере», «Срок хранения и ночное задание», «Журнал») —
+  браузере», «Срок хранения и ночное задание», «Журнал»; повтор ночного задания — `age(1, posts=[<свежая запись
+  теста>])`, решение 54) —
   backend/tests/e2e/test_f12_retention.py::test_f12_new_install_feed_settings_page_shows_keep_posts_3_years (FR-638);
   backend/tests/e2e/test_f12_retention.py::test_f12_retention_0_11_or_not_a_number_is_refused_with_reason_and_value_kept
   (FR-638, FR-642);
@@ -1535,7 +1576,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-638);
   backend/tests/e2e/test_f12_retention.py::test_f12_confirmed_decrease_appears_in_journal_as_years_before_after (FR-638,
   FR-639); backend/tests/e2e/test_f12_retention.py::test_f12_increase_is_saved_at_once_without_confirm (FR-638);
-  backend/tests/e2e/test_f12_retention.py::test_f12_post_aged_3_years_and_1_day_is_deleted_by_night_job_with_comments_and_files
+  backend/tests/e2e/test_f12_retention.py::test_f12_post_aged_3_years_and_1_day_is_deleted_by_night_job_with_comments_files_likes_reads_and_event_answers
   (FR-638); backend/tests/e2e/test_f12_retention.py::test_f12_post_aged_less_than_term_is_kept_by_night_job (FR-638);
   backend/tests/e2e/test_f12_retention.py::test_f12_old_post_edited_and_commented_recently_is_deleted_by_term_from_publication
   (FR-638); backend/tests/e2e/test_f12_retention.py::test_f12_old_post_of_dismissed_employee_is_deleted_by_same_term
@@ -1591,10 +1632,13 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/e2e/test_f15_pdn.py::test_f15_post_edit_adding_email_shows_warning_with_save_anyway_which_saves
   (FR-612); backend/tests/e2e/test_f15_pdn.py::test_f15_email_or_phone_in_event_title_or_place_shows_warning (FR-612);
   backend/tests/e2e/test_f15_pdn.py::test_f15_email_inside_backticks_still_shows_warning (FR-612) — (FR-612)
-- [ ] T-7138 [sonnet] (после T-7101: нужны `support_feed.without_feed()` и `PERMISSIONS_007`; без `[P]` — решение 31)
-  правка тестов срезов 001–006, которые меняются вместе со срезом 007, двумя заданиями агенту — серверные тесты (пункты
-  1–43 раздела «Ломаются или становятся неверными» анализа влияния `crm-work/slice007/tasks/impact.md`) и приёмка
-  (пункты 44, 45). Правило: каждая правка — только с разрешения владельца, по одному тесту, с диффом; разрешение
+- [ ] T-7138 [sonnet] (после T-7101: нужны `support_feed.without_feed()` и константы `PERMISSIONS_007`, `TITLES_007`,
+  `POINTS_007`, `APPS_TAIL`, `FEED_CODES`, `FEED_TITLES`, `FEED_MODULE`, `FEED_LIKE`, `FEED_BOXED`, `FEED_JOBS`; без
+  `[P]` — решение 31) правка тестов срезов 001–006, которые меняются вместе со срезом 007, тремя заданиями агенту
+  (первое — пункты 1–26: точки, поля, хвост `INSTALLED_APPS`, сброс стенда, cron, nginx, слой каналов, права, меню;
+  второе — пункты 27–43: каталог уведомлений, поиск, колокольчик; третье — приёмка, пункты 44 и 45) — серверные тесты
+  (пункты 1–43 раздела «Ломаются или становятся неверными» анализа влияния `crm-work/slice007/tasks/impact.md`) и
+  приёмка (пункты 44, 45). Правило: каждая правка — только с разрешения владельца, по одному тесту, с диффом; разрешение
   спрашивает Opus до правки, исполнитель правит только после ответа; точное «было / стало» — `impact.md` и раздел «Что
   меняется в прежних контрактах» `CONTRACT-007.md`; спорные пункты `impact.md` («решить в TASKS-007») — по решению 43.
   Строки `файл:строка` ниже — по коммиту e7ca1db, при сдвиге искать по утверждению. Определённо (45 пунктов): п. 1–5 —
@@ -1623,7 +1667,7 @@ Opus по задачам» в конце файла; решения владел
   `feed.like: []` — решение 43 (б)), `:477`, `:493-495` (названия и модуль «Лента»), `:510` (`["push"] * 13`),
   `:518-533` (у `feed.like` в ячейках `telegram`, `max` нет `input`; план не называет), `:552, 556` (14 флажков, цикл
   без `FEED_LIKE`), `test_notify_prefs.py:208-214`, `:239-241`, `:499-501` (строки, названия, модуль, `matrix` с
-  `FEED_BOXED` и `FEED_LIKE: []`), `test_kb_boundaries.py:277` (17 видов или `without_feed()`); п. 40–42 — поиск:
+  `FEED_BOXED` и `FEED_LIKE: []`), `test_kb_boundaries.py:278` (17 видов или `without_feed()`); п. 40–42 — поиск:
   `test_search_providers_2.py:306, 309`, `:328-329` (`+ "feed"`), `test_kb_boundaries.py:482-483` (`+ ["feed"]`, `+
   ["Лента"]`); п. 43 — `test_notify_pages.py:219` (колокольчик открывается на `/me/` — решение 43 (г); два `ws-connect`
   на `/` проверяет T-7104; план этого теста не называет); п. 44–45 (приёмка) — `tests/e2e/test_e04_my_settings.py:36-56,
@@ -1658,10 +1702,10 @@ Opus по задачам» в конце файла; решения владел
   T-7159; прогоны — через `systemd-run --user`, приёмка — на пустом стенде, сброс перед кругом): новые тесты падают по
   ожидаемой причине (нет кода среза); тесты срезов 001–006 зелёные, кроме тестов перечня T-7138: они уже исправлены под
   срез 007 и падают по той же причине, что и новые (отдельной строкой); отдельной строкой — тесты перечня T-7138,
-  которые зеленеют только с T-7202, T-7213a, T-7230, T-7232 и T-7233 (решение 31); отдельной строкой — тесты «Проверить
-  после реализации» плана и «Условно» анализа влияния — зелёные; приёмка прежних срезов — Chromium и Яндекс Браузер
-  (`-k`); сводка «тест → причина» и эталон для регрессии — отчёт docs/reviews/TASKS-007.md, раздел «Красный прогон» —
-  (FR-601…642, NFR-601…614; инвариант «тест-на-требование»)
+  которые зеленеют только с T-7201, T-7202, T-7206, T-7213a, T-7224, T-7228, T-7230, T-7232 и T-7233 (решение 31);
+  отдельной строкой — тесты «Проверить после реализации» плана и «Условно» анализа влияния — зелёные; приёмка прежних
+  срезов — Chromium и Яндекс Браузер (`-k`); сводка «тест → причина» и эталон для регрессии — отчёт
+  docs/reviews/TASKS-007.md, раздел «Красный прогон» — (FR-601…642, NFR-601…614; инвариант «тест-на-требование»)
 
 ## Этап 3 — реализация
 
@@ -1701,9 +1745,10 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
   ленту» — «Администратору портала» по названию (нет роли — пропуск); строка `FeedSettings(retention_years=3)`, если её
   нет; `feed/services/feed_settings.py` — `get()` создаёт строку при отсутствии; `feed/texts.py` — все тексты отказов
   FR-642, два текста для запросов в обход интерфейса и текст предела непривязанных загрузок одним словарём, дословно по
-  `CONTRACT-007.md`. Тесты: `test_feed_seed.py`; сверка словаря текстов с контрактом (решение 19) —
-  backend/apps/feed/migrations/0002_initial_data.py, backend/apps/feed/services/feed_settings.py,
-  backend/apps/feed/texts.py — (FR-638, FR-640, FR-642)
+  `CONTRACT-007.md`. Тесты: `test_feed_seed.py`; прежние `test_permissions.py`, `test_sd_access.py`,
+  `test_lists_seed.py`, `test_org_permissions.py` (перечень прав, в виде после T-7138); сверка словаря текстов с
+  контрактом (решение 19) — backend/apps/feed/migrations/0002_initial_data.py,
+  backend/apps/feed/services/feed_settings.py, backend/apps/feed/texts.py — (FR-638, FR-640, FR-642)
 
 **Партия 2 — изменения ядра и прежних модулей** (каждая задача — с тестом прежнего поведения; решение 30)
 
@@ -1768,10 +1813,10 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
   сохранение «Моих уведомлений», `views/me._table_context`, `views/admin._rows` и разбор POST,
   `services/settings._normalized_defaults`; разметка ячейки вне перечня — решение 43); `dispatch.create` при склейке и
   заданном `kind.coalesce_text` обновляет `text` непрочитанного под прежним замком ключа склейки, без него — прежний
-  пропуск. Тесты: `test_feed_core_changes_3.py` (каналы, `coalesce_text`); прежние `test_notify_prefs.py`,
-  `test_notify_catalog.py`, `test_notify_catalog_2.py`, `test_notify_coalesce.py`, `test_notify_admin.py` (в виде после
-  T-7138) — backend/apps/notify/services/dispatch.py, prefs.py, settings.py, backend/apps/notify/views/me.py, admin.py —
-  (FR-629, FR-631)
+  пропуск. Тесты: `test_feed_core_changes_3.py` (каналы, `coalesce_text`); прежние `test_notify_coalesce.py`,
+  `test_notify_admin.py` (в виде после T-7138; каталожные `test_notify_prefs.py`, `test_notify_catalog.py`,
+  `test_notify_catalog_2.py` зеленеют с видами ленты — T-7224) — backend/apps/notify/services/dispatch.py, prefs.py,
+  settings.py, backend/apps/notify/views/me.py, admin.py — (FR-629, FR-631)
 - [ ] T-7208 [P] [sonnet] `org`: состав поддерева и цепочки многих (план: «Где живёт код» → `org/services/structure.py`;
   «Изменения кода прежних срезов» — строка `org/services/structure.py`): `subtree_member_ids(unit_ids) -> frozenset[int]`
   (сотрудники узлов и вложенных по основной работе и совместительству, без уволенных, одним запросом по
@@ -1809,19 +1854,20 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
 - [ ] T-7211 [sonnet] выборка страницы ленты (план: «Лента, курсор, блок важных, фильтры», «Запись в ленте и карточка» →
   «Строка адресатов»): `services/page.py` — разбор фильтра по белому списку (`f`, `author`, `from`, `to`, `before`,
   `opened`; неверное отбрасывается без ошибки), курсор `(published_at, id)` от времени открытия без OFFSET, ветки
-  фильтров по индексам плана, блок важных (только при `f` = `all`/`important` без `author`, `from`, `to`; исключение
-  номеров блока на первой странице и условие блока в SQL у «Ещё записи» и вставки по плашке), сборка карточек без N+1
-  (номера массивом, `LATERAL` для отметок и трёх последних комментариев, число запросов постоянно); `services/recipients.py`
-  — `line(post, …)` («Всем», названия узлов через `org.unit_refs`, «Подразделение удалено», ФИО без повторов, «уволен»,
-  первые пять и «и ещё N»). Тесты: `test_feed_page.py`, `test_feed_page_2.py` (службы), `test_feed_visibility.py`
-  (строка адресатов) — backend/apps/feed/services/page.py, backend/apps/feed/services/recipients.py — (FR-602, FR-603,
-  FR-607, FR-614, FR-635, NFR-601, NFR-608)
+  фильтров по индексам плана, блок важных (только при `f` = `all`/`important` без `author`, `from`, `to`; конец срока
+  важного — сравнение с текущим временем параметром `%s`, решение 59; исключение номеров блока на первой странице и
+  условие блока в SQL у «Ещё записи» и вставки по плашке), сборка карточек без N+1 (номера массивом, `LATERAL` для
+  отметок и трёх последних комментариев, число запросов постоянно); `services/recipients.py` — `line(post, …)` («Всем»,
+  названия узлов через `org.unit_refs`, «Подразделение удалено», ФИО без повторов, «уволен», первые пять и «и ещё N»).
+  Тесты: `test_feed_page.py`, `test_feed_page_2.py` (службы), `test_feed_visibility_3.py` (строка адресатов) —
+  backend/apps/feed/services/page.py, backend/apps/feed/services/recipients.py — (FR-602, FR-603, FR-607, FR-614,
+  FR-635, NFR-601, NFR-608)
 - [ ] T-7212 [sonnet] непрочитанное (план: «Непрочитанное»; первым шагом — форма литерала числа по итогу T-7003,
   решение 28): `services/unread.py` — `show(user, ids)` (одним `INSERT … ON CONFLICT DO NOTHING`, своя запись не
-  пишется), `count(user)` (литерал плана с `LIMIT 100`, за 30 дней, без своих), `counts(user_ids)` (одним запросом
-  множествами по `org.unit_chains`, потолок 100; без модуля `org` — без узлов). Тесты: `test_feed_unread.py` (службы:
-  показ, число, «99+», новичок, сверка `counts` с `count` по 100 сотрудникам) — backend/apps/feed/services/unread.py —
-  (FR-626, NFR-601)
+  пишется), `count(user)` (литерал плана с `LIMIT 100`, за 30 дней — граница параметром `%s` от `timezone.now()`,
+  решение 59; без своих), `counts(user_ids)` (одним запросом множествами по `org.unit_chains`, потолок 100; без модуля
+  `org` — без узлов). Тесты: `test_feed_unread.py` (службы: показ, число, «99+», новичок, сверка `counts` с `count` по
+  100 сотрудникам) — backend/apps/feed/services/unread.py — (FR-626, NFR-601)
 - [ ] T-7213a [sonnet] главная, «Ещё записи», меню (план: «Главная, меню и число у „Ленты“», «Запись в ленте и
   карточка», «Контракты» → `/`, `/feed/more/`; «Безопасный вывод, язык, узкий экран»; деление — решение 45):
   `views/home.py` — `body(request)` (`@login_required`; блок напоминаний через `_home_notices.html` и
@@ -1843,10 +1889,10 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
 - [ ] T-7213b [sonnet] карточка записи и полный список адресатов (план: «Запись в ленте и карточка», «Контракты» →
   `/feed/<id>/`, `/feed/<id>/to/`; деление — решение 45): `views/posts.py` — карточка `/feed/<id>/` (все
   комментарии-место, показ, публикация `object.viewed` с `object_ref="feed.post:<id>"`, узел соединения `?post=<id>`) и
-  `/feed/<id>/to/`; `card.html`; адреса в `urls.py`. Тесты: `test_feed_visibility.py` (карточка, `/to/`),
-  `test_feed_visibility_2.py` (карточка), `test_feed_posts_2.py` (карточка), `test_feed_unread.py` (показ карточкой) —
-  backend/apps/feed/views/posts.py, backend/apps/feed/urls.py, backend/templates/feed/ — (FR-604, FR-606, FR-626,
-  NFR-605)
+  `/feed/<id>/to/`; `card.html`; адреса в `urls.py`. Тесты: `test_feed_visibility.py` (карточка),
+  `test_feed_visibility_3.py` (`/to/`), `test_feed_visibility_2.py` (карточка), `test_feed_posts_2.py` (карточка),
+  `test_feed_unread.py` (показ карточкой) — backend/apps/feed/views/posts.py, backend/apps/feed/urls.py,
+  backend/templates/feed/ — (FR-604, FR-606, FR-626, NFR-605)
 
 **Партия 5 — публикация**
 
@@ -1880,13 +1926,13 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
 - [ ] T-7216 [sonnet] важное (план: «Важное», «Модель данных» → «Срок важного»): `services/important.py` — `until(term,
   date, today)` («День», «Неделя», «Месяц», «До даты»; полночь Europe/Moscow; «Дата уже прошла», «Срок — не позже чем
   через год»), `stats(post)` («N из M» по `audience` без автора); публикация вида «Важное» в `posts.publish`;
-  `views/important.py` — `POST /feed/<id>/read/` (адресату, не автору, до конца срока; `ReadMark` `get_or_create` под
-  `select_for_update`; иначе 403 с причиной; ответ — запись без кнопки) и `GET /feed/<id>/reads/` (автору и модератору,
-  если видит; иначе 403); `_important.html` («Важное, важно до <дата>», «было важным», «Прочитали N» или «N из M»);
-  `feed.js` — вставка карточки после «Прочитано» в ленту по времени публикации. Тесты: `test_feed_important.py`,
-  `test_feed_page_2.py` (блок важных и «Прочитано») — backend/apps/feed/services/important.py, services/posts.py,
-  views/important.py, backend/apps/feed/urls.py, backend/templates/feed/, backend/static/feed/feed.js — (FR-605, FR-613,
-  FR-614, FR-615, FR-642, NFR-611)
+  `views/important.py` — `POST /feed/<id>/read/` (адресату, не автору, до конца срока — время параметром, решение 59;
+  `ReadMark` `get_or_create` (повтор — без ошибки, уникальность строки, решение 6); иначе 403 с причиной; ответ — запись без кнопки) и `GET
+  /feed/<id>/reads/` (автору и модератору, если видит; иначе 403); `_important.html` («Важное, важно до <дата>», «было
+  важным», «Прочитали N» или «N из M»); `feed.js` — вставка карточки после «Прочитано» в ленту по времени публикации.
+  Тесты: `test_feed_important.py`, `test_feed_page_2.py` (блок важных и «Прочитано») —
+  backend/apps/feed/services/important.py, services/posts.py, views/important.py, backend/apps/feed/urls.py,
+  backend/templates/feed/, backend/static/feed/feed.js — (FR-605, FR-613, FR-614, FR-615, FR-642, NFR-611)
 - [ ] T-7217 [sonnet] событие (план: «Событие и напоминания» → «Поля», «Ответы», «`remind_at` при публикации»):
   `services/events.py` — `validate` (название и место обязательны, до 200; начало и конец по Москве; конец позже начала;
   начало не в прошлом — тексты контракта), `remind_at` (начало − 1 ч, если до начала не меньше часа, иначе пусто),
@@ -1907,9 +1953,10 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
   `_comments.html`, `_comment.html` (якорь `#c<id>`, `data-comment-id`, зацепка «Ответить» с номером и ФИО автора —
   решение 13); `feed.js` — «Ответить» вставляет `@ФИО` с соответствием «вхождение → номер». Комментарии статей базы знаний
   не меняются. Тесты: `test_feed_comments.py` (без файлов), `test_feed_mentions.py` (упоминание в комментарии),
-  `test_feed_pdn.py` (комментарий) — backend/apps/feed/services/comments.py, views/comments.py,
-  backend/apps/feed/urls.py, backend/templates/feed/, backend/static/feed/feed.js — (FR-611, FR-612, FR-623, FR-624,
-  FR-642)
+  `test_feed_visibility.py` (упомянутый в комментарии видит карточку), `test_feed_visibility_3.py` (упоминание в
+  комментарии в строке адресатов), `test_feed_pdn.py` (комментарий) — backend/apps/feed/services/comments.py,
+  views/comments.py, backend/apps/feed/urls.py, backend/templates/feed/, backend/static/feed/feed.js — (FR-611, FR-612,
+  FR-623, FR-624, FR-642)
 - [ ] T-7219 [sonnet] «Нравится» (план: «„Нравится“»): `services/likes.py` — переключатель записи и комментария
   (нарушение уникальности перехватывается как «уже есть», удаление отсутствующей строки — не ошибка; своё отметить
   можно); `views/likes.py` — `POST /feed/<id>/like/`, `POST /feed/comments/<cid>/like/`, `GET …/likes/` фрагментом;
@@ -1920,24 +1967,27 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
   автор (модератору и чужому — 403); «Кому» только расширяется («Адресатов можно только добавить»), проверки узла и
   человека — только у добавленных, всего не больше 50, «Всем» без права — отказ, сохранённое «Всем» остаётся; вид не
   меняется; `edited_at`, вектор, ПДн («Сохранить всё равно»); срок важного — только если изменены поля срока (от даты
-  правки, прочтения сохраняются); событие — у начавшегося время и место не меняются, новое начало не в прошлом,
-  пересчёт `remind_at` с `reminded_for_start`; форма отдаёт текст с маркерами и соответствие «номер → ФИО» в атрибуте
-  `data-`, `feed.js` показывает `@ФИО` и ставит маркеры перед отправкой. Тесты: `test_feed_edit.py`, `test_feed_events.py`
-  (правка события), `test_feed_important.py` (срок при правке), `test_feed_mentions.py` (правка не снимает адресата),
-  `test_feed_reminders.py` (пересчёт `remind_at`) — backend/apps/feed/services/posts.py, recipients.py, views/posts.py,
-  backend/apps/feed/urls.py, backend/templates/feed/, backend/static/feed/feed.js — (FR-610, FR-611, FR-612, FR-613,
-  FR-619, FR-620, FR-640, FR-642)
+  правки, прочтения сохраняются; «было важным» — сравнение `important_until` с текущим временем параметром, решение 59);
+  событие — у начавшегося время и место не меняются, новое начало не в прошлом, пересчёт `remind_at` с
+  `reminded_for_start`; форма отдаёт текст с маркерами и соответствие «номер → ФИО» в атрибуте `data-`, `feed.js`
+  показывает `@ФИО` и ставит маркеры перед отправкой. Тесты: `test_feed_edit.py`, `test_feed_events.py` (правка
+  события), `test_feed_important.py` (срок при правке), `test_feed_mentions.py` (правка не снимает адресата),
+  `test_feed_reminders.py` (пересчёт `remind_at`) — backend/apps/feed/services/posts.py, recipients.py, events.py,
+  important.py, views/posts.py, backend/apps/feed/urls.py, backend/templates/feed/, backend/static/feed/feed.js —
+  (FR-610, FR-611, FR-612, FR-613, FR-619, FR-620, FR-640, FR-642)
 - [ ] T-7221 [sonnet] удаление записи, правка и удаление комментария (план: «Правка и удаление» → «Удаление записи»,
   «Комментарий»; «Журнал»): `posts.delete` в одной транзакции (пути файлов и эскизов записи и комментариев, множество
   `audience` до удаления для рассылки T-7222b, `comments.delete_for`, `post.delete()`, строки `StoredFile`; модератор
   чужой — `audit.record("feed.post_deleted", …)` без текста; стирание диска после фиксации, отсутствующий файл — не
   ошибка; комментарий во время удаления откатывается без сирот — решение 15); подтверждение «Удалить запись вместе с
-  комментариями?»; `GET/POST /feed/comments/<cid>/edit/` (автор; `comments.update` ядра, `edited_at`, вектор, новые
-  упоминания) и `POST /feed/comments/<cid>/delete/` (автор или модератор, если видит; автор записи чужие не удаляет;
-  пути файлов до `comments.delete`; модератор чужой — `feed.comment_deleted`). Тесты: `test_feed_edit_2.py`,
-  `test_feed_audit.py` (записи журнала удаления), `test_feed_mentions.py` (удаление комментария не снимает адресата) —
-  backend/apps/feed/services/posts.py, services/comments.py, views/posts.py, views/comments.py,
-  backend/apps/feed/urls.py, backend/templates/feed/ — (FR-621, FR-622, FR-632, FR-639)
+  комментариями?»; `POST /feed/<id>/delete/` (автор или модератор, если видит; невидимая — 404, видимая без права — 403;
+  запрос HTMX и обычный — по «Контрактам» плана); `GET/POST /feed/comments/<cid>/edit/` (автор; `comments.update` ядра,
+  `edited_at`, вектор, новые упоминания) и `POST /feed/comments/<cid>/delete/` (автор или модератор, если видит; автор
+  записи чужие не удаляет; пути файлов до `comments.delete`; модератор чужой — `feed.comment_deleted`). Тесты:
+  `test_feed_edit_2.py`, `test_feed_audit.py` (записи журнала удаления), `test_feed_mentions.py` (удаление комментария
+  не снимает адресата), `test_feed_pdn.py` (правка записи, события и комментария), `test_feed_page_2.py` (меню правки и
+  удаления, последние комментарии) — backend/apps/feed/services/posts.py, services/comments.py, views/posts.py,
+  views/comments.py, backend/apps/feed/urls.py, backend/templates/feed/ — (FR-621, FR-622, FR-632, FR-639)
 
 **Партия 8 — живые обновления**
 
@@ -1987,12 +2037,16 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
   Москве); карточка публикует `object.viewed` и для «Нравится» своих комментариев; регистрация в `notification_kinds`.
   Тесты: `test_feed_notify.py`, `test_feed_notify_2.py`, `test_feed_visibility_2.py` (`still_relevant`),
   `test_feed_likes.py` (себе уведомления нет), `test_feed_posts.py` (откат вместе с `dispatch.create`),
-  `test_feed_edit_2.py` (уведомления о записи остаются) — backend/apps/feed/notify_kinds.py,
-  services/notify_rules.py, services/posts.py, services/comments.py, services/likes.py, views/posts.py,
-  backend/apps/feed/extensions.py — (FR-611, FR-619, FR-629, FR-630, FR-631, FR-632, NFR-605, NFR-609, NFR-611)
+  `test_feed_edit_2.py` (уведомления о записи остаются); прежние `test_notify_prefs.py`, `test_notify_catalog.py`,
+  `test_notify_catalog_2.py`, `test_kb_boundaries.py` (строки видов ленты, в виде после T-7138) —
+  backend/apps/feed/notify_kinds.py, services/notify_rules.py, services/posts.py, services/comments.py,
+  services/likes.py, views/posts.py, backend/apps/feed/extensions.py — (FR-611, FR-619, FR-629, FR-630, FR-631, FR-632,
+  NFR-605, NFR-609, NFR-611)
 - [ ] T-7225 [sonnet] задание напоминаний (план: «Событие и напоминания» → «Задание напоминаний», «Правило простоя»):
-  `services/reminders.py` и `tasks.remind_events` — цикл по одной записи `… WHERE remind_at <= now() AND event_start >
-  now() AND reminded_for_start IS DISTINCT FROM event_start ORDER BY remind_at LIMIT 1 FOR UPDATE SKIP LOCKED`; в той же
+  `services/reminders.py` и `tasks.remind_events(now=None)` (текущее время берётся из `timezone.now()` один раз и
+  передаётся в выборку параметром `%s` вместо `now()` базы: так `Clock` и `run_reminders(now)` сдвигают время; то же для
+  `retention_night` и сроков важного в SQL) — цикл по одной записи `… WHERE remind_at <= %s AND event_start > %s AND
+  reminded_for_start IS DISTINCT FROM event_start ORDER BY remind_at LIMIT 1 FOR UPDATE SKIP LOCKED`; в той же
   транзакции получатели (`audience` минус «Не смогу», плюс автор), `dispatch.create("feed.event_reminder", …)` под
   `is_installed("apps.notify")`, `reminded_for_start = event_start`, `remind_at = NULL`; не больше 200 событий; сбойное
   событие — в лог приложения (номер, без текста) и исключение из выборки (`id <> ALL(%s)`), остальные идут, задание в
@@ -2002,16 +2056,17 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
 **Партия 10 — файлы и эскизы**
 
 - [ ] T-7226 [sonnet] загрузка и привязка файлов (план: «Файлы и эскизы» → «Загрузка по одному файлу», «Привязка»):
-  `services/files.py` — загрузка (`core.uploads.reject_reason(…, max_file=20 МБ)`, `core.uploads.store(data, name,
-  "feed")`, `ImageTooLarge` — отказ типа, строка `FeedFile` без записи; ранний отказ по `have` — «У записи уже 10
-  файлов», «У комментария уже 3 файла»; не больше 30 непривязанных — текст контракта; убрать свой непривязанный);
-  привязка условным `UPDATE … WHERE post IS NULL AND comment IS NULL AND uploaded_by = %s` с проверкой числа строк под
-  `select_for_update` записи — в публикации, комментарии и правке; «убрать» при правке — только файлы этой записи или
-  комментария, удаление строки, `StoredFile`, диска после фиксации; `views/files.py` — `POST /feed/files/`, `POST
-  /feed/files/<id>/delete/`; таблетка файла со скрытым `files=<id>`; `feed.js` — загрузка по одному с `scope` и `have`.
-  Тесты: `test_feed_files.py`, `test_feed_comments.py` (три файла) — backend/apps/feed/services/files.py,
-  services/posts.py, services/comments.py, views/files.py, backend/apps/feed/urls.py, backend/templates/feed/,
-  backend/static/feed/feed.js — (FR-633, FR-642, NFR-604)
+  `services/files.py` — загрузка (`core.services.uploads.reject_reason(…, max_file=20 МБ)`,
+  `core.services.uploads.store(data, name, "feed")`, `ImageTooLarge` — отказ типа, строка `FeedFile` без записи; ранний
+  отказ по `have` — «У записи уже 10 файлов», «У комментария уже 3 файла»; не больше 30 непривязанных — текст контракта;
+  убрать свой непривязанный); привязка условным `UPDATE … WHERE post IS NULL AND comment IS NULL AND uploaded_by = %s` с
+  проверкой числа строк под `select_for_update` записи — в публикации, комментарии и правке; «убрать» при правке —
+  только файлы этой записи или комментария, удаление строки, `StoredFile`, диска после фиксации; `views/files.py` —
+  `POST /feed/files/`, `POST /feed/files/<id>/delete/`; таблетка файла со скрытым `files=<id>`; `feed.js` — загрузка по
+  одному с `scope` и `have`. Тесты: `test_feed_files.py`, `test_feed_comments.py` (три файла), `test_feed_posts.py`
+  (привязка файлов при публикации и откат) — backend/apps/feed/services/files.py, services/posts.py,
+  services/comments.py, views/files.py, backend/apps/feed/urls.py, backend/templates/feed/, backend/static/feed/feed.js
+  — (FR-633, FR-642, NFR-604)
 - [ ] T-7227 [sonnet] назначение `feed`, эскизы, выдача и показ (план: «Файлы и эскизы» → «Назначение `feed`», «Эскиз»,
   «Выдача», «Показ», «Резервная копия»): запись `FilePurpose("feed", …)` («ожидание», «чистый» — перенос в
   `attachments/` и эскиз, «карантин»; сбой ClamAV — повтор прежнего задания ядра); `services/thumbs.py` (JPEG, PNG,
@@ -2021,9 +2076,9 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
   состояние; `inline_image` или `download`) и `GET /feed/files/<id>/thumb/` (свой ответ с `X-Accel-Redirect:
   /protected/attachments/thumbs/<имя>`, `nosniff`, `no-store`); «проверяется» и «карантин» — 404 с текстами контракта;
   `_files.html` с `data-file-state`; регистрация в `file_purposes`. Тесты: `test_feed_files_2.py`,
-  `test_feed_visibility_2.py` (файл, эскиз) — backend/apps/feed/services/thumbs.py, services/files.py, views/files.py,
-  backend/apps/feed/extensions.py, backend/apps/feed/urls.py, backend/templates/feed/ — (FR-606, FR-634, FR-642,
-  NFR-613, NFR-614)
+  `test_feed_visibility_2.py` (файл, эскиз), `test_feed_text.py` (имя файла и поля события на странице) —
+  backend/apps/feed/services/thumbs.py, services/files.py, views/files.py, backend/apps/feed/extensions.py,
+  backend/apps/feed/urls.py, backend/templates/feed/ — (FR-606, FR-634, FR-642, NFR-613, NFR-614)
 
 **Партия 11 — поиск**
 
@@ -2041,14 +2096,16 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
 
 - [ ] T-7229 [sonnet] ночное задание (план: «Срок хранения и ночное задание» → «Граница срока», «Задание»;
   «Непрочитанное» → «Чистка показов»; первым шагом — короткая повторная проверка ORM-каскада пачки на настоящих моделях
-  и способ пачки по её итогу и итогу T-7007, решения 27, 28): `services/retention.py` и `tasks.retention_night` — шаг 1:
-  строки `Shown` записей старше 31 дня (по `published_at`); шаг 2: записи старше срока (календарно, 29 февраля → 28)
-  пачками по 1 000 с фиксацией каждой: пути файлов и эскизов, `Comment.objects.filter(object_ref__in=refs).delete()`,
-  удаление записей, строки `StoredFile`, стирание диска после фиксации; шаг 3: непривязанные `FeedFile` старше 24 часов;
-  журнал одной записью `feed.retention_purged` только при N > 0; повтор ничего не находит; запись, удалённая между
-  выбором и удалением, пропускается; `VACUUM` не зовётся; точка подмены выборки пачки — по контракту. Тесты:
-  `test_feed_retention.py` — backend/apps/feed/services/retention.py, backend/apps/feed/tasks.py — (FR-621, FR-632,
-  FR-638, FR-639, NFR-610)
+  и способ пачки по её итогу и итогу T-7007, решения 27, 28): `services/retention.py` и
+  `tasks.retention_night(now=None)` (время — один раз из `timezone.now()`, во все шаги параметром `%s`, решение 59) —
+  шаг 1: строки `Shown` записей старше 31 дня (по `published_at`); шаг 2: записи старше срока (календарно, 29 февраля →
+  28) пачками по 1 000 с фиксацией каждой: пути файлов и эскизов,
+  `Comment.objects.filter(object_ref__in=refs).delete()`, удаление записей, строки `StoredFile`, стирание диска после
+  фиксации; шаг 3: непривязанные `FeedFile` старше 24 часов; журнал одной записью `feed.retention_purged` только при N >
+  0; повтор ничего не находит; запись, удалённая между выбором и удалением, пропускается; `VACUUM` не зовётся; точка
+  подмены выборки пачки — по контракту. Тесты: `test_feed_retention.py`, `test_feed_important.py` (после заданий
+  напоминаний и ночного), `test_feed_notify_2.py` (уведомления остаются после удаления по сроку) —
+  backend/apps/feed/services/retention.py, backend/apps/feed/tasks.py — (FR-621, FR-632, FR-638, FR-639, NFR-610)
 - [ ] T-7230 [sonnet] настройка срока хранения (план: «Срок хранения и ночное задание» → «Настройка»; «Точки
   расширения» → пункт «Настройки ленты»): `views/settings.py` — `GET/POST /settings/feed/` под правом ядра
   `settings.portal` (без права — 403 на GET и POST без обращения к службе, решение 11); заголовок «Настройки портала →
@@ -2143,16 +2200,16 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
   стенда `backup-stand.sh` и сброс, запись `vmstat`/`mpstat`/`pidstat`, коды ответов журнала `nginx`, стенд на потоках
   0–2, locust на потоке 3; решение 39): `fill_feed.py` (50 000 записей, 200 000 комментариев) через `standtools … shell`;
   locust по модели нагрузки владельца (100 вошедших, вход 1/с, пауза 5–15 с, замер после входа всех) — прогон L1 с классом
-  `FeedUser` (два соединения на вкладку, публикатор) и прогон L2 со всеми классами срезов 001–007; пороги: страницы и
-  фрагменты ленты p95 ≤ 500 мс, поиск (группа «Лента») ≤ 1 с, кадр до последнего получателя (`WS feed frame`) p95 ≤ 2 с,
-  ошибок нет (5xx по журналу `nginx` нет); заодно — p95 ответа публикации (больше 500 мс — запасной ход плана:
-  уведомления и рассылка заданием очереди `notify`, решение Opus с владельцем), CPU и память процессов `web`, длина
-  очередей каналов Valkey, число непрочитанных и блок важных в варианте B, ветка комментариев в поиске, `unread.counts`
-  и `permissions_of` на рассылке, время пачки ночного задания с ORM-каскадом на наполнении `fill_feed` (план: «Риски»);
-  страницы прежних срезов в смеси L2 — к сведению владельца (смешанная модель — не критерий прежних срезов, решение
-  владельца по T-5304); по итогам — решение Opus с владельцем о запасных ходах «Рисков» (подписка на группы, кэш числа,
-  `work_mem` поиска, сырой SQL пачки; если нужны — отдельными задачами T-7311…) — docs/reviews/TASKS-007.md, раздел
-  «Нагрузка» — (NFR-601, NFR-602, NFR-603, NFR-612)
+  `FeedUser` (два соединения на вкладку, публикатор; публикации, в том числе «Всем») и прогон L2 со всеми классами
+  срезов 001–007; пороги: страницы и фрагменты ленты p95 ≤ 500 мс, поиск (группа «Лента») ≤ 1 с, кадр до последнего
+  получателя (`WS feed frame`) p95 ≤ 2 с, ошибок нет (5xx по журналу `nginx` нет); заодно — p95 ответа публикации
+  (больше 500 мс — запасной ход плана: уведомления и рассылка заданием очереди `notify`, решение Opus с владельцем), CPU
+  и память процессов `web`, длина очередей каналов Valkey, число непрочитанных и блок важных в варианте B, ветка
+  комментариев в поиске, `unread.counts` и `permissions_of` на рассылке, время пачки ночного задания с ORM-каскадом на
+  наполнении `fill_feed` (план: «Риски»); страницы прежних срезов в смеси L2 — к сведению владельца (смешанная модель —
+  не критерий прежних срезов, решение владельца по T-5304); по итогам — решение Opus с владельцем о запасных ходах
+  «Рисков» (подписка на группы, кэш числа, `work_mem` поиска, сырой SQL пачки; если нужны — отдельными задачами T-7311…)
+  — docs/reviews/TASKS-007.md, раздел «Нагрузка» — (NFR-601, NFR-602, NFR-603, NFR-612)
 - [ ] T-7305 [opus] (после T-7304) наблюдения на стенде (по разрешению владельца, после копии стенда; решение 40): (1)
   прогон NFR-614 — адрес слоя `publish` подменён закрытым портом при рабочих кэше и очередях (временный модуль настроек
   вне репозитория во временном контейнере `web` того же образа в сети стенда, решение 40): публикация, комментарий и
@@ -2179,8 +2236,9 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
   docs/reviews/TASKS-007.md, раздел «Инварианты» — (конституция; FR-606, FR-631, FR-638, FR-639, FR-641, NFR-605,
   NFR-607, NFR-608, NFR-609)
 - [ ] T-7308 [opus] прохождение требований спеки: таблица FR-601…642 и NFR-601…614 → тест → результат → ссылка на
-  реализацию; отметки `[x]` в этом файле, отчёт docs/reviews/TASKS-007.md и перевод в «на-проверке» (`sdd.py
-  на-проверку`); подпись ставит человек — docs/reviews/TASKS-007.md — (FR-601…642, NFR-601…614)
+  реализацию; NFR-601 считается выполненным только после T-7304 (замер с согласия владельца); отметки `[x]` в этом
+  файле, отчёт docs/reviews/TASKS-007.md и перевод в «на-проверке» (`sdd.py на-проверку`); подпись ставит человек —
+  docs/reviews/TASKS-007.md — (FR-601…642, NFR-601…614)
 - [ ] T-7309 [человек] ручной проход: критерий успеха спеки «запись подразделению и человеку за 1 минуту» с замером
   (план: «Критерии успеха спеки»); отметка в отчёте — docs/reviews/TASKS-007.md, раздел «Ручной проход» — (FR-608,
   FR-610)
@@ -2195,15 +2253,18 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
 скелета Этапа 2 (`crm-work/slice007/tasks/opus-notes.md`, 2026-10-30) вошли как решения 7–17 с пометкой «ответ N к
 скелету»; общие решения скелета (`stage2-skeleton.md`, «Общие решения») — как решения 1–6 и 18–26; ответы на вопросы
 черновиков Этапа 2 и разделов задач (тот же файл, 2026-10-30) — как решения 46–58 и уточнения в решениях 1, 2, 8, 10,
-27–33, 39, 40, 42, 43, 45.
+27–33, 39, 40, 42, 43, 45; итоги проверки задач (партии R1–R8, 2026-10-30) — как решение 59 и уточнения в решениях 1, 2,
+5, 6, 8, 26, 29, 31, 43, 45, 46, 54, 55, 58. Отступлений от поведения, заданного PLAN-007, нет; дополнения стенда и
+тексты — в абзаце «Показать владельцу при подписи».
 
 1. **Номера и имена файлов.** Номера задач четырёхзначные (T-7001…). Серверные тесты — `test_feed_<тема>.py`: 27 тем
    раздела плана «Серверные тесты», заранее поделены девять (`visibility`, `page`, `posts`, `edit`, `live`, `consumers`,
    `notify`, `files`, `core_changes` — вторые файлы `_2`), итого 36 файлов на T-7102…T-7137 и третий файл
-   `test_feed_core_changes_3.py` — 37 файлов на 37 строк; изменения кода прежних срезов — `test_feed_core_changes.py`
-   (ядро, `org`, `knowledge`; T-7137), `test_feed_core_changes_2.py` (`core/ws.py`, `NotifyConsumer`, `notify_html`,
-   `live.push`, `CHANNEL_LAYERS`, `config/asgi.py`; T-7126a) и `test_feed_core_changes_3.py` (поля `NotificationKind`,
-   фильтр `channels`, `coalesce_text`; T-7126b): у T-7126 вышло 28 тестов, и она поделена (решение 45). Приёмка —
+   `test_feed_core_changes_3.py` — 37 файлов на 37 строк (при проверке задач добавлен `test_feed_visibility_3.py` у
+   T-7102b — 38 файлов, решение 45); изменения кода прежних срезов — `test_feed_core_changes.py` (ядро, `org`,
+   `knowledge`; T-7137), `test_feed_core_changes_2.py` (`core/ws.py`, `NotifyConsumer`, `notify_html`, `live.push`,
+   `CHANNEL_LAYERS`, `config/asgi.py`; T-7126a) и `test_feed_core_changes_3.py` (поля `NotificationKind`, фильтр
+   `channels`, `coalesce_text`; T-7126b): у T-7126 вышло 28 тестов, и она поделена (решение 45). Приёмка —
    `test_f01_publish.py`, `test_f02_important.py`, `test_f03_event.py`, `test_f04_comments.py`, `test_f05_likes.py`,
    `test_f06_mentions.py`, `test_f07_edit_delete.py`, `test_f08_live.py`, `test_f09_notify.py`, `test_f10_files.py`,
    `test_f11_search.py`, `test_f12_retention.py`, `test_f13_rights.py`, `test_f14_home.py`, `test_f15_pdn.py`. Имена
@@ -2212,10 +2273,10 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
    темы и буквы `f`, а окончания имён не смешиваются со срезами 001–006 (`test_sNN`, `test_oNN`, `test_dNN`, `test_eNN`,
    `test_kNN`, `test_lNN`). Источник — скелет, «Общие решения».
 2. **Контракт имён и общие помощники.** `backend/tests/CONTRACT-007.md` пишет только T-7100, `tests/support_feed.py` —
-   только T-7101, `tests/e2e/helpers_feed.py` — только T-7140. Opus проверяет контракт до запуска T-7101; писатели
-   T-7102… стартуют после T-7101, T-7141… — после T-7140. Тесты проверяют только то, что есть в PLAN-007 и SPEC-007, и
-   решения этого раздела (они уточняют способ). Причина: все тесты среза опираются на одни имена; так было в срезах
-   005–006 (решение 2 TASKS-006). Источник — скелет; ответы 2026-10-30, «Общее для черновиков».
+   только T-7101, `tests/e2e/helpers_feed.py` — только T-7140a. Opus проверяет контракт до запуска T-7101; писатели
+   T-7102… стартуют после T-7101, T-7140b, T-7141… — после T-7140a. Тесты проверяют только то, что есть в PLAN-007 и
+   SPEC-007, и решения этого раздела (они уточняют способ). Причина: все тесты среза опираются на одни имена; так было в
+   срезах 005–006 (решение 2 TASKS-006). Источник — скелет; ответы 2026-10-30, «Общее для черновиков».
 3. **Место приложения и каркас.** Место задаёт план: `apps.feed` последним, после `apps.search` («Где живёт код»). Каркас
    T-7001 добавляет эту строку и пустое подключение `include("apps.feed.urls")` под `apps.is_installed("apps.feed")` —
    единственное исключение из правила «код прежних срезов правит только задача Этапа 3» (решение 30): поведение портала
@@ -2227,32 +2288,34 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
 4. **«Было / стало» прежних контрактов** — в разделе «Что меняется в прежних контрактах» `CONTRACT-007.md`, точные
    правки тестов — в `crm-work/slice007/tasks/impact.md`. Сами `CONTRACT.md` и `CONTRACT-002…006` не правятся (план:
    «Контракты»). Причина: одна точка правды для T-7138 и для красного прогона.
-5. **Время и задания.** Службы берут время из `timezone.now()`; тесты ставят часы `Clock` (`tests/factories.py`),
-   проверки «по Москве» — на UTC-полуночи (сценарий 2 п. 9). Задание напоминаний тест выполняет синхронно
-   (`run_reminders(now)`), ночное — `run_retention(now)`, задания RQ — `support_notify.run_jobs`; приёмка сдвигает время
-   командами `e2e_feed_shift --minutes N` и `e2e_feed_retention --age-days N` через обёртки `shift(minutes)` и `age(days)`
-   (план: «Стенд и приёмка»). Причина: тесты не зависят от реального дня и часового пояса машины. Источник — скелет.
+5. **Время и задания.** Службы берут время из `timezone.now()` (в SQL — параметром, решение 59); тесты ставят часы
+   `Clock` (`tests/factories.py`), проверки «по Москве» — на UTC-полуночи (сценарий 2 п. 9). Задание напоминаний тест
+   выполняет синхронно (`run_reminders(now)`), ночное — `run_retention(now)`, задания RQ — `support_notify.run_jobs`;
+   приёмка сдвигает время командами `e2e_feed_shift --minutes N` и `e2e_feed_retention --age-days N` через обёртки
+   `shift(minutes)` и `age(days)` (план: «Стенд и приёмка»). Причина: тесты не зависят от реального дня и часового пояса
+   машины. Источник — скелет.
 6. **Гонки — без потоков.** `django_db(transaction=True)` в проекте не работает (`tests/conftest.py`: база мигрирует под
    `crm_owner`, тест идёт под `crm_app`), второй поток не видит данных теста. Приёмы срезов 005–006: (а) по SQL —
    `capture_sql`/`sql_of`: выборка задания напоминаний `… FOR UPDATE SKIP LOCKED`, условный `UPDATE` привязки файлов с
-   проверкой числа строк, `select_for_update` записи в правке, удалении, привязке, «Прочитано» (`assert_for_update`);
-   (б) последовательные действия вместо одновременных — два «Нравится — создать» подряд, две привязки одного файла, два
-   запуска задания напоминаний; (в) действие между выборкой и замком — подмена по образцу
-   `support_kb.act_between_batch_and_lock` (запись удалена после выбора задания напоминаний и пачки ночного задания);
-   (г) «после фиксации» — `django_capture_on_commit_callbacks(execute=True)`. Причина: только так тест детерминирован в
-   среде проекта; буквальная одновременность держится замками и ограничениями базы. Источник — скелет.
+   проверкой числа строк, `select_for_update` записи в правке, удалении, привязке (`assert_for_update`; у «Прочитано»
+   замок не проверяется — план его не требует, повтор закрывает уникальность строки прочтения); (б) последовательные
+   действия вместо одновременных — два «Нравится — создать» подряд, две привязки одного файла, два запуска задания
+   напоминаний; (в) действие между выборкой и замком — подмена по образцу `support_kb.act_between_batch_and_lock`
+   (запись удалена после выбора задания напоминаний и пачки ночного задания); (г) «после фиксации» —
+   `django_capture_on_commit_callbacks(execute=True)`. Причина: только так тест детерминирован в среде проекта;
+   буквальная одновременность держится замками и ограничениями базы. Источник — скелет.
 7. **WebSocket в тестах (ответ 1 к скелету).** Помощники среза 004: `asgiref.testing.ApplicationCommunicator` через
    `support_notify.ws_run` / `WsHub` / `WsClient` и настоящий слой `channels_redis` на Valkey (база 15);
    `support_feed.ws_client` — обёртка над `WsHub.connect(path="/ws/feed/?…")`; проверка сессии ускоряется подменой
    `apps.feed.consumers.CHECK_INTERVAL`; недоступный слой `publish` — `layer_down()`. Слово плана
    «WebsocketCommunicator» — общее название способа. Причина: образец `test_notify_ws.py` и CONTRACT-004 (раздел о
    соединениях) уже работают в среде проекта; `InMemoryChannelLayer` и подмены `CHANNEL_LAYERS` не нужны.
-8. **Две группы приёмки (ответ 2 к скелету).** G8 — T-7140…T-7147 (`helpers_feed.py`, f01…f08), G9 — T-7148…T-7154
-   (f09…f15); номера прежние, имена помощников в G9 — по описанию T-7140. Причина: один черновик на 15 сценариев не
-   укладывается в предел вызовов агента-писателя (так было в решении 31 TASKS-006). Имена помощников приёмки — одни, по
-   строке T-7140 (в том числе `open_feed`, `open_card`, `publish`/`try_publish`, ожидание числа «Ленты» и плашки,
-   `shift(minutes)`, `age(days, posts=None)`, `block_ws(context)`); контракт T-7100 закрепляет их в разделе «Помощники
-   приёмки». Строки задач G9 помощников не называют и с T-7140 не расходятся.
+8. **Две группы приёмки (ответ 2 к скелету).** G8 — T-7140a, T-7140b…T-7147 (`helpers_feed.py`, f01…f08), G9 —
+   T-7148…T-7154 (f09…f15); номера прежние, имена помощников в G9 — по описанию T-7140a. Причина: один черновик на 15
+   сценариев не укладывается в предел вызовов агента-писателя (так было в решении 31 TASKS-006). Имена помощников
+   приёмки — одни, по строке T-7140a (в том числе `open_feed`, `open_card`, `publish`/`try_publish`, ожидание числа
+   «Ленты» и плашки, `shift(minutes)`, `age(days, posts=None)`, `block_ws(context)`); контракт T-7100 закрепляет их в
+   разделе «Помощники приёмки». Строки задач G9 помощников не называют и с T-7140a не расходятся.
 9. **Пачки ночного задания в тестах (ответ 3 к скелету)** — оба признака: шпион на функции пачки (вызвана 3 раза на 2
    500 записей) и три выборки с `LIMIT 1000` в `capture_sql`; способ закрепляет контракт T-7100. Причина: фиксаций в
    тесте нет (решение 6), а «три фиксации» плана видны только так.
@@ -2317,7 +2380,8 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
 26. **Покрытие** считается по тестам с явным номером требования в строках задач Этапа 2 и по задачам Этапов 1, 3, 4 с
     явными номерами в перечне в конце строки; диапазоны «FR-601…642», «NFR-601…614» не засчитываются (T-7160, T-7260,
     T-7300, T-7308 — без явных номеров; у T-7301 засчитаны только NFR, названные рядом с диапазоном); контракт T-7100
-    засчитан только для FR-642; T-7101, T-7138, T-7159 — без своих требований. Причина: так считалось в срезах 005–006
+    засчитан только для FR-642; T-7101, T-7138, T-7140a, T-7159 — без своих требований; у тестов команд стенда (T-7134)
+    метка FR — вспомогательная (команда служит приёмке этого требования). Причина: так считалось в срезах 005–006
     (решение 23 TASKS-006).
 27. **Ранние факты — в Этапе 1, до тестов.** Что план отдал на Этап 1 или оставил непроверенным («Риски»,
     docs/reviews/PLAN-007.md «Что не проверялось»), проверяется до Этапа 2, потому что от итогов зависят тексты тестов и
@@ -2349,18 +2413,18 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
     `feed/texts.py` — T-7201 (дальше — только по решению Opus); `feed/services/search.py` — T-7214, затем T-7228;
     `feed/services/recipients.py` — T-7211, T-7214, T-7220; `feed/services/posts.py` — по очереди T-7214, T-7216,
     T-7217, T-7220, T-7221, T-7222b, T-7224, T-7226; `feed/services/comments.py` — T-7218, T-7221, T-7222b, T-7224,
-    T-7226; `feed/services/likes.py` — T-7219, T-7222b, T-7224; `feed/services/important.py` — T-7216, T-7222b;
-    `feed/services/events.py` — T-7217, T-7222b; `feed/services/live.py` — T-7222a; `feed/services/files.py` — T-7226,
-    T-7227; `feed/views/home.py` — T-7213a, T-7223; `feed/views/posts.py` — T-7213b, T-7215, T-7220, T-7221, T-7224;
-    `feed/views/comments.py` — T-7218, T-7221; `feed/views/files.py` — T-7226, T-7227; `feed/extensions.py` — по очереди
-    T-7213a, T-7224, T-7227, T-7228, T-7230, T-7231, T-7232; `feed/urls.py` — по очереди T-7213a, T-7213b, T-7215,
-    T-7216, T-7217, T-7218, T-7219, T-7220, T-7221, T-7223, T-7226, T-7227, T-7230; `feed/tasks.py` — T-7225, T-7229;
-    `templates/feed/` — T-7213a (основа и пустые части), затем по очереди T-7213b, T-7215, T-7216, T-7217, T-7218,
-    T-7219, T-7220, T-7221, T-7222a, T-7223, T-7226, T-7227, T-7230; `static/feed/feed.js` — T-7215, T-7216, T-7218,
-    T-7220, T-7223, T-7226; `static/feed/feed.css` — T-7213a, дальше правила добавляют задачи тех же страниц по очереди;
-    `templates/icons/feed.html` — T-7213a; `backend/tests/load/` — T-7234. Поэтому `[P]` стоит только у T-7203…T-7208 и
-    T-7210, у которых нет общих файлов с соседями. Причина: параллельные правки одного файла теряют изменения (решение 9
-    TASKS-006).
+    T-7226; `feed/services/likes.py` — T-7219, T-7222b, T-7224; `feed/services/important.py` — T-7216, T-7220, T-7222b;
+    `feed/services/events.py` — T-7217, T-7220, T-7222b; `feed/services/live.py` — T-7222a; `feed/services/files.py` —
+    T-7226, T-7227; `feed/views/home.py` — T-7213a, T-7223; `feed/views/posts.py` — T-7213b, T-7215, T-7220, T-7221,
+    T-7224; `feed/views/comments.py` — T-7218, T-7221; `feed/views/files.py` — T-7226, T-7227; `feed/extensions.py` — по
+    очереди T-7213a, T-7224, T-7227, T-7228, T-7230, T-7231, T-7232; `feed/urls.py` — по очереди T-7213a, T-7213b,
+    T-7215, T-7216, T-7217, T-7218, T-7219, T-7220, T-7221, T-7223, T-7226, T-7227, T-7230; `feed/tasks.py` — T-7225,
+    T-7229; `templates/feed/` — T-7213a (основа и пустые части), затем по очереди T-7213b, T-7215, T-7216, T-7217,
+    T-7218, T-7219, T-7220, T-7221, T-7222a, T-7223, T-7226, T-7227, T-7230; `static/feed/feed.js` — T-7215, T-7216,
+    T-7218, T-7220, T-7223, T-7226; `static/feed/feed.css` — T-7213a, дальше правила добавляют задачи тех же страниц по
+    очереди; `templates/icons/feed.html` — T-7213a; `backend/tests/load/` — T-7234. Поэтому `[P]` стоит только у
+    T-7203…T-7208 и T-7210, у которых нет общих файлов с соседями. Причина: параллельные правки одного файла теряют
+    изменения (решение 9 TASKS-006).
 30. **Изменения кода прежних срезов — каждое одной задачей и с тестом прежнего поведения** (план: «Изменения кода
     прежних срезов»; столбец «Что не меняется» — источник прежних тестов): `config/settings.py` — строка
     `INSTALLED_APPS` — T-7001 (решение 3), слой `publish` — T-7206 (`test_notify_deploy.py`: слой `default` прежний);
@@ -2391,8 +2455,9 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
     «Проверить после реализации» и «не падают» заранее не правятся; если в Этапе 3 падает тест прежнего среза вне
     перечня, — остановка, решение Opus, правка по тому же правилу. Причина: правило владельца о тестах прежних срезов;
     правки зовут `support_feed.without_feed()` и `PERMISSIONS_007` (решения 29, 46, 62 TASKS-006). В эталоне красного
-    прогона T-7160 отдельной строкой — тесты перечня T-7138, которые зеленеют только с T-7202 (точки), T-7213a и T-7230
-    (меню), T-7232 (порядок сброса), T-7233 (cron и nginx); до этого они падают по той же причине, что новые.
+    прогона T-7160 отдельной строкой — тесты перечня T-7138, которые зеленеют только с T-7201 (права), T-7202 (точки),
+    T-7206 (слой `publish`), T-7213a и T-7230 (меню), T-7224 (каталог уведомлений), T-7228 (поставщики поиска), T-7232
+    (порядок сброса), T-7233 (cron и nginx); до этого они падают по той же причине, что новые.
 32. **Порядок партий Этапа 3** — по зависимостям, близко к перечню задания на сборку, с отступлениями: ядро `0010` идёт
     в задаче моделей (иначе `feed 0001` применялась бы без своей зависимости); вывод текста — в партии 3 (его требует
     страница ленты); `unread` — в партии 4 (его требуют число в меню и показы страницы); векторы поиска — первым шагом
@@ -2466,8 +2531,10 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
     `channels` — отдельная проверка «флажков внешних каналов нет» (анализ, п. 34, У1, У2) — код T-7207, правки T-7138;
     (г) тест колокольчика «других `ws-connect` на странице нет» открывает `/me/` вместо `/` (анализ, п. 43, вариант 2) —
     T-7138; на `/` новый тест среза проверяет два узла `ws-connect` — колокольчик и `#feed-live`
-    (`test_feed_home.py::test_home_has_two_ws_connect_nodes_bell_and_feed_live`, T-7104). Причина: план эти детали не
-    фиксирует, а без них правки прежних тестов и разметка расходятся.
+    (`test_feed_home.py::test_home_has_two_ws_connect_nodes_bell_and_feed_live`, T-7104); (д) `test_sd_boundaries.py`,
+    второй вызов с возвратом регистраций (анализ, п. 26) — регистрации `apps.feed` не возвращаются (тест о «срезе 002»,
+    проверка ключей не ослабляется) — T-7138. Причина: план эти детали не фиксирует, а без них правки прежних тестов и
+    разметка расходятся.
 44. **Имена маршрутов и журнал.** Маршруты среза не содержат `regist`, `signup`; `feed/audit_labels.py` подписывает
     каждый ключ `before`/`after`; журнал только дописывается, роль приложения не имеет `UPDATE` и `DELETE` на таблицу
     журнала (NFR-607 — тот же тест, что SPEC-006 NFR-508), ни одно задание его не чистит. Причина: это проверяют прежние
@@ -2477,10 +2544,16 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
     недособранным (решение 61 TASKS-006). Заранее поделены: T-7126 — на T-7126a и T-7126b (28 тестов; файлы
     `test_feed_core_changes_2.py` и `test_feed_core_changes_3.py`); T-7213 — на T-7213a (главная, «Ещё записи», меню,
     регистрации, иконка, стили и пустые части шаблонов — их включает `body.html`, решение 33) и T-7213b (карточка,
-    `/to/`); T-7222 — на T-7222a (`live.py`, классы рендера, число «Ленты») и T-7222b (вызовы рассылки из служб).
+    `/to/`); T-7222 — на T-7222a (`live.py`, классы рендера, число «Ленты») и T-7222b (вызовы рассылки из служб). При
+    проверке задач (2026-10-30) поделены задачи Этапа 2: T-7102 — на T-7102a (видимость, аудитория, права действий;
+    `test_feed_visibility.py`) и T-7102b (строка адресатов и полный список; `test_feed_visibility_3.py`) — в T-7102
+    вышло 27 тестов; T-7140 — на T-7140a (`helpers_feed.py`, единственный автор помощников приёмки) и T-7140b
+    (`test_f01_publish.py`); T-7140b и T-7141… стартуют после T-7140a.
 46. **Публичные функции ядра и прежних модулей, которые зовёт `feed`,** — перечень шапки («Границы модуля `feed`»)
     закрепляет `CONTRACT-007.md` (T-7100); тест границ T-7136 и исполнители Этапа 3 опираются на этот один список.
-    Причина: иначе тест границ и код сверялись бы с разными перечнями.
+    Модуль загрузки ядра — `core.services.uploads` (`apps/core/services/uploads.py`); план называет его коротко
+    `core.uploads`, задачи и контракт пишут полное имя. Причина: иначе тест границ и код сверялись бы с разными
+    перечнями.
 47. **Упоминания при правке и «Исправить».** «Новое» упоминание при правке наблюдается возвратом службы:
     `mentions.sync(...)` возвращает множество номеров, впервые упомянутых этим текстом (имя и сигнатуру закрепляет
     контракт T-7100); уведомление о нём — отдельным тестом T-7127. «Исправить» в предупреждении о ПДн — действие клиента
@@ -2499,10 +2572,10 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
     называет, а без одного имени писатели тестов и исполнители кода разойдутся.
 50. **Ночное задание: пропуски, отрицание, требования.** Запись, удалённая между выборкой пачки и удалением, в N журнала
     `feed.retention_purged` не входит: N — число действительно удалённых записей; тест
-    `test_post_deleted_between_batch_selection_and_delete_is_skipped_without_error` (T-7115) проверяет и N.
-    Отрицательный тест «после истечения срока важного и прогона заданий новых уведомлений нет» (T-7112) годится. Шаги
-    чистки показов и непривязанных загрузок служат FR-626 и FR-633 — в T-7115 они помечены и этими требованиями.
-    Причина: план не говорит, входит ли пропущенная запись в N.
+    `test_post_deleted_between_batch_selection_and_delete_is_skipped_without_error_and_not_counted_in_journal_posts`
+    (T-7115) проверяет и N. Отрицательный тест «после истечения срока важного и прогона заданий новых уведомлений нет»
+    (T-7112) годится. Шаги чистки показов и непривязанных загрузок служат FR-626 и FR-633 — в T-7115 они помечены и
+    этими требованиями. Причина: план не говорит, входит ли пропущенная запись в N.
 51. **Файлы и уведомления.** Эскиз у «чистого» файла без эскиза — 404 «Не найдено» (тест
     `test_thumb_of_clean_file_without_thumb_returns_404` в T-7130; в «Контрактах» плана не названо) — решение по
     задачам. Полный порядок приоритета уведомлений проверяется и прямым тестом `notify_rules.decide`
@@ -2524,52 +2597,65 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
     срока по Москве (12.10 00:00) — серверный тест T-7112, в браузере — «после сдвига срок истёк». `e2e_feed_retention
     --age-days N` получает необязательный ключ `--posts <номера через запятую>`: стареют только эти записи (остальные
     записи круга свежие и ночным заданием не удаляются); без ключа — все записи стенда (f12 «стенд целиком»); приёмка
-    f09 и f12 передаёт номера своих записей. Границы — решение 10. Правят контракт T-7100, обёртки `shift`/`age` в
-    T-7140, тесты T-7134 и команды стенда T-7232. Решение по задачам; показать владельцу при подписи. Причина: план не
-    даёт способа дождаться конца срока важного на стенде, а сдвиг всех записей ломал бы соседние тесты круга.
+    f09 и f12 передаёт номера своих записей; повтор ночного задания в f12 — `age(1, posts=[<свежая запись теста>])`:
+    команда сдвигает свежую запись на сутки (она не старше срока) и запускает задание, которое ничего не удаляет, нового
+    ключа нет. Границы — решение 10. Правят контракт T-7100, обёртки `shift`/`age` в T-7140a, тесты T-7134 и команды
+    стенда T-7232. Решение по задачам; показать владельцу при подписи. Причина: план не даёт способа дождаться конца
+    срока важного на стенде, а сдвиг всех записей ломал бы соседние тесты круга.
 55. **WebSocket недоступен в браузере** — `BrowserContext.route_web_socket` Playwright 1.63 (есть в хостовом
     `CRM/.venv`): перехват `/ws/feed/` и `/ws/notify/` с закрытием; помощник `block_ws(context)` в `helpers_feed.py`
-    (T-7140), имя — в контракте T-7100. Приёмка f08 (T-7147) так проверяет работу обычными запросами. Причина: план
+    (T-7140a), имя — в контракте T-7100. Приёмка f08 (T-7147) так проверяет работу обычными запросами. Причина: план
     говорит только «без WebSocket лента работает обычными запросами».
 56. **Допуск 5 минут у напоминания** — серверные тесты T-7114; приёмка f03 (T-7142) проверяет только «напоминание пришло
     после сдвига к сроку» (команда стенда выполняет задание напоминаний в процессе). Причина: частоту задания cron
     браузер не наблюдает.
 57. **Роль, созданная администратором до установки,** — серверный тест данных установки T-7133; приёмка f13 (T-7152)
     проверяет три начальные роли. Причина: на сброшенном стенде такой роли нет.
-58. **Уточнения черновика G1.** В перечень T-7102 дописаны FR-620, FR-621, FR-622 (права действий: правка записи,
-    удаление записи, правка и удаление комментария — у соответствующих тестов); у узла `#feed-live` в T-7104 — FR-627
-    рядом с FR-601; правило «`home_body` берёт первую зарегистрированную функцию, прочие пропускает» проверяет тест ядра
-    `test_home_body_uses_first_registered_function_and_skips_others` (T-7137, `test_feed_core_changes.py`; в черновике
-    он был под другим именем, второй тест не добавлялся).
+58. **Уточнения черновика G1.** В перечень T-7102 (теперь T-7102a и T-7102b) дописаны FR-620, FR-621, FR-622 (права
+    действий: правка записи, удаление записи, правка и удаление комментария — у соответствующих тестов); у узла
+    `#feed-live` в T-7104 — FR-627 рядом с FR-601; правило «`home_body` берёт первую зарегистрированную функцию, прочие
+    пропускает» проверяет тест ядра `test_home_body_uses_first_registered_function_and_skips_others` (T-7137,
+    `test_feed_core_changes.py`; в черновике он был под другим именем, второй тест не добавлялся).
+59. **Время в SQL — только параметром.** Все сравнения с текущим моментом в SQL — выборка задания напоминаний, блок
+    важных и конец срока важного, «было важным», ночное задание (граница срока, показы старше 31 дня), окно 30 дней
+    счётчика непрочитанных — берут время из `timezone.now()` один раз на действие и передают его параметром `%s`, а не
+    `now()` базы; `tasks.remind_events(now=None)` и `tasks.retention_night(now=None)` принимают время параметром. Так
+    часы `Clock` и `run_reminders(now)`/`run_retention(now)` управляют временем во всех тестах (решение 5). Касается
+    контракта T-7100 и задач T-7211, T-7212, T-7216, T-7220, T-7225, T-7229; литералы плана с `now()` пишутся с
+    параметром, поведение не меняется. Решение по задачам (проверка задач, 2026-10-30); показать владельцу при подписи.
+    Причина: `Clock` подменяет только `django.utils.timezone.now`, а `now()` базы остаётся настоящим, и тесты со сдвигом
+    времени на буквальном литерале плана не прошли бы.
 
-**Показать владельцу при подписи.** Отступлений от буквы PLAN-007 в задачах нет, но владельцу стоит увидеть: решение 3
-(исключение каркаса T-7001 — строка `INSTALLED_APPS` и пустое подключение адресов `feed`), решение 12 (задание
-напоминаний не завершается ошибкой из-за одного события), решение 39 (адреса ленты не идут в `web-heavy`; частота
-публикатора нагрузки), решение 40 (способ подмены слоя `publish` на стенде), решение 42 (пределы ранних замеров),
-решение 43 (спорные пункты анализа влияния), а также решения по задачам: новый текст отказа «Укажите начало и конец
-события» (решение 48), 404 у эскиза «чистого» файла без эскиза (решение 51), ключ `--posts` у `e2e_feed_retention` и
-сдвиг `important_until` командой `e2e_feed_shift` (решение 54), границы команд стенда (решение 10).
+**Показать владельцу при подписи.** Отступлений от поведения, заданного PLAN-007, нет; дополнения стенда и тексты —
+ниже. Владельцу стоит увидеть: решение 3 (исключение каркаса T-7001 — строка `INSTALLED_APPS` и пустое подключение
+адресов `feed`), решение 12 (задание напоминаний не завершается ошибкой из-за одного события), решение 39 (адреса ленты
+не идут в `web-heavy`; частота публикатора нагрузки), решение 40 (способ подмены слоя `publish` на стенде), решение 42
+(пределы ранних замеров), решение 43 (спорные пункты анализа влияния), а также решения по задачам: новый текст отказа
+«Укажите начало и конец события» (решение 48), 404 у эскиза «чистого» файла без эскиза (решение 51), ключ `--posts` у
+`e2e_feed_retention` и сдвиг `important_until` командой `e2e_feed_shift` (решение 54), границы команд стенда (решение
+10), время в SQL параметром вместо `now()` базы в литералах плана (решение 59), полное имя модуля загрузки
+`core.services.uploads` вместо `core.uploads` плана (решение 46).
 
 ## Покрытие FR/NFR → задачи
 
 Столбец «Этап 2» — задачи тестов, у которых хотя бы один тест помечен требованием (пересчитано по итоговым строкам задач
-этого файла; контракт T-7100 — только FR-642; T-7101, T-7138, T-7159, T-7160 и диапазоны «FR-601…642» не засчитываются —
-решение 26); столбец «Этапы 1, 3, 4» — задачи подготовки, реализации и проверки с явным номером в перечне в конце
-строки.
+этого файла; контракт T-7100 — только FR-642; T-7101, T-7138, T-7140a, T-7159, T-7160 и диапазоны «FR-601…642» не
+засчитываются — решение 26); столбец «Этапы 1, 3, 4» — задачи подготовки, реализации и проверки с явным номером в
+перечне в конце строки.
 
 | Требование | Этап 2 (тесты) | Этапы 1, 3, 4 |
 |---|---|---|
-| FR-601 | T-7104, T-7136, T-7137, T-7140, T-7153 | T-7203, T-7213a |
-| FR-602 | T-7105, T-7106, T-7125, T-7140, T-7141, T-7147, T-7150 | T-7003, T-7211, T-7213a, T-7223 |
-| FR-603 | T-7102, T-7106, T-7140 | T-7211, T-7213a |
-| FR-604 | T-7102, T-7103, T-7108, T-7140 | T-7213b |
-| FR-605 | T-7102, T-7110, T-7112, T-7137, T-7140, T-7141, T-7145 | T-7208, T-7209, T-7216, T-7217 |
-| FR-606 | T-7102, T-7103, T-7114, T-7122, T-7128, T-7130, T-7131, T-7140, T-7141, T-7142, T-7146, T-7149, T-7150 | T-7209, T-7213a, T-7213b, T-7222a, T-7222b, T-7225, T-7227, T-7228, T-7307 |
-| FR-607 | T-7102, T-7140 | T-7200, T-7209, T-7211 |
-| FR-608 | T-7107, T-7140, T-7152 | T-7214, T-7215, T-7309 |
-| FR-609 | T-7107, T-7109, T-7140 | T-7210, T-7214 |
-| FR-610 | T-7107, T-7108, T-7117, T-7133, T-7140, T-7152 | T-7214, T-7215, T-7220, T-7309 |
-| FR-611 | T-7102, T-7109, T-7110, T-7127, T-7142, T-7143, T-7145, T-7146 | T-7200, T-7210, T-7214, T-7215, T-7218, T-7220, T-7224 |
+| FR-601 | T-7104, T-7136, T-7137, T-7140b, T-7153 | T-7203, T-7213a |
+| FR-602 | T-7105, T-7106, T-7125, T-7140b, T-7141, T-7147, T-7150 | T-7003, T-7211, T-7213a, T-7223 |
+| FR-603 | T-7102a, T-7102b, T-7106, T-7140b | T-7211, T-7213a |
+| FR-604 | T-7102a, T-7102b, T-7103, T-7108, T-7140b | T-7213b |
+| FR-605 | T-7102a, T-7110, T-7112, T-7137, T-7140b, T-7141, T-7145 | T-7208, T-7209, T-7216, T-7217 |
+| FR-606 | T-7102a, T-7102b, T-7103, T-7114, T-7122, T-7128, T-7130, T-7131, T-7140b, T-7141, T-7142, T-7146, T-7149, T-7150 | T-7209, T-7213a, T-7213b, T-7222a, T-7222b, T-7225, T-7227, T-7228, T-7307 |
+| FR-607 | T-7102a, T-7102b, T-7140b | T-7200, T-7209, T-7211 |
+| FR-608 | T-7107, T-7140b, T-7152 | T-7214, T-7215, T-7309 |
+| FR-609 | T-7107, T-7109, T-7140b | T-7210, T-7214 |
+| FR-610 | T-7107, T-7108, T-7117, T-7133, T-7140b, T-7152 | T-7214, T-7215, T-7220, T-7309 |
+| FR-611 | T-7102a, T-7102b, T-7109, T-7110, T-7127, T-7142, T-7143, T-7145, T-7146 | T-7200, T-7210, T-7214, T-7215, T-7218, T-7220, T-7224 |
 | FR-612 | T-7111, T-7137, T-7154 | T-7204, T-7214, T-7215, T-7218, T-7220 |
 | FR-613 | T-7112, T-7134, T-7141 | T-7200, T-7216, T-7220 |
 | FR-614 | T-7106, T-7112, T-7141 | T-7003, T-7211, T-7216 |
@@ -2578,35 +2664,35 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
 | FR-617 | T-7113, T-7142 | T-7208, T-7217 |
 | FR-618 | T-7114, T-7134, T-7135, T-7142 | T-7217, T-7225, T-7232, T-7233 |
 | FR-619 | T-7113, T-7114, T-7127, T-7142 | T-7220, T-7224, T-7225 |
-| FR-620 | T-7102, T-7106, T-7110, T-7112, T-7117, T-7141, T-7146, T-7152 | T-7209, T-7220 |
-| FR-621 | T-7102, T-7115, T-7118, T-7146, T-7152 | T-7209, T-7221, T-7229 |
-| FR-622 | T-7102, T-7110, T-7118, T-7146 | T-7204, T-7209, T-7221 |
+| FR-620 | T-7102a, T-7106, T-7110, T-7112, T-7117, T-7141, T-7146, T-7152 | T-7209, T-7220 |
+| FR-621 | T-7102a, T-7115, T-7118, T-7146, T-7152 | T-7209, T-7221, T-7229 |
+| FR-622 | T-7102a, T-7110, T-7118, T-7146 | T-7204, T-7209, T-7221 |
 | FR-623 | T-7119, T-7143 | T-7218 |
 | FR-624 | T-7119, T-7137, T-7143 | T-7200, T-7204, T-7218 |
 | FR-625 | T-7120, T-7144 | T-7219 |
-| FR-626 | T-7104, T-7105, T-7115, T-7121, T-7123, T-7126a, T-7137, T-7147, T-7148 | T-7003, T-7200, T-7203, T-7205, T-7208, T-7212, T-7213a, T-7213b, T-7222a, T-7223 |
-| FR-627 | T-7104, T-7122, T-7123, T-7124, T-7125, T-7126a, T-7147 | T-7005, T-7006, T-7205, T-7206, T-7222a, T-7222b, T-7223, T-7305 |
+| FR-626 | T-7104, T-7105, T-7115, T-7121, T-7122, T-7123, T-7125, T-7126a, T-7137, T-7147, T-7148 | T-7003, T-7200, T-7203, T-7205, T-7208, T-7212, T-7213a, T-7213b, T-7222a, T-7223 |
+| FR-627 | T-7104, T-7119, T-7122, T-7123, T-7124, T-7125, T-7126a, T-7147 | T-7005, T-7006, T-7205, T-7206, T-7222a, T-7222b, T-7223, T-7305 |
 | FR-628 | T-7103, T-7122, T-7123, T-7125, T-7147 | T-7004, T-7005, T-7208, T-7209, T-7222a, T-7222b, T-7223 |
 | FR-629 | T-7126b, T-7127, T-7128, T-7141, T-7142, T-7143, T-7144, T-7145, T-7148 | T-7202, T-7207, T-7224 |
-| FR-630 | T-7103, T-7120, T-7127, T-7128, T-7141, T-7142, T-7143, T-7144, T-7145, T-7148 | T-7224 |
+| FR-630 | T-7103, T-7108, T-7120, T-7127, T-7128, T-7141, T-7142, T-7143, T-7144, T-7145, T-7148 | T-7224 |
 | FR-631 | T-7126b, T-7128, T-7143, T-7144, T-7148 | T-7202, T-7207, T-7224, T-7307 |
 | FR-632 | T-7115, T-7118, T-7128, T-7148 | T-7221, T-7224, T-7229 |
-| FR-633 | T-7115, T-7119, T-7129, T-7135, T-7137, T-7143, T-7149 | T-7200, T-7226, T-7233 |
+| FR-633 | T-7115, T-7119, T-7129, T-7130, T-7135, T-7137, T-7143, T-7149 | T-7200, T-7226, T-7233 |
 | FR-634 | T-7103, T-7130, T-7149 | T-7002, T-7227 |
-| FR-635 | T-7105, T-7106, T-7108, T-7110, T-7125, T-7150 | T-7211, T-7213a, T-7215, T-7223 |
+| FR-635 | T-7103, T-7105, T-7106, T-7108, T-7110, T-7125, T-7150 | T-7211, T-7213a, T-7215, T-7223 |
 | FR-636 | T-7103, T-7131, T-7150 | T-7228 |
 | FR-637 | T-7131, T-7150 | T-7214, T-7228 |
 | FR-638 | T-7115, T-7116, T-7133, T-7134, T-7135, T-7151 | T-7007, T-7200, T-7201, T-7229, T-7230, T-7232, T-7233, T-7307 |
 | FR-639 | T-7115, T-7116, T-7118, T-7132, T-7146, T-7151, T-7152 | T-7221, T-7229, T-7230, T-7231, T-7307 |
 | FR-640 | T-7107, T-7117, T-7133, T-7134, T-7152 | T-7201, T-7214, T-7220, T-7232 |
 | FR-641 | T-7104, T-7126a, T-7126b, T-7131, T-7135, T-7136, T-7137, T-7153 | T-7001, T-7202, T-7203, T-7206, T-7213a, T-7228, T-7233, T-7307 |
-| FR-642 | T-7100, T-7107, T-7110, T-7112, T-7113, T-7116, T-7117, T-7119, T-7129, T-7130, T-7140, T-7141, T-7142, T-7143, T-7145, T-7149, T-7151 | T-7201, T-7210, T-7214, T-7215, T-7216, T-7217, T-7218, T-7220, T-7226, T-7227, T-7230 |
+| FR-642 | T-7100, T-7107, T-7110, T-7112, T-7113, T-7116, T-7117, T-7119, T-7129, T-7130, T-7140b, T-7141, T-7142, T-7143, T-7145, T-7149, T-7151 | T-7201, T-7210, T-7214, T-7215, T-7216, T-7217, T-7218, T-7220, T-7226, T-7227, T-7230 |
 | NFR-601 | T-7106 | T-7003, T-7211, T-7212, T-7234, T-7304 |
 | NFR-602 | T-7147 | T-7004, T-7222a, T-7234, T-7302, T-7304 |
 | NFR-603 | T-7131 | T-7228, T-7234, T-7304 |
 | NFR-604 | T-7129, T-7135, T-7149 | T-7226, T-7233, T-7301, T-7302 |
-| NFR-605 | T-7109, T-7123, T-7128, T-7135, T-7140 | T-7005, T-7210, T-7213a, T-7213b, T-7215, T-7222a, T-7224, T-7301, T-7307 |
-| NFR-606 | T-7140, T-7141, T-7142, T-7143, T-7144, T-7150, T-7151, T-7153 | T-7213a, T-7215, T-7230, T-7301, T-7302 |
+| NFR-605 | T-7109, T-7123, T-7128, T-7135, T-7140b | T-7005, T-7210, T-7213a, T-7213b, T-7215, T-7222a, T-7224, T-7301, T-7307 |
+| NFR-606 | T-7140b, T-7141, T-7142, T-7143, T-7144, T-7150, T-7151, T-7153 | T-7213a, T-7215, T-7230, T-7301, T-7302 |
 | NFR-607 | T-7132 | T-7231, T-7307 |
 | NFR-608 | T-7105, T-7125, T-7131, T-7150 | T-7003, T-7211, T-7214, T-7223, T-7228, T-7303, T-7307 |
 | NFR-609 | T-7128, T-7148 | T-7224, T-7307 |
