@@ -1,7 +1,7 @@
 ---
 id: PLAN-007
 вид: план
-статус: черновик
+статус: на-проверке
 версия: 1
 зависит_от: SPEC-007, SPEC-006, SPEC-005, SPEC-004, SPEC-003, SPEC-002, SPEC-001, TGT-ARCH, TGT-NFR, ADR-0003, ADR-0012, ADR-0015, PLAN-001, PLAN-002, PLAN-003, PLAN-004, PLAN-005, PLAN-006
 основан_на: SPEC-007 sha256:66d7c06d99246cf8dcf11d5f803f19e47fa42075faccf72282cfd4ba18ffd530
