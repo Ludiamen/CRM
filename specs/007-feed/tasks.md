@@ -1021,7 +1021,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_notify_2.py::test_opening_card_marks_post_notifications_and_own_comment_likes_read (FR-629,
   FR-630); backend/tests/test_feed_notify_2.py::test_notification_text_with_markup_escaped_on_display (NFR-605) —
   (FR-606, FR-629, FR-630, FR-631, FR-632, NFR-605, NFR-609, NFR-611)
-- [ ] T-7129 [P] [sonnet] тесты файлов: загрузка, пределы, привязка, «убрать» (план: «Файлы и эскизы» — загрузка,
+- [x] T-7129 [P] [sonnet] тесты файлов: загрузка, пределы, привязка, «убрать» (план: «Файлы и эскизы» — загрузка,
   привязка, предел 30; «Модель данных» — `FeedFile`; «Контракты» — `/feed/files/`, `/feed/files/<id>/delete/`) —
   backend/tests/test_feed_files.py::test_upload_exactly_20_mb_accepted_returns_pill_with_hidden_files_id (FR-633,
   NFR-604); backend/tests/test_feed_files.py::test_upload_20_mb_plus_one_byte_refused_file_over_20_mb (FR-633, FR-642,
@@ -1046,7 +1046,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_files.py::test_remove_on_edit_deletes_row_and_stored_file_in_transaction_disk_after_commit
   (FR-633); backend/tests/test_feed_files.py::test_db_check_comment_set_implies_post_set (FR-633) — (FR-633, FR-642,
   NFR-604)
-- [ ] T-7130 [P] [sonnet] тесты файлов: назначение, эскизы, выдача, показ (план: «Файлы и эскизы» — назначение `feed`,
+- [x] T-7130 [P] [sonnet] тесты файлов: назначение, эскизы, выдача, показ (план: «Файлы и эскизы» — назначение `feed`,
   эскиз, выдача, показ, резервная копия) —
   backend/tests/test_feed_files_2.py::test_clean_scan_moves_file_to_attachments_and_builds_thumb (FR-634);
   backend/tests/test_feed_files_2.py::test_found_scan_puts_file_to_quarantine (FR-634);
@@ -1076,7 +1076,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_files_2.py::test_display_clean_image_without_thumb_shows_name_size_download (FR-634);
   backend/tests/test_feed_files_2.py::test_display_file_state_data_attribute_for_each_state (FR-634) — (FR-606, FR-633,
   FR-634, FR-642, NFR-613, NFR-614)
-- [ ] T-7131 [P] [sonnet] тесты сквозного поиска и векторов (план: «Поиск»; «Точки расширения ядра» —
+- [x] T-7131 [P] [sonnet] тесты сквозного поиска и векторов (план: «Поиск»; «Точки расширения ядра» —
   `search_providers`) — backend/tests/test_feed_search.py::test_provider_key_feed_title_order_60_after_lists (FR-636,
   FR-641); backend/tests/test_feed_search.py::test_provider_available_to_every_logged_in_employee (FR-636);
   backend/tests/test_feed_search.py::test_word_form_finds_post_with_other_form_of_word (FR-636);
