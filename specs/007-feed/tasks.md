@@ -951,7 +951,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-629); backend/tests/test_feed_core_changes_3.py::test_coalesce_text_update_keeps_url_and_sends_no_bell_frame
   (FR-629); backend/tests/test_feed_core_changes_3.py::test_coalesce_without_coalesce_text_keeps_first_text_as_before
   (FR-629) — (FR-629, FR-631, FR-641)
-- [ ] T-7127 [P] [sonnet] тесты уведомлений: кто что получает, приоритет (план: «Уведомления» — кто что получает, одно
+- [x] T-7127 [P] [sonnet] тесты уведомлений: кто что получает, приоритет (план: «Уведомления» — кто что получает, одно
   событие — одно уведомление, ссылки и `object_ref`; «Правка и удаление» — новым адресатам) —
   backend/tests/test_feed_notify.py::test_for_you_with_post_ref_and_card_url_only_to_personal_recipients_not_via_all_or_unit
   (FR-629); backend/tests/test_feed_notify.py::test_plain_post_to_all_or_unit_without_mentions_creates_no_notifications
@@ -986,7 +986,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-629); backend/tests/test_feed_notify.py::test_notifications_created_by_dispatch_create_inside_action_transaction
   (FR-630); backend/tests/test_feed_notify.py::test_notify_rules_decide_applies_full_priority_order (FR-630) — (FR-611,
   FR-619, FR-629, FR-630)
-- [ ] T-7128 [P] [sonnet] тесты уведомлений: каталог, тексты, каналы, склейка, `still_relevant` (план: «Уведомления» —
+- [x] T-7128 [P] [sonnet] тесты уведомлений: каталог, тексты, каналы, склейка, `still_relevant` (план: «Уведомления» —
   виды, склейка с обновлением текста, допустимые каналы вида, тексты, перед письмом и сводкой) —
   backend/tests/test_feed_notify_2.py::test_catalog_eight_feed_kinds_codes_titles_module_order_available_events_coalesce
   (FR-629); backend/tests/test_feed_notify_2.py::test_feed_kinds_default_channels_portal_and_email_like_portal_only
