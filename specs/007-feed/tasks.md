@@ -1102,7 +1102,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_search.py::test_vectors_recomputed_in_publish_post_edit_and_comment_transactions (FR-637);
   backend/tests/test_feed_search.py::test_file_contents_not_searched (FR-636) — (FR-606, FR-636, FR-637, FR-641,
   NFR-603, NFR-608)
-- [ ] T-7132 [P] [sonnet] тесты журнал ленты (план: «Журнал», «Срок хранения и ночное задание», «Права среза», «Правка и
+- [x] T-7132 [P] [sonnet] тесты журнал ленты (план: «Журнал», «Срок хранения и ночное задание», «Права среза», «Правка и
   удаление») —
   backend/tests/test_feed_audit.py::test_moderator_deleting_others_post_writes_post_deleted_with_actor_author_and_published_at_without_text
   (FR-639);
@@ -1124,7 +1124,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_audit.py::test_changing_post_all_and_moderate_in_role_writes_role_updated_with_rights_before_after
   (FR-639); backend/tests/test_feed_audit.py::test_app_role_cannot_update_or_delete_feed_audit_rows (NFR-607) — (FR-639,
   NFR-607)
-- [ ] T-7133 [P] [sonnet] тесты права и данные установки (план: «Права среза», «Права и данные установки» — миграция
+- [x] T-7133 [P] [sonnet] тесты права и данные установки (план: «Права среза», «Права и данные установки» — миграция
   `feed 0002`, «Модель данных» — `FeedSettings`) —
   backend/tests/test_feed_seed.py::test_seed_on_slice_006_base_creates_post_all_and_moderate_permissions_with_russian_names
   (FR-640);
@@ -1140,7 +1140,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_seed.py::test_seed_keeps_existing_feed_settings_row_unchanged (FR-640, FR-638);
   backend/tests/test_feed_seed.py::test_removing_post_all_from_role_keeps_published_to_all_posts_visible_to_everyone
   (FR-640) — (FR-610, FR-638, FR-640)
-- [ ] T-7134 [P] [sonnet] тесты сброс стенда и команды стенда (план: «Стенд и приёмка», «Права и данные установки» —
+- [x] T-7134 [P] [sonnet] тесты сброс стенда и команды стенда (план: «Стенд и приёмка», «Права и данные установки» —
   `seed(stand=True)`, «Событие и напоминания», «Срок хранения и ночное задание») —
   backend/tests/test_feed_stand.py::test_feed_stand_reset_runs_in_transaction_under_migrate_alias (FR-640);
   backend/tests/test_feed_stand.py::test_feed_stand_reset_wipes_all_feed_tables (FR-640);
