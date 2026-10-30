@@ -1254,7 +1254,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-605); backend/tests/test_feed_core_changes.py::test_unit_chains_equals_unit_chain_ids_for_each_user_in_two_queries
   (FR-605); backend/tests/test_feed_core_changes.py::test_previous_structure_functions_keep_names_signatures_and_results
   (FR-605, FR-641) — (FR-601, FR-605, FR-612, FR-624, FR-626, FR-633, FR-641)
-- [ ] T-7140a [sonnet] обвязка приёмки (план: «Проверка», «Проход в браузере», «Стенд и приёмка»; деление — решение 45).
+- [x] T-7140a [sonnet] обвязка приёмки (план: «Проверка», «Проход в браузере», «Стенд и приёмка»; деление — решение 45).
   Общие помощники backend/tests/e2e/helpers_feed.py (пишет только эта задача): роли и учётки сценариев (роль с правом
   «Писать всем», модератор ленты, сотрудник без прав ленты; подразделения «Отдел ИТ» с вложенной «Группой сети» и
   «Бухгалтерия», совместитель, Петров, Сидоров — через helpers.py и helpers_org.py); open_feed(context, account,
