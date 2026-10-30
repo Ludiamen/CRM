@@ -1,7 +1,7 @@
 ---
 id: TASKS-007
 вид: задачи
-статус: черновик
+статус: на-проверке
 версия: 1
 зависит_от: PLAN-007
 основан_на: PLAN-007 sha256:bb28b5833b6e954f080037fff8e47ffad95af410f030381020872a473e328bb1
@@ -923,7 +923,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_core_changes_2.py::test_publish_layer_has_same_host_and_prefix_2_second_timeouts_and_300_connections
   (NFR-614); backend/tests/test_feed_core_changes_2.py::test_default_layer_unchanged_and_channel_layers_have_two_keys
   (NFR-614);
-  backend/tests/test_feed_core_changes_2.py::test_asgi_websocket_patterns_hold_notify_and_feed_routes_when_feed_installed
+  backend/tests/test_feed_core_changes_2.py::test_asgi_websocket_patterns_include_notify_routes_and_feed_routing_list_when_feed_installed
   (FR-627, FR-641);
   backend/tests/test_feed_core_changes_2.py::test_asgi_without_feed_has_no_ws_feed_route_and_ws_notify_as_before
   (FR-641) — (FR-626, FR-627, FR-641, NFR-614)
@@ -1633,7 +1633,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-612); backend/tests/e2e/test_f15_pdn.py::test_f15_email_or_phone_in_event_title_or_place_shows_warning (FR-612);
   backend/tests/e2e/test_f15_pdn.py::test_f15_email_inside_backticks_still_shows_warning (FR-612) — (FR-612)
 - [ ] T-7138 [sonnet] (после T-7101: нужны `support_feed.without_feed()` и константы `PERMISSIONS_007`, `TITLES_007`,
-  `POINTS_007`, `APPS_TAIL`, `FEED_CODES`, `FEED_TITLES`, `FEED_MODULE`, `FEED_LIKE`, `FEED_BOXED`, `FEED_JOBS`; без
+  `POINTS_007`, `APPS_TAIL`, `FEED_KINDS`, `FEED_CODES`, `FEED_TITLES`, `FEED_MODULE`, `FEED_LIKE`, `FEED_BOXED`, `FEED_JOBS`; без
   `[P]` — решение 31) правка тестов срезов 001–006, которые меняются вместе со срезом 007, тремя заданиями агенту
   (первое — пункты 1–26: точки, поля, хвост `INSTALLED_APPS`, сброс стенда, cron, nginx, слой каналов, права, меню;
   второе — пункты 27–43: каталог уведомлений, поиск, колокольчик; третье — приёмка, пункты 44 и 45) — серверные тесты
@@ -2306,7 +2306,7 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
    буквальная одновременность держится замками и ограничениями базы. Источник — скелет.
 7. **WebSocket в тестах (ответ 1 к скелету).** Помощники среза 004: `asgiref.testing.ApplicationCommunicator` через
    `support_notify.ws_run` / `WsHub` / `WsClient` и настоящий слой `channels_redis` на Valkey (база 15);
-   `support_feed.ws_client` — обёртка над `WsHub.connect(path="/ws/feed/?…")`; проверка сессии ускоряется подменой
+   `support_feed.ws_client` строит свой `scope` по образцу `WsHub.connect` (тот кладёт `query_string` пустым) с путём `/ws/feed/?…`; проверка сессии ускоряется подменой
    `apps.feed.consumers.CHECK_INTERVAL`; недоступный слой `publish` — `layer_down()`. Слово плана
    «WebsocketCommunicator» — общее название способа. Причина: образец `test_notify_ws.py` и CONTRACT-004 (раздел о
    соединениях) уже работают в среде проекта; `InMemoryChannelLayer` и подмены `CHANNEL_LAYERS` не нужны.
