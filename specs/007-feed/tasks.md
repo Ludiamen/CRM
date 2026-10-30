@@ -289,7 +289,7 @@ Opus по задачам» в конце файла; решения владел
   GIF из нескольких кадров, картинка больше 40 Мп), `email_of`/`phone_of`, список страниц среза для проверок «тексты
   по-русски» и «без `style=`». Писатели T-7102… стартуют после неё — backend/tests/support_feed.py — (план: «Проверка» →
   «Серверные тесты»)
-- [ ] T-7102a [P] [sonnet] тесты видимость, аудитория, права действий (план: «Видимость и аудитория записи», «Модель
+- [x] T-7102a [P] [sonnet] тесты видимость, аудитория, права действий (план: «Видимость и аудитория записи», «Модель
   данных» — `Recipient`, «Контракты» — `/feed/<id>/`; деление — решение 45) —
   backend/tests/test_feed_visibility.py::test_visibility_table_post_by_employee_parametrized_authors_and_addressees_only
   (FR-605, FR-606);
@@ -326,7 +326,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-603, FR-606, FR-622);
   backend/tests/test_feed_visibility.py::test_comment_like_and_answer_allowed_to_every_viewer_and_denied_to_non_viewer
   (FR-606) — (FR-603, FR-604, FR-605, FR-606, FR-607, FR-611, FR-620, FR-621, FR-622)
-- [ ] T-7102b [P] [sonnet] тесты строка адресатов и полный список адресатов (план: «Запись в ленте и карточка» — строка
+- [x] T-7102b [P] [sonnet] тесты строка адресатов и полный список адресатов (план: «Запись в ленте и карточка» — строка
   адресатов, «Контракты» — `/feed/<id>/to/`; деление — решение 45) —
   backend/tests/test_feed_visibility_3.py::test_recipients_line_shows_unit_deleted_for_removed_unit_and_keeps_person
   (FR-603, FR-607);
@@ -338,7 +338,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-603, FR-607, FR-611);
   backend/tests/test_feed_visibility_3.py::test_recipients_full_list_returns_404_for_non_viewer (FR-604, FR-606) —
   (FR-603, FR-604, FR-606, FR-607, FR-611)
-- [ ] T-7103 [P] [sonnet] тесты одна функция видимости во всех местах (план: «Видимость и аудитория записи» — перечень
+- [x] T-7103 [P] [sonnet] тесты одна функция видимости во всех местах (план: «Видимость и аудитория записи» — перечень
   мест, «Контракты») — backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_from_first_feed_page
   (FR-606); backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_from_more_posts (FR-606);
   backend/tests/test_feed_visibility_2.py::test_invisible_post_absent_under_important_filter (FR-606);
@@ -365,7 +365,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_visibility_2.py::test_edit_delete_and_like_of_comment_on_invisible_post_return_404 (FR-606);
   backend/tests/test_feed_visibility_2.py::test_invisible_post_response_same_code_page_and_not_found_text_as_missing
   (FR-604, FR-606) — (FR-604, FR-606, FR-628, FR-630, FR-634, FR-635, FR-636)
-- [ ] T-7104 [P] [sonnet] тесты главная, меню, узел числа (план: «Главная, меню и число у „Ленты“», «Точки расширения
+- [x] T-7104 [P] [sonnet] тесты главная, меню, узел числа (план: «Главная, меню и число у „Ленты“», «Точки расширения
   ядра и шина событий» — `menu_items`, `home_body`, «Модуль и выключение») —
   backend/tests/test_feed_home.py::test_home_body_order_notices_form_filters_empty_banner_important_block_feed (FR-601);
   backend/tests/test_feed_home.py::test_home_has_no_greeting_and_no_profile_or_security_cards (FR-601);
@@ -383,7 +383,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_home.py::test_anonymous_home_redirects_to_login_with_next_and_shows_no_feed (FR-601);
   backend/tests/test_feed_home.py::test_user_without_second_factor_home_redirects_to_factor_setup (FR-601) — (FR-601,
   FR-626, FR-627, FR-641)
-- [ ] T-7105 [P] [sonnet] тесты лента, курсор, фильтры, белый список (план: «Лента, курсор, блок важных, фильтры» —
+- [x] T-7105 [P] [sonnet] тесты лента, курсор, фильтры, белый список (план: «Лента, курсор, блок важных, фильтры» —
   фильтр, курсор, ветки, «Непрочитанное» — показы по `/feed/more/`, «Контракты» — `/`, `/feed/more/`) —
   backend/tests/test_feed_page.py::test_45_posts_paginate_20_20_5_and_more_button_disappears (FR-602);
   backend/tests/test_feed_page.py::test_cursor_paginates_100_posts_with_same_published_at_without_loss_or_repeat
@@ -407,7 +407,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_page.py::test_more_without_hx_request_writes_no_shown_and_has_no_badge_node (FR-626);
   backend/tests/test_feed_page.py::test_more_with_hx_request_writes_shown_and_returns_badge_oob (FR-626) — (FR-602,
   FR-626, FR-635, NFR-608)
-- [ ] T-7106 [P] [sonnet] тесты блок важных, состав записи, сборка без N+1 (план: «Лента, курсор, блок важных, фильтры»
+- [x] T-7106 [P] [sonnet] тесты блок важных, состав записи, сборка без N+1 (план: «Лента, курсор, блок важных, фильтры»
   — блок важных, сборка карточек, «Запись в ленте и карточка» — состав) —
   backend/tests/test_feed_page_2.py::test_important_block_shown_only_for_all_and_important_without_author_or_period
   (FR-602, FR-635);
@@ -434,7 +434,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_page_2.py::test_edit_delete_menu_none_for_reader_both_for_author_delete_only_for_moderator_who_sees
   (FR-603); backend/tests/test_feed_page_2.py::test_feed_shows_last_three_comments_and_show_all_count (FR-603) —
   (FR-602, FR-603, FR-614, FR-620, FR-635, NFR-601)
-- [ ] T-7107 [P] [sonnet] тесты форма, «Кому», публикация (план: «Публикация: форма, „Кому“, подсказки» — форма, «Кому»,
+- [x] T-7107 [P] [sonnet] тесты форма, «Кому», публикация (план: «Публикация: форма, „Кому“, подсказки» — форма, «Кому»,
   публикация; «Текст и упоминания» — хранение, NUL; «Тексты отказов»; «Контракты» — `/feed/posts/`) —
   backend/tests/test_feed_posts.py::test_form_default_kind_is_post_with_three_kinds_and_fields_of_all_kinds_in_markup
   (FR-608); backend/tests/test_feed_posts.py::test_form_preselects_all_for_employee_with_post_all (FR-608, FR-610);
@@ -459,7 +459,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_posts.py::test_nul_removed_from_text_event_title_and_place (FR-609);
   backend/tests/test_feed_posts.py::test_recipient_published_at_copies_post_published_at (FR-608) — (FR-608, FR-609,
   FR-610, FR-640, FR-642)
-- [ ] T-7108 [P] [sonnet] тесты подсказка «Кому» и «Автор», карточка записи (план: «Публикация: форма, „Кому“,
+- [x] T-7108 [P] [sonnet] тесты подсказка «Кому» и «Автор», карточка записи (план: «Публикация: форма, „Кому“,
   подсказки» — подсказка; «Запись в ленте и карточка» — карточка; «Точки расширения ядра и шина событий» —
   `object.viewed`; «Контракты» — `/feed/pick/`, `/feed/<id>/`) —
   backend/tests/test_feed_posts_2.py::test_pick_open_to_every_logged_in_employee_and_redirects_anonymous_to_login
@@ -478,7 +478,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_posts_2.py::test_card_for_non_viewer_same_404_as_nonexistent (FR-604);
   backend/tests/test_feed_posts_2.py::test_literal_paths_not_confused_with_post_id_route (FR-604) — (FR-604, FR-610,
   FR-630, FR-635)
-- [ ] T-7109 [P] [sonnet] тесты вывод текста и безопасный вывод на странице (план: «Текст и упоминания» — вывод,
+- [x] T-7109 [P] [sonnet] тесты вывод текста и безопасный вывод на странице (план: «Текст и упоминания» — вывод,
   отрывок; «Безопасный вывод, язык, узкий экран» — проба NFR-605) —
   backend/tests/test_feed_text.py::test_render_plain_evil_inputs_leave_only_allowed_tags_and_attributes (FR-609,
   NFR-605); backend/tests/test_feed_text.py::test_https_url_becomes_link_with_blank_target_and_noopener_noreferrer
@@ -497,7 +497,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_text.py::test_page_escapes_script_markup_javascript_and_attribute_break_in_text_title_place_and_file_name
   (NFR-605); backend/tests/test_feed_text.py::test_page_builds_links_only_from_http_https_and_mailto (FR-609, NFR-605) —
   (FR-609, FR-611, NFR-605)
-- [ ] T-7110 [P] [sonnet] тесты упоминания (план: «Текст и упоминания» — упоминания при сохранении, в форме, в
+- [x] T-7110 [P] [sonnet] тесты упоминания (план: «Текст и упоминания» — упоминания при сохранении, в форме, в
   комментарии; «Модель данных» — упоминания строками `via='mention'`; «Публикация: форма, „Кому“, подсказки» — подсказка
   `scope=mention`) —
   backend/tests/test_feed_mentions.py::test_pick_mention_returns_only_active_employees_without_dismissed_and_units
@@ -518,7 +518,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-611); backend/tests/test_feed_mentions.py::test_hand_typed_marker_equals_picked_employee (FR-611);
   backend/tests/test_feed_mentions.py::test_only_id_absent_from_previous_version_of_text_is_new_mention_on_edit (FR-611,
   FR-620) — (FR-605, FR-611, FR-620, FR-622, FR-635, FR-642)
-- [ ] T-7111 [P] [sonnet] тесты предупреждение о ПДн (план: «Предупреждение о ПДн»; «Контракты» — `/feed/posts/`,
+- [x] T-7111 [P] [sonnet] тесты предупреждение о ПДн (план: «Предупреждение о ПДн»; «Контракты» — `/feed/posts/`,
   `/feed/<id>/edit/`, `/feed/<id>/comments/`, `/feed/comments/<cid>/edit/`) —
   backend/tests/test_feed_pdn.py::test_email_and_phone_in_post_text_show_warning_with_found_list_and_no_post (FR-612);
   backend/tests/test_feed_pdn.py::test_warning_has_fix_and_publish_anyway_with_confirm_field (FR-612);
@@ -533,7 +533,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_pdn.py::test_address_in_backticks_and_markdown_still_found (FR-612);
   backend/tests/test_feed_pdn.py::test_htmx_warning_returns_200_fragment (FR-612);
   backend/tests/test_feed_pdn.py::test_text_without_email_or_phone_publishes_without_warning (FR-612) — (FR-612)
-- [ ] T-7112 [P] [sonnet] тесты важное: сроки, «Прочитано», «Прочитали N из M» (план: «Важное», «Модель данных» — срок
+- [x] T-7112 [P] [sonnet] тесты важное: сроки, «Прочитано», «Прочитали N из M» (план: «Важное», «Модель данных» — срок
   важного и проверка `kind`, «Контракты» — `/feed/<id>/read/`, `/feed/<id>/reads/`) —
   backend/tests/test_feed_important.py::test_day_term_published_10_10_at_15_ends_at_12_10_moscow_midnight (FR-613);
   backend/tests/test_feed_important.py::test_term_counts_from_moscow_date_when_clock_is_at_utc_midnight (FR-613,
@@ -570,7 +570,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_important.py::test_reads_list_is_403_to_other_viewers_and_404_to_moderator_not_addressee
   (FR-615); backend/tests/test_feed_important.py::test_db_check_ties_kind_important_to_non_empty_important_until
   (FR-613) — (FR-605, FR-613, FR-614, FR-615, FR-620, FR-642, NFR-611)
-- [ ] T-7113 [P] [sonnet] тесты событие: поля, ответы, списки, запреты правки (план: «Событие и напоминания» — поля,
+- [x] T-7113 [P] [sonnet] тесты событие: поля, ответы, списки, запреты правки (план: «Событие и напоминания» — поля,
   ответы, правка события, «Модель данных» — проверка полей события, «Контракты» — `/feed/<id>/answer/`,
   `/feed/<id>/answers/`) —
   backend/tests/test_feed_events.py::test_event_with_title_start_end_place_is_published_with_event_block_and_answer_buttons_for_participant
@@ -601,7 +601,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-619, FR-642); backend/tests/test_feed_events.py::test_answers_are_kept_after_event_edit (FR-617, FR-619);
   backend/tests/test_feed_events.py::test_db_check_ties_kind_event_to_filled_event_fields_and_end_after_start (FR-616) —
   (FR-616, FR-617, FR-619, FR-642)
-- [ ] T-7114 [P] [sonnet] тесты `remind_at` и задание напоминаний (план: «Событие и напоминания» — `remind_at`, пересчёт
+- [x] T-7114 [P] [sonnet] тесты `remind_at` и задание напоминаний (план: «Событие и напоминания» — `remind_at`, пересчёт
   при правке, задание `feed_reminders`, правило простоя) —
   backend/tests/test_feed_reminders.py::test_remind_at_on_publish_is_start_minus_hour_when_start_is_hour_or_more_ahead
   (FR-618);
@@ -632,7 +632,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_reminders.py::test_reschedule_exactly_one_hour_later_sends_no_second_reminder (FR-619);
   backend/tests/test_feed_reminders.py::test_one_run_reminds_at_most_200_events_and_next_run_takes_the_rest (FR-618) —
   (FR-606, FR-618, FR-619, NFR-610)
-- [ ] T-7115 [P] [sonnet] тесты ночного задания срока хранения (план: «Срок хранения и ночное задание» — граница, три
+- [x] T-7115 [P] [sonnet] тесты ночного задания срока хранения (план: «Срок хранения и ночное задание» — граница, три
   шага, журнал, «Непрочитанное» — чистка показов, «Файлы и эскизы» — непривязанные старше суток) —
   backend/tests/test_feed_retention.py::test_post_older_than_term_by_one_day_is_deleted_with_comments_likes_of_post_and_comments_read_marks_answers_shown_and_recipients
   (FR-621, FR-638);
@@ -659,7 +659,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-632); backend/tests/test_feed_retention.py::test_retention_job_runs_no_vacuum (FR-638);
   backend/tests/test_feed_retention.py::test_retention_steps_run_in_order_shown_cleanup_then_post_batches_then_unattached_files_by_sql_order
   (FR-626, FR-633, FR-638) — (FR-621, FR-626, FR-632, FR-633, FR-638, FR-639, NFR-610)
-- [ ] T-7116 [P] [sonnet] тесты настройки срока хранения (план: «Срок хранения и ночное задание» — настройка, «Точки
+- [x] T-7116 [P] [sonnet] тесты настройки срока хранения (план: «Срок хранения и ночное задание» — настройка, «Точки
   расширения ядра и шина событий» — `menu_items` «Настройки ленты», «Контракты» — `/settings/feed/`) —
   backend/tests/test_feed_settings.py::test_settings_feed_page_has_portal_settings_feed_title_and_retention_years_field_for_settings_portal
   (FR-638);
@@ -680,7 +680,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-638); backend/tests/test_feed_settings.py::test_menu_item_feed_settings_is_absent_without_settings_portal
   (FR-638); backend/tests/test_feed_settings.py::test_db_check_rejects_retention_years_outside_1_to_10 (FR-638) —
   (FR-638, FR-639, FR-642)
-- [ ] T-7117 [P] [sonnet] тесты правка записи (план: «Правка и удаление» — правка записи, «Контракты» —
+- [x] T-7117 [P] [sonnet] тесты правка записи (план: «Правка и удаление» — правка записи, «Контракты» —
   `/feed/<id>/edit/`, «Тексты отказов») —
   backend/tests/test_feed_edit.py::test_author_edit_updates_text_sets_edited_at_and_shows_changed_time (FR-620);
   backend/tests/test_feed_edit.py::test_edit_overwrites_text_without_keeping_edit_history (FR-620);
@@ -702,7 +702,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_edit.py::test_edit_locks_post_row_with_select_for_update (FR-620);
   backend/tests/test_feed_edit.py::test_edit_htmx_refusal_returns_200_fragment_with_reason_and_entered_values (FR-642) —
   (FR-610, FR-620, FR-640, FR-642)
-- [ ] T-7118 [P] [sonnet] тесты удаление записи, правка и удаление комментария (план: «Правка и удаление» — удаление
+- [x] T-7118 [P] [sonnet] тесты удаление записи, правка и удаление комментария (план: «Правка и удаление» — удаление
   записи, комментарий, «Журнал», «Контракты» — `/feed/<id>/delete/`, `/feed/comments/<cid>/edit/`,
   `/feed/comments/<cid>/delete/`) —
   backend/tests/test_feed_edit_2.py::test_author_deletes_own_post_with_comments_likes_reads_answers_shown_and_recipients
@@ -736,7 +736,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-622);
   backend/tests/test_feed_edit_2.py::test_comment_on_post_deleted_between_check_and_insert_rolls_back_without_orphan_core_comment
   (FR-621, FR-622) — (FR-621, FR-622, FR-632, FR-639)
-- [ ] T-7119 [P] [sonnet] тесты комментарии; комментарии базы знаний не меняются (план: «Комментарии», «Модель данных» —
+- [x] T-7119 [P] [sonnet] тесты комментарии; комментарии базы знаний не меняются (план: «Комментарии», «Модель данных» —
   `FeedComment`, «Контракты» — `/feed/<id>/comments/`, «Тексты отказов») —
   backend/tests/test_feed_comments.py::test_viewer_adds_comment_core_comment_and_feed_comment_with_lowercase_object_ref
   (FR-623, FR-624);
@@ -760,7 +760,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_comments.py::test_core_comment_get_fields_unchanged (FR-624);
   backend/tests/test_feed_comments.py::test_article_comments_stay_without_edit_mentions_likes_and_files (FR-624) —
   (FR-623, FR-624, FR-627, FR-633, FR-642)
-- [ ] T-7120 [P] [sonnet] тесты «Нравится» (план: «„Нравится“», «Контракты» — `/feed/<id>/like/`, `/feed/<id>/likes/`,
+- [x] T-7120 [P] [sonnet] тесты «Нравится» (план: «„Нравится“», «Контракты» — `/feed/<id>/like/`, `/feed/<id>/likes/`,
   `/feed/comments/<cid>/like/`, `/feed/comments/<cid>/likes/`) —
   backend/tests/test_feed_likes.py::test_post_like_first_press_sets_mark_second_removes (FR-625);
   backend/tests/test_feed_likes.py::test_comment_like_first_press_sets_mark_second_removes (FR-625);
@@ -779,7 +779,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_likes.py::test_author_likes_own_comment_without_notification_to_self (FR-625, FR-630);
   backend/tests/test_feed_likes.py::test_post_like_and_likes_of_invisible_post_return_404 (FR-625);
   backend/tests/test_feed_likes.py::test_comment_like_and_likes_of_invisible_post_return_404 (FR-625) — (FR-625, FR-630)
-- [ ] T-7121 [P] [sonnet] тесты показы и число непрочитанного (план: «Непрочитанное» — показ, число, число многим,
+- [x] T-7121 [P] [sonnet] тесты показы и число непрочитанного (план: «Непрочитанное» — показ, число, число многим,
   обновление числа) —
   backend/tests/test_feed_unread.py::test_feed_page_records_shown_before_shell_render_and_badge_excludes_shown (FR-626);
   backend/tests/test_feed_unread.py::test_three_unread_posts_shown_on_feed_page_badge_drops_to_zero (FR-626);
@@ -1271,7 +1271,7 @@ Opus по задачам» в конце файла; решения владел
   «Мои уведомления», учебная служба fakebots для Telegram, helpers_notify.tick для писем через 15 минут; проверка ширины
   360 px; имена помощников — одни для T-7140b…T-7154, их закрепляет контракт T-7100 в разделе «Помощники приёмки»
   (решение 8) — backend/tests/e2e/helpers_feed.py — (план: «Проверка» → «Проход в браузере»)
-- [ ] T-7140b [P] [sonnet] тесты приёмка сценария 1: публикация всем, подразделению и людям; кто видит, кто нет (план:
+- [x] T-7140b [P] [sonnet] тесты приёмка сценария 1: публикация всем, подразделению и людям; кто видит, кто нет (план:
   «Проверка», «Проход в браузере», «Стенд и приёмка», «Публикация: форма, «Кому», подсказки», «Видимость и аудитория
   записи», «Запись в ленте и карточка», «Текст и упоминания», «Лента, курсор, блок важных, фильтры», «Безопасный вывод,
   язык, узкий экран», «Тексты отказов»; помощники — T-7140a) —
@@ -1314,7 +1314,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-603, FR-607);
   backend/tests/e2e/test_f01_publish.py::test_f01_feed_and_form_with_recipients_and_suggestions_have_no_horizontal_scroll_at_360px
   (NFR-606) — (FR-601, FR-602, FR-603, FR-604, FR-605, FR-606, FR-607, FR-608, FR-609, FR-610, FR-642, NFR-605, NFR-606)
-- [ ] T-7141 [P] [sonnet] тесты приёмка сценария 2: важная запись, «Прочитано», кто прочитал (план: «Проверка», «Проход
+- [x] T-7141 [P] [sonnet] тесты приёмка сценария 2: важная запись, «Прочитано», кто прочитал (план: «Проверка», «Проход
   в браузере», «Важное», «Лента, курсор, блок важных, фильтры», «Правка и удаление», «Уведомления», «Видимость и
   аудитория записи», «Безопасный вывод, язык, узкий экран», «Тексты отказов») —
   backend/tests/e2e/test_f02_important.py::test_f02_important_kind_offers_day_week_month_and_until_date_terms (FR-613);
@@ -1346,7 +1346,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-605, FR-615);
   backend/tests/e2e/test_f02_important.py::test_f02_important_block_and_readers_lists_have_no_horizontal_scroll_at_360px
   (NFR-606) — (FR-602, FR-605, FR-606, FR-613, FR-614, FR-615, FR-620, FR-629, FR-630, FR-642, NFR-606)
-- [ ] T-7142 [P] [sonnet] тесты приёмка сценария 3: событие, ответы, напоминание (план: «Проверка», «Проход в браузере»,
+- [x] T-7142 [P] [sonnet] тесты приёмка сценария 3: событие, ответы, напоминание (план: «Проверка», «Проход в браузере»,
   «Событие и напоминания», «Стенд и приёмка», «Правка и удаление», «Уведомления», «Видимость и аудитория записи»,
   «Безопасный вывод, язык, узкий экран», «Тексты отказов») —
   backend/tests/e2e/test_f03_event.py::test_f03_event_with_title_start_end_place_and_unit_published_with_event_block_and_go_and_cant_buttons_for_participants
@@ -1381,7 +1381,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-617);
   backend/tests/e2e/test_f03_event.py::test_f03_event_block_and_answer_lists_have_no_horizontal_scroll_at_360px
   (NFR-606) — (FR-606, FR-611, FR-616, FR-617, FR-618, FR-619, FR-629, FR-630, FR-642, NFR-606)
-- [ ] T-7143 [P] [sonnet] тесты приёмка сценария 4: комментарии (план: «Проверка», «Проход в браузере», «Комментарии»,
+- [x] T-7143 [P] [sonnet] тесты приёмка сценария 4: комментарии (план: «Проверка», «Проход в браузере», «Комментарии»,
   «Текст и упоминания», «Файлы и эскизы», «Уведомления», «Безопасный вывод, язык, узкий экран», «Тексты отказов») —
   backend/tests/e2e/test_f04_comments.py::test_f04_sent_comment_appears_at_bottom_of_list_with_author_name_and_time
   (FR-623);
@@ -1400,7 +1400,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/e2e/test_f04_comments.py::test_f04_knowledge_article_comments_still_have_no_edit_mention_like_or_files
   (FR-624); backend/tests/e2e/test_f04_comments.py::test_f04_post_card_with_comments_has_no_horizontal_scroll_at_360px
   (NFR-606) — (FR-611, FR-623, FR-624, FR-629, FR-630, FR-631, FR-633, FR-642, NFR-606)
-- [ ] T-7144 [P] [sonnet] тесты приёмка сценария 5: «Мне нравится» (план: «Проверка», «Проход в браузере», «„Нравится“»,
+- [x] T-7144 [P] [sonnet] тесты приёмка сценария 5: «Мне нравится» (план: «Проверка», «Проход в браузере», «„Нравится“»,
   «Уведомления», «Безопасный вывод, язык, узкий экран») —
   backend/tests/e2e/test_f05_likes.py::test_f05_like_click_sets_mark_with_own_name_and_second_click_removes_it (FR-625);
   backend/tests/e2e/test_f05_likes.py::test_f05_five_likers_line_shows_two_latest_names_and_3_more_and_full_list_on_click
@@ -1410,7 +1410,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/e2e/test_f05_likes.py::test_f05_three_likes_give_one_like_notification_with_last_liker_kozlov_and_2_more_linking_to_post
   (FR-629, FR-631); backend/tests/e2e/test_f05_likes.py::test_f05_likers_list_has_no_horizontal_scroll_at_360px
   (NFR-606) — (FR-625, FR-629, FR-630, FR-631, NFR-606)
-- [ ] T-7145 [P] [sonnet] тесты приёмка сценария 6: упоминания (план: «Проверка», «Проход в браузере», «Текст и
+- [x] T-7145 [P] [sonnet] тесты приёмка сценария 6: упоминания (план: «Проверка», «Проход в браузере», «Текст и
   упоминания», «Публикация: форма, «Кому», подсказки», «Уведомления», «Тексты отказов») —
   backend/tests/e2e/test_f06_mentions.py::test_f06_at_pet_opens_suggestion_of_active_employees_without_dismissed
   (FR-611);
@@ -1424,7 +1424,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-630); backend/tests/e2e/test_f06_mentions.py::test_f06_unit_name_after_at_not_offered_in_suggestion (FR-611);
   backend/tests/e2e/test_f06_mentions.py::test_f06_21_distinct_mentions_refused_with_reason_and_post_not_published
   (FR-611, FR-642) — (FR-605, FR-611, FR-629, FR-630, FR-642)
-- [ ] T-7146 [P] [sonnet] тесты приёмка сценария 7: правка и удаление, модератор (план: «Проверка», «Проход в браузере»,
+- [x] T-7146 [P] [sonnet] тесты приёмка сценария 7: правка и удаление, модератор (план: «Проверка», «Проход в браузере»,
   «Правка и удаление», «Видимость и аудитория записи», «Журнал») —
   backend/tests/e2e/test_f07_edit_delete.py::test_f07_author_edits_text_and_post_shows_new_text_and_edited_mark_with_time
   (FR-620); backend/tests/e2e/test_f07_edit_delete.py::test_f07_person_added_to_unit_post_by_edit_sees_post (FR-620);
@@ -1448,7 +1448,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-622);
   backend/tests/e2e/test_f07_edit_delete.py::test_f07_moderator_not_addressed_gets_missing_answer_and_after_mention_in_comment_sees_and_deletes_post
   (FR-606, FR-611, FR-621) — (FR-606, FR-611, FR-620, FR-621, FR-622, FR-639)
-- [ ] T-7147 [P] [sonnet] тесты приёмка сценария 8: живое обновление и непрочитанное (план: «Проверка», «Проход в
+- [x] T-7147 [P] [sonnet] тесты приёмка сценария 8: живое обновление и непрочитанное (план: «Проверка», «Проход в
   браузере», «Живые обновления», «Непрочитанное», «Главная, меню и число у «Ленты»», «Лента, курсор, блок важных,
   фильтры», «Стенд и приёмка») —
   backend/tests/e2e/test_f08_live.py::test_f08_colleague_post_gives_new_posts_1_banner_and_feed_badge_plus_1_within_2s_without_inserting_post
@@ -1567,7 +1567,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/e2e/test_f11_search.py::test_f11_all_filter_without_author_and_period_shows_same_important_post_in_block_not_repeated_in_feed
   (FR-602, FR-635); backend/tests/e2e/test_f11_search.py::test_f11_search_results_and_filters_do_not_widen_page_at_360px
   (NFR-606) — (FR-602, FR-606, FR-635, FR-636, FR-637, NFR-606, NFR-608)
-- [ ] T-7151 [P] [sonnet] тесты приёмка сценария 12: срок хранения и ночное задание (план: «Проверка», «Проход в
+- [x] T-7151 [P] [sonnet] тесты приёмка сценария 12: срок хранения и ночное задание (план: «Проверка», «Проход в
   браузере», «Срок хранения и ночное задание», «Журнал»; повтор ночного задания — `age(1, posts=[<свежая запись
   теста>])`, решение 54) —
   backend/tests/e2e/test_f12_retention.py::test_f12_new_install_feed_settings_page_shows_keep_posts_3_years (FR-638);
@@ -1591,7 +1591,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-638);
   backend/tests/e2e/test_f12_retention.py::test_f12_feed_settings_page_and_decrease_warning_do_not_widen_page_at_360px
   (NFR-606) — (FR-638, FR-639, FR-642, NFR-606, NFR-610)
-- [ ] T-7152 [P] [sonnet] тесты приёмка сценария 13: права «Писать всем» и «Модерировать ленту» (план: «Проверка»,
+- [x] T-7152 [P] [sonnet] тесты приёмка сценария 13: права «Писать всем» и «Модерировать ленту» (план: «Проверка»,
   «Проход в браузере», «Права и данные установки», «Публикация: форма, «Кому», подсказки», «Журнал») —
   backend/tests/e2e/test_f13_rights.py::test_f13_roles_page_after_install_shows_post_all_at_three_starter_roles_and_moderate_only_at_portal_admin
   (FR-640);
@@ -1611,7 +1611,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-610, FR-620);
   backend/tests/e2e/test_f13_rights.py::test_f13_removing_post_all_keeps_earlier_post_to_all_visible_and_author_edits_it_keeping_all
   (FR-620, FR-640) — (FR-608, FR-610, FR-620, FR-621, FR-639, FR-640)
-- [ ] T-7153 [P] [sonnet] тесты приёмка сценария 14: главная, меню, узкий экран (план: «Проверка», «Проход в браузере»,
+- [x] T-7153 [P] [sonnet] тесты приёмка сценария 14: главная, меню, узкий экран (план: «Проверка», «Проход в браузере»,
   «Главная, меню и число у «Ленты»», «Безопасный вывод, язык, узкий экран») —
   backend/tests/e2e/test_f14_home.py::test_f14_list_record_deadline_reminder_stands_as_block_above_post_form_and_feed
   (FR-601); backend/tests/e2e/test_f14_home.py::test_f14_feed_menu_item_is_first_leads_to_home_and_home_item_is_absent
@@ -1624,7 +1624,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/e2e/test_f14_home.py::test_f14_event_block_likers_list_and_search_results_do_not_widen_page_at_360px
   (NFR-606); backend/tests/e2e/test_f14_home.py::test_f14_long_link_and_long_name_wrap_and_thumbnail_fits_width_at_360px
   (NFR-606) — (FR-601, FR-641, NFR-606)
-- [ ] T-7154 [P] [sonnet] тесты приёмка сценария 15: предупреждение о ПДн (план: «Проверка», «Проход в браузере»,
+- [x] T-7154 [P] [sonnet] тесты приёмка сценария 15: предупреждение о ПДн (план: «Проверка», «Проход в браузере»,
   «Предупреждение о ПДн») —
   backend/tests/e2e/test_f15_pdn.py::test_f15_post_with_phone_and_email_shows_warning_listing_found_with_fix_and_publish_anyway
   (FR-612); backend/tests/e2e/test_f15_pdn.py::test_f15_fix_leaves_post_unpublished_and_form_open_with_entered_text
