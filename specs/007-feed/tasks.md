@@ -1168,7 +1168,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_stand.py::test_e2e_feed_retention_posts_key_ages_only_listed_posts (FR-638);
   backend/tests/test_feed_stand.py::test_e2e_feed_retention_runs_night_job_in_process_and_prints_single_line_with_aged_and_deleted
   (FR-638) — (FR-613, FR-618, FR-638, FR-640)
-- [ ] T-7135 [P] [sonnet] тесты развёртывание (план: «Запуск», «Новые компоненты и лицензии», «Безопасный вывод, язык,
+- [x] T-7135 [P] [sonnet] тесты развёртывание (план: «Запуск», «Новые компоненты и лицензии», «Безопасный вывод, язык,
   узкий экран», «Нагрузка», «Проверка» — `test_feed_deploy.py`, «Модуль и выключение»; прежние записи cron сверяются по
   имени и минуте, у `notify_tick` — интервал 30 с) —
   backend/tests/test_feed_deploy.py::test_feed_is_last_in_installed_apps_after_search (FR-641);
@@ -1198,7 +1198,7 @@ Opus по задачам» в конце файла; решения владел
   (NFR-611);
   backend/tests/test_feed_deploy.py::test_load_suite_has_fill_feed_script_requiring_stand_flag_and_feed_user_class
   (NFR-612); backend/tests/test_feed_deploy.py::test_shown_post_has_index_so_commit_fk_check_skips_full_scan (FR-638, NFR-610) — (FR-618, FR-633, FR-638, FR-641, NFR-604, NFR-605, NFR-611, NFR-612, NFR-613, NFR-614)
-- [ ] T-7136 [P] [sonnet] тесты границы модуля (план: «Модуль и выключение», «Точки расширения ядра и шина событий»,
+- [x] T-7136 [P] [sonnet] тесты границы модуля (план: «Модуль и выключение», «Точки расширения ядра и шина событий»,
   «Сверка с конституцией», «Модель данных») —
   backend/tests/test_feed_boundaries.py::test_core_org_notify_knowledge_servicedesk_lists_search_do_not_import_feed
   (FR-641);
@@ -1221,7 +1221,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_boundaries.py::test_other_modules_pages_render_without_feed (FR-641);
   backend/tests/test_feed_boundaries.py::test_feed_models_have_no_foreign_keys_to_org_or_notify_and_recipient_unit_id_is_plain_integer
   (FR-641) — (FR-601, FR-641)
-- [ ] T-7137 [P] [sonnet] тесты изменения ядра, `org`, `knowledge` и прежнее поведение (план: «Изменения кода прежних
+- [x] T-7137 [P] [sonnet] тесты изменения ядра, `org`, `knowledge` и прежнее поведение (план: «Изменения кода прежних
   срезов» — строки `core/extensions.py` (точка), `core/views/pages.py` и шаблоны главной, `core/context.py` и
   `menu_for`, `templates/base.html`, `core/models/files.py`, `core/services/comments.py`,
   `core/services/pdn_patterns.py` и `knowledge/services/pdn.py`, `org/services/structure.py`; «Модель данных» — «Ядро и
