@@ -798,7 +798,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_unread.py::test_newcomer_with_50_old_and_3_new_unit_posts_counts_3_and_old_posts_in_feed
   (FR-626); backend/tests/test_feed_unread.py::test_counts_for_many_equals_count_for_each_of_100_employees (FR-626) —
   (FR-626)
-- [ ] T-7122 [P] [sonnet] тесты рассылки живых обновлений: получатели при каждой рассылке (план: «Живые обновления»
+- [x] T-7122 [P] [sonnet] тесты рассылки живых обновлений: получатели при каждой рассылке (план: «Живые обновления»
   (рассылка, шаг 1, группы), «Правка и удаление» (получатели удаления снимаются до удаления)) —
   backend/tests/test_feed_live.py::test_publish_frame_is_sent_only_after_commit_into_personal_feed_groups (FR-627);
   backend/tests/test_feed_live.py::test_recipients_are_visibility_audience_computed_at_each_broadcast (FR-628, FR-606);
@@ -822,7 +822,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_live.py::test_post_card_socket_gets_frames_about_its_post (FR-627);
   backend/tests/test_feed_live.py::test_socket_on_page_without_feed_gets_no_feed_frames (FR-627) — (FR-606, FR-626,
   FR-627, FR-628)
-- [ ] T-7123 [P] [sonnet] тесты кадров: классы рендера, безопасность, слой `publish`, число «Ленты» (план: «Живые
+- [x] T-7123 [P] [sonnet] тесты кадров: классы рендера, безопасность, слой `publish`, число «Ленты» (план: «Живые
   обновления» (шаги 2–3, формат кадров, CSP, без WebSocket), «Главная, меню и число у «Ленты»» (живое число),
   «Непрочитанное» (обновление числа), «Контракты» («Сообщения слоя каналов»)) —
   backend/tests/test_feed_live_2.py::test_layer_message_is_feed_event_with_post_action_owner_moderators_staff_viewers_variants
@@ -851,7 +851,7 @@ Opus по задачам» в конце файла; решения владел
   FR-627); backend/tests/test_feed_live_2.py::test_feed_count_frame_after_widening_recipients_by_edit (FR-626, FR-627);
   backend/tests/test_feed_live_2.py::test_feed_count_frame_after_mention_in_comment (FR-626, FR-627) — (FR-626, FR-627,
   FR-628, NFR-605, NFR-614)
-- [ ] T-7124 [P] [sonnet] тесты `FeedConsumer`: подключение и проверка сессии (план: «Живые обновления» (проверка
+- [x] T-7124 [P] [sonnet] тесты `FeedConsumer`: подключение и проверка сессии (план: «Живые обновления» (проверка
   сессии, `FeedConsumer`), «Контракты» (`/ws/feed/`)) —
   backend/tests/test_feed_consumers.py::test_connect_after_login_and_second_factor_is_accepted (FR-627);
   backend/tests/test_feed_consumers.py::test_connect_without_login_accepts_then_closes_with_4401 (FR-627);
