@@ -872,7 +872,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_consumers.py::test_connect_adds_socket_to_personal_group_feed_u_id (FR-627);
   backend/tests/test_feed_consumers.py::test_query_keeps_only_filter_keys_or_post_and_drops_foreign_keys (FR-627);
   backend/tests/test_feed_consumers.py::test_client_messages_do_not_extend_session_idle_time (FR-627) — (FR-627)
-- [ ] T-7125 [P] [sonnet] тесты сообщений `sync`/`add`, плашки и `/feed/new/` (план: «Живые обновления» (`FeedConsumer`
+- [x] T-7125 [P] [sonnet] тесты сообщений `sync`/`add`, плашки и `/feed/new/` (план: «Живые обновления» (`FeedConsumer`
   — `action="new"`, входящие сообщения, плашка, формат кадров), «Лента, курсор, блок важных, фильтры» (белый список),
   «Контракты» (`/feed/new/`, `/ws/feed/`)) —
   backend/tests/test_feed_consumers_2.py::test_sync_replaces_ids_and_always_answers_with_feed_synced_frame (FR-627);
@@ -905,7 +905,7 @@ Opus по задачам» в конце файла; решения владел
   backend/tests/test_feed_consumers_2.py::test_feed_new_replaces_banner_with_empty_one_with_new_since (FR-627);
   backend/tests/test_feed_consumers_2.py::test_feed_new_records_shown_and_count_only_with_hx_request (FR-627, FR-602,
   FR-626) — (FR-602, FR-626, FR-627, FR-628, FR-635, NFR-608)
-- [ ] T-7126a [P] [sonnet] тесты изменений `core/ws.py`, `notify/consumers.py`, `notify/services/live.py`,
+- [x] T-7126a [P] [sonnet] тесты изменений `core/ws.py`, `notify/consumers.py`, `notify/services/live.py`,
   `config/asgi.py`, `CHANNEL_LAYERS`; прежнее поведение (план: «Проверка» → «Изменения кода прежних срезов» (строки
   `config/asgi.py`, `config/settings.py`, `core/ws.py`, `notify/consumers.py`, `notify/services/live.py`), «Живые
   обновления» (проверка сессии, исправление дефекта среза 004, сбой Valkey), «Главная, меню и число у «Ленты»»
@@ -929,7 +929,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-627, FR-641);
   backend/tests/test_feed_core_changes_2.py::test_asgi_without_feed_has_no_ws_feed_route_and_ws_notify_as_before
   (FR-641) — (FR-626, FR-627, FR-641, NFR-614)
-- [ ] T-7126b [P] [sonnet] тесты изменений `core/extensions.py` (поля вида) и `notify` (фильтр `channels` в шести
+- [x] T-7126b [P] [sonnet] тесты изменений `core/extensions.py` (поля вида) и `notify` (фильтр `channels` в шести
   местах, склейка с `coalesce_text`); прежнее поведение (план: «Проверка» → «Изменения кода прежних срезов» (строки
   `core/extensions.py`, `notify/services/dispatch.py`, `notify/services/prefs.py`, `notify/views/me.py`,
   `notify/views/admin.py`, `notify/services/settings.py`), «Уведомления» (склейка с обновлением текста, допустимые
