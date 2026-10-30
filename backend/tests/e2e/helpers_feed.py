@@ -31,6 +31,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import NamedTuple
 
+from playwright.sync_api import FormData
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 
@@ -353,10 +354,20 @@ def refusals(page) -> list:
 def publish_request(page, **fields) -> int:
     """Публикация POST-запросом той же формы (`page.request` с токеном CSRF страницы) для объёмов (45 записей, 120
     непрочитанных). `fields` — поля раздела 10.2: `kind`, `text`, `to` (строка или список: `all`, `u<id>`, `p<id>`),
-    `term`, `until`, `event_title`, `event_place`, `event_start`, `event_end`, `files`, `pdn_confirmed`. Запрос без
-    заголовка HTMX — ответ 302 на `/` (запись создана); отказ — 200 с формой. Возвращает номер новой записи: он
-    берётся из первой записи страницы `/` после запроса (`#feed-list [data-post-id]` — самая новая у автора)."""
+    `term`, `until`, `event_title`, `event_place`, `event_start`, `event_end`, `files`, `pdn_confirmed`; список в `to` —
+    повторяющийся ключ `to` в теле (К87). Запрос без заголовка HTMX — ответ 302 на `/` (запись создана); отказ — 200
+    с формой. Возвращает номер новой записи: он берётся из первой записи страницы `/` после запроса
+    (`#feed-list [data-post-id]` — самая новая у автора)."""
     data = {k: v for k, v in fields.items() if v is not None}
+    if isinstance(data.get("to"), (list, tuple)):
+        # несколько адресатов — повторяющийся ключ `to` (К87): словарь `form` ключ не повторяет, `FormData` — да
+        if not data["to"]:
+            raise ValueError("to: пустой список адресатов")
+        form = FormData()
+        for key, value in data.items():
+            for item in (value if key == "to" else [value]):
+                form.append(key, item)
+        data = form
     response = helpers_org.direct_post(page, "/feed/posts/", data)
     assert response.status == 302, (f"публикация запросом: ожидался 302, получен {response.status}: "
                                     f"{_codes_in(response.text())}")
@@ -574,7 +585,7 @@ def shift(minutes) -> dict:
     стенда, затем выполняет задание напоминаний. N — целое 1…10 080 (иначе `ValueError` до вызова). Возвращает
     `{"shifted": …, "reminded": …, "important": …}`."""
     minutes = _whole(minutes, "minutes", SHIFT_MIN, SHIFT_MAX)
-    return parse_shift_line(helpers_sd._stand_command("e2e_feed_shift", "--minutes", minutes))
+    return parse_shift_line(helpers_sd._stand_command("e2e_feed_shift", "--minutes", str(minutes)))
 
 
 def age(days, posts=None) -> dict:
@@ -582,7 +593,7 @@ def age(days, posts=None) -> dict:
     (номера; без `posts` — все записи стенда) и выполняет ночное удаление. N — целое 1…4000 (иначе `ValueError`).
     Возвращает `{"aged": …, "deleted": …}`."""
     days = _whole(days, "days", AGE_MIN, AGE_MAX)
-    args = ["e2e_feed_retention", "--age-days", days]
+    args = ["e2e_feed_retention", "--age-days", str(days)]
     if posts is not None:
         numbers = [int(p) for p in posts]
         if not numbers:
