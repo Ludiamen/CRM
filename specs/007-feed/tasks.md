@@ -1482,7 +1482,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-626); backend/tests/e2e/test_f08_live.py::test_f08_new_posts_2_banner_click_lowers_feed_badge_by_2 (FR-626,
   FR-627); backend/tests/e2e/test_f08_live.py::test_f08_own_comment_in_same_tab_is_shown_once_after_frame_arrives
   (FR-627) — (FR-602, FR-626, FR-627, FR-628, NFR-602)
-- [ ] T-7148 [P] [sonnet] тесты приёмка сценария 9: уведомления ленты по каналам (план: «Проверка», «Проход в браузере»,
+- [x] T-7148 [P] [sonnet] тесты приёмка сценария 9: уведомления ленты по каналам (план: «Проверка», «Проход в браузере»,
   «Уведомления») —
   backend/tests/e2e/test_f09_notify.py::test_f09_personal_addressee_gets_record_for_you_on_bell_with_author_and_snippet_up_to_100_chars
   (FR-629, FR-631);
@@ -1513,7 +1513,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-630);
   backend/tests/e2e/test_f09_notify.py::test_f09_event_changed_notification_cuts_200_char_title_and_place_to_60_and_whole_text_to_300
   (FR-629, FR-631) — (FR-626, FR-629, FR-630, FR-631, FR-632, NFR-609)
-- [ ] T-7149 [P] [sonnet] тесты приёмка сценария 10: файлы и картинки записи (план: «Проверка», «Проход в браузере»,
+- [x] T-7149 [P] [sonnet] тесты приёмка сценария 10: файлы и картинки записи (план: «Проверка», «Проход в браузере»,
   «Файлы и эскизы») —
   backend/tests/e2e/test_f10_files.py::test_f10_png_and_pdf_of_post_are_listed_as_checking_or_already_clean_without_link_then_clean
   (FR-633, FR-634);
@@ -1536,7 +1536,7 @@ Opus по задачам» в конце файла; решения владел
   (FR-633);
   backend/tests/e2e/test_f10_files.py::test_f10_file_and_image_urls_of_invisible_post_give_same_answer_as_missing_file
   (FR-606, FR-634) — (FR-606, FR-633, FR-634, FR-642, NFR-604)
-- [ ] T-7150 [P] [sonnet] тесты приёмка сценария 11: фильтры ленты и сквозной поиск (план: «Проверка», «Проход в
+- [x] T-7150 [P] [sonnet] тесты приёмка сценария 11: фильтры ленты и сквозной поиск (план: «Проверка», «Проход в
   браузере», «Лента, курсор, блок важных, фильтры», «Поиск») —
   backend/tests/e2e/test_f11_search.py::test_f11_filters_important_events_mine_and_mentions_me_show_only_such_posts
   (FR-635);
