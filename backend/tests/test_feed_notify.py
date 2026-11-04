@@ -391,7 +391,7 @@ def test_event_place_change_with_new_mention_of_participant_gives_mention_only()
     before = _ids()
     _edit(author, post, event_place="Корпус 2", text=f"Подробности {_mark(mentioned)}")
     assert _new(before) == _want((mentioned, MENTION), (other, CHANGED))
-    assert _feed_notes(mentioned).count() == 1, "упомянутому участнику — ровно одно уведомление"
+    assert _feed_notes(mentioned, MENTION).count() == 1, "упомянутому участнику — ровно одно новое уведомление"
 
 
 def test_event_title_or_description_edit_sends_no_notifications():

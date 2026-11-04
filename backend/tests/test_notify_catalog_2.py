@@ -231,7 +231,8 @@ def test_effective_table_rows_are_available_non_mandatory_kinds_in_order():
     expected = [kind.code for kind in _svc("kinds").catalog() if not kind.mandatory and kind.available(user)]
     assert [row.kind.code for row in table.rows] == expected
     for row in table.rows:
-        assert list(row.cells) == list(CHANNELS)
+        expected_channels = ("portal",) if row.kind.code == FEED_LIKE else CHANNELS
+        assert list(row.cells) == list(expected_channels)
         assert row.cells["portal"] is True
     outsider = support.make_employee()
     assert [row.kind.code for row in prefs.effective(outsider).rows] == [
@@ -325,7 +326,8 @@ def test_effective_uses_own_matrix_after_first_save():
     """FR-322: после первого сохранения действуют собственные значения сотрудника, снимок хранится в `matrix` без `portal`."""
     user, _ = _queue_member()
     _set_defaults({ASSIGNED: ["email"]})
-    submitted = _checked(user)
+    submitted = {code: ([] if code == FEED_LIKE else _on(cells))
+                 for code, cells in _cells(user).items()}
     submitted[ASSIGNED] = ["push"]
     assert _svc("prefs").save(user, table=submitted) is True
     cells = _cells(user)
@@ -343,7 +345,8 @@ def test_changing_admin_defaults_does_not_touch_saved_employee_matrix():
     """FR-322: изменение значений администратора не трогает таблицу сотрудника, который её уже сохранял."""
     user, _ = _queue_member()
     _admin_update(defaults={ASSIGNED: ["email"]})
-    submitted = _checked(user)
+    submitted = {code: ([] if code == FEED_LIKE else _on(cells))
+                 for code, cells in _cells(user).items()}
     submitted[ASSIGNED] = ["push"]
     _svc("prefs").save(user, table=submitted)
     before_cells, before_matrix = _cells(user), dict(_row_of(user).matrix)
@@ -400,7 +403,9 @@ def test_saving_only_quiet_hours_does_not_freeze_admin_defaults_into_matrix():
     assert row.matrix == {}
     _set_defaults({ASSIGNED: ["push"]})
     assert _cells(user)[ASSIGNED] == _expected("push")
-    assert prefs.save(user, table=_checked(user)) is False
+    submitted = {code: ([] if code == FEED_LIKE else _on(cells))
+                 for code, cells in _cells(user).items()}
+    assert prefs.save(user, table=submitted) is False
     assert _row_of(user).matrix == {}
 
 

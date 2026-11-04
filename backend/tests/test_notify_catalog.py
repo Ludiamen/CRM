@@ -289,7 +289,8 @@ def test_channels_are_exactly_portal_email_push_telegram_max_in_order():
     table = _prefs().effective(_queue_member())
     assert table.rows
     for row in table.rows:
-        assert list(row.cells) == list(ALL_CHANNELS)
+        expected_channels = ("portal",) if row.kind.code == "feed.like" else ALL_CHANNELS
+        assert list(row.cells) == list(expected_channels)
     assert set(table.channels) == set(ALL_CHANNELS)  # порядок ключей Table.channels не задан (доп. 18 (в))
     for kind in kinds.catalog():
         assert set(kind.default_channels) <= set(ALL_CHANNELS)
@@ -341,7 +342,7 @@ def test_portal_channel_is_always_on_for_every_kind():
     assert "servicedesk.new_in_queue" in expected and "knowledge.rubric_subscription" in expected
     for row in table.rows:
         assert row.cells["portal"] is True, row.kind.code
-        assert row.cells["email"] is False, row.kind.code
+        assert row.cells.get("email", False) is False, row.kind.code
         assert prefs.channels_for(user.pk, row.kind) == [], row.kind.code
     assert table.channels["portal"].available is True
     assert table.channels["portal"].reason == ""
