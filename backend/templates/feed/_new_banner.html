@@ -1,0 +1,3 @@
+<div id="feed-new" hx-swap-oob="true" data-count="{{ count }}"{% if count == 0 %} class="d-none"{% endif %}{% if since %} data-since="{{ since.isoformat }}"{% endif %}>
+{% if count > 0 %}Новых записей: {{ count }} <a href="/feed/new/?{{ link }}" hx-get="/feed/new/?{{ link }}" data-feed-new-load>Показать</a>{% endif %}
+</div>

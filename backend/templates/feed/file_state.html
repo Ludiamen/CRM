@@ -1,0 +1,10 @@
+{% extends layout %}
+{% comment %}404 выдачи файла ленты (T-7227; CONTRACT-007, 10.2, 13.1): файл ещё проверяется или в карантине.
+Контекст: code (file_pending | file_quarantine), message — текст словаря TEXTS.{% endcomment %}
+{% block title %}Файл недоступен{% endblock %}
+{% block content %}
+<h1 class="h4">{{ message }}</h1>
+{% if code == "file_pending" %}<p>Проверка антивирусом ещё не закончилась — попробуйте позже.</p>
+{% else %}<p>Файл с вирусом не выдаётся.</p>{% endif %}
+<a class="btn btn-primary" href="/">На главную</a>
+{% endblock %}

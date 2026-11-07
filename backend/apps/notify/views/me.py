@@ -109,6 +109,8 @@ def _table_context(user, posted=None) -> dict:
             cell = {"channel": channel, "label": CHANNEL_TITLES[channel], "value": f"{item.kind.code}:{channel}"}
             if channel == "portal":
                 cell["locked"] = True
+            elif item.kind.channels is not None and channel not in item.kind.channels:
+                cell.update(available=False, reason="", hint="", has_box=False)
             elif channel == "push":
                 cell.update(available=table.web_push_available, reason=table.web_push_reason,
                             hint=_hint("push", table.web_push_reason), has_box=True)
@@ -119,7 +121,7 @@ def _table_context(user, posted=None) -> dict:
                 cell.update(available=state.available, reason=state.reason, hint=_hint(channel, state.reason),
                             has_box=state.available)
             if cell.get("has_box"):
-                cell["checked"] = (cell["value"] in posted) if posted is not None else item.cells[channel]
+                cell["checked"] = (cell["value"] in posted) if posted is not None else item.cells.get(channel, False)
             cells.append(cell)
         rows.append({"code": item.kind.code, "title": item.kind.title, "module": item.kind.module, "cells": cells})
     return {"rows": rows, "channel_columns": [(channel, CHANNEL_TITLES[channel]) for channel in kinds.CHANNELS]}

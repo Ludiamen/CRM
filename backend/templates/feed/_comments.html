@@ -1,0 +1,3 @@
+{% for item in comments %}{% include "feed/_comment.html" with comment=item.comment body_html=item.body_html photo_url=item.photo_url link_staff=link_staff liked=item.liked like_count=item.like_count likers=item.likers post=post can_edit=item.can_edit can_delete=item.can_delete all_files=card.files %}{% endfor %}
+{% if card.comment_count > comments|length %}<a data-feed-comments-all href="/feed/{{ post.pk }}/comments/" hx-get="/feed/{{ post.pk }}/comments/" hx-target="#feed-post-{{ post.pk }}-comments" hx-swap="innerHTML">Показать все {{ card.comment_count }}</a>{% endif %}
+{% include "feed/_form_comment.html" with post=post text="" %}

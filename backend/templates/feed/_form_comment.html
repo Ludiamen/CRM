@@ -1,0 +1,11 @@
+<form method="post" action="/feed/{{ post.pk }}/comments/" hx-post="/feed/{{ post.pk }}/comments/" hx-target="this" hx-swap="outerHTML" data-feed-form data-feed-comment-form>
+  {% csrf_token %}
+  <label for="id_feed_comment_text_{{ post.pk }}">Комментарий</label>
+  <textarea id="id_feed_comment_text_{{ post.pk }}" name="text" data-feed-picker="mention" data-mention-names="{}">{{ text }}</textarea>
+  {% if errors.text %}<p data-error="text" data-code="{{ errors.text.code }}">{{ errors.text.message }}</p>{% endif %}
+  <label for="id_feed_comment_files_{{ post.pk }}">Файлы</label><input id="id_feed_comment_files_{{ post.pk }}" type="file" data-feed-upload="comment" multiple>
+  <div data-feed-files></div>
+  {% if errors.files %}<p class="text-danger" data-error="files" data-code="{{ errors.files.code }}">{{ errors.files.message }}</p>{% endif %}
+  {% if pdn_found %}{% include "feed/_pdn_warning.html" %}{% endif %}
+  <button type="submit">Ответить</button>
+</form>

@@ -70,7 +70,8 @@ def test_list_pages_query_count_constant_for_staff_audit_and_history():
     add_attempts(120)
     large = {path: queries(admin, path) for path in paths}
     assert large == small, f"число запросов растёт с выборкой: было {small}, стало {large}"
-    assert all(n <= 25 for n in large.values()), f"слишком много запросов на страницу: {large}"
+    # Глобальный бейдж Feed (`menu_items`, `badge=unread.count`) добавляет на каждый авторизованный запрос фиксированные 2 запроса: цепочку оргструктуры и count; подтверждено диагностикой.
+    assert all(n <= 27 for n in large.values()), f"слишком много запросов на страницу: {large}"
 
 
 # --- срез 002 (T-2120): структура до 200 узлов и страницы среза ----------------------------------

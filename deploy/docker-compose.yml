@@ -401,6 +401,8 @@ services:
   test:
     image: python:3.12-slim-bookworm
     profiles: ["test"]
+    mem_limit: 3g
+    memswap_limit: 3g
     depends_on:
       postgres:
         condition: service_healthy

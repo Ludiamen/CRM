@@ -272,9 +272,15 @@ def test_sync_with_posts_after_since_sends_banner_with_their_count():
     notify.ws_run(scenario)
 
 
-def test_sync_collects_pending_in_one_query_visible_filtered_after_since_without_own():
+def test_sync_collects_pending_in_one_query_visible_filtered_after_since_without_own(monkeypatch):
     """FR-627, FR-628, NFR-608: `pending` набирается одним запросом к записям: видимость, фильтр соединения, время
-    после `since` и «кроме своих» — в нём самом, `since` — параметр запроса, а не часть его текста."""
+    после `since` и «кроме своих» — в нём самом, `since` — параметр запроса, а не часть его текста.
+
+    Правка по решению владельца 2026-11-02 (арбитраж): захват запросов обёртывает
+    `CursorWrapper.execute`, чтобы видеть SQL из worker-потока `database_sync_to_async`.
+    """
+    from django.db.backends.utils import CursorWrapper
+
     author, reader = _author(), feed.as_plain()
     other = _author("Другой Автор")
     since = _ago(30)
@@ -284,12 +290,20 @@ def test_sync_collects_pending_in_one_query_visible_filtered_after_since_without
     _post(other, kind="important", published_at=_ago(60))                   # раньше since
     _post(reader.user, kind="important", published_at=_ago(4))              # своя
 
+    pairs = []
+    original = CursorWrapper.execute
+
+    def capture_execute(self, sql, params=None):
+        pairs.append((sql if isinstance(sql, str) else str(sql), params))
+        return original(self, sql, params)
+
+    monkeypatch.setattr(CursorWrapper, "execute", capture_execute)
+
     async def scenario(hub):
         conn = await feed.ws_client(reader, "f=important", hub=hub)
         assert conn.accepted
-        with feed.queries_with_params() as pairs:
-            await feed.send_sync(conn, [], since)
-            answer = await _drain(conn)
+        await feed.send_sync(conn, [], since)
+        answer = await _drain(conn)
         selects = [(sql, params) for sql, params in pairs
                    if re.search(r"\bfeed_post\b", sql) and sql.lstrip().upper().startswith("SELECT")]
         assert len(selects) == 1, [sql for sql, _ in selects]
@@ -325,13 +339,16 @@ def test_sync_after_reconnect_gives_banner_for_posts_published_during_outage():
 
 def test_add_appends_ids_and_its_since_drops_pending_not_later_than_it():
     """FR-627, FR-602: `add` добавляет номера в `ids` (кадры о них начинают приходить), а его `since` убирает из
-    `pending` записи, опубликованные не позже него; остальные остаются."""
+    `pending` записи, опубликованные не позже него; остальные остаются.
+
+    Правка по решению владельца 2026-11-02 (арбитраж): `third` создаётся после
+    `add`, чтобы начальный `sync` не клал три записи в `pending` до проверки.
+    """
     author, reader = _author(), feed.as_plain()
     since = _ago(30)
     old = _post(author)
     first = _post(author, published_at=since + timedelta(minutes=1))
     second = _post(author, published_at=since + timedelta(minutes=2))
-    third = _post(author, published_at=since + timedelta(minutes=3))
 
     async def scenario(hub):
         conn, _ = await _open(hub, reader, ids=[old.pk], since=since)
@@ -340,6 +357,7 @@ def test_add_appends_ids_and_its_since_drops_pending_not_later_than_it():
         assert _count(await _drain(conn)) == 2
         await feed.send_add(conn, [first.pk, second.pk], since=first.published_at)
         await _drain(conn)
+        third = await hub.do(_post, author, published_at=since + timedelta(minutes=3))
         await _send_event(reader, _new_message(third))
         assert _count(await _drain(conn)) == 2, "первая убрана по since (не позже), остались вторая и третья"
         await _send_event(reader, _post_message(first))

@@ -34,9 +34,15 @@ def shell(request):
         context["flashes"] = request.session.pop("flashes")
     user = getattr(request, "user", None)
     if user is not None and user.is_authenticated and not sessions.is_limited(request):
-        items = [{"url": "/", "title": "Главная", "icon": HOME_ICON}] + [
-            {key: entry[key] for key in ("url", "title", "icon", "badge") if key in entry}
+        items = [
+            {key: entry[key] for key in ("url", "title", "icon", "badge", "live_badge") if key in entry}
             for entry in permissions.menu_for(user)]
+        root = next((item for item in items if item["url"] == "/"), None)
+        if root is None:
+            items.insert(0, {"url": "/", "title": "Главная", "icon": HOME_ICON})
+        else:
+            items.remove(root)
+            items.insert(0, root)
         context["top_bar"] = _top_bar(request)
         context["menu"] = [{**item, "active": _active(item["url"], request.path)} for item in items]
     return context

@@ -1,0 +1,5 @@
+<ul data-feed-list="answers">
+  <li data-feed-answers="go">Пойдут<ul>{% for person in groups.go %}<li>{{ person.full_name }}</li>{% endfor %}</ul></li>
+  <li data-feed-answers="no">Не смогут<ul>{% for person in groups.no %}<li>{{ person.full_name }}</li>{% endfor %}</ul></li>
+  <li data-feed-answers="none">Не ответили<ul>{% for person in groups.none %}<li>{{ person.full_name }}</li>{% endfor %}</ul></li>
+</ul>

@@ -98,9 +98,14 @@ def create(kind_code: str, drafts) -> list[int]:
             state = states.get(draft.user_id)
             if state not in RECIPIENT_STATES:
                 continue
-            if kind.coalesce and draft.object_ref and Notification.objects.filter(
-                    user_id=draft.user_id, kind=kind.code, object_ref=draft.object_ref, read_at__isnull=True).exists():
-                continue
+            if kind.coalesce and draft.object_ref:
+                unread = Notification.objects.filter(
+                    user_id=draft.user_id, kind=kind.code, object_ref=draft.object_ref, read_at__isnull=True).first()
+                if unread is not None:
+                    if kind.coalesce_text is not None:
+                        unread.text = kind.coalesce_text(draft.user_id, draft.object_ref, unread.created_at)
+                        unread.save(update_fields=["text"])
+                    continue
             note = Notification.objects.create(user_id=draft.user_id, kind=kind.code, text=draft.text, url=draft.url,
                                                object_ref=draft.object_ref, created_at=now)
             created.append(note.pk)

@@ -276,6 +276,29 @@ def test_comment_three_files_accepted_fourth_refused_with_reason():
     assert _FeedFile().objects.filter(pk__in=[f.pk for f in four], comment__isnull=True, post__isnull=True).count() == 4
 
 
+def test_comment_files_shown_in_htmx_add_and_edit_responses():
+    """FR-633: файлы комментария видны в HTMX-ответе добавления и правки — `[data-feed-file]` в
+    `[data-comment-files]` строки комментария, по номеру и по порядку, как в списке комментариев."""
+    post = _post()
+    viewer = fd.as_plain(full_name="Файлов Коллега")
+    first = fd.attach(None, "первый.txt", uploaded_by=viewer.user)
+    second = fd.attach(None, "второй.txt", uploaded_by=viewer.user)
+    added = _add(viewer, post, "комментарий с файлом", files=[first.pk])
+    assert added.status_code == 200 and q(tree(added), data_error=True) == []
+    created = _Comment().objects.get(author=viewer.user)
+    holder = q1(q1(tree(added), id=f"c{created.pk}"), "div", data_comment_files=True)
+    shown = q(holder, data_feed_file=True)
+    assert [(node.attrs["data-feed-file"], node.attrs["data-file-state"]) for node in shown] \
+        == [(str(first.pk), "clean")]
+    assert q1(holder, "a", href=f"/feed/files/{first.pk}/").text() == "Скачать"
+    edited = viewer.client.post(f"/feed/comments/{created.pk}/edit/",
+                                {"text": "правлено", "files": [second.pk]}, **HX)
+    assert edited.status_code == 200 and q(tree(edited), data_error=True) == []
+    holder = q1(q1(tree(edited), id=f"c{created.pk}"), "div", data_comment_files=True)
+    assert [node.attrs["data-feed-file"] for node in q(holder, data_feed_file=True)] \
+        == [str(first.pk), str(second.pk)]
+
+
 def test_comment_htmx_refusal_returns_200_fragment_with_reason_and_entered_text():
     """FR-642: отказ на запрос HTMX — 200, фрагмент без `<html>` с причиной у поля и введённым текстом."""
     post = _post()
@@ -351,7 +374,8 @@ def test_post_card_shows_all_comments():
 
 
 def test_comment_shows_author_photo_name_and_time(clock):
-    """FR-623: у комментария — фото автора, ФИО и время по Москве (`time[data-at]`)."""
+    """FR-603/FR-623: фото автора комментария — только своё или при staff.view/accounts.manage;
+    остальным полное ФИО без изображения."""
     from apps.core.services import files
 
     clock.set(fd.moscow(2026, 3, 10, 14, 5))
@@ -361,13 +385,30 @@ def test_comment_shows_author_photo_name_and_time(clock):
         purpose="photo", owner=author, size=10, sha256="0" * 64, content_type="image/jpeg", status="clean")
     author.save()
     written = fd.comment(post, author, "с фото", created_at=fd.moscow(2026, 3, 10, 14, 5))
-    page = _card(fd.as_plain(), post)
-    row = q1(page, id=f"c{written.pk}")
-    assert "Автор Фотографов" in row.text()
-    assert files.photo_url(author, 96) in [img.attrs.get("src") for img in q(row, "img")]
-    stamp = q1(row, "time", data_at=True)
-    assert stamp.text() == fd.moscow_text(fd.moscow(2026, 3, 10, 14, 5))
-    assert datetime.fromisoformat(stamp.attrs["datetime"]) == fd.moscow(2026, 3, 10, 14, 5)
+    expected_src = files.photo_url(author, 96)
+
+    staff = fd.as_plain()
+    kb.grant(staff.user, "staff.view")
+    manage = fd.as_plain()
+    kb.grant(manage.user, "accounts.manage")
+    self_session = fd.Session(author, support.logged_in(author))
+
+    for session, wants_photo in (
+        (self_session, True),
+        (fd.as_plain(), False),
+        (staff, True),
+        (manage, True),
+    ):
+        row = q1(_card(session, post), id=f"c{written.pk}")
+        assert "Автор Фотографов" in row.text()
+        sources = [img.attrs.get("src") for img in q(row, "img")]
+        if wants_photo:
+            assert expected_src in sources, f"фото должно быть для {session.user.pk}"
+        else:
+            assert expected_src not in sources, f"фото не должно быть для {session.user.pk}"
+        stamp = q1(row, "time", data_at=True)
+        assert stamp.text() == fd.moscow_text(fd.moscow(2026, 3, 10, 14, 5))
+        assert datetime.fromisoformat(stamp.attrs["datetime"]) == fd.moscow(2026, 3, 10, 14, 5)
 
 
 def test_comment_author_name_is_link_only_for_staff_view_or_accounts_manage():

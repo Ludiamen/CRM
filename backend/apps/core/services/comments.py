@@ -34,6 +34,18 @@ def add(author: User, object_ref: str, text: str) -> Comment:
     return Comment.objects.create(author=author, object_ref=object_ref, text=text, created_at=timezone.now())
 
 
+def update(comment: Comment, text: str) -> Comment:
+    """Меняет текст комментария: те же проверки, что у `add` (пробелы по краям, длина 1–4000 знаков)."""
+    text = text.strip()
+    if not text:
+        raise CommentError("empty")
+    if len(text) > MAX_LENGTH:
+        raise CommentError("too_long")
+    comment.text = text
+    comment.save(update_fields=["text"])
+    return comment
+
+
 def list_for(object_ref: str) -> list[Comment]:
     """Комментарии объекта: старые первыми; автор и его фото читаются тем же запросом."""
     return list(Comment.objects.filter(object_ref=object_ref).select_related("author", "author__photo")

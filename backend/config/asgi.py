@@ -2,13 +2,15 @@
 
 Сервер запускается на ASGI с первого дня (PLAN-001, «Сверка с конституцией»). С среза 004
 http идёт в Django, websocket — через проверку Origin, сессию и маршрутизатор `notify`
-(PLAN-004, «Запуск»).
+(PLAN-004, «Запуск»). С среза 007 маршруты соединений собираются из установленных модулей:
+`notify` и — при установленной ленте — `feed` (PLAN-007, «Живые обновления» → «Маршруты»).
 """
 import os
 
 from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.security.websocket import AllowedHostsOriginValidator
+from django.apps import apps
 from django.core.asgi import get_asgi_application
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -18,7 +20,13 @@ django_asgi_app = get_asgi_application()
 
 from apps.notify import routing as notify_routing  # noqa: E402
 
+websocket_urlpatterns = list(notify_routing.websocket_urlpatterns)
+
+if apps.is_installed("apps.feed"):
+    from apps.feed import routing as feed_routing  # noqa: E402
+    websocket_urlpatterns += feed_routing.websocket_urlpatterns
+
 application = ProtocolTypeRouter({
     "http": django_asgi_app,
-    "websocket": AllowedHostsOriginValidator(AuthMiddlewareStack(URLRouter(notify_routing.websocket_urlpatterns))),
+    "websocket": AllowedHostsOriginValidator(AuthMiddlewareStack(URLRouter(websocket_urlpatterns))),
 })

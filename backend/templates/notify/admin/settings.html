@@ -33,7 +33,7 @@
             {% for row in rows %}
             <tr data-notify-kind="{{ row.code }}">
               <th scope="row">{{ row.title }}</th>
-              {% for cell in row.cells %}<td data-channel="{{ cell.channel }}" data-label="{{ cell.title }}"><input class="form-check-input" type="checkbox" name="cell" value="{{ cell.value }}" aria-label="{{ row.title }}: {{ cell.title }}"{% if cell.checked %} checked{% endif %}></td>{% endfor %}
+              {% for cell in row.cells %}<td data-channel="{{ cell.channel }}" data-available="{% if cell.available %}1{% else %}0{% endif %}" data-label="{{ cell.title }}">{% if cell.has_box %}<input class="form-check-input" type="checkbox" name="cell" value="{{ cell.value }}" aria-label="{{ row.title }}: {{ cell.title }}"{% if cell.checked %} checked{% endif %}>{% endif %}</td>{% endfor %}
             </tr>
             {% endfor %}
           </tbody>

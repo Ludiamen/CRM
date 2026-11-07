@@ -1,5 +1,10 @@
 # Контракт имён тестов Этапа 2 среза 007 (T-7101…T-7154)
 
+Поправка T-7216 от 2026-11-01 к срокам важного (§5, §13.1) — черновик, ожидает независимой проверки и подписи
+SPEC-007 v3 → PLAN-007 v3 → TASKS-007 v6. Согласие владельца относится к подготовке правил и текстов;
+`term_required` / `invalid_until` — предложенные автором/оркестратором контрактные имена, не дословные ответы владельца.
+Эта пометка не меняет статус остальной части контракта и не разрешает внедрение новых ветвей до утверждения цепочки.
+
 Тесты пишутся до кода и задают имена, которых нет в PLAN-007. Реализация (Этап 3) берёт их отсюда дословно (решение 35
 задач). Имена плана (модели и поля раздела «Модель данных», адреса «Контрактов», коды журнала, права `feed.post_all` и
 `feed.moderate`, приложение `feed`, задания `remind_events` и `retention_night` и записи cron `feed_reminders`,
@@ -375,7 +380,7 @@ test_feed_imports_org_only_through_services_structure, test_feed_imports_notify_
 
 | Имя | Требование | Тесты |
 |---|---|---|
-| `important.until(term, date, today) -> datetime` | `term` — `day`, `week`, `month`, `date`; полночь Europe/Moscow после последнего дня срока (план); `date` при `term="date"` — `datetime.date`; раньше завтрашнего дня (вчера, сегодня; завтра допустимо) — `FeedError("date_passed", "term")`; позже чем через год — `FeedError("term_too_far", "term")` (отказ — у поля срока `term`, ввод даты — `until`: так в именах тестов T-7112 «…_at_term_field») | T-7112 |
+| `important.until(term, date, today) -> datetime` | `term` — `day`, `week`, `month`, `date`; полночь Europe/Moscow после последнего дня срока (план). Отсутствующий/пустой/неизвестный `term` — `FeedError("term_required", "term")`. При `term="date"` требуется корректная `datetime.date`; отсутствие корректной даты — `FeedError("invalid_until", "until")`; HTTP-форма тем же кодом отклоняет отсутствующий, пустой, неразбираемый или календарно невозможный `until`. Только для корректно разобранной даты: раньше завтрашнего дня (вчера, сегодня; завтра допустимо) — `FeedError("date_passed", "term")`; позже чем через год — `FeedError("term_too_far", "term")`. Для публикации или изменения срока правкой 29 февраля верхняя граница — 28 февраля следующего года включительно, окончание — 1 марта 00:00 Europe/Moscow (ответ владельца 2026-11-01). При известных `day`, `week`, `month` `until` игнорируется, включая неверное значение. Дата отсчёта — дата публикации/правки по Москве; при неизменённых полях срока правка текста/файлов сохраняет `important_until` без пересчёта и повторных проверок (план). Новые коды — предложение автора/оркестратора; черновик поправки T-7216 | T-7112; фокусные тесты T-7216 до кода; правка — T-7220 |
 | `important.stats(post) -> ReadStats` | `ReadStats(read: int, total: int)` — N и M плана | T-7112 test_author_sees_read_n_of_m_where_m_is_audience_without_author |
 | `important.mark_read(user, post_id, *, now=None) -> None` | `ReadMark` `get_or_create`; автор или срок истёк — `PermissionDenied` (403 с причиной, раздел 10.2) | T-7112 |
 | `events.validate(data, *, now, editing=None) -> EventFields` | поля и отказы плана («Событие и напоминания»); `editing` — запись при правке (правила начавшегося события); `EventFields(title, place, start, end)` | T-7113 |
@@ -696,7 +701,8 @@ test_audit_label_of_posts_key_is_deleted_by_retention_posts_count; прежни�
 
 | Кадр | Разметка | Тесты |
 |---|---|---|
-| Часть записи | элемент с `id` `feed-post-<id>-body`, `-to`, `-likers`, `-imp`, `-event`, `-ccount` и `hx-swap-oob="true"` | T-7122, T-7123 |
+| Часть записи | элемент с `id` `feed-post-<id>-body`, `-to`, `-likers`, `-imp`, `-event`, `-ccount` и `hx-swap-oob="true"`; отдельный `<span id="feed-post-<id>-likers-list" data-feed-likers>` содержит список/счётчик. Post-like live frame OOB-меняет только этот span, не кнопку `data-feed-like` | T-7122, T-7123, test_post_like_and_comment_like_frames_have_like_and_comment_like_actions |
+| Отметка комментария | `comment_like` кадр — `<span id="feed-comment-<cid>-likers-list" data-feed-likers hx-swap-oob="true">`; не заменяет `#c<cid>` или кнопку `data-feed-like` | T-7122, test_post_like_and_comment_like_frames_have_like_and_comment_like_actions |
 | Новый комментарий | `<div hx-swap-oob="beforeend:#feed-post-<id>-comments">` с комментарием `id="c<cid>"`; в сообщении слоя — номер комментария | T-7125 test_new_comment_frame_is_beforeend_into_post_comments_and_carries_comment_id |
 | Правка комментария | комментарий `id="c<cid>"` с `hx-swap-oob="outerHTML"` | T-7122 |
 | Удаление | `<div id="feed-post-<id>" hx-swap-oob="delete"></div>` или `<div id="c<cid>" hx-swap-oob="delete"></div>` | T-7122 test_post_delete_sends_oob_delete_frame_to_those_who_saw_post_before_delete |
@@ -704,7 +710,7 @@ test_audit_label_of_posts_key_is_deleted_by_retention_posts_count; прежни�
 | Служебный | `<div id="feed-synced" hx-swap-oob="true"></div>` (план) | T-7125 |
 | Число «Ленты» | `#menu-badge-feed` с `hx-swap-oob="true"` (сообщение `notify.html` по `/ws/notify/`) | T-7123 |
 | Запреты | в кадре нет `<form`, `csrfmiddlewaretoken`, `<script`, `style=`, `on…=`; кнопки действий — `hx-post` без формы (токен добавляет `static/js/htmx-glue.js`); значения пользователя экранированы | T-7123 test_frame_has_no_csrfmiddlewaretoken_and_no_forms, test_frame_action_buttons_are_hx_post_without_form, test_frame_escapes_script_bold_javascript_link_and_img_onerror_probe |
-| Личное состояние | кнопки «Прочитано» в общих кадрах нет; «Нравится», «Пойду», «Не смогу» в кадрах — без личного состояния, только `hx-post`; личное состояние приходит ответом на свой `hx-post` (план; К76) | T-7122, T-7123 |
+| Личное состояние | кнопки «Прочитано» в общих кадрах нет; «Нравится», «Пойду», «Не смогу» в кадрах — без личного состояния, только `hx-post`; личное состояние приходит ответом на свой `hx-post` (план; К76). Post/comment like публикует одно общее `feed.event` с role-based variants; post-like и comment-like live frame обновляет только соответственно `feed-post-<id>-likers-list` / `feed-comment-<id>-likers-list` OOB span, не заменяя кнопку или её `aria-pressed` | T-7122, T-7123, test_post_like_and_comment_like_frames_have_like_and_comment_like_actions |
 | Кадры только о записях из `ids` | о записях вне `ids` кадры не отправляются; карточка (`post=`) плашки не получает; своя запись в плашку не идёт | T-7125 test_frames_are_sent_only_about_posts_in_ids, test_post_card_socket_gets_no_banner, test_own_post_does_not_go_to_banner |
 
 ### 11.4. Коды закрытия
@@ -823,6 +829,8 @@ test_audit_label_of_posts_key_is_deleted_by_retention_posts_count; прежни�
 | `event_started` | `event_start` (и при попытке сменить только место или конец, К60) | «Событие началось: время и место не меняются» | FR-642 | T-7113 |
 | `term_too_far` | `term` | «Срок — не позже чем через год» | FR-642 | T-7112 |
 | `date_passed` | `term` | «Дата уже прошла» | FR-642 | T-7112 |
+| `term_required` | `term` | «Выберите срок» | FR-613, FR-642; пустой/отсутствующий/неизвестный срок; код предложен автором/оркестратором, черновик | T-7216 (до кода); правка — T-7220 |
+| `invalid_until` | `until` | «Укажите корректную дату» | FR-613, FR-642; только `term=date`, дата отсутствует/пуста/неразбираема/календарно невозможна; код предложен автором/оркестратором, черновик | T-7216 (до кода); правка — T-7220 |
 | `answers_closed` | общий | «Ответы закрыты: событие началось» | FR-642 | T-7113 |
 | `post_files_limit` | `files`, `file` | «У записи уже 10 файлов» | FR-642 | T-7129 |
 | `comment_files_limit` | `files`, `file` | «У комментария уже 3 файла» | FR-642 | T-7119, T-7129 |
@@ -914,7 +922,7 @@ T-7135: «Лента» и «Опубликовать» на `/`, «Хранит�
 | `upload(page, path, *, scope="post") -> int`, `wait_clean(page, file_id, timeout=60_000)`, `eicar_file(tmp_path) -> Path` | загрузка файла формы; ожидание `[data-file-state="clean"]` после обновления страницы; EICAR из частей |
 | `shift(minutes) -> dict` | `helpers_sd._stand_command("e2e_feed_shift", "--minutes", N)`; разбор строки 14.1 → `{"shifted": …, "reminded": …, "important": …}` |
 | `age(days, posts=None) -> dict` | `e2e_feed_retention --age-days N [--posts 1,2]`; разбор строки 14.2 → `{"aged": …, "deleted": …}` |
-| `block_ws(context)` | `context.route_web_socket` (Playwright 1.63) для `/ws/feed/` и `/ws/notify/`: соединение закрывается (решение 55 задач) |
+| `block_ws(context)` | `context.route_web_socket` (Playwright 1.63) для `/ws/feed/` и `/ws/notify/`: оба callback не блокируют dispatcher и маршруты не соединяются с сервером (`connect_to_server` не вызывается); `/ws/feed/` закрывается на стороне страницы после исходящего кадра; молчащий `/ws/notify/` остаётся page-side mock-open (`#notify-bell[data-ws="connecting"]`) без серверных кадров до закрытия контекста. `notify.js` обрабатывает `htmx:wsAfterMessage`/`htmx:wsClose` только для своего notify-сокета: события feed не меняют колокольчик, собственные события notify переводят его в `open`/`closed`; реализация/проверки — T-7261/T-7262 (поправки TASKS-007 v7/v9) |
 | `check_360(page)` | ширина окна 360 px и `helpers.no_horizontal_scroll(page)` истинно |
 
 Сброс стенда перед кругом — `helpers_sd.reset_stand_and_relogin()` (CONTRACT-003, 8.3); письма — Mailpit

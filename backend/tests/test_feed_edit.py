@@ -436,3 +436,67 @@ def test_edit_htmx_refusal_returns_200_fragment_with_reason_and_entered_values()
     area = q(page, "textarea", name="text")
     assert area and "Введённый новый текст" in area[0].text()
     assert _fresh(post).text == "Старый текст"
+
+
+def test_edit_empty_term_on_important_refused_with_term_required_and_post_unchanged():
+    """FR-620: присланный пустой `term` при правке важной записи — `term_required`; запись не меняется.
+
+    Контрольный случай «правка только текста/файлов без `term/until` сохраняет срок»
+    покрыт `tests/test_feed_important.py::test_editing_only_text_or_files_keeps_important_until_and_skips_date_passed_check`.
+    """
+    author, viewer = fd.as_writer(), fd.as_plain()
+    post = fd.make_important(author.user, to=(viewer.user,))
+    old_until = post.important_until
+    response = _send(author, post, term="")
+    assert response.status_code == 200
+    errors = _errors(response, "term", "term_required")
+    assert len(errors) == 1
+    assert _fresh(post).important_until == old_until
+
+
+def test_edit_duplicate_remove_ids_are_deduplicated_and_file_limit_is_calculated_correctly():
+    """FR-620: повторный `remove` дедуплицируется; лимит 10 файлов считается по уникальным удалениям."""
+    author, viewer, post = _plain_post()
+    existing = [fd.attach(post, name=f"file{i}.txt", data=b"body") for i in range(10)]
+    new_files = [fd.attach(None, uploaded_by=author.user) for _ in range(2)]
+    response = _send(
+        author, post,
+        remove=[str(existing[0].pk), str(existing[0].pk)],
+        files=[str(f.pk) for f in new_files],
+    )
+    assert response.status_code == 200
+    errors = _errors(response, "files", "post_files_limit")
+    assert len(errors) == 1
+    assert len(list(support.model("feed.FeedFile").objects.filter(post=post))) == 10
+
+
+def test_edit_refusal_keeps_checked_remove_in_rerendered_form():
+    """FR-642: после отказа другого поля отмеченный `remove` остаётся отмеченным в форме."""
+    author, viewer, post = _plain_post()
+    file = fd.attach(post)
+    response = _send(author, post, "", remove=[str(file.pk)])
+    assert response.status_code == 200
+    assert _errors(response, "text", "empty_text")
+    boxes = q(tree(response), "input", name="remove", value=str(file.pk), checked=True)
+    assert len(boxes) == 1
+
+
+def test_edit_duplicate_remove_ids_with_different_text_forms_are_deduplicated():
+    """FR-620: `remove` с разными текстовыми представлениями одного ID дедуплицируется по int-ID.
+
+    Без нормализованной дедупликации повторный int-ID приводит к повторному delete()
+    и заниженному расчёту предела файлов.
+    """
+    author, viewer, post = _plain_post()
+    existing = [fd.attach(post, name=f"file{i}.txt", data=b"body") for i in range(10)]
+    new_files = [fd.attach(None, uploaded_by=author.user) for _ in range(2)]
+    pk = existing[0].pk
+    response = _send(
+        author, post,
+        remove=[str(pk), f"0{pk}", f" {pk} "],
+        files=[str(f.pk) for f in new_files],
+    )
+    assert response.status_code == 200
+    errors = _errors(response, "files", "post_files_limit")
+    assert len(errors) == 1
+    assert len(list(support.model("feed.FeedFile").objects.filter(post=post))) == 10

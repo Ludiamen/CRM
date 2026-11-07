@@ -156,11 +156,20 @@ RQ_QUEUES = {
 
 # Слой каналов для WebSocket (PLAN-004, «Запуск» → «Слой каналов»). Оба параметра хоста обязательны:
 # с redis==8.1.0 таймаут чтения 5 с рвёт бездействующие соединения, пул на 100 соединений кончается (F1 Ф4).
+# Слой `publish` (PLAN-007, «Запуск» → «Слой каналов»): тот же адрес и префикс, короткий таймаут 2 с — рассылка
+# из запросов и заданий не держит действие 30 с при паузе Valkey (F2 Ф10, NFR-614). Соединения — на `default`.
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
             "hosts": [{"address": VALKEY_URL, "socket_timeout": 30, "max_connections": 300, "socket_connect_timeout": 2}],
+            "prefix": "crm-asgi",
+        },
+    },
+    "publish": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [{"address": VALKEY_URL, "socket_timeout": 2, "max_connections": 300, "socket_connect_timeout": 2}],
             "prefix": "crm-asgi",
         },
     },

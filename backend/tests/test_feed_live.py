@@ -7,6 +7,7 @@ CONTRACT-007: 5.5 (`live.publish_event`), 5.8 (`layer_spy`), 11.1 (группы,
 настоящие соединения `/ws/feed/` и `/ws/notify/` через `support_notify.ws_run`. Действия — обычные запросы по путям плана
 (`/feed/posts/`, `/feed/<id>/comments/` и так далее): имён служб тест не знает. Код среза на уровне модуля не импортируется.
 """
+import json
 import re
 from datetime import timedelta
 
@@ -79,7 +80,18 @@ def _nid(user) -> str:
 
 
 def _events(spy) -> list[dict]:
-    return [message for _, message in spy.calls if isinstance(message, dict) and message.get("type") == "feed.event"]
+    """Различные сообщения `feed.event` (одно и то же сообщение уходит во все группы).
+
+    Правка по решению владельца 2026-11-02: сообщение одно (CONTRACT §11.1, общий variants), уходит во все группы
+    """
+    seen, result = set(), []
+    for _, message in spy.calls:
+        if isinstance(message, dict) and message.get("type") == "feed.event":
+            fingerprint = json.dumps(message, sort_keys=True, default=str)
+            if fingerprint not in seen:
+                seen.add(fingerprint)
+                result.append(message)
+    return result
 
 
 def _badges(frames: list[str]) -> list:
@@ -135,14 +147,15 @@ async def _drain(conn, timeout: float = 0.6) -> list[str]:
 
 def test_publish_frame_is_sent_only_after_commit_into_personal_feed_groups(django_capture_on_commit_callbacks):
     """FR-627: рассылка идёт после фиксации; сообщение `feed.event` уходит в личные группы `feed.u.<id>` тех, кто
-    видит запись (адресат и автор), и не уходит постороннему; в каждую группу — одно сообщение."""
+    видит запись (адресат и автор), и не уходит постороннему; в каждую группу — одно сообщение.
+    Правка по решению владельца 2026-11-02: callbacks проверяются после выхода из capture."""
     author, reader, stranger = _writer(), _plain("Адресат Адресатов"), _plain("Посторонний Лиц")
     with ff.layer_spy(passthrough=False) as spy:
         with django_capture_on_commit_callbacks(execute=True) as callbacks:
             response = _publish(author, reader.user)
             assert response.status_code == 200
-            assert callbacks, "рассылка ставится в `transaction.on_commit`"
             assert spy.calls == [], "до фиксации сообщений слоя нет"
+        assert callbacks, "рассылка ставится в `transaction.on_commit`"
     post = support.model("feed.Post").objects.get(author=author.user)
     assert post.pk
     assert _feed_groups(spy) == {_gid(author.user), _gid(reader.user)}
@@ -440,8 +453,7 @@ def test_comment_edit_and_comment_delete_frames_have_comment_edit_and_comment_de
 
 
 def test_post_like_and_comment_like_frames_have_like_and_comment_like_actions(django_capture_on_commit_callbacks):
-    """FR-627: «Нравится» записи — `action="like"` (комментария нет), кадр с частью `feed-post-<id>-likers`;
-    «Нравится» комментария — `action="comment_like"` с номером комментария, страница с записью получает кадр."""
+    """FR-627: like actions each publish one shared event; live frames OOB-swap only the role-independent liker list."""
     capture = django_capture_on_commit_callbacks
     author, fan, watcher = _writer(), _plain("Болельщик Ку"), _plain("Зритель Узлов")
     post = ff.make_post(author.user, to=[fan.user, watcher.user])
@@ -451,16 +463,32 @@ def test_post_like_and_comment_like_frames_have_like_and_comment_like_actions(dj
         conn = await _open(hub, watcher, ids=[post.pk])
         liked = await hub.do(_do, capture, lambda: _like(fan, post))
         assert liked.status_code == 200
-        parts = [ws_fragments(f).get(f"feed-post-{post.pk}-likers") for f in await _drain(conn)]
-        assert any(part is not None and part.attrs.get("hx-swap-oob") == "true" for part in parts)
+        frames = await _drain(conn)
+        post_parts = [ws_fragments(f).get(f"feed-post-{post.pk}-likers-list") for f in frames]
+        post_part = next((part for part in post_parts if part is not None), None)
+        assert post_part is not None and post_part.tag == "span" and post_part.attrs.get("hx-swap-oob") == "true" \
+            and "data-feed-likers" in post_part.attrs, \
+            "live post-like frame must OOB-swap only the liker list, not the personal button"
+        assert fan.user.full_name in post_part.text, f"post-like OOB rendered text length={len(post_part.text)}"
         comment_liked = await hub.do(_do, capture, lambda: fan.client.post(f"/feed/comments/{row.pk}/like/", **HX))
         assert comment_liked.status_code == 200
-        assert await _drain(conn), "кадра об отметке комментария нет"
+        frames = await _drain(conn)
+        comment_parts = [ws_fragments(f).get(f"feed-comment-{row.pk}-likers-list") for f in frames]
+        comment_part = next((part for part in comment_parts if part is not None), None)
+        assert comment_part is not None and comment_part.tag == "span" and comment_part.attrs.get("hx-swap-oob") == "true" \
+            and "data-feed-likers" in comment_part.attrs, \
+            "live comment-like frame must OOB-swap only the liker list, not the personal button"
+        assert fan.user.full_name in comment_part.text, f"comment-like OOB rendered text length={len(comment_part.text)}"
 
     with ff.layer_spy(passthrough=True) as spy:
         ws_run(scenario)
-    messages = [m for m in _events(spy) if m["post"] == post.pk]
-    assert [(m["action"], m["comment"]) for m in messages] == [("like", None), ("comment_like", row.pk)]
+    expected_groups = {_gid(person.user) for person in (author, fan, watcher)}
+    assert _feed_groups(spy) == expected_groups
+    for group in expected_groups:
+        messages = [m for m in spy.by_group[group] if m.get("type") == "feed.event" and m.get("post") == post.pk]
+        assert [(m["action"], m["comment"]) for m in messages] == [
+            ("like", None), ("comment_like", row.pk)
+        ], f"{group}: each action must send exactly one shared feed.event"
 
 
 def test_read_and_event_answer_frames_have_read_and_answer_actions(django_capture_on_commit_callbacks):

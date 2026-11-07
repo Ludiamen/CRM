@@ -15,6 +15,7 @@ import pathlib
 from html.parser import HTMLParser
 from types import SimpleNamespace
 
+import django
 import pytest
 from django.conf import settings as django_settings
 from django.db import IntegrityError, connection, transaction
@@ -160,6 +161,78 @@ def _disk_paths(feed_file) -> list:
 
 def _in_dump(event, marker: str) -> bool:
     return marker in json.dumps([event.before, event.after], ensure_ascii=False)
+
+
+@pytest.fixture(autouse=True)
+def _django_db_marker(request):
+    """pytest-django: для race-теста с `_isolated_race_db` helper делает teardown
+    самостоятельно, поэтому стандартный `_django_db_helper` не запускаем."""
+    if "_isolated_race_db" not in request.fixturenames:
+        marker = request.node.get_closest_marker("django_db")
+        if marker:
+            request.getfixturevalue("_django_db_helper")
+    yield
+
+
+@pytest.fixture
+def _isolated_race_db(django_db_blocker):
+    """Отдельная одноразовая БД для единственного transactional race-теста.
+
+    Создание и удаление БД идут под crm_owner (алиас migrate), действия теста —
+    под crm_app (алиас default). pytest-django teardown для TransactionTestCase
+    делает TRUNCATE от crm_app, что запрещено; helper разворачивает собственный
+    TransactionTestCase, сбрасывает временную БД от crm_owner и удаляет её.
+    """
+    from uuid import uuid4
+
+    from django.db import connections
+    import django.test
+
+    migrate_conn = connections["migrate"]
+    owner_old_name = migrate_conn.settings_dict["NAME"]
+    base_name = f"crm_t7221_race_{uuid4().hex[:8]}"
+    temp_name = f"test_{base_name}"
+    original_default_settings = dict(django_settings.DATABASES["default"])
+
+    with django_db_blocker.unblock():
+        migrate_conn.settings_dict["NAME"] = base_name
+        created = migrate_conn.creation.create_test_db(verbosity=0, autoclobber=True, keepdb=False, serialize=False)
+        assert created == temp_name, f"ожидалась БД {temp_name}, создана {created}"
+        django_settings.DATABASES["default"]["NAME"] = temp_name
+        connections["default"].close()
+
+        class _RaceTestCase(django.test.TransactionTestCase):
+            databases = ("default", "migrate")
+
+        _RaceTestCase.setUpClass()
+        test_case = _RaceTestCase(methodName="__init__")
+        pre_setup_ran_eagerly = getattr(_RaceTestCase, "_pre_setup_ran_eagerly", False)
+        if django.VERSION < (6, 0):
+            pre_setup_ran_eagerly = False
+        if not pre_setup_ran_eagerly:
+            test_case._pre_setup()
+
+        yield temp_name
+
+        try:
+            try:
+                # TRUNCATE разрешён только владельцу схемы.
+                connections.close_all()
+                owner_like = dict(migrate_conn.settings_dict)
+                owner_like["NAME"] = temp_name
+                django_settings.DATABASES["default"] = owner_like
+                connections["default"].settings_dict = owner_like
+                test_case._post_teardown()
+                _RaceTestCase.tearDownClass()
+                _RaceTestCase.doClassCleanups()
+            finally:
+                connections.close_all()
+                django_settings.DATABASES["default"] = original_default_settings
+                connections["default"].settings_dict = original_default_settings
+                migrate_conn.settings_dict["NAME"] = temp_name
+                migrate_conn.creation.destroy_test_db(owner_old_name, verbosity=0, keepdb=False)
+        finally:
+            migrate_conn.settings_dict["NAME"] = owner_old_name
 
 
 # --- удаление записи -------------------------------------------------------------------------------------------
@@ -597,18 +670,22 @@ def test_comment_edit_adds_new_file_up_to_limit_3_and_removes_marked_file_with_s
     assert _m("feed.FeedFile").objects.get(pk=extra.pk).comment_id is None
 
 
-def test_comment_on_post_deleted_between_check_and_insert_rolls_back_without_orphan_core_comment(monkeypatch):
+@pytest.mark.django_db(transaction=True, databases=["default", "migrate"])
+def test_comment_on_post_deleted_between_check_and_insert_rolls_back_without_orphan_core_comment(_isolated_race_db, monkeypatch):
     """FR-621, FR-622: запись удалена между проверкой и вставкой `FeedComment` — внешний ключ даёт ошибку, транзакция
     откатывается вместе с `core.Comment`, комментария-сироты нет (решение 15 задач; проверка — под
     `SET CONSTRAINTS ALL IMMEDIATE`)."""
     from apps.feed.services import comments
 
     w = _world()
+    with connection.cursor() as cur:
+        cur.execute("SELECT current_user")
+        assert cur.fetchone()[0] == "crm_app"
     deleted = fd.delete_post_between_check_and_insert(monkeypatch)
-    with connection.cursor() as cursor:
-        cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
     with pytest.raises(IntegrityError):
         with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute("SET CONSTRAINTS ALL IMMEDIATE")
             comments.add(w.viewer.user, w.post.pk, "Комментарий в удаляемую запись")
     assert deleted == [w.post.pk]
     assert not _post_exists(w.post)

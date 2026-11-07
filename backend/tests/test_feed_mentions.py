@@ -449,3 +449,71 @@ def test_only_id_absent_from_previous_version_of_text_is_new_mention_on_edit():
 
     mentions.sync(post, f"@[{fired.pk}]", "")
     assert fired.pk not in {row.user_id for row in _mention_rows(post)}
+
+
+def test_extract_returns_ordered_unique_ids_and_ignores_nonmatching_markers():
+    """FR-611: разбор маркеров точный, уникальный и сохраняет порядок первого появления."""
+    from apps.feed.services import mentions
+
+    assert mentions.extract("@[7] @[2] @[7] @[0] @[02] @[-3] @[] @[1234567890]") == [7, 2]
+
+
+def test_extract_allows_twenty_distinct_ids_and_raises_feed_error_above_limit():
+    """FR-611, FR-642: предел относится к 20 разным синтаксическим ID, не к повторам."""
+    from apps.feed.services import mentions
+    from apps.feed.services.errors import FeedError
+
+    twenty = " ".join(f"@[{number}]" for number in range(1, 21)) + " @[1]"
+    assert mentions.extract(twenty) == list(range(1, 21))
+
+    with pytest.raises(FeedError) as caught:
+        mentions.extract(twenty + " @[21]")
+
+    assert caught.value.code == "too_many_mentions"
+    assert caught.value.field == "text"
+
+
+def test_sync_returns_new_unknown_and_inactive_ids_but_adds_active_recipient():
+    """FR-611: результат сравнивает синтаксические ID, а строки создаются только действующим сотрудникам."""
+    from apps.feed.services import mentions
+
+    author = support.make_employee()
+    active, dismissed = _person("Действующий Упомянутый"), _person("Уволенный Упомянутый", state="dismissed")
+    post = feed.make_post(author, text="Исходный текст")
+    unknown_id = 999999999
+
+    result = mentions.sync(post, f"@[{active.pk}] @[{dismissed.pk}] @[{unknown_id}]", f"@[{active.pk}]")
+
+    assert result == {dismissed.pk, unknown_id}
+    assert [(row.user_id, row.via) for row in _mention_rows(post)] == [(active.pk, "mention")]
+
+
+def test_sync_keeps_existing_rows_and_does_not_duplicate_recipients():
+    """FR-611: синхронизация добавляет недостающие строки упоминаний, не удаляя старые и строки «Кому»."""
+    from apps.feed.services import mentions
+
+    author = support.make_employee()
+    retained, addressee, newly_mentioned = (_person("Сохранённый Упомянутый"), _person("Адресат"),
+                                             _person("Новый Упомянутый"))
+    post = feed.make_post(author, to=(addressee,), mentions=(retained,), text="Старый текст")
+    text = f"@[{newly_mentioned.pk}]"
+
+    assert mentions.sync(post, text) == {newly_mentioned.pk}
+    assert mentions.sync(post, text) == {newly_mentioned.pk}
+
+    rows = list(_Recipient().objects.filter(post=post).order_by("via", "user_id"))
+    assert [(row.user_id, row.via) for row in rows] == [
+        (retained.pk, "mention"), (newly_mentioned.pk, "mention"), (addressee.pk, "to")
+    ]
+
+
+def test_feed_error_and_pdn_found_expose_contract_fields_and_bound_unique_findings():
+    """CONTRACT-007 §5.1: общие типы сохраняют код/поле/параметры, ПДн — уникальный список до 20 строк."""
+    from apps.feed.services.errors import FeedError, PdnFound
+
+    error = FeedError("too_many_mentions", "text", {"limit": "20"})
+    assert (error.code, error.field, error.params) == ("too_many_mentions", "text", {"limit": "20"})
+
+    found = PdnFound(["найдено 0", "найдено 1", "найдено 0"]
+                     + [f"найдено {number}" for number in range(2, 22)])
+    assert found.found == [f"найдено {number}" for number in range(20)]

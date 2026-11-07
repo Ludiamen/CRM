@@ -1,0 +1,28 @@
+{% load tz %}
+<div id="c{{ comment.pk }}" data-comment-id="{{ comment.pk }}" class="feed-comment">
+  <div class="feed-comment-head">
+    {% if photo_url %}<img class="feed-author-photo" src="{{ photo_url }}" width="96" height="96" alt="">{% endif %}
+    <span data-feed-author>
+      {% if link_staff %}<a href="/staff/{{ comment.author_id }}/">{{ comment.author.full_name }}</a>{% else %}{{ comment.author.full_name }}{% endif %}
+    </span>
+    {% timezone 'Europe/Moscow' %}
+    <time data-at datetime="{{ comment.created_at|date:'c' }}">{{ comment.created_at|date:'d.m.Y H:i' }}</time>
+    {% if comment.edited_at %}<span data-feed-edited>изменено <time data-at datetime="{{ comment.edited_at|date:'c' }}">{{ comment.edited_at|date:'d.m.Y H:i' }}</time></span>{% endif %}
+    {% endtimezone %}
+    {% if can_edit or can_delete %}
+    <div data-comment-menu>
+      {% if can_edit %}<button type="button" data-action="comment-edit" hx-get="/feed/comments/{{ comment.pk }}/edit/" hx-target="#content" hx-push-url="true">Править</button>{% endif %}
+      {% if can_delete %}
+      <form method="post" action="/feed/comments/{{ comment.pk }}/delete/" hx-post="/feed/comments/{{ comment.pk }}/delete/" hx-target="#c{{ comment.pk }}" hx-swap="outerHTML" data-form="feed-comment-delete">
+        {% csrf_token %}
+        <button type="submit" data-action="comment-delete">Удалить</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="feed-comment-body">{{ body_html }}</div>
+  <div class="feed-comment-files" data-comment-files="{{ comment.pk }}">{% for file in all_files %}{% if file.comment_id == comment.pk %}{% include "feed/_files.html" with file=file %}{% endif %}{% endfor %}</div>
+  {% include "feed/_likes.html" %}
+  <button type="button" data-action="reply" data-reply-id="{{ comment.author_id }}" data-reply-name="{{ comment.author.full_name }}">Ответить</button>
+</div>

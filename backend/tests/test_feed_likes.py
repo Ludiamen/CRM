@@ -382,3 +382,43 @@ def test_comment_like_and_likes_of_invisible_post_return_404():
     assert support.same_failure(liked, outsider.client.post(f"/feed/comments/{missing}/like/", **HX))
     assert support.same_failure(listed, outsider.client.get(f"/feed/comments/{missing}/likes/"))
     assert _CommentLike().objects.count() == 0
+
+
+# --- регрессия R1: получатель «Нравится» — только автор отмеченного объекта --------------------------------
+
+def test_like_on_post_notifies_only_author_not_other_viewers(django_capture_on_commit_callbacks):
+    """FR-630 (R1): лайк записи уведомляет только её автора, даже если запись видна другим сотрудникам."""
+    author = fd.as_plain()
+    other_viewer = fd.as_plain()
+    liker = fd.as_plain()
+    post = _post(author.user)
+    with django_capture_on_commit_callbacks(execute=True):
+        assert _press(liker, post).status_code == 200
+    assert len(_notices(author.user)) == 1, "автор записи получает feed.like"
+    assert _notices(other_viewer.user) == [], "другой видящий не получает уведомление"
+    assert _notices(liker.user) == [], "лайкающий не получает уведомление"
+
+
+def test_like_on_comment_notifies_only_comment_author_not_post_author(django_capture_on_commit_callbacks):
+    """FR-630 (R1): лайк комментария уведомляет только автора комментария, автор записи — нет."""
+    post_author = fd.as_plain()
+    comment_author = fd.as_plain()
+    liker = fd.as_plain()
+    post = _post(post_author.user)
+    written = fd.comment(post, comment_author.user, "комментарий")
+    with django_capture_on_commit_callbacks(execute=True):
+        assert _press(liker, written).status_code == 200
+    assert len(_notices(comment_author.user)) == 1, "автор комментария получает feed.like"
+    assert _notices(post_author.user) == [], "автор записи не получает уведомление"
+    assert _notices(liker.user) == [], "лайкающий не получает уведомление"
+
+
+def test_self_like_on_post_with_other_viewers_no_notifications(django_capture_on_commit_callbacks):
+    """FR-630 (R1): самолайк не уведомляет ни себя, ни других видящих сотрудников."""
+    author = fd.as_plain()
+    other_viewer = fd.as_plain()
+    post = _post(author.user)
+    with django_capture_on_commit_callbacks(execute=True):
+        assert _press(author, post).status_code == 200
+    assert _notices(author.user) == [], "себе уведомление не приходит"
+    assert _notices(other_viewer.user) == [], "другой видящий не получает уведомление"

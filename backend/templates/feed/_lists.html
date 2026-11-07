@@ -1,0 +1,3 @@
+{% for item in posts %}<li>{% include "feed/_post.html" %}</li>{% endfor %}
+{% if more_url %}<li class="feed-more"><a data-feed-more class="btn btn-outline-primary" href="{{ more_url }}" hx-get="{{ more_url }}" hx-target="closest li" hx-swap="outerHTML">Ещё записи</a></li>{% endif %}
+{% if badge_oob %}{% include "feed/_badge.html" %}{% endif %}

@@ -1,0 +1,5 @@
+{% comment %}Показ одного файла записи или комментария ленты (T-7227; CONTRACT-007, 12.6). Контекст: file —
+строка `FeedFile` со связью `file` (`StoredFile`). «Проверяется» и «карантин» — имя и пометка, без
+ссылки; «чистый» с эскизом — картинка-эскиз внутри ссылки на оригинал; иначе — имя, размер
+(как у файлов базы знаний и списков, К70) и «Скачать».{% endcomment %}
+<span data-feed-file="{{ file.pk }}" data-file-state="{{ file.file.status }}">{% if file.file.status == "clean" %}{% if file.thumb %}<a href="/feed/files/{{ file.pk }}/"><img src="/feed/files/{{ file.pk }}/thumb/" alt="{{ file.name }}"></a>{% else %}{{ file.name }} <span data-file-size>{{ file.file.size|filesizeformat }}</span> <a href="/feed/files/{{ file.pk }}/">Скачать</a>{% endif %}{% else %}{{ file.name }} <span class="badge text-bg-secondary">{% if file.file.status == "pending" %}проверяется{% else %}карантин{% endif %}</span>{% endif %}</span>

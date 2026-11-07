@@ -15,7 +15,9 @@
 ключа так же, как у приложения-генератора. Пауза — LOAD_WAIT="мин,макс" в секундах.
 """
 import csv
+import html
 import itertools
+import json
 import os
 import random
 import re
@@ -23,6 +25,7 @@ import ssl
 import sys
 import threading
 import time
+from datetime import datetime, timedelta, timezone
 
 import gevent
 from locust import HttpUser, between, events, task
@@ -675,5 +678,466 @@ def _check_lists_p95(environment, **_kwargs):
             over[name] = p95
     if stats.total.num_failures or over:
         print(f"NFR-501…504 (срез 006) не выполнено: p95 выше предела или нет замера {over}, "
+              f"ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1
+
+
+# --- срез 007: лента --------------------------------------------------------------------------------------------------
+
+FEED_POST_SECONDS = float(os.environ.get("LOAD_FEED_POST_SECONDS", "30"))
+FEED_COMMENT_SECONDS = float(os.environ.get("LOAD_FEED_COMMENT_SECONDS", "10"))
+FEED_KEEPER_SECONDS = 5.0    # цикл гринлета: переподключение соединений и досылка `add`
+FEED_TRACK_LIMIT = 300       # предел отслеживаемых номеров записей (MAX_IDS потребителя)
+FEED_PUBLISHED_LIMIT = 4096  # потолок карты «номер записи → время публикации»
+_FEED_PUBLISHER_STARTED = False
+_FEED_PUBLISHED: dict[int, float] = {}
+
+
+def _feed_remember(post_id: int, published: float) -> None:
+    """Запомнить время публикации записи для замера задержки кадров; карта ограничена."""
+    with _lock:
+        _FEED_PUBLISHED[post_id] = published
+        while len(_FEED_PUBLISHED) > FEED_PUBLISHED_LIMIT:
+            _FEED_PUBLISHED.pop(next(iter(_FEED_PUBLISHED)))
+
+
+def _feed_frame_post_ids(frame: str) -> list[int]:
+    """Номера записей из кадра `/ws/feed/`: атрибут `data-post-id`, идентификаторы `feed-post-<n>…`
+    и селекторы `#feed-post-<n>-…`; пусто для плашки «Новых записей» и кадра `sync`."""
+    ids = set(re.findall(r'data-post-id="(\d+)"', frame))
+    ids.update(re.findall(r"feed-post-(\d+)", frame))
+    return sorted({int(value) for value in ids})
+
+
+def _feed_publish_post(user, audience: str) -> int | None:
+    """Опубликовать запись публикатора; номер — из ответа (`data-post-id`), время — до отправки."""
+    token = user.client.cookies.get("csrftoken", "")
+    to = {"all": ["all"],
+          "unit": [f"u{random.choice(user.unit_ids)}"],
+          "users": [f"p{pk}" for pk in random.sample(user.person_ids, min(3, len(user.person_ids)))]}[audience]
+    data = {"kind": "post", "text": f"Нагрузочная запись ленты {random.randrange(10 ** 9)}",
+            "to": to, "csrfmiddlewaretoken": token}
+    published = time.monotonic()
+    try:
+        with user.client.post("/feed/posts/", data=data, headers={"Referer": user.host + "/",
+                              "HX-Request": "true"}, name="POST /feed/posts/ (publisher)",
+                              catch_response=True) as response:
+            if response.status_code >= 400:
+                response.failure(f"/feed/posts/: {response.status_code}")
+                return None
+            response.success()
+            match = re.search(r'data-post-id="(\d+)"', response.text)
+    except Exception as error:  # noqa: BLE001 — публикация не должна ронять поток
+        user.environment.events.request.fire(request_type="POST", name="POST /feed/posts/ (publisher)",
+                                             exception=error, response_time=0, response_length=0)
+        return None
+    if not match:
+        return None
+    post_id = int(match.group(1))
+    _feed_remember(post_id, published)
+    return post_id
+
+
+def _feed_publish_comment(user, post_id: int) -> None:
+    """Комментарий публикатора на свою запись; время — до отправки, правило то же, что у записи."""
+    token = user.client.cookies.get("csrftoken", "")
+    data = {"text": f"Нагрузочный комментарий {random.randrange(10 ** 9)}", "csrfmiddlewaretoken": token}
+    published = time.monotonic()
+    try:
+        with user.client.post(f"/feed/{post_id}/comments/", data=data, headers={
+                              "Referer": user.host + f"/feed/{post_id}/", "HX-Request": "true"},
+                              name="POST /feed/<n>/comments/ (publisher)",
+                              catch_response=True) as response:
+            if response.status_code >= 500:
+                response.failure(f"/feed/{post_id}/comments/: {response.status_code}")
+                return
+            response.success()
+    except Exception as error:  # noqa: BLE001 — комментарий не должен ронять поток
+        user.environment.events.request.fire(request_type="POST", name="POST /feed/<n>/comments/ (publisher)",
+                                             exception=error, response_time=0, response_length=0)
+        return
+    _feed_remember(post_id, published)
+
+
+def _feed_publisher_loop(user):
+    """Единственный на прогон поток-публикатор (не на пользователя): запись раз в FEED_POST_SECONDS
+    по очереди «Всем», подразделению и людям, комментарий раз в FEED_COMMENT_SECONDS на свои записи."""
+    audience_cycle = ("all", "unit", "users")
+    audience_step = comment_step = 0
+    own_posts: list[int] = []
+    post_due = comment_due = time.monotonic()
+    while True:
+        moment = time.monotonic()
+        if moment >= post_due:
+            post_id = _feed_publish_post(user, audience_cycle[audience_step % len(audience_cycle)])
+            audience_step += 1
+            if post_id is not None:
+                own_posts.append(post_id)
+            post_due = moment + FEED_POST_SECONDS
+            continue
+        if moment >= comment_due:
+            if own_posts:
+                _feed_publish_comment(user, own_posts[comment_step % len(own_posts)])
+                comment_step += 1
+            comment_due = moment + FEED_COMMENT_SECONDS
+            continue
+        gevent.sleep(min(post_due, comment_due) - moment)
+
+
+@events.test_start.add_listener
+def _reset_feed_publisher(**_kwargs):
+    """Новый прогон — новый публикатор: состояние модуля сбрасывается (веб-интерфейс перезапускает тесты)."""
+    global _FEED_PUBLISHER_STARTED
+    with _lock:
+        _FEED_PUBLISHER_STARTED = False
+        _FEED_PUBLISHED.clear()
+
+
+class FeedUser(HttpUser):
+    """Срез 007 (T-7234, NFR-601…NFR-603, NFR-612): вошедший сотрудник держит оба соединения вкладки —
+    `/ws/notify/` и `/ws/feed/` (F2 Ф14) — и работает с лентой: главная, «Ещё записи», карточка, фильтры,
+    сквозной поиск, подсказки «Кому» и «@», «Нравится», «Прочитано», «Пойду», комментарий. Модель
+    нагрузки та же (PLAN-001 версия 4); данные — `prepare_users.py` и `fill_feed.py` (50 000 записей,
+    200 000 комментариев; адресаты, виды и отметки — по распределению F1). Запуск только этого класса
+    (Этап 4; свободная машина и согласие владельца, правила run4.sh среза 006):
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+            --reset-stats --host https://127.0.0.1:8031 FeedUser
+    (имя класса — в конце команды: без него locust запускает все классы файла и делит `-u` между ними)
+    Номера записей, авторов и «Ещё записи» берутся из разметки страниц при входе (`data-post-id`,
+    `href="/staff/…"`, ссылка `data-feed-more`); пауза — LOAD_WAIT="мин,макс" (по умолчанию 5–15 с).
+    Один поток-публикатор на весь прогон: запись раз в 30 с (LOAD_FEED_POST_SECONDS) по очереди «Всем»,
+    подразделению и людям, комментарий раз в 10 с (LOAD_FEED_COMMENT_SECONDS); время каждой публикации —
+    `{номер записи: monotonic}`. Каждый читатель разбирает номер записи из кадра `/ws/feed/`
+    (`data-post-id`, идентификаторы `feed-post-<n>…`, `data-comment-id`) и пишет событие `WS feed frame`
+    с точной задержкой от публикации (NFR-602: p95 не больше 2 с): для этого соединение после входа
+    посылает `sync` с номерами записей страницы, а гринлет-хранитель каждые 5 с досылает `add` со
+    свежими номерами публикатора и переподключает оборванные соединения. Пределы: страницы, подсказки и
+    действия p95 не больше 500 мс (NFR-601), поиск — 1000 мс (NFR-603)."""
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        global _FEED_PUBLISHER_STARTED
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        self.post_ids: list[str] = []
+        self.important_ids: list[str] = []
+        self.event_ids: list[str] = []
+        self.author_ids: list[str] = []
+        self.more_url = None
+        self._scrape(self.client.get("/", name="setup / (feed)").text)
+        self.words = {
+            "frequent": os.environ.get("LOAD_FEED_FREQUENT", "принтер"),
+            "rare": os.environ.get("LOAD_FEED_RARE", "гарнитура"),
+            "mixed": os.environ.get("LOAD_FEED_MIXED", "принтер сертификат"),
+        }
+        self.pick_query = os.environ.get("LOAD_FEED_PICK_QUERY", "Нагрузка")
+        self._tracked = {int(value) for value in self.post_ids[:FEED_TRACK_LIMIT]}
+        self._comment_posts: dict[int, int] = {}
+        self._alive = True
+        self.notify_socket = None
+        self.feed_socket = None
+        self._connect_notify()
+        self._connect_feed()
+        gevent.spawn(self._keep_sockets)
+        become_publisher = False
+        with _lock:
+            if not _FEED_PUBLISHER_STARTED:
+                _FEED_PUBLISHER_STARTED = True
+                become_publisher = True
+        if become_publisher:
+            structure = self.client.get("/structure/", name="setup /structure/ (feed)").text
+            self.unit_ids = sorted(set(re.findall(r'data-unit-id="(\d+)"', structure))) or ["1"]
+            staff = self.client.get("/staff/?state=active", name="setup /staff/ (feed)").text
+            self.person_ids = sorted(set(re.findall(r'href="/staff/(\d+)/"', staff))) or ["1"]
+            gevent.spawn(_feed_publisher_loop, self)
+
+    def on_stop(self):
+        self._alive = False
+        for socket in (self.notify_socket, self.feed_socket):
+            if socket is not None:
+                try:
+                    socket.close()
+                except Exception:  # noqa: BLE001 — закрытие уже закрытого соединения не ошибка
+                    pass
+        self.notify_socket = None
+        self.feed_socket = None
+
+    def _scrape(self, page: str) -> None:
+        """Номера записей, важных, событий, авторов и ссылка «Ещё записи» из разметки страницы ленты."""
+        self.post_ids = sorted(set(re.findall(r'data-post-id="(\d+)"', page))) or self.post_ids
+        self.important_ids = sorted(set(re.findall(r'id="feed-post-(\d+)-imp"', page))) or self.important_ids
+        self.event_ids = sorted(set(re.findall(r'id="feed-post-(\d+)-event"', page))) or self.event_ids
+        self.author_ids = sorted(set(re.findall(r'href="/staff/(\d+)/"', page))) or self.author_ids
+        more = re.search(r'href="(/feed/more/\?[^"]*)"', page)
+        if more:
+            self.more_url = html.unescape(more.group(1))
+
+    def _connect_notify(self) -> None:
+        """Соединение `/ws/notify/` с куками HTTP-клиента; кадры читает и выбрасывает гринлет."""
+        if not self._alive:
+            return
+        import websocket
+
+        cookies = "; ".join(f"{name}={value}" for name, value in self.client.cookies.items())
+        scheme = "wss" if self.host.startswith("https") else "ws"
+        url = f"{scheme}://{self.host.split('://', 1)[1]}/ws/notify/"
+        started = time.monotonic()
+        try:
+            # Origin — параметром: библиотека ставит свой заголовок, второй даёт 400 (T-4304)
+            self.notify_socket = websocket.create_connection(url, header=[f"Cookie: {cookies}"],
+                                                              origin=self.host,
+                                                              sslopt={"cert_reqs": ssl.CERT_NONE}, timeout=60)
+            self.environment.events.request.fire(request_type="WS", name="/ws/notify/ connect (feed)",
+                                                 exception=None, response_time=(time.monotonic() - started) * 1000,
+                                                 response_length=0)
+            gevent.spawn(self._drain_notify)
+        except Exception as error:  # noqa: BLE001 — без соединения лента продолжает работать
+            self.notify_socket = None
+            self.environment.events.request.fire(request_type="WS", name="/ws/notify/ connect (feed)",
+                                                 exception=error, response_time=(time.monotonic() - started) * 1000,
+                                                 response_length=0)
+
+    def _drain_notify(self) -> None:
+        """Кадры `/ws/notify/` читаются и выбрасываются: метрика числа — срез 004, здесь держим вкладку."""
+        socket = self.notify_socket
+        while socket is not None and socket.connected and self._alive:
+            try:
+                socket.recv()
+            except Exception:  # noqa: BLE001 — обрыв: гринлет-хранитель переподключит
+                return
+
+    def _connect_feed(self) -> None:
+        """Соединение `/ws/feed/`: после входа — `sync` с номерами записей, кадры читает гринлет."""
+        if not self._alive:
+            return
+        import websocket
+
+        cookies = "; ".join(f"{name}={value}" for name, value in self.client.cookies.items())
+        scheme = "wss" if self.host.startswith("https") else "ws"
+        url = f"{scheme}://{self.host.split('://', 1)[1]}/ws/feed/"
+        started = time.monotonic()
+        try:
+            self.feed_socket = websocket.create_connection(url, header=[f"Cookie: {cookies}"],
+                                                            origin=self.host,
+                                                            sslopt={"cert_reqs": ssl.CERT_NONE}, timeout=60)
+            self.environment.events.request.fire(request_type="WS", name="/ws/feed/ connect", exception=None,
+                                                 response_time=(time.monotonic() - started) * 1000, response_length=0)
+        except Exception as error:  # noqa: BLE001 — без соединения лента продолжает работать
+            self.feed_socket = None
+            self.environment.events.request.fire(request_type="WS", name="/ws/feed/ connect", exception=error,
+                                                 response_time=(time.monotonic() - started) * 1000, response_length=0)
+            return
+        socket = self.feed_socket
+        try:  # чтение без таймаута: соединение живёт до закрытия, обрыв поднимет recv
+            socket.settimeout(None)
+        except Exception:  # noqa: BLE001 — старые версии websocket-client обходятся таймаутом соединения
+            pass
+        gevent.spawn(self._read_feed_frames, socket)
+        self._send_feed_sync(socket)
+
+    def _send_feed_sync(self, socket) -> None:
+        """`sync`: отслеживать номера записей страницы, граница «новых записей» — сейчас."""
+        ids = sorted(self._tracked)[:FEED_TRACK_LIMIT]
+        payload = {"sync": {"since": datetime.now(timezone.utc).isoformat(), "ids": ids}}
+        try:
+            socket.send(json.dumps(payload))
+        except Exception:  # noqa: BLE001 — обрыв: гринлет-хранитель переподключит и повторит sync
+            pass
+
+    def _read_feed_frames(self, socket) -> None:
+        """Кадры `/ws/feed/`: связка комментарий→запись и замер задержки каждого кадра по записи."""
+        while socket is not None and socket.connected and self._alive:
+            try:
+                frame = socket.recv()
+            except Exception:  # noqa: BLE001 — обрыв или таймаут: закрываем, хранитель переподключит
+                try:
+                    socket.close()
+                except Exception:  # noqa: BLE001
+                    pass
+                return
+            if frame:
+                self._handle_feed_frame(frame)
+
+    def _handle_feed_frame(self, frame: str) -> None:
+        """Разобрать кадр: выучить связку комментария с записью, записать задержку кадров известных записей."""
+        received = time.monotonic()
+        post_ids = _feed_frame_post_ids(frame)
+        comment_ids = [int(value) for value in re.findall(r'data-comment-id="(\d+)"', frame)]
+        if post_ids:
+            for comment_id in comment_ids:
+                self._comment_posts[comment_id] = post_ids[0]
+            if len(self._comment_posts) > 2 * FEED_PUBLISHED_LIMIT:
+                for comment_id in list(self._comment_posts)[:FEED_PUBLISHED_LIMIT]:
+                    del self._comment_posts[comment_id]
+        else:
+            post_ids = [self._comment_posts[comment_id] for comment_id in comment_ids
+                        if comment_id in self._comment_posts]
+        known: list[tuple[int, float]] = []
+        with _lock:
+            for post_id in post_ids:
+                published = _FEED_PUBLISHED.get(post_id)
+                if published is not None:
+                    known.append((post_id, published))
+        for _post_id, published in known:
+            latency = max(0.0, (received - published) * 1000)
+            self.environment.events.request.fire(request_type="WS", name="WS feed frame", exception=None,
+                                                 response_time=latency, response_length=len(frame))
+
+    def _keep_sockets(self) -> None:
+        """Гринлет-хранитель: досылка `add` со свежими номерами публикатора и переподключение соединений."""
+        while self._alive:
+            gevent.sleep(FEED_KEEPER_SECONDS)
+            try:
+                self._track_published()
+            except Exception:  # noqa: BLE001 — хранитель не должен умирать
+                pass
+            try:
+                if self.notify_socket is None or not self.notify_socket.connected:
+                    self._connect_notify()
+                if self.feed_socket is None or not self.feed_socket.connected:
+                    self._connect_feed()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _track_published(self) -> None:
+        """`add`: отслеживать свежие записи публикатора, чтобы сервер слал о них кадры."""
+        with _lock:
+            fresh = [post_id for post_id in _FEED_PUBLISHED if post_id not in self._tracked]
+        if not fresh:
+            return
+        for post_id in fresh:
+            self._tracked.add(post_id)
+        while len(self._tracked) > FEED_TRACK_LIMIT:
+            self._tracked.discard(min(self._tracked))
+        socket = self.feed_socket
+        if socket is None or not socket.connected:
+            return
+        try:
+            socket.send(json.dumps({"add": {"ids": fresh[-FEED_TRACK_LIMIT:]}}))
+        except Exception:  # noqa: BLE001 — обрыв: хранитель переподключит и повторит sync
+            pass
+
+    def _query(self) -> str:
+        return random.choice(list(self.words.values()))
+
+    def _post_action(self, path: str, data: dict, name: str) -> None:
+        """Действие ленты: ожидаемый отказ 4xx (права, вид записи, закрытые ответы) — ответ сайта, не сбой."""
+        token = self.client.cookies.get("csrftoken", "")
+        with self.client.post(path, data={**data, "csrfmiddlewaretoken": token},
+                              headers={"Referer": self.host + path, "HX-Request": "true"},
+                              name=name, catch_response=True) as response:
+            if response.status_code >= 500:
+                response.failure(f"{path}: {response.status_code}")
+            else:
+                response.success()
+
+    @task(6)
+    def home(self):
+        self._scrape(self.client.get("/", name="/").text)
+
+    @task(4)
+    def load_more(self):
+        if self.more_url:
+            self.client.get(self.more_url, headers={"HX-Request": "true"}, name="/feed/more/ (HTMX)")
+
+    @task(4)
+    def card(self):
+        if self.post_ids:
+            self.client.get(f"/feed/{random.choice(self.post_ids)}/", name="/feed/<n>/")
+
+    @task(4)
+    def filtered(self):
+        today = datetime.now(timezone.utc).date()
+        params = random.choice((
+            {"f": "important"}, {"f": "events"}, {"f": "mine"}, {"f": "mentions"},
+            {"f": "all", "author": random.choice(self.author_ids or ["1"])},
+            {"f": "all", "from": (today - timedelta(days=7)).isoformat(), "to": today.isoformat()}))
+        self.client.get("/", params=params, name="/?f")
+
+    @task(3)
+    def search(self):
+        self.client.get("/search/", params={"q": self._query()}, name="/search/?q")
+
+    @task(3)
+    def search_popup(self):
+        self.client.get("/search/popup/", params={"q": self._query()}, headers={"HX-Request": "true"},
+                        name="/search/popup/")
+
+    @task(2)
+    def pick_to(self):
+        self.client.get("/feed/pick/", params={"scope": "to", "q": self.pick_query},
+                        headers={"HX-Request": "true"}, name="/feed/pick/?scope=to")
+
+    @task(2)
+    def pick_mention(self):
+        self.client.get("/feed/pick/", params={"scope": "mention", "q": self.pick_query},
+                        headers={"HX-Request": "true"}, name="/feed/pick/?scope=mention")
+
+    @task(3)
+    def like(self):
+        if self.post_ids:
+            number = random.choice(self.post_ids)
+            self._post_action(f"/feed/{number}/like/", {}, "POST /feed/<n>/like/")
+
+    @task(1)
+    def read(self):
+        if self.important_ids:
+            number = random.choice(self.important_ids)
+            self._post_action(f"/feed/{number}/read/", {"opened": datetime.now(timezone.utc).isoformat()},
+                              "POST /feed/<n>/read/")
+
+    @task(1)
+    def answer(self):
+        if self.event_ids:
+            number = random.choice(self.event_ids)
+            self._post_action(f"/feed/{number}/answer/", {"answer": "go"}, "POST /feed/<n>/answer/")
+
+    @task(2)
+    def comment(self):
+        if self.post_ids:
+            number = random.choice(self.post_ids)
+            self._post_action(f"/feed/{number}/comments/",
+                              {"text": f"Нагрузочный комментарий {random.randrange(10 ** 9)}"},
+                              "POST /feed/<n>/comments/")
+
+
+FEED_PAGES = ("/", "/feed/more/ (HTMX)", "/feed/<n>/", "/?f")
+FEED_PICK_PAGES = ("/feed/pick/?scope=to", "/feed/pick/?scope=mention")
+FEED_SEARCH_PAGES = ("/search/?q", "/search/popup/")
+FEED_ACTION_PAGES = ("POST /feed/<n>/like/", "POST /feed/<n>/read/", "POST /feed/<n>/answer/",
+                     "POST /feed/<n>/comments/")
+FEED_FRAME_LIMIT_MS = 2000
+
+
+@events.quitting.add_listener
+def _check_feed_p95(environment, **_kwargs):
+    """NFR-601…NFR-603 для страниц среза 007: страницы, подсказки и действия p95 не больше 500 мс, поиск —
+    не больше 1000 мс, кадр `/ws/feed/` — не больше 2000 мс (NFR-602); ни одной ошибки и всё замерено.
+    Публикатор измеряется, если успел опубликовать: короткие прогоны его записей не имеют."""
+    if FeedUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    checks = [(name, "GET", P95_LIMIT_MS) for name in (*FEED_PAGES, *FEED_PICK_PAGES)]
+    checks += [(name, "GET", SEARCH_LIMIT_MS) for name in FEED_SEARCH_PAGES]
+    checks += [(name, "POST", P95_LIMIT_MS) for name in FEED_ACTION_PAGES]
+    for name, method, limit in checks:
+        entry = stats.entries.get((name, method))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > limit:
+            over[name] = p95
+    for name in ("POST /feed/posts/ (publisher)", "POST /feed/<n>/comments/ (publisher)"):
+        entry = stats.entries.get((name, "POST"))
+        if entry and entry.num_requests and entry.get_response_time_percentile(0.95) > P95_LIMIT_MS:
+            over[name] = entry.get_response_time_percentile(0.95)
+    frame = stats.entries.get(("WS feed frame", "WS"))
+    frame_p95 = frame.get_response_time_percentile(0.95) if frame and frame.num_requests else None
+    if frame_p95 is None or frame_p95 > FEED_FRAME_LIMIT_MS:
+        over["WS feed frame"] = frame_p95
+    if stats.total.num_failures or over:
+        print(f"NFR-601…603 (срез 007) не выполнено: p95 выше предела или нет замера {over}, "
               f"ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1

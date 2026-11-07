@@ -50,6 +50,13 @@ def row_of(user_id: int) -> UserNotifySettings | None:
     return UserNotifySettings.objects.filter(user_id=user_id).first()
 
 
+def _external_allowed(kind) -> tuple:
+    """Внешние каналы вида из `kinds.EXTERNAL`, допустимые полем `kind.channels` (`None` — все)."""
+    if kind.channels is None:
+        return kinds.EXTERNAL
+    return tuple(channel for channel in kinds.EXTERNAL if channel in kind.channels)
+
+
 def _listed(kind, matrix: dict, defaults: dict) -> list[str]:
     """Включённые внешние каналы вида: `matrix`, затем значения администратора, затем `default_channels`."""
     if kind.code in matrix:
@@ -58,7 +65,8 @@ def _listed(kind, matrix: dict, defaults: dict) -> list[str]:
         source = defaults[kind.code]
     else:
         source = kind.default_channels
-    return [channel for channel in kinds.EXTERNAL if channel in source]
+    allowed = _external_allowed(kind)
+    return [channel for channel in kinds.EXTERNAL if channel in source and channel in allowed]
 
 
 def channels_for(user_id: int, kind) -> list[str]:
@@ -102,7 +110,7 @@ def effective(user) -> Table:
             fixed.append(kind)
         elif kind.available(user):
             on = _listed(kind, matrix, defaults)
-            cells = {"portal": True, **{channel: channel in on for channel in kinds.EXTERNAL}}
+            cells = {"portal": True, **{channel: channel in on for channel in _external_allowed(kind)}}
             rows.append(Row(kind=kind, cells=cells))
     channels, push_available, push_reason = _channels(user.pk)
     return Table(rows=rows, channels=channels, fixed=fixed, web_push_available=push_available,
@@ -152,16 +160,17 @@ def save(user, *, table=None, quiet_mode=None, own_days=None, own_start=None, ow
                 chosen = set(table.get(item.kind.code, [])) if item.kind.code in table else None
                 applied = []
                 for channel in kinds.EXTERNAL:
-                    now_on = item.cells[channel]
+                    allowed = channel in _external_allowed(item.kind)
+                    now_on = item.cells.get(channel, False)
                     if chosen is not None and states[channel].available:
-                        wanted = channel in chosen
+                        wanted = channel in chosen and allowed
                     else:
-                        wanted = now_on
+                        wanted = now_on and allowed
                     if wanted:
                         applied.append(channel)
                     if wanted != now_on:
                         changed = True
-                        cells_before[item.kind.title] = [c for c in kinds.EXTERNAL if item.cells[c]]
+                        cells_before[item.kind.title] = [c for c in kinds.EXTERNAL if item.cells.get(c)]
                         cells_after[item.kind.title] = None  # заполняется ниже полным списком
                 snapshot[item.kind.code] = applied
             if changed:

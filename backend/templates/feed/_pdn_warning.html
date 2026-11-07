@@ -1,0 +1,6 @@
+<div data-feed-pdn role="alert">
+  <p>В тексте найдены почта или телефон. Проверьте данные перед публикацией.</p>
+  <ul>{% for item in pdn_found %}<li data-feed-pdn-item>{{ item }}</li>{% endfor %}</ul>
+  <button type="button" data-action="pdn-fix">Исправить</button>
+  <button type="submit" name="pdn_confirmed" value="1">{{ pdn_button|default:"Опубликовать всё равно" }}</button>
+</div>

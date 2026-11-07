@@ -181,6 +181,26 @@ def descendants(unit, *, include_self=True):
     return found.order_by("path")
 
 
+def subtree_member_ids(unit_ids) -> frozenset[int]:
+    """Номера сотрудников, состоящих (основная работа и совместительство) в этих узлах или во вложенных.
+
+    Уволенных нет (как `units_of`); заблокированные входят — их отсеивает вызывающий `feed` по `User.state`.
+    Пустой вход и несуществующие номера — пустое множество. Членства берутся по началу `path` узлов.
+    """
+    wanted = {int(i) for i in unit_ids}
+    if not wanted:
+        return frozenset()
+    paths = list(Unit.objects.filter(pk__in=wanted).values_list("path", flat=True))
+    if not paths:
+        return frozenset()
+    condition = Q()
+    for path in paths:
+        condition |= Q(unit__path__startswith=path)
+    found = Membership.objects.filter(condition).exclude(user__state="dismissed").values_list(
+        "user_id", flat=True).distinct()
+    return frozenset(found)
+
+
 def units_of(user) -> list[UnitRef]:
     """Узлы, где `user` состоит, по возрастанию `path`; уволенный и не участник — `[]`."""
     if getattr(user, "state", None) == "dismissed":
@@ -203,6 +223,28 @@ def unit_chain_ids(user) -> frozenset[int]:
     for path in paths:
         result.update(_chain_ids(path))
     return frozenset(result)
+
+
+def unit_chains(user_ids) -> dict[int, frozenset[int]]:
+    """Цепочки узлов многих сотрудников: то же, что `unit_chain_ids`, но пачкой, двумя запросами.
+
+    Ключ есть на каждый переданный номер; номер без членства — пустое множество. Уволенных не отсеивает
+    (как `unit_chain_ids`).
+    """
+    wanted = {int(i) for i in user_ids}
+    result = {uid: frozenset() for uid in wanted}
+    if not wanted:
+        return result
+    pairs = list(Membership.objects.filter(user_id__in=wanted).values_list("user_id", "unit_id").distinct())
+    paths = dict(Unit.objects.filter(pk__in={unit_id for _, unit_id in pairs}).values_list("pk", "path"))
+    chains: dict[int, set[int]] = {}
+    for user_id, unit_id in pairs:
+        path = paths.get(unit_id)
+        if path is not None:
+            chains.setdefault(user_id, set()).update(_chain_ids(path))
+    for user_id, chain in chains.items():
+        result[user_id] = frozenset(chain)
+    return result
 
 
 def all_units() -> list[UnitRef]:

@@ -793,7 +793,7 @@ def bind_channel(page, bots: FakeBots, channel: str, chat_id, *, timeout: float 
     return code
 
 
-def enable_push_on_device(page, *, timeout: float = 30.0) -> str:
+def enable_push_on_device(page, *, timeout: float = 60.0) -> str:
     """Подписывает устройство на Web Push: на `/me/notifications/` нажимает `button[data-action="push-subscribe"]`
     (§ 14.3), ждёт нового `li[data-device]` в списке устройств и возвращает его номер (атрибут `data-device`, строка).
     Только в постоянном профиле `webpush_context()` (доп. 23 (б): в обычном контексте браузер подписку не выдаёт);

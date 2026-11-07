@@ -462,6 +462,21 @@ def test_title_and_place_200_cut_to_60_snippet_100_total_at_most_300(clock):
     assert len(long_note.text) <= 300 and long_note.text.endswith("…")
 
 
+def test_long_full_name_comment_and_mention_text_cut_to_300():
+    """FR-631 (К26): ФИО из 255 знаков у комментатора и у автора-упоминания — тексты «Комментария» и «Упоминания»
+    не длиннее 300 знаков, конец обрезан с «…» (varchar(300) не переполняется)."""
+    author = _writer("Анна Автор")
+    long_name, long_text = "Ф" * 255, "текст " * 40
+    post = _publish(author, long_text, to=["all"])
+    _svc("comments").add(_person(long_name), post.pk, "Комментарий")
+    note = _note(author.user, COMMENT)
+    assert len(note.text) <= 300 and note.text.endswith("…"), note.text
+    target = _person()
+    _publish(_writer(long_name), f"Привет {_mark(target)} {long_text}", to=[_p(target)])
+    mention = _note(target, MENTION)
+    assert len(mention.text) <= 300 and mention.text.endswith("…"), mention.text
+
+
 def test_snippet_without_markup_marker_becomes_at_full_name():
     """FR-631: отрывок строится без разметки: маркер упоминания в тексте уведомления — «@ФИО», сырого `@[номер]` нет."""
     author = _writer("Анна Автор")

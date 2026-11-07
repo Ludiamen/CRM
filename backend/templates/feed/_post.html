@@ -1,0 +1,22 @@
+{% load tz %}
+{% with post=item.post card=item.card %}
+<article id="feed-post-{{ post.pk }}" data-post-id="{{ post.pk }}" class="feed-post card p-3 mb-3">
+  <header class="feed-post-head">
+    {% if item.photo_url %}<img class="feed-author-photo" src="{{ item.photo_url }}" width="96" height="96" alt="">{% endif %}
+    <div>
+      <span data-feed-author>{% if link_staff %}<a href="/staff/{{ post.author_id }}/">{{ post.author.full_name }}</a>{% else %}{{ post.author.full_name }}{% endif %}{% if post.author.state == 'dismissed' %} <span data-dismissed="true">(уволен)</span>{% endif %}</span>
+      <span aria-hidden="true">→</span>
+      <span id="feed-post-{{ post.pk }}-to">{% for name in card.recipients.items %}<span data-to-item>{{ name }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}{% if card.recipients.more %} <a data-to-more href="/feed/{{ post.pk }}/to/" hx-get="/feed/{{ post.pk }}/to/" hx-target="#feed-post-{{ post.pk }}-to">и ещё {{ card.recipients.more }}</a>{% endif %}{% include "feed/_post_to.html" %}</span>
+      <div class="text-muted small">{% timezone 'Europe/Moscow' %}<time data-at datetime="{{ post.published_at|date:'c' }}">{{ post.published_at|date:'d.m.Y H:i' }}</time>{% if post.edited_at %} <span data-feed-edited>изменено <time data-at datetime="{{ post.edited_at|date:'c' }}">{{ post.edited_at|date:'d.m.Y H:i' }}</time></span>{% endif %}{% endtimezone %}</div>
+    </div>
+    {% include "feed/_post_head.html" %}
+  </header>
+  <div id="feed-post-{{ post.pk }}-body" class="feed-text">{{ item.body_html }}{% include "feed/_post_body.html" %}</div>
+  <div id="feed-post-{{ post.pk }}-files">{% for file in card.files %}{% if not file.comment_id %}{% include "feed/_files.html" with file=file %}{% endif %}{% endfor %}</div>
+  {% if post.kind == 'important' %}<div id="feed-post-{{ post.pk }}-imp" data-feed-imp>{% include "feed/_important.html" with opened=opened %}</div>{% endif %}
+  {% if post.kind == 'event' %}{% include "feed/_event.html" %}{% endif %}
+  <div id="feed-post-{{ post.pk }}-likers">{% include "feed/_likes.html" with liked=card.liked likers=card.likes like_count=card.like_count post=post comment=None %}</div>
+  <span id="feed-post-{{ post.pk }}-ccount">{{ card.comment_count }}</span>
+  <div id="feed-post-{{ post.pk }}-comments">{% include "feed/_comments.html" with comments=item.comments post=post card=item.card link_staff=link_staff %}</div>
+</article>
+{% endwith %}

@@ -1,0 +1,21 @@
+{% load tz %}
+<div data-feed-imp-inner>
+  {% if post.important_until > opened %}
+    <span data-feed-until>Важное, важно до <time data-at datetime="{{ post.important_until|date:'c' }}">{{ post.important_until|date:'d.m.Y' }}</time></span>
+  {% else %}
+    <span data-feed-was-important>было важным</span>
+  {% endif %}
+  {% if post.author_id != request.user.pk and not card.read and post.important_until > opened %}
+    <button type="button" data-action="read" hx-post="/feed/{{ post.pk }}/read/" hx-target="#feed-post-{{ post.pk }}" hx-swap="outerHTML" hx-vals='{"opened": "{{ opened.isoformat }}"}'>Прочитано</button>
+  {% endif %}
+  <span data-feed-reads-count>
+    {% if request.user.pk == post.author_id or item.is_moderator %}
+      Прочитали {{ card.read_count }} из {{ card.read_total }}
+    {% else %}
+      Прочитали {{ card.read_count }}
+    {% endif %}
+  </span>
+  {% if request.user.pk == post.author_id or item.is_moderator %}
+    <a href="/feed/{{ post.pk }}/reads/" hx-get="/feed/{{ post.pk }}/reads/" hx-target="#feed-live">Списки</a>
+  {% endif %}
+</div>

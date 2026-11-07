@@ -7,6 +7,10 @@
 `django_capture_on_commit_callbacks` (решение 6, п. г). Пачки — оба признака решения 9: шпион `purge_batch` и три
 выборки с `LIMIT 1000` в `capture_sql`. Журнал — `core.AuditEvent` (раздел 8.1). Код среза импортируется внутри
 функций.
+
+Гонки T-7229 (ревью, обязательные дефекты): два теста на настоящих транзакциях PostgreSQL в одноразовой базе
+(образец — `test_feed_edit_2.py::_isolated_race_db`, T-7221), шов — `core.services.files.attachment_path` при
+сборе путей чистки, параллельный поток со своим соединением и `lock_timeout`.
 """
 import json
 import pathlib
@@ -325,3 +329,230 @@ def test_retention_steps_run_in_order_shown_cleanup_then_post_batches_then_unatt
                   and re.search(r"\bLIMIT 1000\b", sql) is not None)
     unattached = first(lambda sql: "feed_feedfile" in sql and re.search(r'post_id"?\s+IS NULL', sql) is not None)
     assert shown < batch < unattached
+
+
+# --- гонки конкурентных правок с чисткой (T-7229, ревью) ------------------------------------------------
+#
+# Обязательные дефекты ревью T-7229: сбор путей/кандидатов до замков. Проверки — на настоящих
+# транзакциях PostgreSQL в одноразовой базе: pytest-django заворачивает тест в транзакцию и
+# мешает второму соединению, поэтому его `_django_db_helper` для race-тестов не запускается
+# (образец — `test_feed_edit_2.py`, T-7221). Шов гонки — `core.services.files.attachment_path`
+# при сборе путей чистки: первое вычисление пути выполняет параллельное действие на своём
+# соединении с `lock_timeout` — ровно окно «после выборки, до удаления». Ожидание — 1 с: чистка
+# держит замок, действие обязано упереться в него, а не зависнуть.
+
+
+@pytest.fixture(autouse=True)
+def _django_db_marker(request):
+    """pytest-django: race-тесты с `_retention_race_db` сами создают и убирают одноразовую базу,
+    стандартный `_django_db_helper` (транзакция поверх теста) им не нужен; остальным тестам
+    модуля — как обычно."""
+    if "_retention_race_db" not in request.fixturenames:
+        marker = request.node.get_closest_marker("django_db")
+        if marker:
+            request.getfixturevalue("_django_db_helper")
+    yield
+
+
+@pytest.fixture
+def _retention_race_db(django_db_blocker):
+    """Отдельная одноразовая БД для transactional race-тестов (образец — T-7221, T-7222b).
+
+    Создание и удаление БД идут под crm_owner (алиас migrate), действия теста — под crm_app
+    (алиас default). pytest-django teardown для TransactionTestCase делает TRUNCATE от crm_app,
+    что запрещено; helper разворачивает собственный TransactionTestCase, сбрасывает временную
+    БД от crm_owner и удаляет её.
+    """
+    from uuid import uuid4
+
+    import django.test
+    from django.db import connections
+
+    migrate_conn = connections["migrate"]
+    owner_old_name = migrate_conn.settings_dict["NAME"]
+    base_name = f"crm_t7229_race_{uuid4().hex[:8]}"
+    temp_name = f"test_{base_name}"
+    original_default_settings = dict(django_settings.DATABASES["default"])
+
+    with django_db_blocker.unblock():
+        migrate_conn.settings_dict["NAME"] = base_name
+        created = migrate_conn.creation.create_test_db(verbosity=0, autoclobber=True, keepdb=False, serialize=False)
+        assert created == temp_name, f"ожидалась БД {temp_name}, создана {created}"
+        django_settings.DATABASES["default"]["NAME"] = temp_name
+        connections["default"].close()
+
+        class _RaceTestCase(django.test.TransactionTestCase):
+            databases = ("default", "migrate")
+
+        _RaceTestCase.setUpClass()
+        test_case = _RaceTestCase(methodName="__init__")
+        pre_setup_ran_eagerly = getattr(_RaceTestCase, "_pre_setup_ran_eagerly", False)
+        if django.VERSION < (6, 0):
+            pre_setup_ran_eagerly = False
+        if not pre_setup_ran_eagerly:
+            test_case._pre_setup()
+
+        yield temp_name
+
+        try:
+            try:
+                # TRUNCATE разрешён только владельцу схемы.
+                connections.close_all()
+                owner_like = dict(migrate_conn.settings_dict)
+                owner_like["NAME"] = temp_name
+                django_settings.DATABASES["default"] = owner_like
+                connections["default"].settings_dict = owner_like
+                test_case._post_teardown()
+                _RaceTestCase.tearDownClass()
+                _RaceTestCase.doClassCleanups()
+            finally:
+                connections.close_all()
+                django_settings.DATABASES["default"] = original_default_settings
+                connections["default"].settings_dict = original_default_settings
+                migrate_conn.settings_dict["NAME"] = temp_name
+                migrate_conn.creation.destroy_test_db(owner_old_name, verbosity=0, keepdb=False)
+        finally:
+            migrate_conn.settings_dict["NAME"] = owner_old_name
+
+
+def _own_connection(action):
+    """Действие в отдельном потоке на своём соединении (соединения Django локальны потоку),
+    под `SET LOCAL lock_timeout = '1s'` и `statement_timeout = '10s'`; возвращает результат:
+    `ok` — зафиксировалось, иначе `exc` — исключение и откат."""
+    from threading import Event, Thread
+
+    from django.db import connections, transaction
+
+    done, result = Event(), {}
+
+    def run():
+        try:
+            with transaction.atomic():
+                with connections["default"].cursor() as cursor:
+                    cursor.execute("SET LOCAL lock_timeout = '1s'")
+                    cursor.execute("SET LOCAL statement_timeout = '10s'")
+                action()
+            result["ok"] = True
+        except BaseException as exc:  # noqa: BLE001 — важен исход гонки, а не только тип
+            result["ok"] = False
+            result["exc"] = exc
+        finally:
+            try:
+                connections.close_all()
+            finally:
+                done.set()
+
+    thread = Thread(target=run, name="feed-retention-race", daemon=True)
+    thread.start()
+    assert done.wait(timeout=30), "Параллельное действие не завершилось за 30 секунд"
+    thread.join(timeout=5)
+    assert not thread.is_alive(), "Поток параллельного действия не завершился"
+    return result
+
+
+def _during_path_collection(monkeypatch, action) -> None:
+    """Шов гонки: первое вычисление пути файла во время сбора путей чистки выполняет `action` —
+    чистка стоит между выборкой и удалением, конкурентная правка идёт параллельно."""
+    from apps.core.services import files as core_files
+
+    real, fired = core_files.attachment_path, []
+
+    def wrapper(stored):
+        if not fired:
+            fired.append(True)
+            action()
+        return real(stored)
+
+    monkeypatch.setattr(core_files, "attachment_path", wrapper)
+
+
+@pytest.mark.django_db(transaction=True, databases=["default", "migrate"])
+def test_concurrent_comment_add_with_file_during_purge_batch_cannot_orphan_stored_file_or_destroy_unbound_file(
+        _retention_race_db, protected_root, monkeypatch):
+    """T-7229, ревью (дефект 2): замок записей пачки берётся ДО сбора путей файлов. Комментарий
+    с файлом, начатый во время сбора, либо упирается в замок записи (фиксацию держит отложенная
+    проверка внешнего ключа до конца пачки — добавление откатывается, файл остаётся
+    непривязанным и целым), либо успевает зафиксироваться до замка — тогда файл уже собран и
+    уходит вместе с записью, без сироты `StoredFile` и файла на диске. Сбор путей до замка
+    (прежний порядок) оставлял сироту: каскад записи убивал `FeedFile`, а `StoredFile` и диск
+    не собирались."""
+    from django.db import OperationalError
+
+    from apps.feed.services import comments, retention
+
+    author, viewer = support.make_employee(), support.make_employee()
+    post = fd.make_post(author, to=[viewer], published_at=OLD)
+    own = fd.attach(post, "вложение записи.png", write=True)
+    unbound = fd.attach(None, "непривязанный.png", uploaded_by=viewer, write=True)
+    own_paths, unbound_paths = stored_paths(own), stored_paths(unbound)
+    result = {}
+
+    def add_comment():
+        comments.add(viewer, post.pk, "Комментарий с файлом в гонке чистки", files=[unbound.pk])
+
+    _during_path_collection(monkeypatch, lambda: result.update(_own_connection(add_comment)))
+    assert retention.purge_batch([post.pk]) == 1
+    assert not exists("feed.Post", pk=post.pk)
+    assert not exists("feed.FeedFile", pk=own.pk)
+    assert not exists("core.StoredFile", pk=own.file_id)
+    assert not any(path.exists() for path in own_paths)
+    assert not exists("core.Comment", object_ref=f"feed.post:{post.pk}")
+
+    if result.get("ok"):
+        # фиксация успела до замка — файл обязан уйти вместе с записью собранным, без сироты
+        assert not exists("feed.FeedFile", pk=unbound.pk)
+        assert not exists("core.StoredFile", pk=unbound.file_id), "сирота StoredFile: путь не собран"
+        assert not any(path.exists() for path in unbound_paths), "сирота на диске: путь не собран"
+    else:
+        # замок записи держит фиксацию до конца пачки — добавление откачено, файл цел и непривязан
+        assert isinstance(result["exc"], OperationalError), result["exc"]
+        assert "lock timeout" in str(result["exc"]), result["exc"]
+        feed_file = model("feed.FeedFile").objects.get(pk=unbound.pk)
+        assert feed_file.post_id is None and feed_file.comment_id is None
+        assert exists("core.StoredFile", pk=unbound.file_id)
+        assert all(path.exists() for path in unbound_paths)
+
+
+@pytest.mark.django_db(transaction=True, databases=["default", "migrate"])
+def test_concurrent_bind_during_unbound_purge_leaves_bound_file_intact_or_bind_fails_cleanly(
+        _retention_race_db, protected_root, monkeypatch):
+    """T-7229, ревью (дефект 1): кандидаты непривязанных выбираются и замыкаются в одной
+    транзакции с перепроверкой «без записи и без комментария». Привязка `files.bind`, начатая
+    во время сбора путей, либо упирается в замок строки (условный UPDATE не проходит, файл
+    уходит как заявленный раньше мусор — целиком, со `StoredFile` и диском), либо успевает
+    зафиксироваться до замка — тогда условие `post_id IS NULL` исключает строку, файл
+    остаётся привязанным со `StoredFile` и файлом на диске. Прежний порядок (выборка до
+    транзакции, удаление по номерам без перепроверки) уничтожал только что привязанный файл."""
+    from django.db import OperationalError
+
+    from apps.feed.services import files as feed_files, retention
+
+    author, uploader = support.make_employee(), support.make_employee()
+    alive = fd.make_post(author, to="all", published_at=YOUNG)
+    stale = fd.attach(None, "старый непривязанный.png", uploaded_by=uploader, write=True)
+    FeedFile = model("feed.FeedFile")
+    FeedFile.objects.filter(pk=stale.pk).update(uploaded_at=NOW - timedelta(hours=25))
+    stale_paths = stored_paths(stale)
+    result = {}
+
+    def bind_to_alive():
+        feed_files.bind(uploader, [stale.pk], post=alive)
+
+    _during_path_collection(monkeypatch, lambda: result.update(_own_connection(bind_to_alive)))
+    retention._purge_unbound_files(NOW)
+
+    assert exists("feed.Post", pk=alive.pk)
+    if result.get("ok"):
+        # привязка зафиксировалась до замка — чистка обязана её исключить, файл пользователя цел
+        bound = FeedFile.objects.filter(pk=stale.pk).first()
+        assert bound is not None, "привязанный файл уничтожен чисткой"
+        assert bound.post_id == alive.pk
+        assert exists("core.StoredFile", pk=stale.file_id)
+        assert all(path.exists() for path in stale_paths)
+    else:
+        # замок держит условный UPDATE до конца чистки — файл уходит целиком, без остатка
+        assert isinstance(result["exc"], OperationalError), result["exc"]
+        assert "lock timeout" in str(result["exc"]), result["exc"]
+        assert not exists("feed.FeedFile", pk=stale.pk)
+        assert not exists("core.StoredFile", pk=stale.file_id)
+        assert not any(path.exists() for path in stale_paths)

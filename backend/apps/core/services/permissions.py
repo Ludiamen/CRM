@@ -137,6 +137,8 @@ def menu_for(user) -> list[dict]:
         entry = {"url": i["url"], "title": i["title"], "icon": i["icon"], "order": i["order"]}
         if "badge" in i:
             entry["badge"] = i["badge"](user)
+        if "live_badge" in i:
+            entry["live_badge"] = i["live_badge"]
         result.append(entry)
     return result
 

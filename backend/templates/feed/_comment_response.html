@@ -1,0 +1,2 @@
+<div hx-swap-oob="beforeend:#feed-post-{{ post.pk }}-comments">{% include "feed/_comment.html" with comment=comment body_html=body_html photo_url=photo_url link_staff=link_staff liked=liked like_count=like_count likers=likers post=post all_files=all_files %}</div>
+{% include "feed/_form_comment.html" with post=post text="" %}

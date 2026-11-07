@@ -1,0 +1,53 @@
+<form id="feed-form" data-feed-form data-form="feed-post-edit" method="post" action="/feed/{{ post.pk }}/edit/" hx-post="/feed/{{ post.pk }}/edit/" hx-target="#feed-post-{{ post.pk }}" hx-swap="outerHTML"{% if form_oob %} hx-swap-oob="true"{% endif %}>
+  {% csrf_token %}
+  <input type="radio" name="kind" value="{{ form_values.kind }}" checked class="d-none">
+  <label for="id_feed_text">Текст</label>
+  <textarea id="id_feed_text" name="text" class="form-control" data-feed-picker="mention" data-mention-names="{{ form_mention_names }}">{{ form_values.text }}</textarea>
+  {% include "feed/_form_error.html" with error=form_errors.text field="text" %}
+  <div data-feed-pick-list="mention"></div>
+  <fieldset><legend>Кому</legend>
+    <div data-feed-to>
+      {% for pill in form_pills %}<span data-to-pill="{{ pill.value }}"{% if pill.saved %} data-saved{% endif %}>{{ pill.label }}<input type="hidden" name="to" value="{{ pill.value }}">{% if not pill.saved %}<button type="button" data-action="to-remove" aria-label="Убрать адресата">×</button>{% endif %}</span>{% endfor %}
+      {% for id, name in form_mentioned %}<span data-to-pill="m{{ id }}" data-mentioned>{{ name }} — упомянут</span>{% endfor %}
+    </div>
+    {% if form_can_all %}<button type="button" data-pick-value="all" data-pick-label="Всем">Всем</button>{% endif %}
+    <label for="id_feed_to">Добавить адресата</label>
+    <input id="id_feed_to" type="text" class="form-control" data-feed-picker="to" autocomplete="off">
+    <div data-feed-pick-list="to"></div>
+    {% include "feed/_form_error.html" with error=form_errors.to field="to" %}
+  </fieldset>
+  {% if form_kind == 'important' %}
+  <fieldset data-kind-fields="important"><legend>Срок важного</legend>
+    {% for value, label in form_terms %}<label><input type="radio" name="term" value="{{ value }}"{% if form_values.term == value %} checked{% endif %}> {{ label }}</label>{% endfor %}
+    {% include "feed/_form_error.html" with error=form_errors.term field="term" %}
+    <label for="id_feed_until">До даты</label>{{ form_until }}
+    {% include "feed/_form_error.html" with error=form_errors.until field="until" %}
+  </fieldset>
+  {% endif %}
+  {% if form_kind == 'event' %}
+  <fieldset data-kind-fields="event"><legend>Событие</legend>
+    <label for="id_feed_event_title">Название</label><input id="id_feed_event_title" name="event_title" type="text" value="{{ form_values.event_title }}" maxlength="200" class="form-control">
+    {% include "feed/_form_error.html" with error=form_errors.event_title field="event_title" %}
+    <label for="id_feed_event_place">Место</label><input id="id_feed_event_place" name="event_place" type="text" value="{{ form_values.event_place }}" maxlength="200" class="form-control">
+    {% include "feed/_form_error.html" with error=form_errors.event_place field="event_place" %}
+    <label for="id_feed_event_start">Начало (Москва)</label><input id="id_feed_event_start" name="event_start" type="datetime-local" value="{{ form_values.event_start }}" class="form-control">
+    {% include "feed/_form_error.html" with error=form_errors.event_start field="event_start" %}
+    <label for="id_feed_event_end">Конец (Москва)</label><input id="id_feed_event_end" name="event_end" type="datetime-local" value="{{ form_values.event_end }}" class="form-control">
+    {% include "feed/_form_error.html" with error=form_errors.event_end field="event_end" %}
+  </fieldset>
+  {% endif %}
+  <fieldset><legend>Файлы</legend>
+    {% for file in form_files %}
+    <div data-feed-file="{{ file.pk }}">
+      <label><input type="checkbox" name="remove" value="{{ file.pk }}"{% if file.pk in form_remove %} checked{% endif %}> Убрать «{{ file.name }}»</label>
+    </div>
+    {% empty %}
+    <p>Нет прикреплённых файлов.</p>
+    {% endfor %}
+    <label for="id_feed_upload">Добавить файлы</label><input id="id_feed_upload" type="file" data-feed-upload="post" data-upload-post="{{ post.pk }}" multiple>
+    <div data-feed-files></div>
+  </fieldset>
+  {% include "feed/_form_error.html" with error=form_errors.files field="files" %}
+  {% if pdn_found %}{% include "feed/_pdn_warning.html" with pdn_button="Сохранить всё равно" %}{% endif %}
+  <button type="submit" class="btn btn-primary">Сохранить</button>
+</form>

@@ -1,0 +1,8 @@
+{% load tz %}
+<div id="feed-post-{{ post.pk }}-body" class="feed-text" hx-swap-oob="true">{{ body_html }}</div>
+<div id="feed-post-{{ post.pk }}-to" hx-swap-oob="true">{% for name in card.recipients.items %}<span data-to-item>{{ name }}</span>{% if not forloop.last %}, {% endif %}{% endfor %}{% if card.recipients.more %} <a data-to-more href="/feed/{{ post.pk }}/to/" hx-get="/feed/{{ post.pk }}/to/" hx-target="#feed-post-{{ post.pk }}-to">и ещё {{ card.recipients.more }}</a>{% endif %}</div>
+<div id="feed-post-{{ post.pk }}-files" hx-swap-oob="true">{% include "feed/_files.html" %}</div>
+{% if post.kind == 'important' %}{% include "feed/_frame_important.html" %}{% endif %}
+{% if post.kind == 'event' %}{% include "feed/_frame_event.html" %}{% endif %}
+<div id="feed-post-{{ post.pk }}-likers" hx-swap-oob="true">{% include "feed/_frame_likes.html" with post=post liked=False like_count=card.like_count likers=card.likes comment=None %}</div>
+<span id="feed-post-{{ post.pk }}-ccount" hx-swap-oob="true">{{ card.comment_count }}</span>

@@ -658,6 +658,8 @@ TEXTS_13_1 = {
     "post_all_denied": "Писать всем вам не разрешено",
     "only_add_recipients": "Адресатов можно только добавить",
     "too_many_unbound": "Слишком много файлов без записи: опубликуйте запись или уберите лишние",
+    "term_required": "Выберите срок",
+    "invalid_until": "Укажите корректную дату",
 }
 TEXTS_13_2 = {
     "event_time_required": "Укажите начало и конец события",
@@ -677,7 +679,7 @@ def test_feed_texts_dictionary_contains_every_key_and_text_of_contract_13_1_and_
     from apps.feed.texts import TEXTS
 
     expected = {**TEXTS_13_1, **TEXTS_13_2}
-    assert len(expected) == len(TEXTS_13_1) + len(TEXTS_13_2) == 28, "коды таблиц повторяются или их не 28"
+    assert len(expected) == len(TEXTS_13_1) + len(TEXTS_13_2) == 30, "коды таблиц повторяются или их не 30"
     problems = []
     for code, literal in expected.items():
         if code not in TEXTS:

@@ -604,15 +604,45 @@ def act_between_select_and_lock(monkeypatch, which: str, action: Callable) -> li
 
 
 def delete_post_between_check_and_insert(monkeypatch) -> list:
-    """Оборачивает `apps.feed.services.comments.post_for_comment`: после настоящей проверки удаляет запись
-    (`Post.objects.filter(pk=…).delete()`) и возвращает объект. Возвращает список удалённых номеров."""
+    """После проверки фиксирует удаление на независимом соединении; нужен transactional_db.
+
+    Возвращает список удалённых номеров. Откат вставки комментария не восстанавливает запись.
+    """
+    from threading import Event, Thread
+
+    from django.db import transaction
     from apps.feed.services import comments
 
     deleted, real = [], comments.post_for_comment
 
     def wrapper(*args, **kwargs):
         post = real(*args, **kwargs)
-        support.model("feed.Post").objects.filter(pk=post.pk).delete()
+        done, errors = Event(), []
+
+        def delete_committed():
+            try:
+                # Django connections локальны потоку: соединение вызывающего не разделяется.
+                with transaction.atomic():
+                    with connections["default"].cursor() as cursor:
+                        cursor.execute("SET LOCAL lock_timeout = '5s'")
+                        cursor.execute("SET LOCAL statement_timeout = '10s'")
+                    count, _ = support.model("feed.Post").objects.filter(pk=post.pk).delete()
+                    assert count, "Независимое соединение не видит запись для удаления"
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                try:
+                    connections.close_all()
+                finally:
+                    done.set()
+
+        worker = Thread(target=delete_committed, name="feed-test-delete", daemon=True)
+        worker.start()
+        completed = done.wait(timeout=15)
+        worker.join(timeout=5)
+        assert completed and not worker.is_alive(), "Удаление записи не завершилось за 20 секунд"
+        if errors:
+            raise errors[0]
         deleted.append(post.pk)
         return post
 

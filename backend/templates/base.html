@@ -37,7 +37,7 @@
           <a class="menu-item{% if item.active %} active{% endif %}" href="{{ item.url }}" title="{{ item.title }}"{% if item.active %} aria-current="page"{% endif %}>
             <span class="menu-icon" aria-hidden="true">{% include item.icon %}</span>
             <span class="menu-label">{{ item.title }}</span>
-            {% if item.badge and item.badge > 0 %}<span class="badge text-bg-primary ms-auto" data-menu-badge>{{ item.badge }}</span>{% endif %}
+            {% if item.live_badge %}<span id="menu-badge-{{ item.live_badge }}" class="badge text-bg-primary ms-auto{% if not item.badge %} d-none{% endif %}" data-menu-live-badge data-count="{{ item.badge }}">{% if item.badge > 99 %}99+{% else %}{{ item.badge }}{% endif %}</span>{% elif item.badge and item.badge > 0 %}<span class="badge text-bg-primary ms-auto" data-menu-badge>{{ item.badge }}</span>{% endif %}
           </a>
         </li>
         {% endfor %}

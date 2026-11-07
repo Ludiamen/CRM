@@ -1,0 +1,12 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Правка комментария{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'feed/feed.css' %}">
+<script defer src="{% static 'feed/feed.js' %}"></script>
+<div data-feed-page="comment-edit">
+  <h1>Правка комментария</h1>
+  <div id="c{{ comment.pk }}">{% include "feed/_form_comment_edit.html" %}</div>
+  <a href="/feed/{{ post.pk }}/#c{{ comment.pk }}">К записи</a>
+</div>
+{% endblock %}

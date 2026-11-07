@@ -1,0 +1,23 @@
+{% load tz %}
+<ul data-feed-list="reads">
+  <li data-feed-reads="read">
+    <h2>Прочитали</h2>
+    <ul>
+      {% for user, at in read_users %}
+        <li>{{ user.full_name }} <time data-at datetime="{{ at|date:'c' }}">{{ at|date:'d.m.Y H:i' }}</time></li>
+      {% empty %}
+        <li>Нет прочитавших</li>
+      {% endfor %}
+    </ul>
+  </li>
+  <li data-feed-reads="unread">
+    <h2>Не прочитали</h2>
+    <ul>
+      {% for user in unread_users %}
+        <li>{{ user.full_name }}</li>
+      {% empty %}
+        <li>Все адресаты прочитали</li>
+      {% endfor %}
+    </ul>
+  </li>
+</ul>

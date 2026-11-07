@@ -411,7 +411,8 @@ def test_page_query_count_equal_for_1_and_20_fully_populated_posts():
 
 def test_card_data_loaded_by_post_ids_array_parameter():
     """NFR-601: данные карточек страницы (авторы, адресаты, файлы, отметки, комментарии) читаются запросами с номерами
-    страницы одним массивом `= ANY(%s)`, а не отдельными параметрами."""
+    страницы одним массивом `= ANY(%s)`, а не отдельными параметрами.
+    Правка по решению владельца 2026-11-01: проверяются только запросы таблиц ленты."""
     reader = feed.as_plain()
     _populate(reader.user, 5)
     with feed.queries_with_params() as pairs:
@@ -421,6 +422,10 @@ def test_card_data_loaded_by_post_ids_array_parameter():
     assert len(page_ids) == 6
     by_array = []
     for sql, params in pairs:
+        if not any(table in sql.lower() for table in (
+                "feed_post", "feed_recipient", "feed_readmark", "feed_eventanswer", "feed_postlike",
+                "feed_feedfile", "feed_feedcomment", "core_comment")):
+            continue
         params = params if isinstance(params, (list, tuple)) else ()
         for item in params:
             if isinstance(item, (list, tuple, set, frozenset)) and page_ids <= set(_flat(item)):
@@ -435,7 +440,7 @@ def test_card_data_loaded_by_post_ids_array_parameter():
 # --- FR-603: состав записи --------------------------------------------------------------------------------------
 
 def test_post_shows_author_photo_arrow_recipients_and_published_time():
-    """FR-603: автор (ФИО и фото 96 px), «→», адресаты (подразделение и человек) и время публикации по Москве."""
+    """FR-603: plain reader sees full author name instead of inaccessible photo; other content remains intact."""
     reader = feed.as_plain(full_name="Пётр Адресатов")
     author = _author("Анна Автор")
     stored = support.model("core.StoredFile").objects.create(
@@ -448,15 +453,65 @@ def test_post_shows_author_photo_arrow_recipients_and_published_time():
     post = feed.make_post(author, "post", to=(unit, reader.user), published_at=published)
     node = article(_page(reader.client), post)
     _, name = _author_href(node)
-    assert "Анна Автор" in name.text()
+    assert name.text() == "Анна Автор"
     photos = [img.attrs.get("src") for img in node.find("img")]
-    assert f"/staff/{author.pk}/photo/{stored.pk}/96/" in photos
+    assert f"/staff/{author.pk}/photo/{stored.pk}/96/" not in photos
+    assert not photos
+    assert reader.client.get(f"/staff/{author.pk}/photo/{stored.pk}/96/").status_code == 403
     assert "→" in node.text()
     recipients = node.first(id=f"feed-post-{post.pk}-to").text()
     assert "Отдел сети" in recipients and "Пётр Адресатов" in recipients
     stamp = node.first("time", data_at=True)
     assert datetime.fromisoformat(stamp.attrs["datetime"]) == published
     assert stamp.text() == "10.03.2026 12:30"
+
+
+def _attach_clean_photo(user):
+    stored = support.model("core.StoredFile").objects.create(
+        purpose="photo", owner=user, size=10, sha256="0" * 64, content_type="image/png", status="clean",
+        scanned_at=timezone.now())
+    user.photo = stored
+    user.save(update_fields=["photo"])
+    return stored
+
+
+def test_feed_author_own_photo_is_shown_and_photo_endpoint_allows_self():
+    reader = feed.as_plain(full_name="Иван Читатель")
+    stored = _attach_clean_photo(reader.user)
+    post = feed.make_post(reader.user, "post", to=("all",))
+
+    node = article(_page(reader.client), post)
+    _, name = _author_href(node)
+    assert name.text() == "Иван Читатель"
+    assert [img.attrs.get("src") for img in node.find("img")] == [
+        f"/staff/{reader.user.pk}/photo/{stored.pk}/96/"]
+    response = reader.client.get(f"/staff/{reader.user.pk}/photo/{stored.pk}/96/")
+    assert response.status_code == 200
+    assert response["X-Accel-Redirect"] == f"/protected/photos/{stored.pk}-96.jpg"
+
+
+@pytest.mark.parametrize("permission", ["staff.view", "accounts.manage"])
+def test_feed_foreign_photo_is_shown_and_endpoint_allows_each_photo_permission(permission):
+    author = _author("Анна Автор")
+    stored = _attach_clean_photo(author)
+    viewer = support.logged_in(support.make_with_permissions(permission))
+    post = feed.make_post(author, "post", to=("all",))
+
+    node = article(_page(viewer), post)
+    assert [img.attrs.get("src") for img in node.find("img")] == [
+        f"/staff/{author.pk}/photo/{stored.pk}/96/"]
+    response = viewer.get(f"/staff/{author.pk}/photo/{stored.pk}/96/")
+    assert response.status_code == 200
+    assert response["X-Accel-Redirect"] == f"/protected/photos/{stored.pk}-96.jpg"
+
+
+def test_anonymous_foreign_photo_request_redirects_to_login():
+    author = _author("Анна Автор")
+    stored = _attach_clean_photo(author)
+    response = support.make_client().get(f"/staff/{author.pk}/photo/{stored.pk}/96/")
+
+    assert response.status_code == 302
+    assert response["Location"].startswith("/login/")
 
 
 def test_author_name_links_to_staff_card_only_for_staff_view_or_accounts_manage():
@@ -576,3 +631,64 @@ def test_feed_shows_last_three_comments_and_show_all_count():
         else:
             assert link is None
         assert str(total) in node.first(id=f"feed-post-{post.pk}-ccount").text()
+
+
+# --- T-7211: изолированные проверки блока важных и сборки карточек ----------------------------------------------
+
+def test_t7211_build_excludes_important_block_on_first_and_cursor_pages():
+    from apps.feed.services import page
+
+    author = _author()
+    reader = feed.as_plain().user
+    normal = _normal_posts(author, 25)
+    now = timezone.now()
+    active = feed.make_important(author, to=("all",), published_at=now - timedelta(minutes=1))
+    read = feed.make_important(author, to=("all",), published_at=now - timedelta(minutes=40))
+    support.model("feed.ReadMark").objects.create(post=read, user=reader, read_at=now)
+    own = feed.make_important(reader, to=("all",), published_at=now - timedelta(minutes=41))
+    expired = feed.make_important(author, until=now - timedelta(hours=1), to=("all",),
+                                  published_at=now - timedelta(minutes=42))
+    first = page.build(reader, page.parse_filter({}), now=now)
+    assert [card.post.pk for card in first.important] == [active.pk]
+    first_ids = [card.post.pk for card in first.posts]
+    assert first_ids == [post.pk for post in reversed(normal)][:20]
+    second = page.build(reader, page.parse_filter({}), before=first.more_cursor, opened=first.opened, now=now)
+    second_ids = [card.post.pk for card in second.posts]
+    assert active.pk not in first_ids + second_ids
+    assert {read.pk, own.pk, expired.pk} <= set(second_ids)
+
+
+def test_t7211_card_assembly_has_constant_query_count_arrays_and_lateral():
+    from apps.feed.services import page, visibility
+
+    counts = {}
+    for count in (1, 20):
+        reader = feed.as_plain().user
+        posts, event = _populate(reader, count)
+        visibility.viewer(reader)
+        with feed.queries_with_params() as pairs:
+            built = page.build(reader, page.parse_filter({}))
+        counts[count] = len(pairs)
+        cards = {card.post.pk: card for card in built.posts}
+        card = cards[posts[0].pk]
+        assert card.like_count == 3 and len(card.likes) == 2
+        assert card.comment_count == 4 and len(card.comments) == 3
+        expected_comment_ids = list(
+            support.model("core.Comment").objects
+            .filter(object_ref=f"feed.post:{posts[0].pk}")
+            .order_by("created_at", "pk")
+            .values_list("pk", flat=True)
+        )[-3:]
+        assert [comment.id for comment in card.comments] == expected_comment_ids
+        assert len(card.files) == 2 and cards[event.pk].answer == "go"
+        page_ids = {item.post.pk for item in built.posts}
+        array_queries = []
+        for sql, params in pairs:
+            for value in (params if isinstance(params, (list, tuple)) else ()):
+                if isinstance(value, (list, tuple, set, frozenset)) and page_ids <= set(_flat(value)):
+                    array_queries.append(sql)
+                    break
+        assert len(array_queries) >= 3
+        assert all("any(" in sql.lower() for sql in array_queries)
+        assert "lateral" in " ".join(sql.lower() for sql, _ in pairs)
+    assert counts[1] == counts[20]

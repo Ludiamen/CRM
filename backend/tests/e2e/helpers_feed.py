@@ -602,17 +602,31 @@ def age(days, posts=None) -> dict:
     return parse_retention_line(helpers_sd._stand_command(*args))
 
 
-# --- Без WebSocket (решение 55) -----------------------------------------------------------------------------------
+# --- Без WebSocket (решение 55; закрытие без блокировки dispatcher — T-7261, поправка v7) -------------------------
 
 def _close_ws(ws) -> None:
-    ws.close(reason="blocked by test")
+    """Закрытие соединения на странице так, чтобы callback маршрута не запирал dispatcher Playwright (T-7261).
+    Синхронный `ws.close()` прямо в callback блокирует: callback исполняется на event loop диспетчера и ждёт
+    ответ `closePage`, который этот же loop должен доставить, — тупик (диагностика
+    `crm-work/slice007/stage3/browser-gate/focused-f08-no-ws-20261105-zItUEU/diagnosis.md`, подтверждена
+    изолированным опытом и RED-прогоном T-7261). Поэтому callback только регистрирует обработчик и сразу
+    возвращается, а закрывает `on_message`: его вызывают из channel-event greenlet'а, где синхронный `close`
+    не запирает loop. Лента шлёт sync-кадр сразу после открытия (`htmx:wsOpen` в feed.js), поэтому `/ws/feed/`
+    закрывается тут же; `on_message` снимает пересылку кадров, и соединение с сервером не устанавливается
+    вовсе (маршрут без `connect_to_server`). «Молчащий» сокет `/ws/notify/` (колокольчик ничего не шлёт) не
+    закрывается, но остаётся без единого кадра — для приёмки f08 это то же «без WebSocket»: живых обновлений
+    нет. Официальная основа: playwright.dev — `BrowserContext.route_web_socket`, `WebSocketRoute`
+    (`close`, `on_message`; routed WebSocket не ходит на сервер без `connect_to_server`)."""
+    ws.on_message(lambda _message: ws.close(reason="blocked by test"))
 
 
 def block_ws(context) -> None:
     """Перехват соединений `/ws/feed/` и `/ws/notify/` в `context` (`BrowserContext.route_web_socket`, Playwright
-    1.63): страница получает закрытие соединения, сервер соединения не видит. Звать ДО создания страниц (маршрут
-    действует на соединения, открытые после вызова). Дальше — `open_feed(context, account, live=False)`: лента
-    работает обычными запросами (f08)."""
+    1.63): сервер соединений не видит (маршрут без `connect_to_server`), а страница видит закрытие соединения
+    ленты — серверных кадров не приходит, `data-ws` не бывает «open». Звать ДО создания страниц (маршрут
+    действует на соединения, открытые после вызова). Callback не блокирует dispatcher — закрытие выполняет
+    `on_message` (`_close_ws`, T-7261). Дальше — `open_feed(context, account, live=False)`: лента работает
+    обычными запросами (f08)."""
     context.route_web_socket(_WS_URL, _close_ws)
 
 

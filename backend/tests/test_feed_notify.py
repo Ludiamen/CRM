@@ -199,7 +199,7 @@ def test_new_event_participants_get_invite_author_does_not():
     org.make_member(member, unit)
     post = _publish_event(author, to=[_p(first), _p(second), _u(unit)])
     assert _got() == _want((first, INVITE), (second, INVITE), (member, INVITE))
-    assert not _feed_notes(author).exists() and not _feed_notes(outsider).exists()
+    assert not _feed_notes(author.user).exists() and not _feed_notes(outsider).exists()
     assert _note(first, INVITE).object_ref == f"feed.post:{post.pk}"
 
 
@@ -242,9 +242,11 @@ def test_dismissed_recipient_or_mentioned_gets_nothing():
     """FR-630: уволенному и заблокированному, упомянутым в тексте, уведомления не создаются и адресатами записи они
     не становятся; действующий получает своё."""
     author = _writer()
+    active_recipient = _person()
     dismissed, blocked = _person(state="dismissed"), _person(state="blocked")
     post = _publish_important(author, f"Важно {_mark(dismissed)} {_mark(blocked)}", to=["all"])
     active = model("core.User").objects.filter(state="active").exclude(pk=author.user.pk)
+    assert active_recipient.pk in set(active.values_list("pk", flat=True))
     assert _got() == sorted((user.pk, IMPORTANT) for user in active) and active.exists()
     assert not _feed_notes(dismissed).exists() and not _feed_notes(blocked).exists()
     assert not model("feed.Recipient").objects.filter(post=post, user__in=[dismissed, blocked]).exists()
@@ -448,6 +450,7 @@ def test_comment_mention_gives_mention_over_comment_kind_and_makes_recipient():
     assert _new(before) == _want((author.user, COMMENT), (outsider, MENTION))
     note = _note(outsider, MENTION)
     assert note.url == f"/feed/{post.pk}/#c{written.pk}" and note.object_ref == f"feed.post:{post.pk}"
+    assert note.text == f"{addressee.full_name} упомянул(а) вас: «Позову коллегу @{outsider.full_name}»"
     assert model("feed.Recipient").objects.filter(post=post, user=outsider, via="mention").exists()
     assert _visibility().can_see(outsider.pk, post.pk) is True
 
@@ -501,7 +504,7 @@ def test_notifications_created_by_dispatch_create_inside_action_transaction(monk
 
     monkeypatch.setattr("apps.notify.services.dispatch.create", spy)
     author = _writer()
-    target, commenter = _person(), _person()
+    target = _person()
     base = len(connection.savepoint_ids)
 
     post = _publish(author, "Запись", to=[_p(target)])
@@ -510,12 +513,12 @@ def test_notifications_created_by_dispatch_create_inside_action_transaction(monk
     assert all(call["depth"] > base and call["posts"] == 1 for call in publish_calls)
 
     seen.clear()
-    _comments().add(commenter, post.pk, "Комментарий")
+    _comments().add(target, post.pk, "Комментарий")
     comment_calls = [call for call in seen if call["kind"] == COMMENT]
     assert comment_calls and all(call["depth"] > base and call["comments"] == 1 for call in comment_calls)
 
     seen.clear()
-    _likes().toggle_post(commenter, post.pk)
+    _likes().toggle_post(target, post.pk)
     like_calls = [call for call in seen if call["kind"] == LIKE]
     assert like_calls and all(call["depth"] > base and call["likes"] == 1 for call in like_calls)
     assert _got() == sorted([(target.pk, FOR_YOU), (author.user.pk, COMMENT), (author.user.pk, LIKE)])

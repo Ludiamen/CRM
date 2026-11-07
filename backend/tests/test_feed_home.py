@@ -213,6 +213,35 @@ def test_home_body_order_notices_form_filters_empty_banner_important_block_feed(
     assert banner.attrs.get("data-count", "0") == "0"
 
 
+def test_home_period_filters_render_portal_datefields_with_get_values():
+    """FR-635/FR-148: период фильтра остаётся GET-полями и использует календарь портала с выбранными датами."""
+    author = _author()
+    reader = feed.as_plain()
+    doc = _page(reader.client, f"/?f=events&author={author.pk}&from=10.03.2026&to=2026-03-11")
+    form = doc.first("form", id="feed-filters", data_feed_filters=True)
+
+    assert form is not None and form.attrs.get("method", "get").lower() == "get"
+    assert form.attrs.get("action") == "/"
+    selected = [option for option in form.find("option") if "selected" in option.attrs]
+    assert len(selected) == 1 and selected[0].attrs.get("value") == "events"
+    assert form.first("input", name="author").attrs.get("value") == str(author.pk)
+
+    fields = {field.attrs.get("name"): field for field in form.find("input", data_datefield_input=True)}
+    assert set(fields) == {"from", "to"}
+    wrappers = form.find("div", data_datefield=True)
+    assert len(wrappers) == 2
+    expected = {
+        "from": ("id_feed_date_from", date(2026, 3, 10)),
+        "to": ("id_feed_date_to", date(2026, 3, 11)),
+    }
+    for name, (field_id, selected_date) in expected.items():
+        field = fields[name]
+        assert field.attrs.get("type") == "text"
+        assert field.attrs.get("id") == field_id
+        assert _date_of(field.attrs.get("value", "")) == selected_date
+        assert sum(field.inside(wrapper) for wrapper in wrappers) == 1
+
+
 def test_home_has_no_greeting_and_no_profile_or_security_cards():
     """FR-601: приветствие и карточки «Мой профиль», «Безопасность» и разделов с главной уходят (профиль и
     безопасность остаются в меню и верхней панели)."""
@@ -457,3 +486,39 @@ def test_user_without_second_factor_home_redirects_to_factor_setup():
     response = client.get("/")
     assert response.status_code == 302 and response["Location"].endswith("/me/security/totp/")
     assert b"feed-" not in response.content and b"data-post-id" not in response.content
+
+
+def test_t7213a_people_batches_visible_post_and_comment_markers_active_only():
+    """PLAN-007:405: один запрос на маркеры страницы, не один на карточку."""
+    from types import SimpleNamespace
+    from apps.feed.views.home import _people
+
+    active = [_author(f"Упомянутый {i}") for i in range(21)]
+    inactive = _author("Уволенный Упомянутый", state="dismissed")
+    cards = [SimpleNamespace(post=SimpleNamespace(text=f"@[{person.pk}]"), comments=[])
+             for person in active[:20]]
+    cards[0].comments = [SimpleNamespace(text=f"@[{active[20].pk}] @[{inactive.pk}] @[999999999]")]
+    with feed.capture_sql() as sqls:
+        people = _people(cards)
+    assert len(sqls) == 1
+    assert people == {person.pk: person.full_name for person in active}
+    with feed.capture_sql() as sqls:
+        assert _people([SimpleNamespace(post=SimpleNamespace(text="Без маркеров"), comments=[])]) == {}
+    assert len(sqls) == 0
+
+
+def test_t7213a_home_renders_safe_text_and_active_mentions_without_staff_links():
+    active = _author("Имя <b>Упомянутого</b>")
+    inactive = _author("Неактивный", state="dismissed")
+    post = feed.make_post(_author(), to=("all",),
+                          text=f'<script>alert(1)</script> @[{active.pk}] @[{inactive.pk}] https://example.test/a')
+    doc = _page(feed.as_plain().client)
+    body = doc.first(id=f"feed-post-{post.pk}-body")
+    assert body is not None
+    assert "<script>alert(1)</script>" in body.text() and not body.find("script")
+    assert not body.find("b")
+    assert body.first("span", data_mention=str(active.pk)).text() == active.full_name
+    assert body.first("a", data_mention=True) is None
+    assert f"@[{inactive.pk}]" in body.text()
+    link = body.first("a", href="https://example.test/a")
+    assert link.attrs["target"] == "_blank" and link.attrs["rel"] == "noopener noreferrer"

@@ -580,3 +580,39 @@ def test_more_with_hx_request_writes_shown_and_returns_badge_oob():
     badge = fragment.first(id="menu-badge-feed")
     assert badge is not None and badge.attrs.get("hx-swap-oob") == "true"
     assert badge.attrs.get("data-count") == "25" and badge.text() == "25"
+
+
+# --- T-7211: изолированные проверки службы страницы -------------------------------------------------------------
+
+def test_t7211_parse_filter_uses_whitelist_and_returns_exact_filter_type():
+    from apps.feed.services import page
+
+    author = _author()
+    parsed = page.parse_filter({
+        "f": "events", "author": str(author.pk), "from": "10.03.2026", "to": "2026-03-11", "foreign": "drop",
+    })
+    assert parsed == page.FeedFilter("events", author.pk, date(2026, 3, 10), date(2026, 3, 11))
+    for query in ({"f": "ALL"}, {"author": "1 OR 1=1"}, {"from": "31.02.2026"}, {"to": "%00"}):
+        assert page.parse_filter(query) == page.FeedFilter("all", None, None, None)
+
+
+def test_t7211_build_uses_timestamp_id_cursor_without_offset_and_ignores_bad_cursor():
+    from apps.feed.services import page
+
+    posts = _posts_by_minutes(_author(), 25)
+    expected = _ids_desc(posts)
+    reader = feed.as_plain().user
+    opened = timezone.now()
+    flt = page.parse_filter({})
+    with feed.queries_with_params() as pairs:
+        first = page.build(reader, flt, now=opened)
+        second = page.build(reader, flt, before=first.more_cursor, opened=first.opened, now=opened)
+    assert [card.post.pk for card in first.posts] == expected[:20]
+    assert [card.post.pk for card in second.posts] == expected[20:]
+    assert second.more_cursor is None
+    assert first.more_cursor == f"{first.posts[-1].post.published_at.isoformat()},{first.posts[-1].post.pk}"
+    assert all("offset" not in sql.lower() for sql, _ in pairs)
+    values = [value for _, params in pairs for value in _flat(params)]
+    assert first.posts[-1].post.pk in values and first.posts[-1].post.published_at in values
+    invalid = page.build(reader, flt, before="not-a-cursor", opened="not-a-date", now=opened)
+    assert [card.post.pk for card in invalid.posts] == expected[:20]

@@ -1,0 +1,1 @@
+<span id="menu-badge-feed" class="badge text-bg-primary ms-auto{% if not count %} d-none{% endif %}" data-menu-live-badge data-count="{{ count }}"{% if badge_oob %} hx-swap-oob="true"{% endif %}>{% if count > 99 %}99+{% else %}{{ count }}{% endif %}</span>

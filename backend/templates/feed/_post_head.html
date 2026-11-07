@@ -1,0 +1,20 @@
+{% if item.can_edit or item.can_delete %}
+<div class="feed-post-actions ms-auto" data-post-menu>
+  {% if item.can_edit %}
+  <form method="get" action="/feed/{{ post.pk }}/edit/">
+    <button type="submit" class="btn btn-sm btn-link" data-action="post-edit">Править</button>
+  </form>
+  {% endif %}
+  {% if item.can_delete %}
+  <button class="btn btn-sm btn-link" data-action="post-delete" type="button">Удалить</button>
+  <dialog data-feed-confirm>
+    <p>Удалить запись вместе с комментариями?</p>
+    <form method="post" action="/feed/{{ post.pk }}/delete/" hx-post="/feed/{{ post.pk }}/delete/" hx-target="#feed-post-{{ post.pk }}" hx-swap="outerHTML" data-form="feed-post-delete">
+      {% csrf_token %}
+      <button type="submit">Удалить</button>
+      <button type="button" value="cancel">Отмена</button>
+    </form>
+  </dialog>
+  {% endif %}
+</div>
+{% endif %}

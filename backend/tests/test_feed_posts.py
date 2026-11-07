@@ -154,7 +154,9 @@ def test_form_default_kind_is_post_with_three_kinds_and_fields_of_all_kinds_in_m
                                                          for node in _find(form, "input", name="to"))
     assert {node.attrs.get("value") for node in _find(form, "input", name="term", type="radio")} \
         >= {"day", "week", "month", "date"}
-    assert _find(form, "input", name="until", type="date")
+    assert (_find(form, "input", name="until", type="text", data_datefield_input=True)
+            and _find(form, "button", data_datefield_open=True)
+            and _find(form, data_datefield_picker=True))
     assert _find(form, "input", name="event_title")
     assert _find(form, "input", name="event_place")
     assert _find(form, "input", name="event_start", type="datetime-local")
@@ -481,6 +483,7 @@ def test_recipient_published_at_copies_post_published_at(clock):
     first_moment = timezone.now()
     _publish(writer, _data(f"Первая @[{mentioned.pk}]", [f"u{unit.pk}", f"p{colleague.pk}"]))
     clock.advance(hours=5)
+    writer = writer._replace(client=support.logged_in(writer.user))
     _publish(writer, _data("Вторая", [f"p{colleague.pk}"]))
     Recipient = model("feed.Recipient")
     posts = list(_posts())

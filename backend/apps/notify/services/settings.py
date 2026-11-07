@@ -73,14 +73,17 @@ def _normalized_defaults(value) -> dict:
     """Словарь «код вида -> внешние каналы» в порядке каталога, без повторов и без `portal`."""
     if not isinstance(value, dict):
         raise _bad_defaults()
-    allowed = {kind.code for kind in kinds.catalog() if not kind.mandatory}
+    kinds_by_code = {kind.code: kind for kind in kinds.catalog()}
+    allowed = {code for code, kind in kinds_by_code.items() if not kind.mandatory}
     result = {}
     for code, channels in value.items():
         if code not in allowed or not isinstance(channels, (list, tuple, set, frozenset)):
             raise _bad_defaults()
         if any(channel not in kinds.CHANNELS for channel in channels):
             raise _bad_defaults()
-        result[code] = [channel for channel in kinds.EXTERNAL if channel in channels]
+        kind = kinds_by_code[code]
+        result[code] = [channel for channel in kinds.EXTERNAL
+                        if channel in channels and (kind.channels is None or channel in kind.channels)]
     return result
 
 

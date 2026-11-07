@@ -279,7 +279,7 @@ def test_card_has_ws_node_with_post_query():
 def test_card_publishes_object_viewed_for_post_and_each_own_comment(bus, django_capture_on_commit_callbacks):
     """FR-604, FR-630: показ карточки публикует `object.viewed` для записи и для каждого СВОЕГО комментария записи."""
     author = sf.as_writer()
-    reader = _person()
+    reader = support.make_employee()
     post = sf.make_post(author.user, to=[reader])
     own_first = sf.comment(post, reader, "Мой первый")
     other = sf.comment(post, author.user, "Чужой")
@@ -297,7 +297,7 @@ def test_card_publishes_object_viewed_for_post_and_each_own_comment(bus, django_
 
 
 def test_card_for_non_viewer_same_404_as_nonexistent():
-    """FR-604: не видящему запись карточка отвечает так же, как несуществующая: 404 «Не найдено», тот же ответ."""
+    """FR-604: общая страница 404 «Страница не найдена», одинаковая для невидимой и несуществующей записи."""
     author = sf.as_writer()
     addressee = _person()
     hidden = sf.make_post(author.user, to=[addressee])
@@ -307,9 +307,50 @@ def test_card_for_non_viewer_same_404_as_nonexistent():
     absent = stranger.client.get(f"/feed/{missing}/")
     assert invisible.status_code == 404 and absent.status_code == 404
     assert support.same_failure(invisible, absent)
-    assert "Не найдено" in invisible.content.decode("utf-8")
+    assert "Страница не найдена" in invisible.content.decode("utf-8")
     anonymous = support.make_client().get(f"/feed/{hidden.pk}/")
     assert anonymous.status_code == 302 and anonymous["Location"].startswith("/login/?next=")
+
+
+def test_t7213b_card_events_cover_all_own_comments_only_in_current_post(bus, django_capture_on_commit_callbacks):
+    author = sf.as_writer()
+    reader = sf.as_plain()
+    post = sf.make_post(author.user, to=[reader.user])
+    own = [sf.comment(post, reader.user, f"Мой {i}") for i in range(5)]
+    sf.comment(post, author.user, "Не мой")
+    other_post = sf.make_post(author.user, to=[reader.user])
+    sf.comment(other_post, reader.user, "Мой в другой записи")
+    bus.listen("object.viewed")
+    with django_capture_on_commit_callbacks(execute=True):
+        assert reader.client.get(f"/feed/{post.pk}/").status_code == 200
+    calls = bus.calls("object.viewed")
+    assert sorted(call["object_ref"] for call in calls) == sorted(
+        [f"feed.post:{post.pk}", *[f"feed.post:{post.pk}:c{comment.pk}" for comment in own]])
+    assert {call["user_id"] for call in calls} == {reader.user.pk}
+
+
+def test_t7213b_card_retains_photo_policy_and_safe_text():
+    from django.utils import timezone
+
+    author = sf.as_writer()
+    reader = sf.as_plain()
+    stored = model("core.StoredFile").objects.create(
+        purpose="photo", owner=author.user, size=10, sha256="0" * 64,
+        content_type="image/png", status="clean", scanned_at=timezone.now())
+    author.user.photo = stored
+    author.user.save(update_fields=["photo"])
+    post = sf.make_post(author.user, to=[reader.user], text="<script>probe</script>")
+    response = reader.client.get(f"/feed/{post.pk}/")
+    assert response.status_code == 200
+    (article,) = _find(_tree(response), "article", id=f"feed-post-{post.pk}")
+    assert not _find(article, "img")
+    assert not _find(article, "script")
+    assert "<script>probe</script>" in article.text()
+    assert author.user.full_name in article.text()
+    response = author.client.get(f"/feed/{post.pk}/")
+    assert response.status_code == 200
+    (article,) = _find(_tree(response), "article", id=f"feed-post-{post.pk}")
+    assert _find(article, "img", src=f"/staff/{author.user.pk}/photo/{stored.pk}/96/")
 
 
 def test_literal_paths_not_confused_with_post_id_route():

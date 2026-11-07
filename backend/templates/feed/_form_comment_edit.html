@@ -1,0 +1,20 @@
+<form id="feed-comment-edit" method="post" action="/feed/comments/{{ comment.pk }}/edit/" data-form="feed-comment-edit" hx-post="/feed/comments/{{ comment.pk }}/edit/" hx-target="#c{{ comment.pk }}" hx-swap="outerHTML">
+  {% csrf_token %}
+  <label for="id_comment_edit_text">Текст</label>
+  <textarea id="id_comment_edit_text" name="text" class="form-control">{{ text }}</textarea>
+  {% include "feed/_form_error.html" with error=errors.text field="text" %}
+  <fieldset><legend>Файлы</legend>
+    {% for file in form_files %}
+    <div data-feed-file="{{ file.pk }}">
+      <label><input type="checkbox" name="remove" value="{{ file.pk }}"{% if file.pk|stringformat:'s' in form_remove %} checked{% endif %}> Убрать «{{ file.name }}»</label>
+    </div>
+    {% empty %}<p>Нет прикреплённых файлов.</p>{% endfor %}
+    <label for="id_comment_edit_upload">Добавить файлы</label><input id="id_comment_edit_upload" type="file" data-feed-upload="comment" data-upload-comment="{{ comment.pk }}" multiple>
+    <div data-feed-files></div>
+    {% for value in form_new_files %}<input type="hidden" name="files" value="{{ value }}">{% endfor %}
+    {% for value in form_extra_remove %}<input type="hidden" name="remove" value="{{ value }}">{% endfor %}
+    {% include "feed/_form_error.html" with error=errors.files field="files" %}
+  </fieldset>
+  {% if pdn_found %}{% include "feed/_pdn_warning.html" %}{% endif %}
+  <button type="submit" class="btn btn-primary">Сохранить</button>
+</form>

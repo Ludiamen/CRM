@@ -1,0 +1,21 @@
+{% load tz %}
+<div class="feed-likes">
+  <button type="button"
+          data-feed-like
+          aria-pressed="false"
+          hx-post="{% if comment %}/feed/comments/{{ comment.pk }}/like/{% else %}/feed/{{ post.pk }}/like/{% endif %}"
+          hx-target="closest .feed-likes"
+          hx-swap="outerHTML">Нравится</button>
+  <span id="{% if comment %}feed-comment-{{ comment.pk }}{% else %}feed-post-{{ post.pk }}{% endif %}-likers-list" data-feed-likers>
+    {% if like_count %}
+      Нравится:
+      {% for user in likers %}{{ user.full_name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+      {% if like_count > likers|length %}
+        <a href="{% if comment %}/feed/comments/{{ comment.pk }}/likes/{% else %}/feed/{{ post.pk }}/likes/{% endif %}"
+           hx-get="{% if comment %}/feed/comments/{{ comment.pk }}/likes/{% else %}/feed/{{ post.pk }}/likes/{% endif %}"
+           hx-target="closest .feed-likes"
+           hx-swap="outerHTML">и ещё {{ like_count|add:'-2' }}</a>
+      {% endif %}
+    {% endif %}
+  </span>
+</div>

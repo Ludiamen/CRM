@@ -42,7 +42,7 @@ def push(user_ids, *, toasts=None, binding=None) -> None:
     toasts = toasts or {}
     try:
         counts = _counts(user_ids)
-        layer = get_channel_layer()
+        layer = get_channel_layer("publish")
         if layer is None:
             raise RuntimeError("слой каналов не настроен")
 

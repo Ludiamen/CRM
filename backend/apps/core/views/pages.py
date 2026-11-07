@@ -18,13 +18,20 @@ from .common import render_page
 MEDIA_SUFFIXES = {".png", ".jpg", ".jpeg"}
 
 
+def collect_notices(user) -> list:
+    """Напоминания модулей для главной: результаты функций точки `home_notices` в порядке регистрации."""
+    notices = []
+    for func in extensions.registered("home_notices"):
+        notices.extend(func(user))
+    return notices
+
+
 @login_required
 @require_GET
 def home(request):
-    notices = []
-    for func in extensions.registered("home_notices"):
-        notices.extend(func(request.user))
-    return render_page(request, "home.html", {"notices": notices})
+    for func in extensions.registered("home_body"):
+        return func(request)
+    return render_page(request, "home.html", {"notices": collect_notices(request.user)})
 
 
 @require_GET

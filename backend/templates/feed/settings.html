@@ -1,0 +1,36 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Настройки ленты{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'feed/feed.css' %}">
+<script defer src="{% static 'feed/feed.js' %}"></script>
+<div data-feed-page="settings">
+  <header class="page-head"><h1 class="page-title">Настройки портала → Лента</h1></header>
+  {% if confirm %}
+  <form method="post" action="/settings/feed/" data-form="feed-settings-confirm" novalidate>
+    {% csrf_token %}
+    <section class="card card-body mb-3" data-feed-confirm>
+      <p class="mb-3">Ближайшее ночное задание удалит записей: {{ confirm.to_delete }}</p>
+      <input type="hidden" name="retention_years" value="{{ confirm.years }}">
+      <div class="d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary" name="confirm" value="1">Подтвердить</button>
+        <a class="btn btn-outline-secondary" href="/settings/feed/">Отмена</a>
+      </div>
+    </section>
+  </form>
+  {% else %}
+  <form method="post" action="/settings/feed/" data-form="feed-settings" novalidate>
+    {% csrf_token %}
+    <section class="card card-body mb-3">
+      <div class="mb-3">
+        <label class="form-label" for="id_retention_years">Хранить записи ленты, лет</label>
+        <input class="form-control{% if error %} is-invalid{% endif %}" id="id_retention_years" name="retention_years" type="number" min="1" max="10" value="{{ value }}">
+        {% if error %}<div class="text-danger" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+        <div class="form-text">Записи старше срока удаляет ночное задание; уменьшение срока требует подтверждения.</div>
+      </div>
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+    </section>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

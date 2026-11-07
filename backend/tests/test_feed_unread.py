@@ -285,6 +285,23 @@ def test_shown_written_by_single_insert_on_conflict_do_nothing_repeat_show_no_er
     assert _Shown().objects.filter(user=viewer).count() == 6
 
 
+def test_mark_shown_only_records_posts_visible_to_user(clock):
+    """Невидимую чужую запись нельзя отметить показанной прямым вызовом службы."""
+    clock.set(NOON)
+    viewer = support.make_employee()
+    author = support.make_employee()
+    other = support.make_employee()
+    base = NOON - timedelta(hours=1)
+    visible_all = fd.make_post(author, to=("all",), published_at=base)
+    visible_personal = fd.make_post(author, to=(viewer,), published_at=base + timedelta(minutes=1))
+    invisible = fd.make_post(author, to=(other,), published_at=base + timedelta(minutes=2))
+    own = fd.make_post(viewer, to=("all",), published_at=base + timedelta(minutes=3))
+
+    _unread().mark_shown(viewer, [visible_all.pk, visible_personal.pk, invisible.pk, own.pk])
+
+    assert _shown_ids(viewer) == {visible_all.pk, visible_personal.pk}
+
+
 def test_own_post_not_counted_and_gets_no_shown_row(clock):
     """FR-626 (сценарий 8 п. 5): своя запись непрочитанной не бывает и строки показа не получает."""
     clock.set(NOON)

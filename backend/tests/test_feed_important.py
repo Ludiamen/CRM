@@ -312,7 +312,9 @@ def test_term_choices_are_day_week_month_and_until_date():
     block = q1(root, None, data_kind_fields="important")
     for label in ("День", "Неделя", "Месяц", "До даты"):
         assert label in block.text()
-    assert q1(block, "input", type="date", name="until")
+    assert (q(block, "input", name="until", type="text", data_datefield_input=True)
+            and q(block, "button", data_datefield_open=True)
+            and q(block, data_datefield_picker=True))
 
 
 # --- срок: отказы --------------------------------------------------------------------------------------------
@@ -503,6 +505,7 @@ def test_expired_important_is_ordinary_post_with_was_important_and_read_count_wi
     assert _block_ids(reader.client.get("/")) == [post.pk]
 
     clock.set(_day(2026, 10, 12, 10, 0))
+    reader = reader._replace(client=support.logged_in(reader.user))
     response = reader.client.get("/")
 
     assert _block_ids(response) == []

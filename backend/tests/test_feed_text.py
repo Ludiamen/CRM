@@ -320,6 +320,38 @@ def test_snippet_cuts_by_word_with_ellipsis_at_100_60_and_300():
     assert feed_text.snippet(short, 100) == short
 
 
+def test_snippet_keeps_complete_words_at_limit_minus_one_boundary():
+    feed_text = _text()
+    assert feed_text.snippet("слово дальше", 6, {}) == "слово…"
+    assert feed_text.snippet("одно два три", 9, {}) == "одно два…"
+
+
+def test_url_combined_trailing_punctuation_and_unbalanced_parentheses_stay_outside_link():
+    for tail in (".)", ").)"):
+        source = f"Текст (https://example.test/a{tail} продолжение"
+        output = render(source)
+        (link,) = _links(output)
+        assert link.attrs["href"] == "https://example.test/a"
+        assert tree_of(output).text() == source
+
+
+def test_snippet_auto_lookup_expands_only_active_people_in_one_query():
+    feed_text = _text()
+    active = support.make_employee(totp=False, full_name="Активный Сотрудник")
+    dismissed = support.make_employee(totp=False, full_name="Уволенный Сотрудник")
+    blocked = support.make_employee(totp=False, full_name="Заблокированный Сотрудник")
+    from apps.core.models import User, UserState
+
+    User.objects.filter(pk=dismissed.pk).update(state=UserState.DISMISSED)
+    User.objects.filter(pk=blocked.pk).update(state=UserState.BLOCKED)
+    unknown = 999999999
+    source = f"@[{active.pk}] @[{dismissed.pk}] @[{blocked.pk}] @[{unknown}]"
+    with sf.capture_sql() as sqls:
+        result = feed_text.snippet(source, 200)
+    assert result == f"@Активный Сотрудник @[{dismissed.pk}] @[{blocked.pk}] @[{unknown}]"
+    assert len([sql for sql in sqls if "core_user" in sql]) == 1
+
+
 # --- 4. страница ---------------------------------------------------------------------------------------------
 
 def _evil_world():
@@ -388,3 +420,24 @@ def test_page_builds_links_only_from_http_https_and_mailto():
             assert set(link.attrs.get("rel", "").split()) == {"noopener", "noreferrer"}, path
         for item in forbidden:
             assert item in body.text(), f"{path}: {item} остался текстом"
+
+
+def test_snippet_expanded_mention_name_keeps_ellipsis_inside_limit():
+    """FR-609, FR-611: после подстановки длинного ФИО длина отрывка вместе с многоточием не превышает предел."""
+    feed_text = _text()
+    result = feed_text.snippet("начало @[7] конец", 12, {7: "Очень Длинное Имя Сотрудника"})
+
+    assert len(result) <= 12
+    assert result.endswith("…")
+    assert "@[7]" not in result
+
+
+def test_render_plain_removes_bidi_from_mention_name_before_escaping():
+    """NFR-605: bidi-управление удаляется и из ФИО, полученного из словаря, а имя остаётся экранированным."""
+    name = 'Ива\u202e<b>н & Пётр'
+
+    html = render("@[7]", {7: name}, link_staff=True)
+
+    assert "\u202e" not in html
+    assert "&lt;b&gt;" in html and "&amp;" in html
+    assert _find(tree_of(html), "a", data_mention="7")[0].text() == "Ива<b>н & Пётр"

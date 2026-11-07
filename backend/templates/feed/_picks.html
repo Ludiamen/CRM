@@ -1,0 +1,1 @@
+{% for row in rows %}<button type="button" data-pick-value="{{ row.value }}" data-pick-label="{{ row.label }}">{{ row.name }}{% if row.unit %} — {{ row.unit }}{% endif %}</button>{% endfor %}

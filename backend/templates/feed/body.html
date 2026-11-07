@@ -1,0 +1,27 @@
+{% extends layout %}
+{% load static %}
+{% block title %}Лента{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'feed/feed.css' %}">
+<script defer src="{% static 'feed/feed.js' %}"></script>
+<div class="feed-page" data-feed-page="home">
+  <h1 class="page-title">Лента</h1>
+  {% include "_home_notices.html" %}
+  {% include "feed/_form.html" %}
+  <form id="feed-filters" data-feed-filters method="get" action="/" class="feed-filters">
+    <label>Показать <select name="f" class="form-select">{% for value, label in filter_options %}<option value="{{ value }}"{% if flt.f == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <input type="hidden" name="author" value="{{ filter_values.author|default:'' }}">
+    <div><label for="id_feed_date_from">С</label>{{ date_from }}</div>
+    <div><label for="id_feed_date_to">По</label>{{ date_to }}</div>
+    <button type="submit" class="btn btn-outline-primary">Показать</button>
+    <a href="/">Сбросить</a>
+  </form>
+  <div id="feed-new" class="d-none" data-count="0"></div>
+  {% if important %}<section id="feed-important" data-feed-important aria-label="Важные записи">
+    {% for item in important %}{% include "feed/_post.html" with opened=opened %}{% endfor %}
+  </section>{% endif %}
+  <ol id="feed-list" data-feed-list-main class="feed-list">{% include "feed/_lists.html" %}</ol>
+  {% if not posts and not important %}{% if filtered %}<p data-empty-state="feed-filter">По фильтру записей нет</p>{% else %}<p data-empty-state="feed">Записей пока нет</p>{% endif %}{% endif %}
+  <div id="feed-live" hx-ext="ws" ws-connect="{{ ws_url }}" data-ws="connecting" data-opened="{{ opened.isoformat }}"></div>
+</div>
+{% endblock %}

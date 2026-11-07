@@ -440,6 +440,35 @@ def test_link_staff_variant_shows_name_as_staff_link_other_variant_as_plain_text
     assert not [a for a in _find(plain, "a") if a.get("href", "").startswith("/staff/")]
 
 
+def test_comment_frames_carry_the_comment_files(django_capture_on_commit_callbacks):
+    """FR-633: кадры `comment`, `comment_edit` и `comment_like` показывают файлы комментария —
+    `[data-feed-file]` в `[data-comment-files]` кадра, как список комментариев карточки."""
+    capture = django_capture_on_commit_callbacks
+    stage = Stage()
+    bound = ff.attach(None, name="отчёт.txt", uploaded_by=stage.reader.user)
+    added = ff.attach(None, name="дополнение.txt", uploaded_by=stage.reader.user)
+
+    def _file_ids(html: str) -> list[str]:
+        return [attrs["data-feed-file"] for attrs in _find(html, data_feed_file=True)]
+
+    spy = _run(capture, lambda: stage.reader.client.post(
+        f"/feed/{stage.plain.pk}/comments/", {"text": "Комментарий с файлом", "files": [bound.pk]}, **HX))
+    comment = _event(spy, "comment")
+    for variant, html in comment["variants"].items():
+        assert _find(html, "div", data_comment_files=str(comment["comment"])), f"{variant}: нет блока файлов"
+        assert _file_ids(html) == [str(bound.pk)], f"{variant}: {html!r}"
+    spy = _run(capture, lambda: stage.reader.client.post(
+        f"/feed/comments/{comment['comment']}/edit/", {"text": "Правлено", "files": [added.pk]}, **HX))
+    edited = _event(spy, "comment_edit")
+    for variant, html in edited["variants"].items():
+        assert _file_ids(html) == [str(bound.pk), str(added.pk)], f"{variant}: {html!r}"
+    spy = _run(capture, lambda: stage.reader.client.post(
+        f"/feed/comments/{comment['comment']}/like/", **HX))
+    liked = _event(spy, "comment_like")
+    for variant, html in liked["variants"].items():
+        assert _file_ids(html) == [str(bound.pk), str(added.pk)], f"{variant}: {html!r}"
+
+
 # --- безопасность кадров -------------------------------------------------------------------------------------------
 
 def test_frame_has_no_csrfmiddlewaretoken_and_no_forms(django_capture_on_commit_callbacks):
@@ -498,7 +527,11 @@ def test_frame_escapes_script_bold_javascript_link_and_img_onerror_probe(django_
 
 
 def test_frame_fragments_have_no_style_or_on_event_attributes(django_capture_on_commit_callbacks):
-    """NFR-605: во фрагментах кадров (варианты и число «Ленты») нет `style=` и атрибутов `on…=`, нет `<script`."""
+    """NFR-605: во фрагментах кадров (варианты и число «Ленты») нет `style=` и атрибутов `on…=`, нет `<script`.
+
+    Правка по решению владельца 2026-11-02 (арбитраж): регулярки удалены —
+    ловили безвредный экранированный текст; DOM-проверки остаются.
+    """
     capture = django_capture_on_commit_callbacks
     stage = Stage()
     messages = stage.battery(capture)
@@ -511,8 +544,6 @@ def test_frame_fragments_have_no_style_or_on_event_attributes(django_capture_on_
         for tag, attrs in _dom(html).nodes:
             assert "style" not in attrs, f"<{tag}> со style"
             assert not [name for name in attrs if name.startswith("on")], f"<{tag}> с {attrs}"
-    assert not re.search(r"\sstyle\s*=", "".join(htmls), re.I)
-    assert not re.search(r"\son[a-z]+\s*=", "".join(htmls), re.I)
 
 
 # --- сбой слоя `publish` -------------------------------------------------------------------------------------------

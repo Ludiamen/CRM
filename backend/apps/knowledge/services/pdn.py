@@ -6,10 +6,9 @@
 import re
 from urllib.parse import unquote
 
+from apps.core.services.pdn_patterns import EMAIL, PHONE
 from apps.knowledge.services import render
 
-EMAIL = re.compile(r"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[^\W\d_]{2,}(?![\w-])")
-PHONE = re.compile(r"(?<![\d+])(?:\+7|8)[ \t\-()]*(?:\d[ \t\-()]*){9}\d(?!\d)")
 HIDDEN = "[скрыто]"
 LIMIT = 20
 

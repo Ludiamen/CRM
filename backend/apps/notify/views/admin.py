@@ -69,8 +69,10 @@ def _rows(row, *, cells: set | None = None) -> list:
             effective = set(mapping[kind.code])
         else:
             effective = set(kind.default_channels)
+        allowed = CELL_CHANNELS if kind.channels is None else kind.channels
         rows.append({"code": kind.code, "title": kind.title, "cells": [
             {"channel": channel, "title": title, "value": f"{kind.code}:{channel}",
+             "available": channel in allowed, "has_box": channel in allowed,
              "checked": (f"{kind.code}:{channel}" in cells) if cells is not None else channel in effective}
             for channel, title in CELL_TITLES]})
     return rows
@@ -106,9 +108,12 @@ def settings_page(request):
     if "defaults_present" in post:
         cells = set(post.getlist("cell"))
         defaults = {kind.code: [] for kind in kinds.catalog() if not kind.mandatory}
+        allowed_by_code = {kind.code: (CELL_CHANNELS if kind.channels is None else kind.channels)
+                           for kind in kinds.catalog()}
         for value in cells:
             code, _, channel = value.partition(":")
-            if code in defaults and channel in CELL_CHANNELS and channel not in defaults[code]:
+            if code in defaults and channel in CELL_CHANNELS and channel in allowed_by_code[code] \
+                    and channel not in defaults[code]:
                 defaults[code].append(channel)
         fields["defaults"] = defaults
     try:

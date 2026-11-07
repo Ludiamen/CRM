@@ -165,3 +165,40 @@ def test_recipients_full_list_returns_404_for_non_viewer():
     assert hidden.status_code == 404
     assert support.same_failure(hidden, missing)
     assert _session(addressee).client.get(f"/feed/{post.pk}/to/").status_code == 200
+
+
+def test_t7213b_full_recipients_safe_fragment_login_and_no_shown_or_events(bus):
+    author = _session(_employee("Автор Авторов"))
+    person = _employee('<img src=x onerror="probe">')
+    post = ff.make_post(author.user, to=[person])
+    bus.listen("object.viewed")
+    before = list(support.model("feed.Shown").objects.values_list("pk", flat=True))
+    for extra in ({}, HX):
+        response = author.client.get(f"/feed/{post.pk}/to/?post=999999", **extra)
+        assert response.status_code == 200
+        html = response.content.decode()
+        assert "<html" not in html and "<img" not in html
+        assert "&lt;img" in html and "data-feed-list=\"recipients\"" in html
+    assert list(support.model("feed.Shown").objects.values_list("pk", flat=True)) == before
+    assert bus.calls("object.viewed") == []
+    response = support.make_client().get(f"/feed/{post.pk}/to/")
+    assert response.status_code == 302 and response["Location"].startswith("/login/?next=")
+
+
+def test_t7211_recipients_line_and_full_are_service_only_and_share_order():
+    from apps.feed.services import recipients
+
+    author = _employee("Автор Авторов")
+    units = [org.make_unit(f"Отдел {i}") for i in (1, 2)]
+    people = [_employee(f"Адресат Номер{i}", state="dismissed" if i == 5 else "active") for i in range(1, 6)]
+    mentioned = [_employee(f"Упомянутый Номер{i}") for i in range(1, 3)]
+    post = ff.make_post(author, to=[*units, *people])
+    ff.comment(post, author, "Коллеги", mentions=[people[0], *mentioned])
+    line = recipients.line(post)
+    full = recipients.full(post)
+    assert len(full) == 9
+    assert line.items == full[:5] and line.more == 4
+    assert full.count(people[0].full_name) == 1
+    assert f"{people[4].full_name} (уволен)" in full
+    units[0].delete()
+    assert "Подразделение удалено" in recipients.full(post)

@@ -78,6 +78,32 @@ def _unit_post(page, circle, text: str, *, kind: str = "post", term=None) -> int
     return publish(page, text, kind=kind, term=term, to=[("unit", circle.names[circle.cast.accounting_unit])])
 
 
+def _watch_like_oob(page, wrapper_selector: str, target_id: str) -> None:
+    """Записывает именно OOB-swap liker-list и идентичность кнопки по обе стороны события htmx."""
+    page.evaluate("""({wrapperSelector, targetId}) => {
+      window.__f08_like_oob = window.__f08_like_oob || {};
+      const state = window.__f08_like_oob[targetId] = {beforeTarget: null, beforeButton: null, applied: false};
+      const targetFrom = event => event.detail && (event.detail.target || event.detail.elt);
+      document.body.addEventListener('htmx:oobBeforeSwap', event => {
+        const target = targetFrom(event);
+        if (!target || target.id !== targetId) return;
+        const wrapper = document.querySelector(wrapperSelector);
+        state.beforeTarget = target;
+        state.beforeButton = wrapper && wrapper.querySelector('button[data-feed-like]');
+      });
+      document.body.addEventListener('htmx:oobAfterSwap', event => {
+        const target = targetFrom(event);
+        if (!target || target.id !== targetId) return;
+        const wrapper = document.querySelector(wrapperSelector);
+        const currentTarget = document.getElementById(targetId);
+        const currentButton = wrapper && wrapper.querySelector('button[data-feed-like]');
+        state.targetReplaced = Boolean(state.beforeTarget && state.beforeTarget !== currentTarget);
+        state.buttonUnchanged = Boolean(state.beforeButton && state.beforeButton === currentButton);
+        state.applied = true;
+      });
+    }""", {"wrapperSelector": wrapper_selector, "targetId": target_id})
+
+
 def _since(started: float, limit: float, what: str) -> None:
     elapsed = time.monotonic() - started
     assert elapsed <= limit, f"{what}: {elapsed:.2f} с при норме {limit:.0f} с"
@@ -195,7 +221,7 @@ def test_f08_new_posts_2_banner_click_puts_two_posts_on_top_and_hides_banner(cir
     watcher = open_feed(new_context(), c.accountant)
     writer = _writer_page(new_context, c)
     first = _unit_post(writer, circle, _word("Первая из двух"))
-    second = _unit_post(writer, circle, _word("Вторая из двух"))
+    second = _unit_post(_writer_page(new_context, c), circle, _word("Вторая из двух"))
     wait_banner(watcher, 2, timeout=WAIT_MS)
     _banner_link(watcher).click()
     expect(watcher.locator("#feed-new")).to_be_hidden()
@@ -231,10 +257,24 @@ def test_f08_like_on_shown_post_appears_in_place_within_2s(circle, new_context):
     watcher = open_feed(new_context(), c.accountant)
     expect(watcher.locator(f"#feed-post-{pid}")).to_be_visible()
     colleague = open_card(new_context(), c.petrov, pid)
+    target_id = f"feed-post-{pid}-likers-list"
+    _watch_like_oob(watcher, f"#feed-post-{pid}-likers", target_id)
+    _watch_like_oob(colleague, f"#feed-post-{pid}-likers", target_id)
     assert like(colleague, pid) is True
     started = time.monotonic()
+    colleague.wait_for_function("id => window.__f08_like_oob && window.__f08_like_oob[id] && window.__f08_like_oob[id].applied",
+                                arg=target_id, timeout=WAIT_MS)
+    swap = colleague.evaluate("id => window.__f08_like_oob[id]", target_id)
+    assert swap["targetReplaced"] and swap["buttonUnchanged"], f"live кадр заменил не только список лайков: {swap!r}"
+    expect(colleague.locator(f"#feed-post-{pid}-likers button[data-feed-like]")).to_have_attribute("aria-pressed", "true")
+    watcher.wait_for_function("id => window.__f08_like_oob && window.__f08_like_oob[id] && window.__f08_like_oob[id].applied",
+                              arg=target_id, timeout=WAIT_MS)
+    remote_swap = watcher.evaluate("id => window.__f08_like_oob[id]", target_id)
+    assert remote_swap["targetReplaced"] and remote_swap["buttonUnchanged"], \
+        f"другой читатель должен получить только liker-list OOB: {remote_swap!r}"
     expect(watcher.locator(f"#feed-post-{pid}-likers")).to_contain_text(c.petrov.full_name.split()[0], timeout=WAIT_MS)
     _since(started, FRAME_SECONDS, "отметка «Нравится» на месте")
+    expect(watcher.locator(f"#feed-post-{pid}-likers button[data-feed-like]")).to_have_attribute("aria-pressed", "false")
 
 
 def test_f08_edit_of_shown_post_appears_in_place_within_2s(circle, new_context):
@@ -281,7 +321,7 @@ def test_f08_open_post_card_gets_new_comment_in_place_within_2s_and_no_banner(ci
     started = time.monotonic()
     expect(card.locator(f"#feed-post-{pid}-comments")).to_contain_text(text, timeout=WAIT_MS)
     _since(started, FRAME_SECONDS, "комментарий в открытой карточке")
-    _unit_post(writer, circle, _word("Другая запись при открытой карточке"))
+    _unit_post(_writer_page(new_context, c), circle, _word("Другая запись при открытой карточке"))
     expect(card.locator("#feed-new")).to_have_count(0)
 
 
@@ -316,7 +356,22 @@ def test_f08_like_button_of_comment_inserted_by_frame_sends_request_and_sets_lik
     colleague = open_card(new_context(), c.petrov, pid)
     cid = add_comment(colleague, pid, _word("Комментарий кадром"))
     expect(watcher.locator(f"#c{cid}")).to_be_visible(timeout=WAIT_MS)
+    target_id = f"feed-comment-{cid}-likers-list"
+    _watch_like_oob(watcher, f"#c{cid}", target_id)
+    _watch_like_oob(colleague, f"#c{cid}", target_id)
     assert like_comment(watcher, cid) is True
+    watcher.wait_for_function("id => window.__f08_like_oob && window.__f08_like_oob[id] && window.__f08_like_oob[id].applied",
+                              arg=target_id, timeout=WAIT_MS)
+    swap = watcher.evaluate("id => window.__f08_like_oob[id]", target_id)
+    assert swap["targetReplaced"] and swap["buttonUnchanged"], f"live кадр заменил не только список лайков: {swap!r}"
+    expect(watcher.locator(f"#c{cid} button[data-feed-like]")).to_have_attribute("aria-pressed", "true")
+    colleague.wait_for_function("id => window.__f08_like_oob && window.__f08_like_oob[id] && window.__f08_like_oob[id].applied",
+                                arg=target_id, timeout=WAIT_MS)
+    remote_swap = colleague.evaluate("id => window.__f08_like_oob[id]", target_id)
+    assert remote_swap["targetReplaced"] and remote_swap["buttonUnchanged"], \
+        f"другой читатель должен получить только liker-list OOB: {remote_swap!r}"
+    expect(colleague.locator(f"#c{cid} [data-feed-likers]")).to_contain_text(c.accountant.full_name.split()[0], timeout=WAIT_MS)
+    expect(colleague.locator(f"#c{cid} button[data-feed-like]")).to_have_attribute("aria-pressed", "false")
     likers = helpers_org.direct_get(watcher, f"/feed/comments/{cid}/likes/").text()
     assert c.accountant.full_name.split()[0] in likers, "отметка не записана на сервере"
 
@@ -468,8 +523,8 @@ def test_f08_ordinary_and_important_posts_give_new_posts_2_and_click_puts_import
     earlier = _unit_post(writer, circle, _word("Важное, которое уже висит"), kind="important", term="week")
     watcher = open_feed(new_context(), c.accountant)
     assert earlier in important_ids(watcher), "блок важных не показан до опыта"
-    ordinary = _unit_post(writer, circle, _word("Обычная запись"))
-    important = _unit_post(writer, circle, _word("Новая важная запись"), kind="important", term="week")
+    ordinary = _unit_post(_writer_page(new_context, c), circle, _word("Обычная запись"))
+    important = _unit_post(_writer_page(new_context, c), circle, _word("Новая важная запись"), kind="important", term="week")
     wait_banner(watcher, 2, timeout=WAIT_MS)
     _banner_link(watcher).click()
     expect(watcher.locator(f'#feed-important [data-post-id="{important}"]')).to_be_visible()
@@ -508,7 +563,7 @@ def test_f08_new_posts_2_banner_click_lowers_feed_badge_by_2(circle, new_context
     base = badge(watcher)
     writer = _writer_page(new_context, c)
     _unit_post(writer, circle, _word("Первая для числа"))
-    _unit_post(writer, circle, _word("Вторая для числа"))
+    _unit_post(_writer_page(new_context, c), circle, _word("Вторая для числа"))
     wait_banner(watcher, 2, timeout=WAIT_MS)
     wait_badge(watcher, base + 2, timeout=WAIT_MS)
     _banner_link(watcher).click()

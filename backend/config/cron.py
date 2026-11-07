@@ -12,6 +12,7 @@ import django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
+from django.apps import apps  # noqa: E402
 from rq.cron import register  # noqa: E402
 
 from apps.core.services.retention import (  # noqa: E402
@@ -63,3 +64,13 @@ register(purge_trash, queue_name="maintenance", cron="45 23 * * *", name="purge_
 # Списки (срез 006, T-6240, FR-530). Напоминания о сроках — 05:00 по UTC (08:00 по Москве), когда резервная копия и ночные
 # очистки уже закончились; записи списков хранятся без срока, поэтому задания их очистки нет.
 register(remind_deadlines, queue_name="maintenance", cron="0 5 * * *", name="lists_reminders", job_timeout=600)
+
+# Лента (срез 007, T-7233, FR-618, FR-638). Напоминания о событиях — каждую минуту в очереди `notify` (её читают две
+# копии worker-notify); очистка по сроку хранения — 23:35 по UTC (02:35 по Москве), между `purge_requester_previews`
+# (23:30) и `notify_retention` (23:40). Модуль отключаемый: импорт его задач и обе записи — под одной проверкой
+# `apps.is_installed`, без ленты расписание прежних заданий не меняется (CONTRACT-007, раздел 1.2).
+if apps.is_installed("apps.feed"):
+    from apps.feed.tasks import remind_events, retention_night  # noqa: E402
+
+    register(remind_events, queue_name="notify", cron="* * * * *", name="feed_reminders", job_timeout=120)
+    register(retention_night, queue_name="maintenance", cron="35 23 * * *", name="feed_retention", job_timeout=600)

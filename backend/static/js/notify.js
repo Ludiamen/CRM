@@ -18,8 +18,16 @@
     if (bell) { bell.setAttribute('data-ws', state); }
   }
 
-  document.addEventListener('htmx:wsAfterMessage', function () { setWsState('open'); });
-  document.addEventListener('htmx:wsClose', function () { setWsState('closed'); });
+  function isNotifySocketEvent(event) {
+    return event && event.detail && event.detail.elt === document.getElementById('notify-bell');
+  }
+
+  document.addEventListener('htmx:wsAfterMessage', function (event) {
+    if (isNotifySocketEvent(event)) { setWsState('open'); }
+  });
+  document.addEventListener('htmx:wsClose', function (event) {
+    if (isNotifySocketEvent(event)) { setWsState('closed'); }
+  });
 
   /* Ссылка из данных открывается только на своём источнике; иначе — главная. */
   function safeUrl(raw) {

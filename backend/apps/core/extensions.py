@@ -7,6 +7,7 @@
 import pathlib
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import TYPE_CHECKING, Callable, Literal, NamedTuple
 
 from django.http import HttpRequest
@@ -17,7 +18,8 @@ if TYPE_CHECKING:
 POINTS = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory",
           "card_sections", "day_marks", "home_notices", "stand_reset",
           "unit_usage", "file_purposes", "mail_renderers", "login_links",
-          "notification_kinds", "top_bar_items", "search_providers", "ticket_card_parts")
+          "notification_kinds", "top_bar_items", "search_providers", "ticket_card_parts",
+          "home_body")
 
 _registry: dict[str, list] = {point: [] for point in POINTS}
 
@@ -153,7 +155,9 @@ class NotificationKind:
 
     `build(event, data)` возвращает список `Draft`; `available(user)` — показывать ли строку вида
     сотруднику; `still_relevant(user_id, object_ref)` — проверка перед письмом и сводкой;
-    `external_text_of(object_ref)` — внешний текст по ссылке на объект (`None` — прежний `external_text`).
+    `external_text_of(object_ref)` — внешний текст по ссылке на объект (`None` — прежний `external_text`);
+    `channels` — допустимые каналы вида (`None` — все); `coalesce_text(user_id, object_ref, since)` — текст
+    непрочитанного при склейке (`None` — прежнее поведение, текст не меняется).
     """
     code: str
     title: str
@@ -168,6 +172,8 @@ class NotificationKind:
     order: int = 0
     coalesce: bool = False
     external_text_of: Callable[[str], str] | None = None
+    channels: tuple[str, ...] | None = None
+    coalesce_text: Callable[[int, str, datetime], str] | None = None
 
 
 @dataclass(frozen=True)

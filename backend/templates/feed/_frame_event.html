@@ -1,0 +1,15 @@
+{% load tz %}
+<div id="feed-post-{{ post.pk }}-event" data-feed-event hx-swap-oob="true">
+  <h3>{{ post.event_title }}</h3>
+  {% timezone 'Europe/Moscow' %}
+  <p>Начало: <time data-at datetime="{{ post.event_start|date:'c' }}">{{ post.event_start|date:'d.m.Y H:i' }}</time></p>
+  <p>Конец: <time data-at datetime="{{ post.event_end|date:'c' }}">{{ post.event_end|date:'d.m.Y H:i' }}</time></p>
+  {% endtimezone %}
+  <p>{{ post.event_place }}</p>
+  {% if not is_author and post.event_start > event_now %}
+    <button type="button" name="answer" data-action="answer" value="go" hx-post="/feed/{{ post.pk }}/answer/" hx-target="#feed-post-{{ post.pk }}-event" hx-swap="outerHTML" hx-vals='{"answer": "go"}'>Пойду</button>
+    <button type="button" name="answer" data-action="answer" value="no" hx-post="/feed/{{ post.pk }}/answer/" hx-target="#feed-post-{{ post.pk }}-event" hx-swap="outerHTML" hx-vals='{"answer": "no"}'>Не смогу</button>
+  {% endif %}
+  <p>Пойдут: <span data-feed-answers-count="go">{{ card.answer_counts.go }}</span>; Не смогут: <span data-feed-answers-count="no">{{ card.answer_counts.no }}</span></p>
+  {% if is_author %}<a data-feed-answers-link href="/feed/{{ post.pk }}/answers/" hx-get="/feed/{{ post.pk }}/answers/" hx-target="#feed-post-{{ post.pk }}-answers">Ответы участников</a><div id="feed-post-{{ post.pk }}-answers"></div>{% endif %}
+</div>
