@@ -383,7 +383,11 @@ def test_e08_notification_settings_page_shows_channels_with_switch_keys_set_mark
         for channel in ("email", "push", "telegram", "max"):
             cell = row.locator(f'td[data-channel="{channel}"]')
             expect(cell).to_have_count(1)
-            expect(cell.locator(f'input[type=checkbox][name="cell"][value="{kind}:{channel}"]')).to_have_count(1)
+            checkbox = cell.locator(f'input[type=checkbox][name="cell"][value="{kind}:{channel}"]')
+            if cell.get_attribute("data-available") == "1":
+                expect(checkbox).to_have_count(1)
+            else:
+                expect(checkbox).to_have_count(0)
     # п. 1: по умолчанию «Новая заявка…» отмечена по почте (default_channels, § 3.2)
     expect(table.locator('input[name="cell"][value="servicedesk.new_in_queue:email"]')).to_be_checked()
     # п. 1: сроки — числа в допустимых пределах; одна кнопка сохранения

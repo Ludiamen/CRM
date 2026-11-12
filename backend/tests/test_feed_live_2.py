@@ -441,8 +441,7 @@ def test_link_staff_variant_shows_name_as_staff_link_other_variant_as_plain_text
 
 
 def test_comment_frames_carry_the_comment_files(django_capture_on_commit_callbacks):
-    """FR-633: кадры `comment`, `comment_edit` и `comment_like` показывают файлы комментария —
-    `[data-feed-file]` в `[data-comment-files]` кадра, как список комментариев карточки."""
+    """FR-633: кадры `comment` и `comment_edit` показывают файлы комментария; `comment_like` обновляет только liker-list."""
     capture = django_capture_on_commit_callbacks
     stage = Stage()
     bound = ff.attach(None, name="отчёт.txt", uploaded_by=stage.reader.user)
@@ -462,11 +461,19 @@ def test_comment_frames_carry_the_comment_files(django_capture_on_commit_callbac
     edited = _event(spy, "comment_edit")
     for variant, html in edited["variants"].items():
         assert _file_ids(html) == [str(bound.pk), str(added.pk)], f"{variant}: {html!r}"
+    target = f"feed-comment-{comment['comment']}-likers-list"
     spy = _run(capture, lambda: stage.reader.client.post(
         f"/feed/comments/{comment['comment']}/like/", **HX))
     liked = _event(spy, "comment_like")
     for variant, html in liked["variants"].items():
-        assert _file_ids(html) == [str(bound.pk), str(added.pk)], f"{variant}: {html!r}"
+        assert len(_find(html, "span", id=target, data_feed_likers=True, hx_swap_oob="true")) == 1
+        assert _file_ids(html) == [], f"{variant}: like-frame должен менять только liker-list"
+        assert not _find(html, "button", data_feed_like=True)
+        assert stage.reader.user.full_name in _text(html)
+    for attached in (bound, added):
+        attached.refresh_from_db()
+        assert attached.post_id == stage.plain.pk
+        assert attached.comment_id == comment["comment"]
 
 
 # --- безопасность кадров -------------------------------------------------------------------------------------------
@@ -489,9 +496,13 @@ def test_frame_action_buttons_are_hx_post_without_form(django_capture_on_commit_
     author_comment = messages["comment_edit"]["variants"]["author:0"]
     delete = _find(author_comment, "button", data_action="comment-delete")
     assert delete and delete[0].get("hx-post") == f"/feed/comments/{stage.comment_id}/delete/"
-    likers = messages["like"]["variants"]["reader:0"]
-    like = _find(likers, "button", data_feed_like=True)
+    post_frame = messages["post"]["variants"]["reader:0"]
+    like = _find(post_frame, "button", data_feed_like=True)
     assert like and like[0].get("hx-post") == f"/feed/{stage.plain.pk}/like/", "кнопка «Нравится» без `hx-post`"
+    likers = messages["like"]["variants"]["reader:0"]
+    assert len(_find(likers, "span", id=f"feed-post-{stage.plain.pk}-likers-list",
+                     data_feed_likers=True, hx_swap_oob="true")) == 1
+    assert not _find(likers, "button", data_feed_like=True)
     for answer in _find(messages["answer"]["variants"]["reader:0"], "button", data_action="answer"):
         assert answer.get("hx-post") == f"/feed/{stage.event.pk}/answer/"
     for message in messages.values():

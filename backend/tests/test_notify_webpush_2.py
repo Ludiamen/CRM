@@ -105,19 +105,28 @@ def test_send_goes_to_every_subscription_of_the_user(webpush_on):
     assert (delivery.state, delivery.reason, delivery.attempts) == ("sent", "", 1)
 
 
-def test_delivery_is_sent_if_at_least_one_subscription_succeeded(webpush_on):
-    """FR-324: доставка удачна, если удалась хотя бы одна подписка; неудавшаяся остаётся в журнале повтором."""
+def test_delivery_retries_failed_subscription_when_another_succeeds(webpush_on, clock):
+    """FR-324/FR-333: успешная подписка не дублируется, временно неудавшаяся получает повтор."""
     world = _world(2)
     delivery = _delivery(world.user)
     failing = world.subs[0]
     with notify.webpush_capture(by_endpoint={failing.endpoint: _resp(500)}) as capture:
         outcome = _send(delivery)
-    assert outcome == "sent"
+    assert outcome == "waiting"
     assert len(capture.requests) == 2
     log = _log_by_sub(delivery)
     assert [record["outcome"] for record in log[world.subs[1].pk]] == ["ok"]
     assert [record["outcome"] for record in log[failing.pk]] == ["retry"]
-    assert delivery.state == "sent" and delivery.reason == ""
+    assert delivery.state == "waiting" and delivery.reason == ""
+
+    clock.advance(seconds=61)
+    with notify.webpush_capture() as retry:
+        assert _send(delivery) == "sent"
+    assert [request.url for request in retry.requests] == [failing.endpoint]
+    log = _log_by_sub(delivery)
+    assert [record["outcome"] for record in log[world.subs[1].pk]] == ["ok"]
+    assert [record["outcome"] for record in log[failing.pk]] == ["retry", "ok"]
+    assert delivery.attempts == 2 and delivery.state == "sent"
 
 
 def test_result_of_each_subscription_written_to_log_at_once_without_endpoints(webpush_on):
@@ -132,7 +141,7 @@ def test_result_of_each_subscription_written_to_log_at_once_without_endpoints(we
 
     with notify.webpush_capture(by_endpoint={second.endpoint: _resp(500), third.endpoint: "timeout"},
                                 on_request=peek):
-        assert _send(delivery) == "sent"
+        assert _send(delivery) == "waiting"
     assert seen == [0, 1, 2]
     log = _log_by_sub(delivery)
     assert sorted(log) == sorted(sub.pk for sub in world.subs)
@@ -233,7 +242,7 @@ def test_response_201_sets_last_ok_at_of_subscription(webpush_on, clock):
     good, bad = world.subs
     assert good.last_ok_at is None
     with notify.webpush_capture(by_endpoint={bad.endpoint: _resp(500)}):
-        assert _send(delivery) == "sent"
+        assert _send(delivery) == "waiting"
     assert _fresh(good).last_ok_at == timezone.now()
     assert _fresh(bad).last_ok_at is None
 

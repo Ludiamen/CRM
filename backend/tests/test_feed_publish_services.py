@@ -1,6 +1,7 @@
 """Service-only T-7214 checks; HTTP, files and dispatch belong to later tasks."""
 
 from datetime import datetime, timezone as dt_timezone
+from types import SimpleNamespace
 
 import pytest
 from django.db import connection
@@ -272,7 +273,7 @@ def test_publish_uses_one_default_clock_value_for_post_and_all_recipient_rows(mo
         calls.append(expected)
         return expected
 
-    monkeypatch.setattr(posts.timezone, "now", clock)
+    monkeypatch.setattr(posts, "timezone", SimpleNamespace(now=clock))
     post = posts.publish(author, {"kind": "post", "text": f"Текст @[{mention.pk}]",
                                   "to": [f"p{recipient.pk}"]})
     rows = list(support.model("feed.Recipient").objects.filter(post=post))
@@ -281,16 +282,23 @@ def test_publish_uses_one_default_clock_value_for_post_and_all_recipient_rows(mo
     assert {row.published_at for row in rows} == {expected}
 
 
-def test_publish_rejects_non_post_kind_and_invalid_text_without_rows():
+def test_publish_rejects_invalid_event_fields_and_invalid_text_without_rows():
     from apps.feed.services import posts
     from apps.feed.services.errors import FeedError
 
     author = _employee()
-    with pytest.raises(ValueError):
-        posts.publish(author, {"kind": "event", "text": "Не входит в T-7214", "to": ["all"]})
-    with pytest.raises(FeedError):
-        posts.publish(author, {"kind": "post", "text": "   ", "to": ["all"]})
+    recipient = _employee("Адресат проверки полей")
+    with pytest.raises(FeedError) as event_error:
+        posts.publish(author, {"kind": "event", "text": "Проверка полей события",
+                               "to": [f"p{recipient.pk}"]})
+    assert (event_error.value.code, event_error.value.field, event_error.value.params) == (
+        "event_title_required", "event_title", {})
+    with pytest.raises(FeedError) as text_error:
+        posts.publish(author, {"kind": "post", "text": "   ", "to": [f"p{recipient.pk}"]})
+    assert (text_error.value.code, text_error.value.field, text_error.value.params) == (
+        "empty_text", "text", {})
     assert support.model("feed.Post").objects.count() == 0
+    assert support.model("feed.Recipient").objects.count() == 0
 
 
 def test_find_plain_returns_unique_email_and_phone_matches_with_limit():

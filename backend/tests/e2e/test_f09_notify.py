@@ -172,17 +172,19 @@ def _future(days: int) -> datetime:
 
 
 def _edit_post(page, post_id, **fields) -> None:
-    """Правка записи формой `/feed/<id>/edit/`: поля `text`, `event_title`, `event_place` (раздел 10.2, 12.3);
-    ждёт переход на карточку. Помощника правки в `helpers_feed.py` нет."""
+    """Правка записи формой `/feed/<id>/edit/`: поля `text`, `event_title`, `event_place` (раздел 10.2, 12.3).
+    Форма — HTMX (hx-post, подмена карточки на месте, CONTRACT-007 10.2: «НХ — 200: фрагмент _post.html»),
+    поэтому ждём ответ POST и обновлённую карточку. Помощника правки в `helpers_feed.py` нет."""
     page.goto(f"/feed/{post_id}/edit/")
     expect(page.locator('[data-feed-page="edit"]')).to_be_visible()
     form = page.locator('[data-feed-page="edit"] form:has(textarea[name="text"])').first
     for name, value in fields.items():
         form.locator(f'[name="{name}"]').fill(value)
-    with page.expect_navigation():
+    with page.expect_response(lambda r: r.request.method == "POST" and f"/feed/{post_id}/edit/" in r.url) as saved:
         form.locator("button[type=submit]").first.click()
-    page.wait_for_load_state()
-    expect(page.locator('[data-feed-page="card"]')).to_be_visible()
+    assert saved.value.status == 200
+    expect(page.locator(f"article#feed-post-{post_id}")).to_be_visible()
+    expect(page.locator('form[data-form="feed-post-edit"]')).to_have_count(0)
 
 
 def _delete_post(page, post_id) -> None:

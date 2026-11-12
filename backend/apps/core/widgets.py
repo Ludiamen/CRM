@@ -33,6 +33,10 @@ class PortalDateInput(forms.DateInput):
     Кнопка загружает сетку месяца `/ui/date-picker/?month=ГГГГ-ММ` HTMX-запросом; месяц в адресе всегда текущий
     по Москве, значение поля в адрес не попадает (дополнение 63). Шаблон лежит в `templates/`, а не в приложении,
     поэтому разметка берётся через `TemplatesSetting`, какой бы отрисовщик ни передала форма.
+
+    Полю с границами (`attrs` с `min` и/или `max`) нужен нативный контроль диапазона браузером
+    (CONTRACT-007 К42/К61: `input[type=date]`, `validity` видит диапазон; серверная проверка остаётся
+    главной). Такое поле рендерится нативным `input[type=date]` без сетки, значение — `ГГГГ-ММ-ДД`.
     """
 
     template_name = "widgets/date_field.html"
@@ -54,4 +58,8 @@ class PortalDateInput(forms.DateInput):
         widget["attrs"] = field_attrs
         widget["field_id"] = field_attrs["id"]
         widget["picker_month"] = moscow_today().strftime("%Y-%m")
+        if "min" in field_attrs or "max" in field_attrs:
+            widget["native"] = True
+            shown = parse_date(str(widget["value"] or ""))
+            widget["value"] = shown.isoformat() if shown is not None else ""
         return context

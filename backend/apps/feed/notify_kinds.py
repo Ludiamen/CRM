@@ -102,7 +102,7 @@ def like_coalesce_text(user_id: int, object_ref: str, since: datetime) -> str:
     return text.snippet(f"Нравится {latest.user.full_name}: «{snippet}»", 300)
 
 
-def kinds() -> list[NotificationKind]:
+def notification_kinds() -> list[NotificationKind]:
     return [
         NotificationKind(
             code="feed.for_you",
@@ -182,3 +182,7 @@ def kinds() -> list[NotificationKind]:
             external_text="",
         ),
     ]
+
+
+# Совместимость с существующим внутренним caller в test_feed_notify_relevance.py.
+kinds = notification_kinds

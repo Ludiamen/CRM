@@ -235,16 +235,30 @@ def test_subscribe_rejects_post_without_csrf_token(webpush_on):
 def test_subscribed_device_is_listed_and_push_column_becomes_available(webpush_on):
     """FR-324: после подписки устройство видно в списке `li[data-device]` (браузер, платформа, дата), `push.list_for`
     отдаёт его, а столбец `push` таблицы из недоступного (`no_subscriptions`) становится доступным."""
-    from apps.notify.services import push
+    from apps.notify.services import kinds, push
     from tests import support_org, support_servicedesk
 
     user = support.make_employee()
     support_org.make_member(user, support_servicedesk.make_queue().unit)  # строки таблицы — участнику (§ 4.3)
+    catalog = {kind.code: kind for kind in kinds.catalog() if not kind.mandatory and kind.available(user)}
+    allowed = {code for code, kind in catalog.items() if kind.channels is None or "push" in kind.channels}
+    assert allowed
     browser = _Browser(user, ua=support.CHROME_UA)
     before = _tree(browser.page())
-    cell = _find(before, "td", data_channel="push")
-    assert cell and all(c.attrs.get("data-available") == "0" and c.attrs.get("data-reason") == "no_subscriptions"
-                        for c in cell), "до подписки столбец push должен быть недоступен по причине no_subscriptions"
+    rows = _find(before, "tr", data_notify_kind=True)
+    assert len(rows) == len(catalog) and {row.attrs["data-notify-kind"] for row in rows} == set(catalog)
+    for row in rows:
+        code = row.attrs["data-notify-kind"]
+        cells = _find(row, "td", data_channel="push")
+        assert len(cells) == 1, code
+        cell = cells[0]
+        assert cell.attrs.get("data-available") == "0", code
+        boxes = _find(cell, "input", type="checkbox")
+        if code in allowed:
+            assert cell.attrs.get("data-reason") == "no_subscriptions", code
+            assert len(boxes) == 1 and boxes[0].attrs.get("value") == f"{code}:push", code
+        else:
+            assert not boxes, code
     assert _find(before, None, data_empty_state="devices")
     sub_id = browser.subscribe(_endpoint()).json()["id"]
     assert [s.pk for s in push.list_for(user.pk)] == [sub_id]
@@ -256,8 +270,19 @@ def test_subscribed_device_is_listed_and_push_column_becomes_available(webpush_o
     assert _find(row, None, data_field="platform")[0].text() == _subs(user).get().platform != ""
     assert _find(row, "time", data_at=True)
     assert not _find(after, None, data_empty_state="devices")
-    cell = _find(after, "td", data_channel="push")
-    assert cell and all(c.attrs.get("data-available") == "1" and c.attrs.get("data-reason", "") == "" for c in cell)
+    rows = _find(after, "tr", data_notify_kind=True)
+    assert len(rows) == len(catalog) and {row.attrs["data-notify-kind"] for row in rows} == set(catalog)
+    for row in rows:
+        code = row.attrs["data-notify-kind"]
+        cells = _find(row, "td", data_channel="push")
+        assert len(cells) == 1, code
+        cell = cells[0]
+        boxes = _find(cell, "input", type="checkbox")
+        if code in allowed:
+            assert cell.attrs.get("data-available") == "1" and cell.attrs.get("data-reason", "") == "", code
+            assert len(boxes) == 1 and boxes[0].attrs.get("value") == f"{code}:push", code
+        else:
+            assert cell.attrs.get("data-available") == "0" and not boxes, code
 
 
 def test_subscribe_does_not_send_probe_push(webpush_on):

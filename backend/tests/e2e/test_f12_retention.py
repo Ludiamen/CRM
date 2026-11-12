@@ -318,7 +318,11 @@ def test_f12_post_aged_less_than_term_is_kept_by_night_job(admin_page):
     result = feed.age(_term_days(3) - 1, posts=[post_id])
     assert result["aged"] == 1, f"ночное задание: {result}"
     _alive(page, f"/feed/{post_id}/")
-    _open_home(page)
+    # контракт пагинации (CONTRACT-007 10.2:656-657): состаренная запись может быть за первой
+    # страницей из 20 — выводим её на первую фильтром периода публикации (FR-635, К64)
+    aged_day = datetime.now(MOSCOW).date() - timedelta(days=_term_days(3) - 1)
+    page.goto(f"/?from={aged_day.isoformat()}&to={aged_day.isoformat()}")
+    page.wait_for_load_state()
     expect(page.locator(f"#feed-post-{post_id}")).to_have_count(1)
 
 

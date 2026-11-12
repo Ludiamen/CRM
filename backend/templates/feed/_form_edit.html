@@ -26,9 +26,9 @@
   {% endif %}
   {% if form_kind == 'event' %}
   <fieldset data-kind-fields="event"><legend>Событие</legend>
-    <label for="id_feed_event_title">Название</label><input id="id_feed_event_title" name="event_title" type="text" value="{{ form_values.event_title }}" maxlength="200" class="form-control">
+    <label for="id_feed_event_title">Название</label><input id="id_feed_event_title" name="event_title" type="text" value="{{ form_values.event_title }}" class="form-control">
     {% include "feed/_form_error.html" with error=form_errors.event_title field="event_title" %}
-    <label for="id_feed_event_place">Место</label><input id="id_feed_event_place" name="event_place" type="text" value="{{ form_values.event_place }}" maxlength="200" class="form-control">
+    <label for="id_feed_event_place">Место</label><input id="id_feed_event_place" name="event_place" type="text" value="{{ form_values.event_place }}" class="form-control">
     {% include "feed/_form_error.html" with error=form_errors.event_place field="event_place" %}
     <label for="id_feed_event_start">Начало (Москва)</label><input id="id_feed_event_start" name="event_start" type="datetime-local" value="{{ form_values.event_start }}" class="form-control">
     {% include "feed/_form_error.html" with error=form_errors.event_start field="event_start" %}
@@ -45,7 +45,7 @@
     <p>Нет прикреплённых файлов.</p>
     {% endfor %}
     <label for="id_feed_upload">Добавить файлы</label><input id="id_feed_upload" type="file" data-feed-upload="post" data-upload-post="{{ post.pk }}" multiple>
-    <div data-feed-files></div>
+    <div data-feed-files>{% for file in form_new_files %}{% include "feed/_file_pill.html" %}{% endfor %}</div>
   </fieldset>
   {% include "feed/_form_error.html" with error=form_errors.files field="files" %}
   {% if pdn_found %}{% include "feed/_pdn_warning.html" with pdn_button="Сохранить всё равно" %}{% endif %}

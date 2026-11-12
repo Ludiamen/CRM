@@ -13,4 +13,5 @@
   .feed-filters label { flex: 1 1 100%; }
   .feed-filters input, .feed-filters select { width: 100%; min-width: 0; }
   .feed-post { padding: .75rem !important; }
+  .feed-post-actions { flex-shrink: 0; }
 }

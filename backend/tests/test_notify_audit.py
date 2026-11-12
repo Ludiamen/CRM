@@ -83,7 +83,10 @@ def _member():
 
 def _current_table(user) -> dict:
     """Код вида -> включённые внешние каналы действующей таблицы (в порядке каталога)."""
-    return {row.kind.code: [c for c in EXTERNAL if row.cells[c]] for row in _svc("prefs").effective(user).rows}
+    rows = _svc("prefs").effective(user).rows
+    for row in rows:
+        assert all(c in row.cells for c in EXTERNAL if row.kind.channels is None or c in row.kind.channels)
+    return {row.kind.code: [c for c in EXTERNAL if row.cells.get(c, False)] for row in rows}
 
 
 def _subscribe(user, *, ip=None, user_agent=UA, device_id=None):
@@ -257,11 +260,13 @@ def test_employee_table_cell_change_writes_event(bots_on):
     user = _member()
     rows = _svc("prefs").effective(user).rows
     assert rows, "у участника очереди нет строк таблицы"
+    for row in rows:
+        assert all(c in row.cells for c in EXTERNAL if row.kind.channels is None or c in row.kind.channels)
     target = rows[0].kind
-    before_list = [c for c in EXTERNAL if rows[0].cells[c]]
+    before_list = [c for c in EXTERNAL if rows[0].cells.get(c, False)]
     assert "email" in before_list
     cells = [f"{row.kind.code}:{c}" for row in rows for c in ("email", "push")
-             if row.cells[c] and not (row.kind.code == target.code and c == "email")]
+             if row.cells.get(c, False) and not (row.kind.code == target.code and c == "email")]
     client = support.logged_in(user, ip=IP)
     response = client.post("/me/notifications/", {"table": "1", "cell": cells, "quiet_mode": "calendar"})
     assert response.status_code == 302

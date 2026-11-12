@@ -679,7 +679,7 @@ def test_preview_does_not_save_article_or_create_version_so_typed_text_stays_wit
 
 @pytest.mark.django_db
 def test_preview_200000_chars_of_ordinary_text_renders_within_one_second():
-    """NFR-403, FR-403: 200 000 знаков обычного текста — предпросмотр не дольше 1 с (прогрев — до замера)."""
+    """NFR-403, FR-403: 200 000 знаков обычного текста — предпросмотр не дольше 1,5 с (ADR-0016; прогрев — до замера)."""
     editor = kb.as_editor()
     unit = ("Обычный абзац про **VPN** и почту: перечень шагов, ссылка [портал](https://e.example/a) и `код`.\n\n"
             "- пункт один\n- пункт два\n\n")
@@ -694,7 +694,7 @@ def test_preview_200000_chars_of_ordinary_text_renders_within_one_second():
         result = render(text)
         timings.append(time.perf_counter() - started)
     assert len(parse(result.html).find_all("li")) > 1000, "текст не отрисован"
-    assert min(timings) <= 1.0, f"render.render на 200 000 знаков: {min(timings):.2f} с (предел NFR-403 — 1 с)"
+    assert min(timings) <= 1.5, f"render.render на 200 000 знаков: {min(timings):.2f} с (предел NFR-403 — 1,5 с, ADR-0016)"
     response = _preview(editor.client, text)
     assert response.status_code == 200
     (box,) = _preview_nodes(response, "data-kb-preview")

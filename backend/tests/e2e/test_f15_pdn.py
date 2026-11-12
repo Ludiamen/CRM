@@ -229,7 +229,9 @@ def test_f15_email_or_phone_in_event_title_or_place_shows_warning(admin_page):
     _expect_warning(page.locator(FORM), phone=True, confirm_title="Опубликовать всё равно")
     page.goto("/")
     expect(page.locator("#feed-list")).not_to_contain_text(f"Встреча {word}")
-    expect(page.locator("#feed-list")).not_to_contain_text("пишите")
+    # имя события этого теста уникально: слово «пишите» без маркера встречается в опубликованных
+    # с подтверждением записях/комментариях прежних тестов того же admin_page (строка 156)
+    expect(page.locator("#feed-list")).not_to_contain_text(f"Собрание {word}, пишите")
 
 
 def test_f15_email_inside_backticks_still_shows_warning(admin_page):

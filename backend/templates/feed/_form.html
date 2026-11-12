@@ -25,9 +25,9 @@
     {% include "feed/_form_error.html" with error=form_errors.until field="until" %}
   </fieldset>
   <fieldset data-kind-fields="event"><legend>Событие</legend>
-    <label for="id_feed_event_title">Название</label><input id="id_feed_event_title" name="event_title" type="text" value="{{ form_values.event_title }}" maxlength="200" class="form-control">
+    <label for="id_feed_event_title">Название</label><input id="id_feed_event_title" name="event_title" type="text" value="{{ form_values.event_title }}" class="form-control">
     {% include "feed/_form_error.html" with error=form_errors.event_title field="event_title" %}
-    <label for="id_feed_event_place">Место</label><input id="id_feed_event_place" name="event_place" type="text" value="{{ form_values.event_place }}" maxlength="200" class="form-control">
+    <label for="id_feed_event_place">Место</label><input id="id_feed_event_place" name="event_place" type="text" value="{{ form_values.event_place }}" class="form-control">
     {% include "feed/_form_error.html" with error=form_errors.event_place field="event_place" %}
     <label for="id_feed_event_start">Начало (Москва)</label><input id="id_feed_event_start" name="event_start" type="datetime-local" value="{{ form_values.event_start }}" class="form-control">
     {% include "feed/_form_error.html" with error=form_errors.event_start field="event_start" %}
@@ -35,7 +35,7 @@
     {% include "feed/_form_error.html" with error=form_errors.event_end field="event_end" %}
   </fieldset>
   <label for="id_feed_upload">Файлы</label><input id="id_feed_upload" type="file" data-feed-upload="post" multiple>
-  <div data-feed-files></div>
+  <div data-feed-files>{% for file in form_files %}{% include "feed/_file_pill.html" %}{% endfor %}</div>
   {% include "feed/_form_error.html" with error=form_errors.files field="files" %}
   {% if pdn_found %}{% include "feed/_pdn_warning.html" %}{% endif %}
   <button type="submit" class="btn btn-primary">Опубликовать</button>

@@ -105,8 +105,25 @@ def _unit_refs(unit_ids):
     return structure.unit_refs(unit_ids)
 
 
-def full(post, *, rows=None, users=None, units=None) -> list[str]:
-    """Все адресаты в контрактном порядке; аргументы — уже загруженные данные страницы."""
+def _short_name(full_name: str) -> str:
+    """Краткая форма персонального адресата для строки записи: «Фамилия И. О.» (FR-603, сценарий 5).
+
+    Инициалы берутся от всех слов после фамилии; одно слово не меняется, уже краткая
+    форма («Петров И. И.») остаётся как есть.
+    """
+    parts = (full_name or "").split()
+    if len(parts) < 2:
+        return full_name or ""
+    initials = " ".join(f"{part[:1].upper()}." for part in parts[1:])
+    return f"{parts[0]} {initials}"
+
+
+def full(post, *, rows=None, users=None, units=None, short=False) -> list[str]:
+    """Все адресаты в контрактном порядке; аргументы — уже загруженные данные страницы.
+
+    `short=True` — персональные адресаты краткой формой «Фамилия И. О.» (строка записи);
+    полный список `/feed/<id>/to/` остаётся с полными ФИО (FR-603: «полный список по нажатию»).
+    """
     rows = _rows(post) if rows is None else list(rows)
     users = users or {}
     unit_ids = list(dict.fromkeys(row.unit_id for row in rows if row.unit_id is not None))
@@ -125,7 +142,7 @@ def full(post, *, rows=None, users=None, units=None) -> list[str]:
         person = users.get(row.user_id)
         if person is None:
             person = row.user
-        name = person.full_name
+        name = _short_name(person.full_name) if short else person.full_name
         if person.state == "dismissed":
             name += " (уволен)"
         items.append(name)
@@ -133,6 +150,6 @@ def full(post, *, rows=None, users=None, units=None) -> list[str]:
 
 
 def line(post, *, rows=None, users=None, units=None) -> Line:
-    """Первые пять адресатов и число остальных."""
-    items = full(post, rows=rows, users=users, units=units)
+    """Первые пять адресатов и число остальных; люди — краткой формой «Фамилия И. О.»."""
+    items = full(post, rows=rows, users=users, units=units, short=True)
     return Line(items[:5], max(0, len(items) - 5))

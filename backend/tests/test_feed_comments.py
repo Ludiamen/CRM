@@ -538,7 +538,7 @@ def test_core_comment_get_fields_unchanged():
             "SELECT column_name FROM information_schema.columns WHERE table_name = %s ORDER BY ordinal_position",
             [Comment._meta.db_table])
         columns = [row[0] for row in cursor.fetchall()]
-    assert columns == ["id", "object_ref", "author_id", "text", "created_at"]
+    assert columns == ["id", "object_ref", "text", "created_at", "author_id"]
     assert _FeedComment()._meta.get_field("comment").remote_field.related_name == "+"
 
 

@@ -77,7 +77,7 @@ def test_recipients_line_shows_unit_deleted_for_removed_unit_and_keeps_person():
 
 def test_recipients_line_all_unit_names_people_once_and_dismissed_marked():
     """FR-603, FR-607: «Всем»; названия узлов; ФИО людей один раз (строки `to` и `mention` одного человека — одна);
-    уволенный — «ФИО (уволен)»."""
+    персональный адресат строки — краткая форма «Фамилия И. О.» (сценарий 5); уволенный — с пометкой «(уволен)»."""
     from apps.feed.services import recipients
 
     author = _employee("Автор Авторов")
@@ -92,14 +92,17 @@ def test_recipients_line_all_unit_names_people_once_and_dismissed_marked():
     assert line.more == 0
     assert len(line.items) == 4
     assert sorted(line.items[:2]) == ["Бухгалтерия", "Отдел ИТ"]
-    assert sorted(line.items[2:]) == ["Иванов Иван Иванович", "Сидоров Сергей Сергеевич (уволен)"]
-    assert line.items.count("Иванов Иван Иванович") == 1
+    assert sorted(line.items[2:]) == ["Иванов И. И.", "Сидоров С. С. (уволен)"]
+    assert line.items.count("Иванов И. И.") == 1
 
     html = _session(author).client.get(f"/feed/{post.pk}/").content.decode()
     text = _to_part(html, post)
-    assert text.count("Иванов Иван Иванович") == 1
-    assert "Сидоров Сергей Сергеевич" in text and "(уволен)" in text
+    assert text.count("Иванов И. И.") == 1
+    assert "Сидоров С. С. (уволен)" in text
     assert "Отдел ИТ" in text and "Бухгалтерия" in text
+    # полный список по нажатию — с полными ФИО (FR-603)
+    body = _session(author).client.get(f"/feed/{post.pk}/to/").content.decode()
+    assert "Иванов Иван Иванович" in body and "Сидоров Сергей Сергеевич (уволен)" in body
 
 
 def test_recipients_line_over_five_shows_first_five_and_more_four_counting_comment_mention():
@@ -117,7 +120,9 @@ def test_recipients_line_over_five_shows_first_five_and_more_four_counting_comme
     line, full = recipients.line(post), recipients.full(post)
     assert len(full) == 9
     assert len(line.items) == 5 and line.more == 4
-    assert line.items == full[:5]
+    # порядок общий с полным списком; персональные адресаты строки — краткой формой (сценарий 5, FR-603)
+    assert line.items[:2] == full[:2]
+    assert line.items[2:] == ["Адресат Н."] * 3
 
     html = _session(author).client.get(f"/feed/{post.pk}/").content.decode()
     part = _to_part(html, post)
@@ -197,7 +202,10 @@ def test_t7211_recipients_line_and_full_are_service_only_and_share_order():
     line = recipients.line(post)
     full = recipients.full(post)
     assert len(full) == 9
-    assert line.items == full[:5] and line.more == 4
+    assert line.more == 4 and len(line.items) == 5
+    # порядок общий; персональные адресаты строки — краткой формой (сценарий 5, FR-603)
+    assert line.items[:2] == full[:2]
+    assert line.items[2:] == ["Адресат Н."] * 3
     assert full.count(people[0].full_name) == 1
     assert f"{people[4].full_name} (уволен)" in full
     units[0].delete()

@@ -1,11 +1,640 @@
 # Передача между сессиями — портал ИТ-отдела (CRM)
 
-Обновлено: 2026-10-30 19:00 (срез 007: всё до da899af ЗАПУШЕНО владельцем; T-7160 приёмка возобновлена 18:31, обработчики RQ перезапущены, da899af; ранее ПАУЗА — переезд в офис 1; T-7160 красный прогон: сервер готов b861523, приёмка прервана на 368/2228, возобновление — абзац «T-7160 НА ПАУЗЕ»); ранее 2026-10-29 07:10 (срез 006: ПАУЗА — переезд в офис 2; T-6304 не выполнен → решение 63, TASKS-006 v2 на проверке 3610149, ждёт подписи; ранее T-6302 [x] 14bbc19; ранее T-6302 возобновлён — round2; до этого ПАУЗА — переезд в офис 1; T-6302 прерван на 434/1790, 11 падений Web Push; возобновление — строка «СРЕЗ 005 ПРИНЯТ…», абзац «T-6302 НА ПАУЗЕ»); ранее 2026-10-28 12:50 (срез 006: Этап 3 закрыт — T-6260, T-6138 [x]; дальше Этап 4; ранее Этап 2 закрыт, T-6160 — см. строку «СРЕЗ 005 ПРИНЯТ… Дальше — срез 006»); ранее 2026-10-19 (срез 005, Этап 2: серверные тесты в git, проверка приёмки, T-5138); ранее 2026-10-07 (сессия 17 — Этап 3 среза 003 закрыт: сервер 1231/1231, приёмка 781/781, см. п. 000 очереди; сессия 16 — приёмка T-3140…T-3152 закоммичена 5a72664, T-3160 выполнена — см. п. 00 очереди; сессия 15: серверные тесты Этапа 2 — T-3101…T-3138; сессия 14: TASKS-003 подписан — 9b52a8b; Этап 1 среза 003 — 2cd3c81; **T-3100 выполнена**:
+> **Актуальный краткий статус — 2026-11-09.** Полный серверный remediation-прогон завершён:
+> **4070 passed, exit 0**, контроль исходников OK, независимая сверка Terra — APPROVE.
+> Артефакты: `crm-work/slice007/stage3/T7260-server-remediation-final/run-20261108-232536-M46Lvr/`.
+> Повторять этот прогон не нужно. T-7260 целиком не закрыта: браузерный gate/E05 остаются открытыми.
+> Владелец согласовал точный Web Push SDD diff `T7260-webpush-sdd/proposal-r1/`.
+> PLAN-004 v2 **подписан владельцем 2026-11-09 07:02+03**, подпись/статус/hash проверены
+> (`34f29b4fb7faf48786643e67d17d1290584bfcd49df4645d8073a04edfe313b2`).
+> TASKS-004 v2 и companion CONTRACT-004 перенесены, побайтно совпадают с согласованными кандидатами.
+> TASKS-004 v2 **подписан владельцем 2026-11-09 07:38+03**, подпись/hash/статус проверены.
+> Текущий TASKS body hash:
+> `dcfcfc51e9b51a1a4980bf4f8d691ae24fb8c8784d52d07403ceb746760f2091`.
+> SDD-проверка: **103 документа, 0 ошибок/предупреждений**, PLAN-005/006/007 не переписывались.
+> Стенд обновлён после проверенной копии `before-T7260-20261109-074113`; миграций нет, health/image PASS.
+> **Запущен focused Chromium gate из шести существующих сценариев**: unit
+> `crm-T7260-remediation-focused-20261109`, shell `sh_1be9d97cf001JjdYoHzD3eNZgK`.
+> Runner: `crm-work/slice007/stage3/run-T7260-remediation-focused.sh`; reset перед кругом штатной фикстурой.
+> Focused6 завершён: **5 passed / 1 failed** (F10 ожидал navigation; POST edit200 с карточкой без файла есть).
+> Артефакты: `browser-gate/remediation-focused-before-T7260-20261109-074113-e5YSCr/`.
+> Владелец отдельно разрешил точный `T7260-f10-wait-proposal.patch` (только wait helper, все file/404 asserts сохранены).
+> Kimi применил точный diff; оркестратор сверил его и запустил **только F10 Chromium**:
+> unit `crm-T7260-f10-wait-focused-20261109`, shell `sh_1beaa4c410012NHWNWXfFnLq88`,
+> `run-T7260-f10-wait-focused.sh` с этой меткой копии и reset. Ждать события, не дублировать/не опрашивать.
+> F10 завершён RED в `f10-wait-before-T7260-20261109-074113-f3MYzg/`: POST200/article прошли,
+> added count0 использует широкий ленивый locator и находит новую форму комментария. Download404 ещё не достигнут.
+> Qwen locator-review.md — APPROVE, прочитан; владелец отдельно разрешил однострочную коррекцию.
+> Она применена, AST/diff-check PASS; **запущен только F10 Chromium**: unit
+> `crm-T7260-f10-edit-form-focused-20261109`, shell `sh_1befc2ad70017MnmvrSYIk0faa`.
+> F10 завершён **PASSED, exit0**, `f10-wait-before-T7260-20261109-074113-haWZ7f/`:
+> дошёл до всех assertions, включая file removal и download404. Вместе с прежними5PASSED это шесть успешных
+> Chromium cases из двух прогонов, не один общий GREEN6. Qwen сверяет actual diff и результаты:
+> ожидается `T7260-f10-wait-fix/result-review.md`. Затем те же6 в Firefox/Edge/Yandex (18cases);
+> Qwen result-review.md прочитан — **APPROVE scope/доказательств**. Запущены Firefox/Edge/Yandex18cases:
+> unit `crm-T7260-remediation-other-browsers-20261109`, shell `sh_1bf066a0e001LvNar2HckD0T0U`,
+> `run-T7260-remediation-other-browsers.sh`, backup тот же, reset перед каждым кругом, source hashes сохраняются.
+> Прогон 18 завершён **18 passed, exit0, source-integrity=ok**, по6 Firefox/Edge/Yandex, без skip/error/failure.
+> Артефакты: `browser-gate/remediation-other-browsers-before-T7260-20261109-074113-Smdtpe/`.
+> Qwen `review.md` прочитан — **APPROVE доказательств focused18**. Не повторять завершённый прогон.
+> Начата следующая узкая DOM-партия Kimi `ses_e41586104ffexHVeTSoRqMZH1E`: только `_form_comment.html`,
+> `body.html`, `card.html` и новый `test_feed_dom_targets_regressions.py`; реальные RED unit/client harness до кода.
+> Артефакты: `T7260-dom-blockers/implementation/`. Existing tests/JS/consumer/контракты/стенд не менять.
+> Важно: `hx-swap-oob="true"` = **outerHTML**, неверное innerHTML-объяснение source-analysis исправлено оркестратором.
+> Последний fullserver4070P был **до этой партии**; после неё нужны fresh review/регрессия/обновление стенда по копии.
+> Остальные5PASSED не повторять без причины.
+
+> **Текущий стоп — аудит DOM-прогонов.** Исполнитель сообщил другой lock
+> `/tmp/opencode/test.lock` и DB/Valkey проектных контейнеров вместо назначенного test-profile/общей блокировки.
+> Заявленные RED/GREEN и 91 existing PASSED пока **не приняты**; DOM на стенд не развёрнут.
+> Запрошена реконструкция фактических команд и окружения из истории автора:
+> `T7260-dom-blockers/implementation/execution-audit.md`, агент `ses_e41586104ffexHVeTSoRqMZH1E`.
+> Только read-only: не повторять тесты, не очищать БД/Valkey и не обновлять стенд до выяснения изоляции.
+> Влияние на dev-данные/кэш пока **не установлено**, ни безопасность, ни повреждение не подтверждены.
+> Исходники нового теста/harness прочитаны; их пригодность и происхождение RED ещё требуют проверки.
+> Аудит автора получен/прочитан. Сохранённый `/tmp/opencode/run_regression.sh` сверён: IP PostgreSQL стенда,
+> Valkey db15; штатный compose test использует те же сервисы и db15, но запуск был с хоста и под неверным lock.
+> Текущие web/web-heavy действительно используют Valkey db0 (прочитаны только безопасные поля metadata).
+> Separate test DB следует из штатной conftest, но фактическое runtime-имя в evidence не сохранено;
+> историческая конкурентность/полная сохранность данных не доказаны. В journal записей по пяти invocation ID нет.
+> Harness RED по первичному TOTAL = **1P/7F**, не заявленные ранее0/8; GREEN8P/0F.
+> Идёт независимое read-only review кода/тестов/доказательств K3.1:
+> `ses_e40c3f14dffe0EI3vPc8qSgf6t`, ожидается `implementation/independent-review.md`.
+> Никаких новых тестов, cleanup/reset и изменения стенда в этом аудите не выполнялось.
+> Независимый `implementation/independent-review.md` получен/прочитан: production без required-правок,
+> **верификация заблокирована R1–R4**. GREEN-логи не содержат pytest-итогов, старые числа11/91 не подтверждены.
+> Claims отчётов сужены с сохранением исходных копий; raw evidence не перезаписано, harness не доказывает submit/lifecycle.
+> **Запущена новая controlled verification**: unit `crm-T7260-dom-controlled-20261109`,
+> shell `sh_1bf493a4e0016AUymECWwigSmS`, runner `T7260-dom-blockers/run-controlled-verification.sh`.
+> Общий lock/test-profile/systemd; RED на одноразовых ro-копиях трёх шаблонов без targets (ожидается7F4P),
+> затем текущие11+91cases (ожидается102P), JUnit/полные закрытые логи/runtime DB metadata/source hashes.
+> Рабочее дерево не мутируется, стенд не обновляется. Ждать события, не опрашивать/не дублировать;
+> при неожиданном результате runner останавливается. До результата source freeze.
+> Controlled завершён `controlled-20261109-105009-py79oG/`: **RED7F4P, GREEN102P**, exit0,
+> JUnit и source/mutated hashes сверены. Независимое resultreview запущено у K3.1, ожидается run/review.md.
+> Обнаружен пробел metadata plugin v1: runtime.jsonl содержит только configured db15/expectedtest_crm,
+> без actual DB — dynamic fixture не попала в item.fixturenames.102PASSED не отменяет этот пробел.
+> V1/evidence не менялись. Новый v2 фиксирует identity после django_db_setup и SELECT current_database().
+> **Запущен один DB-test** для проверки v2: `crm-T7260-dom-db-identity-20261109`, shell
+> `sh_1bf4d3a930018CSfTY0DdnR0rE`, runner `T7260-dom-blockers/run-db-identity-check.sh`.
+> Ждать события, не дублировать; fullsuite/стенд пока не запускать. Backend source не изменялся.
+> DB-identity завершён **1P/exit0**, `db-identity-20261109-105431-JEhA3e/`; первичные metadata/JUnit/hash
+> сверены: actual current_database()=test_crm, hostpostgres:5432, configuredValkey15. V2 работает;
+> это доказательство нового single-test, не ретроактивная телеметрия102run. Reviewer получил дополнение.
+> После его проверки — fresh fullserver через подготовленный `T7260-dom-blockers/run-full-server.sh`
+> (syntax PASS, **ещё не запущен**), общийlock/test-profile/v2runtime/fullsourcehash/JUnit. Стенд не менять.
+> Controlled `review.md` прочитан: focused7F4P/102P и mutation sensitivity приняты; R1/R2/R4 закрыты
+> в оговорённых пределах, v1 metadata-gap сохранён, R3 реальные браузеры pending. V2 рекомендован для fullrun.
+> **Полная серверная регрессия ЗАПУЩЕНА**: `crm-T7260-dom-full-server-20261109`, shell
+> `sh_1bf52fc8f001PoYsslRogeUreK`, runner `T7260-dom-blockers/run-full-server.sh`.
+> test-profile/commonlock/v2actualDB/fullbackend+deployhash/JUnit; OUT новый `full-server-<time>-*/`.
+> Ждать события, не опрашивать/не дублировать. Код, тесты, контейнеры стенда до результата не менять.
+> После результата — независимая сверка состава с4070baseline; только затем копия/обновление/браузерные R3.
+> Fullserver завершён **4081PASSED/exit0**, `T7260-dom-blockers/full-server-20261109-110049-JJKpRw/`.
+> Оркестратор сверил JUnit, actual_database=test_crm, Valkey15, все1161sourcehashes совпали.
+> `baseline-comparison.json`:4070P→P,+11DOMPASSED,0removed/changed/duplicates; полные parameter IDs сохранены.
+> Независимая fullserver-сверка K3.1 запущена, ожидается `full-server-.../review.md`.
+> До её результата не обновлять стенд; далее fresh проверенная копия и existing update runner,
+> затем focused F06 comment-mention/F08 home+card live и дополнительные R3 lifecycle/sync проверки.
+> Fullserver `review.md` прочитан — **APPROVE**4081/состава/изоляции/hashes; R3/E05/T7260 не закрывает.
+> Стенд обновлён после свежей проверенной копии **before-T7260-20261109-115838**, exit0,
+> `stand-update/update-before-T7260-20261109-115838-T8F1lm/`, health/image PASS, миграций нет, reset не было.
+> **Запущены3 existing Chromium cases** F06 comment-mention, F08 banner-click, F08 live-card-comment:
+> unit `crm-T7260-dom-focused-browser-20261109`, shell `sh_1bf891e80001D2g08eLtS2JYc2`,
+> `T7260-dom-blockers/run-focused-browser.sh` с новой меткой копии. Общийlock, штатныйreset перед кругом,
+> source/stand templates hash gate, tracing=on в закрытый evidence-каталог. Ждать события, не опрашивать/не повторять.
+> Source/стенд до результата не менять; три existing cases не заменяют все дополнительные R3 lifecycle/sync проверки.
+> Chromium3 завершён: **2P/1F**, `T7260-dom-blockers/browser-before-T7260-20261109-115838-3LmqiC/`,
+> source-integrityok. F08 banner-click/live-card-comment PASSED; F06 comment-mention упал на picker-option.
+> Диагностика: helper End→click→type сместил caret, фактический@внутри слова (index12,length43,нетboundary),
+> mention-fetch отсутствует. Synthetic Chromium с CSS проекта воспроизвёл. См. `f06-caret-evidence.md`.
+> K3.1 source-only проверяет callers/точный минимальныйhelperdiff/оставшийсяF06путь,
+> ожидается `f06-caret-review.md`. Existing helper/code пока не менять, F06 не повторять до review/согласования.
+> Прежние2PASSED сохранять, R3/E05/T7260 открыты.
+> K3.1 на F06-review вернул **Go usage limit exceeded**, итогового вердикта нет; не повторять эту модель.
+> Ревью передано запасному Go Qwen3.8 Max `ses_e406a8aaeffeHzSEcJEf30K0MX`,
+> output `T7260-dom-blockers/f06-caret-review-qwen.md`, толькоsource/read-only. Ждать события.
+> Qwen также **Go usage limit exceeded**, вердикта нет; оба Go-review кандидата исключены до восстановления,
+> recovery arm выполнен штатным скриптом. Alibaba sharedquota ранее исчерпана — не пробовалась заново.
+> Узкий review передан OpenAI Luna `ses_e4069dcdeffekDG5FUOFG8C9m6`,
+> ожидается `T7260-dom-blockers/f06-caret-review-openai.md`. Source/tests/стенд не меняются.
+> Luna review прочитан: **APPROVE точной строки box.click→box.focus в pick_mention** как сохранения callercaret;
+> владелец отдельно разрешил её через форму. GoCode Kimi2.7 `ses_e4046d103ffe85GVXmz6dLPGWh` выполняет
+> только эту строку + external isolatedRED/GREEN end/midcaret, безDB/стенда/actualE2E.
+> Артефакты `T7260-dom-blockers/f06-focus-fix/`; после сверкиdiff/harness оркестратор запускает толькоF06
+> через подготовленный `run-f06-focus.sh` с копиейbefore-T7260-20261109-115838 (**ещё не запущен**).
+> ДваF08PASSED не повторять; product/контракт/остальныеожидания не менять.
+> Kimi2.7Code также Go usage-limit; actualgitdiff helpers_feed.py пуст, строка ещё не менялась.
+> Каталог подтвердил code-backup MiniMax-M3; та же задача передана `ses_e4045b28bffegDPGRrIzI8XUzF`.
+> Один автор, тот же scope/artifacts/запретDB/стенда. Ждать события, не дублировать.
+> MiniMax-M3 тоже Go usage-limit; code-role Go исчерпан, Alibaba skipped по прежнейsharedquota.
+> Exactline+isolatedTDD переданы OpenAI Terra `ses_e40450e4effe163AEn4ogt5YL7`,
+> reviewproposal уже independentLuna. Scope не расширен, actualF06runner пока не запущен.
+> Terra завершил exactONEline pick_mention click→focus. Оркестратор сверил diff и полный syntheticharness/logs:
+> RED end/midпозиции49вместо64/7, GREEN64/7 с полнымtextmatch,helperoption/assertsисполнены.
+> `f06-focus-fix/` содержит report/harness/red/green/hashes/diff; это helperproof, не product/payload.
+> Luna независимо сверяет scope/syntheticproof, ожидается `f06-focus-fix/scope-review.md`.
+> **Запущен толькоF06Chromium**: unit `crm-T7260-f06-focus-20261109`, shell `sh_1bfbcbbc2001hOWMazBd8tiRba`,
+> runner `run-f06-focus.sh` с копиейbefore-T7260-20261109-115838, общийlock+штатныйreset.
+> Ждать события, не опрашивать/дублировать; source/стенд не менять. Прежние2F08PASSED не повторялись.
+> ActualsingleF06 завершён **PASSED/exit0**, `f06-focus-before-T7260-20261109-115838-t7Ut4M/`.
+> Status/JUnit и3template+3testhashes сверены изCRM/backend. Первичная проверка hashes изrepo-root дала
+> exit1из-заневерногобазовогокаталога, не source mismatch; корректныйпересчётexit0.
+> SafeTrace:mentionpicker200×1/commentPOST200×2,второйcommentpayload содержит@[id],consoleerrors0.
+> Luna scope-review.md прочитан (exactdiff+syntheticaccepted), теперь проверяетactualresult:
+> ожидается `f06-focus-fix/result-review.md`. ТриChromiumsuccessesпо2runsets,неjoint3/allbrowser/fullR3.
+> Послеresultreview — теже3Firefox/Edge/Yandex9cases,затем sharedhelpercontrols/дополнительныеR3.
+> Luna result-review.md получен/прочитан: actualsingleF06PASS,scope/hash/JUnit подтверждены;
+> совокупность3Chromiumcase принята только как2F08+отдельныйF06, неjoint3/fullR3.
+> **Запущены9casesFirefox/Edge/Yandex**: unit `crm-T7260-dom-other-browsers-20261109`,
+> shell `sh_1bfc01b7b001YPAKpLOOVUpPIN`, runner `T7260-dom-blockers/run-other-browsers.sh`,
+> backupbefore-T7260-20261109-115838. Общийlock,resetпередкаждымкругом,stand/hosttemplatehash/tracing=on.
+> Ждатьсобытия,неопрашивать/дублировать; source/стенд до результата не менять.
+> Other-browsers9 завершён **9PASSED/exit0**, `other-browsers-before-T7260-20261109-115838-UzeCG9/`.
+> Оркестратор сверил3Pкаждогобраузера,unique9,3template+4testhashesMATCH,host/standtemplatesidentical.
+> Luna independentlyсверяет9cases,ожидаетсяrun/review.md. Go recovery на границе unavailable12:59:25,
+> поэтому известныеquota-blockedGo/Alibabaнепробовались. Не повторять пройденные12браузерныхподтверждений.
+> Послеreview — sharedhelpercontrols и новые дополнительныеR3сценарии реальногоsubmit/auto-init/двухформ/repeatsync;
+> следующаяреализацияещёненачата, product/стенд неизменны.
+> Luna other-browsers/review.md получен/прочитан — PASS9/состава/manifests;12уникальныхподтвержденийприняты
+> с прежнимиоговорками. Владелец согласовал отдельный verification-план R3 в панели проекта,
+> id `e28f5fd3-c80f-4ec1-9b3f-d79b8bd60929` («Оставшаяся проверка DOM и helper F06»).
+> Terra `ses_e40450e4effe163AEn4ogt5YL7` добавляет ONLY новый `backend/tests/e2e/test_f_dom_targets_regressions.py`
+> с3сценариями(двеформы+реальныйpayload/HTMXauto-init, homeack/banner, cardack); запускатьемуничегонельзя.
+> Externalreport/diff/hash: `T7260-dom-blockers/r3-browser/`. Затемindependentsourcereview,лишьпотом6Chromium
+> (3новых+3existinghelpercontrols),приотказеСТОПбезослабленияожиданий. Existing/product/стенднеизменны.
+> Автор остановился безrepo-изменений: исходнаяплашканезадаётtargetfeed-live;явныйinnerHTMLтолькоу«Показатьвсе».
+> Оркестраторсверилисточникииуточнилдостижениестрогогокритериябезослабленияплана:
+>51реальнаяноваяпубликация→плашка→настоящая«Показатьвсе»→проверкиsingle/outside-target+новогоack.
+> Дополнение `r3-browser/swap-source-clarification.md`; никакихDOM/responseподмен илиproductfix.
+> Terra добавил новый `backend/tests/e2e/test_f_dom_targets_regressions.py`(3tests,184lines),
+> report `r3-browser/implementation-report-v2.md`; AST/compileONLY, реальныхпрогоновнет.
+> Luna independentlysource-review активен, ожидается `r3-browser/source-review.md`.
+> Оркестраторпрочиталновыйsource/report,подготовил `r3-browser/run-chromium.sh`(syntaxPASS,НЕзапущен):
+> 3новых+3existingcontrol,fail-fast-x,общийlock/reset/backup/hash/JUnit/traces. Доreviewне запускать.
+> Luna `r3-browser/source-review.md` прочитан — **APPROVE source для первого controlledrun**,неGREEN.
+> Первыйшагсогласованногопланаотмечен[x]. **Запущены6Chromiumchecks**: unit
+> `crm-T7260-r3-chromium-20261109`, shell `sh_1bfe71c50001fXRHFy0t00WBVL`,
+> runner `r3-browser/run-chromium.sh` с копиейbefore-T7260-20261109-115838.
+> Общийlock/штатныйreset/sourcehash/JUnit/tracing=on,fail-fast-x;ждатьсобытия,неопрашивать/дублировать.
+> Припервомотказеостановкадляразбора,source/тесты/стенддоразультатанеменять.
+> R3Chromium остановлен**RED1P1F**,4из6неисполнены: `r3-browser/chromium-before-T7260-20261109-115838-nkigN4/`.
+> Двеформы/реальныеpayload/HTMXauto-initPASSED. Homeпосле51публикации/плашки/ShowallactualswapFAILED:
+> countfeed-synced=2. TraceGET'/'HXTargetfeedlive200содержитцелыйhomebodyвключаяещёfeedlive/synced.
+> Source/evidence: `r3-browser/reload-failure-evidence.md`. ExistingreloadlinkinnerHTMLвставляетhomeвстарыйlive.
+> CONTRACT007:658требуетShowallперезагрузкой,нефиксируетhxатрибуты; кандидатnormalhrefreloadneedsreview/owner.
+> Luna source-only анализирует rootcause/minimalfix/нужноеуточнениеverificationплана,
+> ожидается `r3-browser/reload-failure-review.md`. ДоэтогоНЕправить/перезапускать/обновлятьстенд.
+> Luna reload-failure-review.md прочитан:REQUESTCHANGES;PLAN007:685–689/CONTRACT658 требуютобычнойперезагрузки.
+> Reviewerсчётпоправленappend-errata:1P1F4неисполнены. Владелецчерезформу**разрешилточный**
+> `r3-browser/reload-navigation-proposal.patch`(productссылкабез3hxattrs+newR3testнаnavigation),
+> новыйserverregressionfile иуточнениеverificationплана. gitapply--checkPASS,диффещёНЕприменён.
+> Планпанелиобновлёнтольковразрешённойобласти;подписанныеPLAN007/CONTRACTнеизменены.
+> Terra phaseA активна: ONLY новый `backend/tests/test_feed_reload_navigation_regressions.py`(ожидается7cases),
+> безproduct/newR3edits/прогонов. Output `r3-browser/reload-fix/phase-a-report.md`.
+> ЗатеморкестраторunitRED3F4P;лишьпослеREDавторприменяетexactproposal,затемGREEN/review/fullserver/backupstand.
+> PhaseAполучена/прочитана:7puretemplatecases,AST/compileONLY;product/R3diffещёнеприменён.
+> **UnitREDзапущен**: `crm-T7260-reload-unit-red-20261109`, shell `sh_1c1163bf50013Ji2id80Pc6qCm`,
+> `r3-browser/reload-fix/run-server-check.sh red`(test-profile/commonlock/systemd/JUnit/hash/v2metadata).
+> Ожидается3F4P/noDBfixture;прииномрезультатеSTOP. Ждатьсобытия,неопрашивать/дублировать.
+> REDзавершён/сверен `reload-fix/red-20261109-191342-txglzd/`:**3Fhxattrs+4P**,pytestexit1/runner0,
+> 10sourcehashMATCH,DBfixtureнебыло. PhaseBпереданаTerra:применитьONLYexactapprovedproposalк2файлам,
+> server7tests/остальныеисточникине трогать,NOпрогонов. Ждать `reload-fix/phase-b-report.md`.
+> Go recoveryнаboundaryunavailable18:59:50,новыхquota-пробне было. Послеdiffсверки —109GREENprofile.
+> PhaseBполучена/прочитана:exact2fileproposalприменён,reverseapply--checkPASS;server7testsне менялись.
+> **Запущен109profileGREEN**: unit `crm-T7260-reload-profile-green-20261109`,
+> shell `sh_1c118584c0014wzFiZ1QKxaqvi`, `reload-fix/run-server-check.sh green`.
+> test-profile/commonlock/v2actualDB/JUnit/hashes;ожидатьсобытиянеопрашивать/дублировать.
+> Luna parallelread-onlysource/scope/REDreview→`reload-fix/source-review.md`;product/testsourcefreeze.
+> Стендстарый,новыйreloadfixещёнедеплоен;fullserver/browserповторыдосверкине запускать.
+> `reload-fix/source-review.md` получен/прочитан:APPROVESOURCE/SCOPEиRED3F4P,неGREEN.
+> Вreviewоговорки:109 — серверныйпрофиль,неbrowser;phaseBизменил2файла,serverfileсозданвphaseA(итого3scope).
+> Ждать ужеработающий109profile,неповторять/необновлятьстенд. Затемнезависимаяresultсверка/fullserver.
+> 109profile завершён **109PASSED/exit0**, `reload-fix/green-20261109-191600-zRMXTb/`.
+> ОркестраторсверилJUnit7+11+23+25+25+18,0F0E0skip,actualDBtest_crm/configValkey15,10hashMATCH.
+> Luna independentlyresultreview→`reload-fix/result-review.md`,ожидатьбезповтора.
+> SDD103/0/0,toolsunittest140/140,diffcheckPASS;fullrunnerSyntaxPASS,ещёНЕзапущендоresultreview.
+> ПослеPASSfullsuiteожидаемый4088(4081+7), затемпровереннаякопия/stand/remainingR3browser;стендпокастарый.
+> `reload-fix/result-review.md` получен/прочитан:PASS109/RED→GREEN/scope/hashes,толькопрофиль.
+> **ПолныйserverЗАПУЩЕН**: unit `crm-T7260-reload-full-server-20261109`,
+> shell `sh_1c11d1fc7001W3fgRKu93Uiqhs`, прежний `T7260-dom-blockers/run-full-server.sh`.
+> test-profile/commonlock/v2actualDB/fullsourcehash/JUnit;новыйfull-server-<time>-*/.
+> Ждатьсобытия,неопрашивать/дублировать;backend/testsource/стенддоразультатанеменять.
+> Послеfullresult—составк4081+independentreview,толькопотомfreshbackup/update/изменённыйhome+4remainingChromium.
+> Fullreloadзавершён**4088PASSED/exit0**, `full-server-20261109-192113-rmCgV3/`.
+> ОркестраторсверилruntimeactualDBtest_crm/Valkey15,1163hashMATCH,4081P→P,+7reloadP,0removed/changed/duplicates.
+> Luna independentlyresultreview→`full-server-.../review.md`;Go recoveryboundaryunavailable20:14:58.
+> Покаfullreviewpendingстенднеобновлять. `r3-browser/run-after-reload-chromium.sh`подготовленsyntaxPASS,
+> НЕзапущен:5cases(homeизменённый+card+publish+F02/F03),-x;толькоПОСЛЕfreshbackup/standupdate.
+> Full4088 `review.md` получен/прочитан — PASS(состав/runtime/1163hashes),толькосервер.
+> Preflight72GiB/нетактивныхCRMunits/1163hashMATCH. **Запущенfreshbackup→standupdate**:
+> unit `crm-T7260-reload-stand-update-20261109`, shell `sh_1c1530e250012iCQlVAzc73VFV`,
+> прежний `update-stand-T7260-remediation.sh`. Ждатьсобытиябезpolling/дубликатов.
+> Послеexit0/провереннойновойкопииhealth-imagePASS —run-after-reload-chromium.shсНОВЫМtag.
+> Updateexit0:провереннаякопия **before-T7260-20261109-202008**, `stand-update/update-before-T7260-20261109-202008-fIdeHW/`.
+> Dump/tarпроверены,4файлаmode600,миграцийнет,health/imagePASS,resetво времяобновлениянебыло.
+> Соответствующийшагverificationплана[x]. **Запущены5Chromiumchecks**:
+> unit `crm-T7260-after-reload-chromium-20261109`, shell `sh_1c1547bae001x6vEYm1Wc0EF0T`,
+> `r3-browser/run-after-reload-chromium.sh` сновойкопией,общийlock/reset/hash/JUnit/traces,-x.
+> Ждатьсобытиябезpolling/дубликатов;source/стенддоразультатанеменять. ДвухформенныйPASSнеповторялся.
+> AfterreloadChromium**3P1F**,1неисполнен: `r3-browser/after-reload-chromium-before-T7260-20261109-202008-jzVyAr/`.
+> homeordinaryreload/newacks/cardrepeatsync/F06publishmarkerPASSED;F02FAILEDприВТОРОЙподготовительнойpublish,
+> ещёДОedit/@:pick_toожидалbefore+1,actual1.F03не запускался. Hash4templates+6testsMATCH.
+> Firstpublishresponse200несётOOBresetformсall,ноDOMпоследующеговыборасunit;candidateобщийOOBguard
+> блокируетзаменуформыиз-заужеexistingIDполейвнутриtarget. НЕсчитатьещёдоказаннымruntimecause.
+> Luna source-onlydiagnosis→`r3-browser/f02-form-reset-review.md`;safe evidence `f02-form-reset-evidence.md`.
+> STOPбезправок/повторов/standupdate;feed.js/helperfixнеразрешёнтекущимreloadscope,нужноотдельноерешение.
+> Luna f02-form-reset-review.md получен/прочитан:guardsourceмеханизмподтверждён,полнаяactualF02цепочкаещёнеproved.
+> SignedTASKS007решение62защищаетduplicatecomment,любоеисключениетребуетотдельногоowner/SDDscope.
+> ОркестраторзапустилisolatedDIAGNOSTICrealHTMX+feed.js/syntheticform,безapp/DB/Valkey/stand/исправлений:
+> unit `crm-T7260-oob-reset-diagnostic-20261109`,shell `sh_1c1605e20001ZawmIBvOoAlfv5`,
+> `r3-browser/run-oob-reset-diagnostic.sh`;controlбезfeed.jsvsсреальнымfeed.js,логshouldSwap/formreset/hash.
+> Ждатьсобытиябезpolling/дубликатов;рабочийproduct/testне меняется. Этоdiagnostic,неF02E2Eповтор.
+> Diagnosticv1exit1 `oob-reset-diagnostic-20261109-203440-4dBMsY/`:ошибкасинтетического#done,
+> innerHTMLответдобавилвложенный#done(strictlocator2). Нерезультатformreset;исходныйscriptсохранёнвrun/diagnostic-source.py.
+> ИсправленONLYsyntheticresponsemarker,добавленоread-onlyrootattributesнаблюдение;новыйv2запущен:
+> `crm-T7260-oob-reset-diagnostic-v2-20261109`,shell `sh_1c1615a3c001cFIAAIzEm8X19c`.
+> Product/тесты/стендне менялись;ожидатьсобытия,неопрашивать.
+> Diagnosticv2**exit0**, `oob-reset-diagnostic-20261109-203545-80jXKu/`:controlresettrue/allowedtrue,
+> actualfeed.jsresetfalse/allowedfalse/oldformretained;3sourcehashMATCH. РеальныйHTMXrootFORM#feed-form,
+> children1,root+fieldIDs;hx-swap-oobсrootужеудалён(null). Этоisolatedguardproof,неповторactualF02.
+> PreparedONLYproposal `r3-browser/form-reset-guard-proposal.patch`,apply--checkPASS,НЕприменён:
+> разрешитьсовпадениявнутристарогоtargetтолькодляодногоmatchingform#feed-form[data-feed-form]root;
+> внешниеколлизии/другиеOOBподстарымguard. Luna independentlyreviewproposal+TASKS007decision62amendment
+> →`form-reset-guard-proposal-review.md`. Доreview/owner/SDDподписиJS/тесты/стендне менять.
+> V1proposalreviewполучен:REQUESTCHANGES—getElementByIdнеучитываетвнешнийдубльеслипервыйmatchвнутриформы.
+> ПодготовленONLYexternal `form-reset-guard-proposal-v2.patch`(apply--checkPASS):ALLoutsideIDSetдляузкой
+> connectedmatchingformreplacement;остальнойguardне меняется. `form-reset-sdd-proposal.md`—2точкиTASKS007,
+> кандидатv14толькобудетподготовленпослерешениявладельца,реальныйдокументне менялся.
+> Luna independentlyv2code+SDDproposalreview→`form-reset-guard-proposal-v2-review.md`.
+> Новогоownerразрешенияещёнет:рабочиеJS/тесты/SDD/стендне менять. Следующийшагпослеreview—решениевладельца.
+> Независимыеv2-review OpenAI(Luna,затемSol) вернули usage-limit,вердиктовнет;Go-review/Alibabaпо-прежнемуblocked.
+> v2review передан прямым DeepSeek V4 Pro другойлинейки `ses_e3e2cc551ffextVkzQxHAcEFkb`,
+> тот же source-only scope, output `form-reset-guard-proposal-v2-review.md`.
+> Worktree подтверждён: feed.js/TASKS007 не изменены, proposal только во внешних файлах. Ждать события.
+> v2review DeepSeekV4Pro получен `form-reset-guard-proposal-v2-review.md`:**APPROVE-AS-PROPOSAL**.
+> Подтверждено:v2 закрывает v1edge(getElementById),безселекторныхинъекций/сканавнеreset,ждусетификацияminimal.
+> Ничего не применено и не подписано;следующийшаг—отдельноерешениевладельцапо exact JS-diff и SDD-черновикуv14.
+> Владелецчерезформуразрешил **JS-fixиSDDv14**. SDDчерновикподготовлен: `specs/007-feed/tasks.md` v13→**14/черновик**,
+> ровно3правки(версия/статус,решение62 текст,T7223строка);`sdd.pyпроверить`0ошибок. Подпись—завладельцем,модельнеподписывает.
+> ДалееTDDпоразрешённомуv2patch: newservertest+newe2etest+isolatedreal-HTMXharness,затемRED→applypatch→GREEN.
+> Автор—DeepSeekV4Pro(производительностьоправдана);авторне запускаетстенд/reset/DB/browser(E2Eтолькооркестратор).
+> Подпись владельцане легла: документбыл«черновик»с устаревшим `проверяет`-отпечатком(старыйv13hash).
+> Оркестраторобновил `docs/reviews/TASKS-007.md` проверяетподтекущийv14 `613fb145…47f02a`,
+> `на-проверку`выполнено. Владельцузаново: `python3 tools/sdd.py подписать specs/007-feed/tasks.md --кто Максим`.
+> **TASKS-007 v14 ПОДПИСАН** `2026-11-09T22:51+03:00` на `613fb145…47f02a`, статус утверждён; SDD103/0/0.
+> Реализация по v2 patch разрешена подписанным SDD; фазаA автора DeepSeekV4Pro ещёидёт.
+> PhaseA получена/прочитана:3теста+harness,патчНЕприменён,source-before=8afa879e…feed.jsчист.
+> **RED harness запущен** `crm-T7260-form-reset-red-20261109`/`sh_1c1e38c83001P7le1zqdPiGVtg`
+> —ожидаетсяcase(a)FAILнанеисправленномfeed.js,остальныеPASS. ПослеRED—applyv2,gзатемGREEN.
+> RED harness подтверждён `form-reset-harness-20261109-225757-5u9Ith/`:**case(a)FAIL**(allowedfalse/oldretained/stale),
+> (b)-(f)PASS(внешняя/inside-outsideколлизия,неверныйtarget/root/лишниекорни,beforeend/likerнеослаблены).
+> PhaseB автору(тажесессияDeepSeek):applyexactv2patchкfeed.js,безпрогонов;затемGREENharness+GREENservertests.
+> PhaseB применён;оркестраторсверилdiff=proposal(байтодинаково,лишькосметическаястрокаконтекстаханка).node--checkPASS.
+> **GREEN harness 8/8** `form-reset-harness-20261109-230015-rKWWkq/`(case a now allowed/replaced/reset;b-f неослаблены).
+> **Server profile запущен** `crm-T7260-form-reset-server-profile-20261109`/`sh_1c1e66a360016jJRHND9UfwIj1`
+> (newform-reset4+reload7+dom11+page/consumers/live,общийlock/test-profile/v2). Ждатьсобытия.
+> Profile113завершён**113PASSED/exit0** `form-reset-fix/server-profile-20261109-230105-k6tEQJ/`,13hashMATCH,actualDBtest_crm.
+> **Полная серверная регрессия запущена** `crm-T7260-form-reset-full-server-20261109`/`sh_1c1e8e366001uUyX7qoXIJRqzq`
+> (4092ожидаемо=4088+4,проверимсоставпосле). test-profile/v2/fullhash. Ждатьсобытиябезpolling.
+> Послеfull—freshbackup/standupdate,затемbrowserF02/F03/F08/newform-resetE2E.
+> Fullserver**4092PASSED/exit0** `full-server-20261109-230347-hnX9Pm/`:4088P→P,+4form-reset,0removed/changed,
+> 1165hashMATCH,actualDBtest_crm. Составсверенсервер.txt baseline192113.
+> Независимыйresult/scope-review(механика)DeepSeekFlashпередан;послеPASS—freshbackup/standupdate,browserrerun.
+> result-reviewPASS(механика):diff=proposalбайтвбайт,4092=4088+4,harnessRED1→GREEN0,SDDv14+проверяет613fb.
+> **Freshbackup/standupdateзапущен** `crm-T7260-form-reset-stand-update-20261109`/`sh_1c21aec21001vBB8bqPqQZAj8q`.
+> Послеexit0—browser5(F02/F03/F08own-comment/F08liker/newform-resetE2E)черезподготовленныйrunner.Ждатьсобытия.
+> Standupdateexit0:копия**before-T7260-20261109-235826**проверена,health/imagePASS,миграцийнет,webimagec1c6f673…1e0cc.
+> **Запущены5Chromium** `crm-T7260-form-reset-browser-20261109`/`sh_1c21c0ee3001OLY6ogjzHMlHN5`:
+> newform-resetE2E/F02/F03/F08own-comment-once/F08liker,-x,feed.jshost/standсверкадо/после.Ждатьсобытия.
+> Первыйзапускfalse-failнаpreflightcmp:хешиидентичныf8f3a01d…13f9b,различаласьтольковтораяколонка(путь).
+> Runnerисправленсравниватьтолькo64-симхэш;первыйrunнеисполнялтесты(ост-ринbeforepytest).Повторзапущен:
+> `crm-T7260-form-reset-browser-v2-20261109`/`sh_1c21ceb0c001d4U7uAPODK0Fzo`. Ждатьсобытия.
+> Browser v2 **1F**newform-resetE2E `form-reset-browser-before-T7260-20261109-235826-ghmK4W/`;F02/F03/F08неисполнены(-x).
+> Причина:create_unitвозвращаетID,авторпередалIDвtoтэг;pickerзапросq=idпуст. Этоtestauthorbug,непродукт.
+> АвторправиттолькоНОВыЙтест(_setup:именадляto);затемповтор5casesChromium.
+> Fixсверен:_setupзахватывает2unique_name,to=names;ASTOK;helpers/productнетронуты.
+> **Повтор5Chromiumзапущен** `crm-T7260-form-reset-browser-v3-20261109`/`sh_1c2206681001VTXLZ5RnM6GXXj`.Ждатьсобытия.
+> Бrowserv3**1P1F** `form-reset-browser-before-T7260-20261109-235826-OqdgtN/`;F03/F08неисполнены(-x).
+> newform-resetE2E**PASS**;F02теперьпрошёлpublish,ноупална_edit+mention(стр.125pick_mention):текстпоста
+> безначальногоtrailing-space,`@`посленесловнойграницынеактивируетподсказку(какпредупреждалReviewFocus).
+> Этосуществующийtest_helper(test_f02_important._edit),непродукт/newtest;нуженодинпробелперед@.
+> Предложенточныйnounw-passдифф;решениевладельцатребуется(существующийтестфайл).
+> Владелецразрешилоднострочныйпробел;применёнtest_f02_important._edit(строка123),ASTOK.
+> **Повтор5Chromiumзапущен** `crm-T7260-form-reset-browser-v4-20261109`/`sh_1c39d7d31001Q58rE4P6C04pDJ`.Ждатьсобытия.
+> Browser v4**5/5PASSED** `form-reset-browser-before-T7260-20261109-235826-SsGzPC/`(newresete2e/F02/F03/F08own/F08liker),
+> feed.jshost==stand f8f3a01d,6testhash+1feedjshashMATCH.
+> **Cross-browser15запущен** `crm-T7260-form-reset-other-browsers-20261109`/`sh_1c3a30fba001gDgVqTAhgx4XMg`
+> (5cases×Firefox/Edge/Yandex,резетпередкаждымкругом,hashgate).Ждатьсобытия.
+> Послепринятиязавершённыхbrowser—независимыйresultreviewиостаётсяE05/полныйT7260.
+> Cross-browser**15/15PASSED** `form-reset-other-browsers-before-T7260-20261109-235826-9zXDe4/`
+> (5×Firefox/Edge/Yandex),7hashMATCH. Итоgоform-resetfix:server4092+harness8/8+Chromium5/5+15/15всезёлёные.
+> Независимыйсводныйresultreview(flash)передан;E05/полныйT7260—покаоткрыты.
+> Сводныйbrowser-result-reviewPASS:`form-reset-fix/browser-result-review.md`;form-resetfixитогозакрыт
+> (server4092,harness8/8RED→GREEN,Chromium5/5,Firefox/Edge/Yandex15/15;SDDv14подписан`sdd.py`0ошибок;
+> toolsunittest140/140;`gitdiff--check`чист). Verificationпланпанели—все5шагов[x].
+> Открыто: **E05 WebPush** и **полныйbrowser T7260**. Ждуочередностьвладельцаследующимшагом.
+> Владелецвыбрал**«ПолныйбраузерныйT-7260»**. Preflight:плагин/make-idsнаместе,T7261/T7262[x]сAPPROVE,
+> копия/status-235826exit0,нетактивныхCRMunits.
+> **Полныйbrowser T7260gate ЗАПУЩЕН** `crm-T7260-browser-gate-20261109`/`sh_1c46033b0001Y2QfqcaftcbHok`
+> (f01-f15×4бразуера+прежниесрезыchromium/yandex+legacy3,метка-20261109-235826).Новыеe2eфайлыкорректноне
+> входятвmake-idsвыборку(test_f_*неtest_f\d). Длинный~часы;ждатьсобытия,неопрашивать. Ждатьсобытия.
+> **Полныйbrowser T7260gate RED**: `browser-gate/T7260-before-T7260-20261109-235826-SlfQjc/`;
+> main=2080P/160F(0E0skip),legacy=21P,~21ч38м. Классификация160F: **52F=моярегрессия**
+> (pick_mention focus: publish/comment-mention текстбезtrailing-space→`@`неграница);2F=мойflaky home-reload51post;
+> 106F=прежниепродуктовыебаги(f01 recipient,f02 date/read/readers,f03 event,f05 notify,f08 live,f09 telegram,
+> f10 files,f11 search,f12 retention,f15 PDN,e05 webpush,k/l).Моификсыудержались(F02petrov/F06sidorov/form-reset/
+> comment-card DOMене в списке). ПРИОРИТЕТ:моюрегрессию52F(границаперед@вpick_mention/_fill_form)→мoйflaky→прежние106.
+> Владелецразрешилправкуграницыв`pick_mention`;применено,AST/diff-checkOK. ЗапущенChromium13уникальныхдляпроверки
+> `crm-T7260-mention-boundary-chromium-20261111`/`sh_1c9f6bd0100135R5kMJjziC5X0`(-x).ПослеGREEN—остальные3браузера.
+> Chromium13/13PASSED `mention-boundary-before-T7260-20261109-235826-50TkMG/`.Запущеностальные3браузера39:
+> `crm-T7260-mention-boundary-other-20261111`/`sh_1ca031b33001c2p4Xq1o0ha8gD`. Ждатьсобытия.
+> Остальные39/39PASSED `mention-boundary-before-T7260-20261109-235826-t5D0Zp/`. **Регрессия52F полностью
+> устранена**(13уникальных×4браузера,hashMATCH). Условнаяграницанеизменяетtrailing-spaceпути(no-op).
+> Остаётся:мойflaky2F(home-reload51post)+прежние106F.Далееразборэтих108F.
+> Владелецвыбрал**триаж106первопричин**. Запущенread-onlyтриаж(AlibabaDeepSeekV4Pro-0813,Standardтеперьдоступен)
+> `ses_e353f2c84ffeRgyxtCoBgpZIlG`,output `browser-gate/triage-106.md`;исключенымои52Fиflaky2F.Ждатьсобытия.
+> Triageготов/прочитан:17групп.Код-подтвержденоP1(61T):G1recipients short-name,G2 date min/max,G3 readers click,
+> G5 maxlength200,G6 edit hx-post vs nav,G7 author filter.P2код/добор(24T):G4,G10,G11,G12,G13.
+> Среда?(17T):G8/G15 mail,G9 WS-banner,G17 k/l-timeout+perf,G14 webpush,G16 flaky-firefox.
+> Ждурешениевладельцапотикуфиксов.
+> Владелецвыбрал**«ВесьP1включаяG3/G6»**. Контрактсверен:G3счётчик—ссылка(CONTRACT769),G6 edit—HX200фрагмент
+> (CONTRACT661,какF10). Автор—Alibaba glm-5.3(Standardкод),6фиксовTDDбезstand/browser/e2e.Ждатьсобытия.
+> Авторсдал6фиксов+новыйtest_feed_p1_regressions.py(20кейсов)+3обновлённыхсуществующихсерверныхтеста.
+> Отчётпрочитан:важно—G1черезshort(небезусловно,G3со_K42/К61,3существующихтестапротиворечиликонтракту.
+> **Профильныйсерверзапущен** `crm-T7260-p1-focused-20261111`/`sh_1cb2e18b6001HhnnT3jEa72h9J`;
+> параллельноsource/дифф-ревьюAlibabaDeepSeek`ses_e34d18fb8ffeTN9o0F5giMa07g`→`T7260-p1-fix/review.md`.Ждуоба.
+> ПрофильныйP1**73PASSED**(`p1focused-20261111-181558-DI37xH/`:20new+21posts+25important+7visibility_3),actualDBtest_crm,hashMATCH.
+> Жду независимоеsource-ревью; послеAPPROVE—полнаясервернаярегрессия(~4112)идалееstand/browser61тест.
+> P1source-ревью**APPROVE**(3тестачестнокоррекция,Glоп—G1/G2/G3/G5/G6/G7валидны;докупаливогласкасценариянеблокер).
+> **Полная серверная регрессия запущена** `crm-T7260-p1-full-server-20261111`черезпрежнийrun-full-server.sh.Ждатьсобытия.
+> Fullserver**4108P/4F**(`full-server-20261111-182436-csZ2Ue/`):2регрессииP1(пропущеныавтором/ревьюером)+2perf-flaky.
+> Регрессии:test_date_field::no_native_date_inputs(G2 vs FR-148—нужнаврезкаuntilпоK42/K61);
+> test_feed_page_2::post_shows_author_photo_arrow_recipients(G1—ожидаетполноеФИО,нужнократкое).
+> Perf-flaky:kb_render1.05svs1.0,lists_export13.2svs10(несвязаныспродом).ЗапускаюP1-r2иперепроверкуperf.
+> P1-r2готов(2тестаобновлены:test_date_field native-until carving,test_feed_page_2 краткаяформа),productне тронут.
+> Perf-recheck:2перф-тестасноваFAILв изоляции—НЕфлейки,а**машиннаянагрузкаload14-15**(yandex_browser49%+openchamber48%CPU).
+> Этосреда,неко-регрессия(былиGREENв4092).Нужензапускfullserverнаостывшеймашине;сейчасперепроверюP1-серверныйнаряд.
+> FocusedP1-r2**108PASSED**(`p1focused-20261111-202846-TbJU7j/`:20new+21+25+7+10date_field+25page_2)—обе regрессиизакрыты.
+> Запускаюfreshbackup/standupdate,затембраузерные61тестG1-G7.
+> Standupdateзапущен `crm-T7260-p1-stand-update-20261111`/`sh_1cbacbb6c001sbuDKTOBeZeTE1`.
+> Browserrunner `run-p1-browser.sh`готов(16уникальныхG1-G7×4браузера,fail-fast,feed.jshost/standсверка).Ждуupdate.
+> Standupdateexit0:копия**before-T7260-20261111-203417**проверена(health/imagePASS,миграцийнет,webimagee6377a39).
+> **Запущены61браузерныхтестG1-G7** `crm-T7260-p1-browser-20261111`/`sh_1cbae7b8f001k3IY6l8wiNcLxh`(-x).Ждатьсобытия.
+> P1-browser v1 **12P/1F**(x остановился):f11`_edit_comment`жаждалнавигацию,аформакомментария-HTMA(`hx-post#c<id>`).
+> Авторпропустил`_edit_comment`(чинилтолько`_edit_post`). Исправилтемжепаттерном;AST/diffcheckOK.
+> **ПовторP1-browser** `crm-T7260-p1-browser-r2-20261111`/`sh_1cbcd4eeb001IgZSXHw85B8dY8`(-x,все61).Ждатьсобытия.
+> P1-browser r2**19P/1E**(x):ошибкафикстуры`crowd_post`(firefox)—`Page.goto interrupted by another navigation`
+> присоздании12сотрудников.Этофлейкзагрузки(load14-15,yandex_browser+openchamberCPU),неP1-код;19доэтогоPASSED.
+> Машинаперегружена—портятсинптомыперф-бюджетыитяжёлыефикстуры.Фиксируюиперепроверяюизолированно.
+> Изолированныйповторfirefox`read_12_of_40`—**PASSED**(776s).Ошибкабылафлейком(crowd_post),некод.
+> Убрал-xизrunner;полныйP1-browser**61безfail-fast**запущен`crm-T7260-p1-browser-r3-full-20261111`/`sh_1cbf5c3a1001ZXA8mPoPkikPq2`.
+> Соберувсерезультатыиоттриажируюфлейкиотдельно.
+> P1-browser full**63PASSED/0F**,нотаймаут1чсрезал**2yandexтеста G7**(filter_choice+360px)—runner`timeout3600`.
+> Дозапускаю2yandex-тестаизолированно`crm-T7260-p1-g7-yandex-tail-20261111`/`sh_1cc2e0582001T97j1cY4OeKgbT`.Жду.
+> 2yandex-тестPASSED.**P1полностьюверифицирован:16уникальныхG1-G7×4браузера=64/64PASSED**(сучётомизолированных
+> повторовфлейков).SDD103/0/0,tools140/140,diffcheckчисто.P1закрыт.
+> Остаётся:P2код(G4/G10/G11/G12/G13=24),среда(G8/G9/G15/G17+perf),webpushG14/flakyG16,мойflaky2F.
+> Владелецвыбрал**P2-код(G4/G10/G11/G12/G13)**. Запускаюисследование+фиксыавтораAlibaba glm-5.3(тажесессия).
+> P2 авторсдал:продуктfeed.js(G4a read-move FR-614)+_files.html(G11 имяуэскиза);тестыновыйtest_feed_p2_regressions.py+
+> harness_read_move.js+2e2eодностроки(G4b goto("/"),G13 уникальныйзаголовок).Уточнилтриаж:G11/G13НЕбаги(alt-текст/
+> загрязнениесессии),G10/G12=контрактпагинацииvsтест(выводвладельцу,e2eнеменял).Nodeharness6/6послефикса.
+> **ПрофильныйсерверP2запущен**(new+test_feed_pdn)`crm-T7260-p2-focused-20261112`/`sh_1ce114186001U0t1ZOkslxTxSN`;
+> параллельнонезависимоеревьюAlibabaDeepSeek.Ждуоба.
+> P2-focused v1:16P/3F—3тестаG11падали`_Attr()takesnoarguments`(заглушкабез`__init__`,авторнезапускал).
+> Исправил`__init__`вtest_feed_p2_regressions.py;AST/diffcheckOK. Повтор`crm-T7260-p2-focused-r2-20261112`/`sh_1ce131517001Wmz5PxVBNTpeBG`.
+> P2-focused r2**19PASSED**(6p2+13pdn).Жду независимоеsource-ревью;затемfullserver/stand/browserG4-G13ирешениевладельцаG10/G12.
+> P2 source-ревью**REQUEST CHANGES**:блокер G4а—авторубралграницу«внепоказанного»целиком,противоречитplan.md:462-463
+> (иначе придётс«Ещёзаписи»)→дубльприподгрузкеполнойстраницы. G4б/G11/G13 верны,G10/G12 ждутвладельца.
+> Направляюавторуточныйminimal-fix(откладыватьтолько при[data-feed-more]иat<oldest)+harness-кейсполнойстраницы.
+> G4a исправленточнопоревью:убрановерхнююграницу,оставленаотсрочкатолькос[data-feed-more]иat<oldest;harness**7/7**.
+> Feed.js-диффпровереноркестратором.Запускаюfullserver(учётом2env-perfподнагрузкой),затемstand/browserG4-G13.
+> Владелец**согласовалправкуf08/f12подпагинацию**(G10/G12).Направляюавтору;fullserverидётпараллельно.
+> G10/G12авторсдал:f08листает«Ещёзаписи»до конца,f12фильтрпериодапубликации;guardвp2-тестдополнен.Диффсверен.
+> Направляюконсолидированноеrev3+rev4ревью(авторужепередалG4a-fix);фokussedсерверпонавторномуguardуидётитоже.
+> Focused-r3отклонил`flock`(exit2):полная серверная регрессия ещё идёт и держит test.lock. Перезапущупослеfullserver.
+> Итогпараллельно:fullserver(вфоне),консолидированноеревьюrev3+rev4(вфоне).Ждуоба.
+> Follow-upревью**APPROVE**(G4аrev3+G10/G12rev4).Обаблокерасняты.Ждуfullserver;затемfocused-r3guard+stand+browser20.
+> Fullserverдал**4118passed/0F**(дажеperf-тестыпрошли—машинаостыла),ноexit1поsource-integrity:3файла(f08/f12/p2-guard)
+> изменилисьвРЕТево времяпрогона(мояёркестрация:запустилrev4параллельноfullserver).Обведуфайлыe2e,серверныезатрагивалтолькоguard.
+> Перезапускаюfocused-r3(guard)сейчас;полнуюрегрессиюповторюпосле—нафинализированномsource.
+> Focused-r3**19PASSED**(guardвнутриDB-тестаG10/G12).Запускаюповторполнойрегрессиинафинализированномsource(clean integrity).
+> Fullserver**4118PASSED/exit0/чистаяintegrity** `full-server-20261112-090416-C53JGN`,actualDBtest_crm.SDD0/tools140/diffcheckчисто.
+> Запускаюfreshbackup/standupdate,P2-browser24после.
+> Standupdateexit0:копия**before-T7260-20261112-100612**проверена,health/imagePASS,webimageac6fba9e.
+> **ЗапущеныP2-browser24** `crm-T7260-p2-browser-20261112`/`sh_1ce954a20001YHpTyr8cx0c9f7`(G4/G10/G11/G12/G13×4).Ждатьсобытия.
+> P2-browser**23P/1F** `p2-browser-before-T7260-20261112-100612-0NmOp0/`:единственныйF=`test_f02_read_click…[firefox]`
+> (G4а,юзераfilespecific).Ответread200/article/no-read-btnИДЕНТИЧЕНchrome;chromium/edge/yandexпроходят,firefoxкарточка
+> остаётсявблоке(count1).Изолированныйповтор—сноваF(нефлейк).Консольhtmx-ошибокнет.Этореальныйfirefox-specific
+> остаток,предшествующийтекущимПравкам(былврасширенномREDисходномgate).Требуетinstrumentedfirefox-отладки.
+> Владелецвелел**отложитьfirefox G4a**какизвестныйedge(неблокер).P2фактическизакрыт(23/24+полныйсервер4118).
+> Остаютсясреды-группыG8/G9/G15/G17(~19)+webpushG14+firefox-flakyG16+мойflaky2.Перепроверяюнаостывшеймашине/freshстенде.
+> Перепроверкасредызапущена `crm-T7260-env-recheck-20261112`/`sh_1cf455033001uOcbAFSsW3BpJ9`(почта/WS/timeouts/webpush/flaky,
+> без-x,сборвсехntai).Ждурезультата—либоонитеперьпроходят(средадеградации21.5ч),либоэтокод.
+> Перепроверкасреды**30P/1F**:всеG8/G9/G15/G17(k01/k04/k05/l08)+G14webpush+G16firefox+мойflaky home-reload—ПРОШЛИ
+> (значитбыладеградациястендаза21.5ч).Единственныйостаток—`k12`200000-значpreview1.07s vs1.0s(НФР-403,перф~7%).
+> ИтогT-7260:осталисьтолькоК12(перф)иfirefoxG4а(отложен).Всёостальное—устранено.
+> k12:владелецрешил1,5сADR-0016(на-проверке).ИзменениеSPEC-005:NFR-403вызвалокаскадна5док.
+> (зависимость)плюсоснован_наPLAN-005.Владелецвелел**переподписатьвсюцепочку**.Готовлюребейз+подписи.
+> Каскадминимален:телоизменилосьтолькоуSPEC-005(подписьслетела);уPLAN-005устарел`основан_на`—поправил(тело/подписьцелы).
+> Осталосьподписатьвладельцем:SPEC-005(новыйhash)+ADR-0016;этоснимет5«зависимость»ошибок.Ждуподпись.
+> SPEC-005+ADR-0016**подписаны**.SDD**0ошибок**(каскадснят).kb_render1.5с—1passed.Дозапускаюk12-yandex(также1.5с).
+> k12-yandex**PASSED**(1.5с).T-7260итог:закрыто52(pick_mention)+61(P1)+23(P2)+~30(среда)+k12(ADR).ОстаётсятолькоfirefoxG4а(отложен).
+> SDD0/tools140/diffcheckчисто.Готовоприсвоениевладельцу.
+
+Обновлено: 2026-11-08 — T-7260 полный браузерный gate завершён RED; см. раздел «Актуальное продолжение — 2026-11-08». Ранее 2026-10-30 19:00 (срез 007: всё до da899af ЗАПУШЕНО владельцем; T-7160 приёмка возобновлена 18:31, обработчики RQ перезапущены, da899af; ранее ПАУЗА — переезд в офис 1; T-7160 красный прогон: сервер готов b861523, приёмка прервана на 368/2228, возобновление — абзац «T-7160 НА ПАУЗЕ»); ранее 2026-10-29 07:10 (срез 006: ПАУЗА — переезд в офис 2; T-6304 не выполнен → решение 63, TASKS-006 v2 на проверке 3610149, ждёт подписи; ранее T-6302 [x] 14bbc19; ранее T-6302 возобновлён — round2; до этого ПАУЗА — переезд в офис 1; T-6302 прерван на 434/1790, 11 падений Web Push; возобновление — строка «СРЕЗ 005 ПРИНЯТ…», абзац «T-6302 НА ПАУЗЕ»); ранее 2026-10-28 12:50 (срез 006: Этап 3 закрыт — T-6260, T-6138 [x]; дальше Этап 4; ранее Этап 2 закрыт, T-6160 — см. строку «СРЕЗ 005 ПРИНЯТ… Дальше — срез 006»); ранее 2026-10-19 (срез 005, Этап 2: серверные тесты в git, проверка приёмки, T-5138); ранее 2026-10-07 (сессия 17 — Этап 3 среза 003 закрыт: сервер 1231/1231, приёмка 781/781, см. п. 000 очереди; сессия 16 — приёмка T-3140…T-3152 закоммичена 5a72664, T-3160 выполнена — см. п. 00 очереди; сессия 15: серверные тесты Этапа 2 — T-3101…T-3138; сессия 14: TASKS-003 подписан — 9b52a8b; Этап 1 среза 003 — 2cd3c81; **T-3100 выполнена**:
 контракт CONTRACT-003.md — 91a7169, помощник support_servicedesk.py — 604c03d; следующий шаг — волны тестов T-3101…), Opus.
 Файл вне git (.gitignore). Читать первым в новой сессии. Прежние версии — /home/gpgr/Документы/crm-work/HANDOFF.before-*.md
 (последняя — HANDOFF.before-2026-10-06-s4.md: до записи о T-3100).
 
 ## Состояние
+### Актуальное продолжение — 2026-11-08
+
+- Новое поручение владельца: найти путь продвижения, необходимые разрешения на диагностику/исправления в рамках
+  подписанных требований даны. По JSONL сохранённых trace установлен конкретный блокер: `htmx:targetError` при
+  сохранении правки записи (14 C / 13 F / 14 E / 14 Y сценариев); во всех 14 Chromium случаях POST edit не записан.
+  `feed/form_edit.html` не содержит target `#feed-post-ID`, который требует вложенная форма, и не подключает feed assets.
+  Проверка комментария независимым исполнителем: его edit-страница уже имеет wrapper `#cID`, не править вслепую.
+  Также подтверждены отсутствующий mention-list в `_form_comment.html` и OOB `#feed-synced` без HTML-target;
+  это следующие отдельные партии, не приписывать им все падения. Полные факты — новый раздел «выход из диагностического
+  тупика» в `docs/reviews/TASKS-007.md`. K04 уже focused PASS, не повторять ради уверенности.
+- Первая узкая партия запущена: OpenAI GPT-6.1 Sol, subagent `ses_e44312449ffe87TyJE2QZE48Ta`, единственный автор
+  `feed/form_edit.html`, `apps/feed/views/posts.py`, нового `tests/test_feed_edit_page_regressions.py`.
+  RED→GREEN, обычный/HX target/отказ/ПДн, assets; existing tests/CONTRACT/JS не менять. Стенд/reset запрещены этому
+  исполнителю; DB только test-profile под общим lock/systemd. Артефакты `stage3/T7260-edit-page-fix/` вне git.
+  Исполнитель завершил: настоящий RED 8F → GREEN 8P; synthetic Chromium Save1POST/retry2POST без target/page errors.
+  Оркестратор сверил diff, тесты и первичные status/exit/harness. Независимое review: Go Kimi K3.1 Pro и Qwen3.8 Max
+  usage-limit без вердикта; OpenAI Terra `ses_e4429e1a0ffeHPoavKBqFxD82H` — REQUEST CHANGES,
+  первичный `review.md` прочитан: R1 потеря новых uploaded files после invalid/ПДн refusal → retry.
+  Автор в той же сессии выполняет fix-back: новый regression RED ordinary/HX invalid/Pdn+file → retry+attachment,
+  восстановление только допустимых own/unbound files, security negatives; posts.py/_form_edit.html/новые tests,
+  без JS/стенда/existing tests. Артефакты `T7260-edit-page-fix/r1/`; затем independent re-review Terra.
+  R1 представлен: RED10F→GREEN62P (новые10+прежние8+existing44), synthetic upload/invalid/Pdn retry PASS.
+  Оркестратор прочитал diff/новые tests/r1 report; Terra в той же сессии выполняет re-review, ожидается
+  `T7260-edit-page-fix/review-followup.md` получен: REQUEST CHANGES, R1 закрыт, R2 malformed files (`²`/слишком
+  длинное число) может дать 500 в новом восстановлении формы через private `_ids`. Автор в той же сессии
+  выполняет r2 RED→GREEN: безопасный bounded parser только в view, новый regression test, прежние62+новые.
+  Shared service parser/bind/auth/JS/stand/existing tests не менять. R2 GREEN уже завершён: **80 passed**, exit0,
+  RED12F6P; оркестратор дождался существующего прогона через inotify без polling/дубликата. Terra re-review запущен,
+  ожидается `review-r2.md`. Важно: r2/report.md честно отмечает старые unsafe `_int_ids`/`files._ids`/remove,
+  часть Pdn tests изолирует PdnFound на service boundary; общий malformed ID путь пока не объявлять безопасным.
+  Terra review-r2.md: APPROVE узкой партии, прочитан оркестратором, оба required закрыты.
+  Полная серверная регрессия **ЗАПУЩЕНА** через systemd-run --user --wait: unit
+  `crm-T7260-edit-page-full-20261108`, shell `sh_1bbe5d2c8001aFv3l1eBKjdv6m`,
+  `run-full-regression.sh` из каталога партии. Runner под test.lock, test-profile only, сохраняет
+  status/server.txt/source.sha256 в новом full-regression-* каталоге.
+  **ПРОГОН ЗАВЕРШЁН RED**, `full-regression-20261108-190243-usUbSm/`: 4028P24F, exit1, 48:59; НЕ повторять.
+  Оркестратор сохранил полную regression-diff.json к старому party5 baseline от1ноября:3361P→P,500F→P,
+  14P→F,7F→F,170added(167P3F),1removed. Это НЕ causal baseline текущего fix; много промежуточных реализаций.
+  Terra `regression-review.md`: APPROVE сверки, gate RED; все36fix-tests PASSED,6hashes совпали.
+  Удалённый WebPush test намеренно заменён по записанному решению владельца8ноября (PLAN004/FR333);
+  CONTRACT004:572 всё ещё со старым sent-priority, это надо явно синхронизировать, не откатывать код вслепую.
+  Sol в той же сессии read-only разбирает13feed/permissions failures, ожидается failure-triage-feed.md.
+  Notify11: source указывает на отсутствующие разрешённые kind.channels в старых тестах (audit9+admin1+push1).
+  Existing tests НЕ правились: подготовить exact per-test diff и согласование по правилу проекта.
+  Sol usage-limit, НЕ повторять; его полный saved `failure-triage-feed.md`254строки прочитан оркестратором,
+  13failures разобраны source-only. Найден конфликт verbose_name внутри CONTRACT007(:102«Лента»,К1:1049«Живая
+  лента»), не считать однозначным product bug/не править до разрешения. Поля события PDN проверяются только text:
+  узкая партия запущена Luna `ses_e43593ea6ffey3k1XmcwOFMUr4`, единственный автор services/posts.py+нового
+  test_feed_event_pdn_regressions.py, RED→GREEN, без existing tests/стенда. Артефакты stage3/T7260-event-pdn-fix/.
+  Terra в прежней reviewer-session готовит НЕПРИМЕНЁННЫЕ notify-test-proposal.md/.patch(11tests) для owner approval.
+  Luna сначала остановился без правок: ошибочно принял номера строк431–438/659 за идентификаторы документов.
+  Оркестратор повторно открыл точные PLAN007431–438 и SPEC007FR612стр568,CONTRACT007стр659, дал абсолютные
+  пути/цитаты и продолжил ту же сессию с прежним scope. Это исправление формулировки задания, не новый owner decision.
+  PDN fix представлен: targeted54P, broad run сохранил один уже известный card fixture fail. Оркестратор прочитал
+  diff+новыеtests; Terra делает независимое review в T7260-event-pdn-fix/review.md. Пока не считать принятым.
+  Владелец через форму выбрал ВСЕ11notify approvals по открытому notify-test-proposal.patch, без дополнительных
+  условий; точные11nodeids записаны в docs/reviews/TASKS007. Разрешён только этот patch, audit assertions не ослаблять.
+  Luna в той же implementer-session теперь применяет ТОЛЬКО утверждённый notify patch к3test-файлам;
+  focused11, затем три файла под общей блокировкой. При unexpected failure остановка без самовольныхfix.
+  Артефакты stage3/T7260-notify-test-amendment/. PDN code reviewerTerra смотрит отдельно, не смешивать scopes.
+  Terra PDN review.md: REQUEST CHANGES — новое title/place warning теряет upload files в publish form.
+  После notify job передать Luna fix-back: views/posts.py+_form.html+новыеtests, reuse safe _restored_upload_ids,
+  own/unbound only, ordinary/HX upload→warning→returned-controls confirmation→actual attachment, security negatives.
+  Это сохранение введённого по прежнему PLAN, не новые требования; existing tests/bind/auth не трогать.
+  Notify завершён: focused11P, файлы24+21+25P, exit0, оркестратор сверил первичныеexit/status/log summaries.
+  Terra делает independent notify-review.md. Luna после notify передан PDN fix-back (views/posts.py,_form.html,
+  новыеtests; reuse safe restorehelper), артефакты T7260-event-pdn-fix/r1/ ожидаются.
+  Владелец второйформой отдельно разрешил ВСЕ9feed-test cases по exactdiffsA–G failure-triage-feed.md,
+  точные nodeids и пределы записаны в docs/reviews/TASKS007. Они ПОКА НЕ применены; послеPDNreview/gates.
+  Конфликт verbose_name разрешён владельцем отдельнойформой: **«Лента»**. Разрешены apps.pyverbose_name и
+  синхронизация CONTRACT007К1; test_feed_deploy existing НЕ менять. Исполнение в очереди после текущейпартии.
+  Notify-review.md прочитан: **APPROVE** exactpatch, 11target+70filetests подтверждены, hash/полныеfiles совпали.
+  Повторять их без новыхизменений не нужно. Полныйgate RED не закрыт. PDNfix-back Luna ещё выполняется;
+  следующаяреализация9feed amendments и product metadata/routing/registration только после его сверки.
+  ВАЖНО WebPush: дополнительно открыт подписанный PLAN004стр752–754 — там тоже success если хотябы1,
+  а стр746/866–875 говорят retries и skipOK. Значит рассогласован не только CONTRACT004:572, но и самPLAN.
+  Решениевладельца8ноября repeatfailed/skipOK известно, однако подписи под синхронизированнымPLAN пока нет.
+  Перед финальнымпринятием потребуется отдельная SDD-синхронизация/подпись; не выдавать её за уже выполненную,
+  не редактировать signedPLAN/старыеподписи и не откатывать код вслепую.
+  PDNfix-back представлен и свереныprimary: r1RED10F8P→GREEN64P+edit36P exit0, own/unbound uploads
+  восстанавливаютсявpublishform через safehelper, canonicalpills;18cases в нашем test_feed_event_pdn_regressions.py.
+  Terra re-review запущен в тойжесессии, ожидается T7260-event-pdn-fix/review-followup.md.
+  ДоегоAPPROVE не начинать следующие9approvedfeed amendments. Full/stand ещё не запускались.
+  Terra PDNreview-followup APPROVE получен/прочитан; requiredfileloss закрыт в servercases, optionalcoverage
+  перечисленоreview и сохранено. Luna в тойжеsession теперь применяет только9approvedcasesA–G (6testfiles),
+  focused9→6files regression sequentiallock, artifacts stage3/T7260-feed-test-amendment/; renameeventreject
+  разрешён и явноучестьold→new. Приunexpectedfailure остановка безсамовольныхизменений.
+  Ledger24:11notify+1PDNtargetGREEN/reviewAPPROVE,9testsвработе,3productконтракт metadata/routing/registerвочереди;
+  этоНЕfullgateGREEN, стоящийhistoricalRED не переписывать.
+  9feed amendments представлены: только6approvedtestfiles, focused9P затемfiles21+53+24+17+16+10=141P,exit0;
+  оркестратор сверилsummary/status/diffstat. Terra independentreview запущен, ожидается
+  T7260-feed-test-amendment/review.md; доAPPROVE product3следующимшагом не начинать.
+  A–Greview.md прочитан: APPROVE exactscope/hash/artifacts. Luna в тойжеsession теперь выполняет3productfixes:
+  notify_kinds canonicalfunction+register, re_pathrouting, appverbose«Лента»+CONTRACT007К1(ownerdecision).
+  Existingtestsне менять, olddirectcaller kinds сохранить. Artifacts stage3/T7260-contract-alignment/.
+  Послеtarget/profileGREEN+reviewAPPROVE одинfullserver: подготовлен stage3/T7260-server-remediation-final/run.sh,
+  ЕЩЁ НЕ запущен. Сравнитьсfull-regression-20261108-190243-usUbSm4028P24F, учестьapprovedrename+новыеPDNtests.
+  Product3 представлены: focused3P+regression138P, Terrareview.mdAPPROVE прочитан;5hashes/diffсовпали.
+  **Полныйremediationserver ЗАПУЩЕН**, unitcrm-T7260-server-remediation-final,
+  shellsh_1bcd680c3001Z4VsESZxDQ35ZD, stage3/T7260-server-remediation-final/run.sh.
+  SDD103/0/0,tools140,diffPASS и отсутствиеactiveDBtest провереныдо запуска;sourcebackendFROZEN,
+  hashesbefore/after+status/server.txt/source-integrity.txt сохраняютсявновыйrun-*каталог.
+  Ждатьсобытие,НЕpolling/НЕдублировать. Послеcompleted сравнитьполныенodeidsс4028P24Fbaseline+independentreview.
+  Luna втойжеsession делает толькоexternalread-only SDDWebPushanalysis:
+  stage3/T7260-webpush-sdd/analysis.md,безправокrepo/code/signeddocs/tests/stand. Это независимаяподготовкаво времяfull.
+  analysis.mdполучен/прочитан: минимальноPLAN004paragraph+CONTRACT004priority+TASKS004T4116rename/foundation,
+  SPEC004FR324/333не менять; freshreviews+подписиownerPLAN→TASKS. LunaготовитТОЛЬКОexternal
+  T7260-webpush-sdd/proposal/ candidatepack+diff+hashmanifest, no repowrites/SDDsign/statuschanges.
+  ДальшеreviewTerra+ownerexactdiffapproval→поэтапноесогласование/подписи послеfullfreeze, E05stillunresolved.
+  Внешнийproposalpackполучен, report/diff/manifestпрочитаны. Terraindependentreview запущен,
+  ожидается T7260-webpush-sdd/proposal/review.md. RepoPLAN/TASKS/CONTRACTне менялись, подписи не создавались,
+  fullserverfreezeсохраняется. Послеreview показатьownerexactdiff длясогласования, не применятьавтоматически.
+  WebPushproposalreview REQUESTCHANGES: доп11CONTRACT0041616–1620oldsuccessany тоже надоPROPOSEDпоправить;
+  retriesявнотекущеговызова, historyretryнеблокируетlatersent; reporttemporaryPLAN005/006/007dependserrors
+  покаPLAN004draft, неauto-resignихSPECfoundations. Lunafixbackтольковновыйexternalproposal-r1/,4fragments
+  потомownerexactdiffapproval; первыепакет/reviewсохранить. Реальныеrepo/sourcefreezeбезизменений.
+  proposal-r1получен/reportmanifestпрочитаны, Terrare-reviewзапущен: proposal-r1/review.mdожидается.
+  PLANcandidatebodyhash34f29b4fb7faf48786643e67d17d1290584bfcd49df4645d8073a04edfe313b2;
+  candidateTASKSfoundationproposedonly, repoPLAN/TASKS/CONTRACT/signaturesне менялись. ПослеAPPROVEownerexactdiff.
+  R1reviewAPPROVEпрочитан; владелецформойсогласовал весьточный4fragmentdiffпослеfullfreeze, НЕмашиннаяподпись.
+  **FULL SERVER ЗАВЕРШЁН GREEN**, run-20261108-232536-M46Lvr/вstage3/T7260-server-remediation-final/:
+  4070P,exit0,source-integrityok, завершение20261109T00:25:20+03. НЕ повторять.
+  Сверка4028P24F:4028P→P23F→P19addedallP(18PDN+approvedrename)1removedoldFAILED,0duplicates.
+  Исправленаналитическийparserполныхnodeidsспробелами;метрикинеизменны, currentregression-diff.jsonполный.
+  TerraнезависимосверяетfullGREEN/hash/nodeids, regression-review.mdожидается; доегоответа backendне менять.
+  ЗатемstageSDDPLAN004поapprovedcandidate/review→ownerподпись→TASKS004/review/подпись+companionCONTRACT004.
+  Браузерныйgate/E05иT7260остаётсяоткрытым.
+  FullGREENregression-review.mdполучен/прочитан:APPROVE4070P/nodeids/30sourcehashes, sourcefreezeзакончился.
+  Исправленаоднаатрибуцияreportвладелец→оркестратор(parsernotification), verdict/метрикине менялись.
+  LunaготовитТОЛЬКОactualPLAN004v2+draftREVPLAN004изownerapprovedcandidate, noTASKS/CONTRACTдоPLANsignature;
+  artifactsT7260-webpush-sdd/applied-plan/. ЗатемfreshTerrareview→на-проверке→userподпись. Code/tests/standне менять.
+  ВременныеSDDdepends/foundationerrorsexpected,нельзясчитатьихGREEN.
+  До разбора24 failures и review
+  следующую реализацию/stand update НЕ начинать, тесты не ослаблять. Все24 не приняты; T7260 [ ].
+  До APPROVE и регрессионного gate не начинать следующую реализационную партию; stand gate ещё не запускался.
+- Routing этой партии: Go Kimi K2.7 Code и MiniMax M3 usage-limit, quota-arm запущен; Alibaba GLM-5.3 вернул
+  исчерпание общего месячного Token Plan (сообщён reset 2026-12-04 16:00 UTC), весь провайдер исключён до reset/top-up,
+  повторов/проб других Alibaba-моделей не было. OpenAI fallback; агент получил только internal исходники, не raw trace.
+
+- Владелец разрешил read-only диагностику, исправления подтверждённых дефектов в рамках подписанных требований и
+  обновление стенда после копии. Изменения тестовых ожиданий/контракта требуют согласования; по E08 владелец отдельно
+  постановил считать тест устаревшим и разрешил его правку.
+- `backend/tests/e2e/test_e08_admin.py`: ожидание ячеек теперь следует `data-available` (checkbox есть только для
+  разрешённых каналов). Продукт и контракт не менялись. Первый focused запуск упал в setup на непустом стенде
+  (`junit.xml`); затем по процедуре T-7260, используя сохранённую копию, выполнен reset перед каждым браузерным кругом:
+  **4 passed** (Chromium/Firefox/Edge/Yandex), `junit-after-reset.xml`. Независимое review OpenAI GPT-6.1 Sol —
+  **APPROVE**, без обязательных замечаний. Следующий E2E-прогон также запускать по процедуре T-7260 с reset на круг.
+- После свежей копии `before-T7260-20261108-101019` viewport-набор F01/F03/F14-card/F14-long-link плюс E08 прошёл
+  во всех четырёх браузерах: **20 passed**. Диагностика DOM подтвердила переполнение на кнопках действий поста;
+  CSS-fix `.feed-post-actions { flex-shrink: 0; }` в `backend/static/feed/feed.css` устранил его.
+- Владелец 2026-11-08 разрешил исправить тест F14 `event_block_likers_list`: уникальный поисковый маркер перемещён
+  из текста записи в название события согласно PLAN-007. Сейчас запущен focused-тест во всех браузерах; результат и
+  независимая проверка завершены: **4 passed**, OpenAI GPT-6.1 Sol — **APPROVE**. JUnit:
+  `crm-work/slice007/stage3/T-7260-f14-search-before-T7260-20261108-101019/junit.xml`.
+- Повторная диагностика Chromium: E05 `two_devices_removing_one` снова RED на положительном контроле; K04
+  `attach_article_by_title_search` прошёл. E05 read-only delivery log показал частичный результат `retry/network` +
+  `ok/201`, итог строки — `sent`. Владелец выбрал следовать PLAN-004/FR-333: повторять неподтверждённые подписки,
+  успешные не дублировать. В `delivery.py` исправлен приоритет ветки `retry`; обновлены связанные ожидания трёх unit
+  тестов. RED→GREEN целевого теста; `test_notify_webpush_2.py` + `test_notify_delivery.py`: **50 passed**. Новая копия
+  `before-T7260-20261108-164917`; обновление стенда прошло, миграций нет. Focused E05 на исправленном коде сейчас
+  остался RED (оба push endpoint получили 201, но второй profile не показал уведомление); K04 PASS. Независимое review
+  сервиса и unit-тестов — OpenAI GPT-6.1 Sol **APPROVE**. Безопасная строка `E05_SAFE_DIAG` получена:
+  оба profile имеют push subscription, оба показали 0 service-worker notifications; доставка `sent`, обе подписки
+  получили `ok/201`. Сопоставить записи с устройствами не удалось (`device=other`); 201 означает принятие push-службой,
+  не подтверждение получения браузером. Первопричина пока не установлена. Артефакт:
+  `crm-work/slice007/stage3/T-7260-E05-probe-before-T7260-20261108-164917/pytest.txt`.
+- Следующая задача — продолжить разбор T-7260; задача **не закрыта** (`specs/007-feed/tasks.md`, T-7260 остаётся `[ ]`).
+- Завершённый прогон **не повторять**: основной браузерный gate 1993 passed / 235 failed / 4 errors из 2232,
+  exit 1; legacy Chromium-повтор 21 passed, exit 0. Полная сверка с baseline одобрена независимым reviewer:
+  2228 общих nodeid, 4 новых passed, пропусков нет, 4 P→F. Стенд был обновлён после резервной копии
+  `before-T7260-20261107-115102`; миграций не было. Подробные числа, переходы и read-only классификация 66 тестов —
+  `docs/reviews/TASKS-007.md`, раздел «T-7260: первый полный браузерный gate — RED»; исходные артефакты и
+  `regression-diff.json` — `/home/gpgr/Документы/crm-work/slice007/stage3/browser-gate/T7260-before-T7260-20261107-115102-Dbv7y0/`.
+- Ближайший шаг: по сохранённым XML/trace/test sources разобрать подтверждённые причины, начиная с четырёх P→F:
+  E05 push на втором устройстве; E08 отсутствующая `feed.like:email` (код вида задаёт только `portal`, вероятно
+  контрактное расхождение); K04 timeout `page.wait_for_url` при создании черновика. Не править ожидания, код или
+  спецификацию без отдельного подтверждения scope/решения владельца. По остальным результатам классификация пока
+  предварительная: сходный симптом не доказывает общую причину и baseline-red не означает принятие.
+- Четыре ERROR: два Mailpit setup timeout на Firefox и два setup/navigation interruption на Firefox; динамические
+  fixture-данные, ПДн, пароли, activation URL/токены в handoff и отчёты не копировать.
+- После диагностического шага: записать подтверждённые причины/неизвестное в `docs/reviews/TASKS-007.md`, выполнить
+  `python3 tools/sdd.py проверить` и `git diff --check`. Повтор браузерного набора — только после устранения причин и
+  согласования scope; общий стенд и DB-тесты — последовательно. T-7260 отмечать `[x]` только после прохождения gate.
+- Проверки после последней записи отчёта: SDD — 103 документа, 0 ошибок/предупреждений; tools unit tests — 140 passed;
+  `git diff --check` чистый. В рабочем дереве есть прежние изменения и untracked-файлы; ничего не очищать.
+  Подписи документов и `git push` выполняет владелец.
+
 ### Актуальное продолжение — 2026-11-04
 
 - Предыдущий handoff устарел: по утверждённому `specs/007-feed/tasks.md` T-7220, T-7221, T-7222a/b уже отмечены `[x]`;

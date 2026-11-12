@@ -9,5 +9,6 @@
   {% for item in posts %}{% include "feed/_post.html" %}{% endfor %}
   {# Все комментарии и действия — T-7218, место в общей части -comments. #}
   <div id="feed-live" hx-ext="ws" ws-connect="{{ ws_url }}" data-ws="connecting" data-opened="{{ opened.isoformat }}"></div>
+  <div id="feed-synced"></div>
 </div>
 {% endblock %}

@@ -50,6 +50,17 @@ def form_context(user, data=None, *, error=None, found=(), oob=False):
         label = ("Всем" if ref == "all" else people.get(pk, ref) if ref.startswith("p")
                  else units[pk].name if pk in units else ref)
         pills.append({"value": ref, "label": label})
+    raw_files = data.getlist("files") if data is not None and hasattr(data, "getlist") else (
+        data.get("files", []) if data is not None else [])
+    if isinstance(raw_files, (str, bytes)):
+        raw_files = [raw_files]
+    restored_ids = _restored_upload_ids(raw_files)
+    restored_by_id = {
+        item.pk: item for item in FeedFile.objects.filter(
+            pk__in=restored_ids, uploaded_by=user, post__isnull=True, comment__isnull=True,
+        ).select_related("file")
+    }
+    restored_files = [restored_by_id[file_id] for file_id in restored_ids if file_id in restored_by_id]
     try:
         mentioned_ids = mentions.extract(values["text"])
     except FeedError:
@@ -71,10 +82,11 @@ def form_context(user, data=None, *, error=None, found=(), oob=False):
                                                   ("event", "Событие")),
             "form_terms": (("day", "День"), ("week", "Неделя"), ("month", "Месяц"), ("date", "До даты")),
             "form_can_all": can_all, "form_pills": pills, "form_mentioned": mentioned,
+            "form_files": restored_files,
             "form_mention_names": json.dumps(dict(mentioned), ensure_ascii=False),
             "form_until": PortalDateInput().render("until", values["until"], attrs={
-                "id": "id_feed_until", "data-min": (today + timedelta(days=1)).isoformat(),
-                "data-max": last_day.isoformat()}),
+                "id": "id_feed_until", "min": (today + timedelta(days=1)).isoformat(),
+                "max": last_day.isoformat()}),
             "form_errors": errors, "pdn_found": found, "form_oob": oob}
 
 
@@ -160,6 +172,21 @@ def _post_item(user, post):
     return item
 
 
+def _restored_upload_ids(values):
+    """Только положительные ASCII-ID в диапазоне FeedFile.BigAutoField для показа формы."""
+    maximum = "9223372036854775807"
+    ids = []
+    for raw in values:
+        value = str(raw).strip()
+        if not 1 <= len(value) <= len(maximum) or not value.isascii() or not value.isdecimal():
+            continue
+        value = value.lstrip("0")
+        if not value or (len(value) == len(maximum) and value > maximum):
+            continue
+        ids.append(int(value))
+    return list(dict.fromkeys(ids))
+
+
 def edit_form_context(user, post, data=None, *, error=None, found=(), oob=False):
     """Данные формы правки записи."""
     can_all = visibility.viewer(user).post_all
@@ -240,6 +267,12 @@ def edit_form_context(user, post, data=None, *, error=None, found=(), oob=False)
                      .values_list("pk", "full_name"))
 
     files = list(FeedFile.objects.filter(post=post, comment__isnull=True).select_related("file").order_by("pk"))
+    new_files = []
+    if data is not None:
+        new_files = list(FeedFile.objects.filter(
+            pk__in=_restored_upload_ids(data.getlist("files")),
+            uploaded_by=user, post__isnull=True, comment__isnull=True,
+        ).order_by("pk"))
 
     remove_ids = set()
     if data is not None:
@@ -271,10 +304,11 @@ def edit_form_context(user, post, data=None, *, error=None, found=(), oob=False)
         "form_mentioned": mentioned,
         "form_mention_names": json.dumps(dict(mentioned), ensure_ascii=False),
         "form_files": files,
+        "form_new_files": new_files,
         "form_remove": remove_ids,
         "form_until": PortalDateInput().render("until", values["until"], attrs={
-            "id": "id_feed_until", "data-min": (today + timedelta(days=1)).isoformat(),
-            "data-max": last_day.isoformat()}),
+            "id": "id_feed_until", "min": (today + timedelta(days=1)).isoformat(),
+            "max": last_day.isoformat()}),
         "form_errors": errors,
         "pdn_found": found,
         "form_oob": oob,
@@ -312,6 +346,8 @@ def edit_post(request, post_id):
                    "opened": timezone.now(), "event_now": timezone.now()}
         return render(request, "feed/_post.html", context)
     context = edit_form_context(request.user, post, data=data, error=error, found=found)
+    if request.headers.get("HX-Request") != "true":
+        return render_page(request, "feed/form_edit.html", context)
     response = render(request, "feed/_form_edit.html", context)
     response["HX-Retarget"] = "#feed-form"
     response["HX-Reswap"] = "outerHTML"

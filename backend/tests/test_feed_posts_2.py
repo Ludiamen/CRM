@@ -248,7 +248,7 @@ def test_pick_returns_htmx_fragment():
 def test_card_shows_post_with_all_comments_and_comment_anchors():
     """FR-604: карточка — запись со всеми комментариями; у каждого комментария якорь `#c<id>` и `data-comment-id`."""
     author = sf.as_writer()
-    reader = _person()
+    reader = support.make_employee()
     post = sf.make_post(author.user, to=[reader], text="Запись для карточки")
     commenter = _person()
     comments = [sf.comment(post, commenter, f"Комментарий номер {number}") for number in range(25)]

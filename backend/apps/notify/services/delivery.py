@@ -310,10 +310,10 @@ def send_webpush(row) -> str:
     start_index = len(prior)
     if cut:
         return _finish(row.pk, None, state=Delivery.State.WAITING, keep_due=True)
-    if ok_now or done:
-        return _finish(row.pk, None, state=Delivery.State.SENT)
     if "retry" in kinds_seen:
         return _retry_or_fail(row, None, now, retry_after=max(after) if after else None, from_index=start_index)
+    if ok_now or done:
+        return _finish(row.pk, None, state=Delivery.State.SENT)
     if not PushSubscription.objects.filter(user_id=user_id).exists():
         return _finish(row.pk, None, state=Delivery.State.FAILED, reason="no_subscriptions")
     if "redirect" in kinds_seen:

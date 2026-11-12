@@ -154,9 +154,12 @@ def test_form_default_kind_is_post_with_three_kinds_and_fields_of_all_kinds_in_m
                                                          for node in _find(form, "input", name="to"))
     assert {node.attrs.get("value") for node in _find(form, "input", name="term", type="radio")} \
         >= {"day", "week", "month", "date"}
-    assert (_find(form, "input", name="until", type="text", data_datefield_input=True)
-            and _find(form, "button", data_datefield_open=True)
-            and _find(form, data_datefield_picker=True))
+    # К42/К61 (CONTRACT-007 10.2): until — нативный input[type=date] с границами, «проверка на сервере
+    # остаётся главной»; сетку портала продолжают использовать поля без границ (FR-148).
+    until = _find(form, "input", name="until", type="date")
+    assert len(until) == 1
+    assert until[0].attrs.get("min") and until[0].attrs.get("max")
+    assert _find(form, "input", name="until", data_datefield_input=True) == []
     assert _find(form, "input", name="event_title")
     assert _find(form, "input", name="event_place")
     assert _find(form, "input", name="event_start", type="datetime-local")

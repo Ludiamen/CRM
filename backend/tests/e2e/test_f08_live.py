@@ -510,7 +510,11 @@ def test_f08_newcomer_of_unit_with_50_old_and_3_recent_posts_has_feed_badge_3_an
     expect(page.locator('[data-feed-page="home"]')).to_be_visible()
     shown = post_ids(page)
     assert set(recent) <= set(shown), "новые записи отдела не показаны новичку"
-    assert set(old) & set(shown), "старых записей отдела нет в ленте новичка"
+    # контракт пагинации (CONTRACT-007 10.2:656-657): старые записи могут быть за первой страницей
+    # из 20 — доходим до них «Ещё записи» и проверяем, что они в подгруженной ленте новичка
+    _drain(page)
+    loaded = post_ids(page)
+    assert set(old) & set(loaded), "старых записей отдела нет в ленте новичка"
 
 
 def test_f08_ordinary_and_important_posts_give_new_posts_2_and_click_puts_important_in_block_and_ordinary_on_top(

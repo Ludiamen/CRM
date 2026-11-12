@@ -44,12 +44,6 @@ def publish(user, data, *, now=None) -> Post:
 
     mentions.extract(text)
     targets = recipients.parse(visibility.viewer(user), data)
-    found = pdn.find_plain(text)
-    if found and str(_get(data, "pdn_confirmed", "")) not in ("1", "true", "True"):
-        raise PdnFound(found)
-
-    file_ids, _ = _file_inputs(data)
-
     published_at = now if now is not None else timezone.now()
     important_until = None
     event_fields = {}
@@ -58,6 +52,12 @@ def publish(user, data, *, now=None) -> Post:
         event_fields = {"event_title": event.title, "event_place": event.place,
                         "event_start": event.start, "event_end": event.end,
                         "remind_at": events.remind_at(event.start, published_at)}
+    found = pdn.find_plain(text, event_fields.get("event_title", ""), event_fields.get("event_place", ""))
+    if found and str(_get(data, "pdn_confirmed", "")) not in ("1", "true", "True"):
+        raise PdnFound(found)
+
+    file_ids, _ = _file_inputs(data)
+
     if kind == Post.Kind.IMPORTANT:
         term = _get(data, "term")
         date = widgets.parse_date(_get(data, "until")) if term == "date" else None

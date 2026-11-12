@@ -1,3 +1,10 @@
 {% extends layout %}
+{% load static %}
 {% block title %}Правка записи{% endblock %}
-{% block content %}<div data-feed-page="edit">{% include "feed/_form_edit.html" %}</div>{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{% static 'feed/feed.css' %}">
+<script defer src="{% static 'feed/feed.js' %}"></script>
+<div data-feed-page="edit">
+  <div id="feed-post-{{ post.pk }}">{% include "feed/_form_edit.html" %}</div>
+</div>
+{% endblock %}

@@ -282,14 +282,29 @@ def test_field_value_not_in_picker_request():
 
 
 def test_no_native_date_inputs_in_templates():
-    """FR-148: ни в одном шаблоне портала нет `type="date"` (в журнале «с» и «по» — поле портала)."""
+    """FR-148: ни в одном шаблоне портала нет `type="date"` (в журнале «с» и «по» — поле портала).
+
+    Единственное исключение — CONTRACT-007 К42/К61 (важнее FR-148 для поля `until`): срок «До даты» —
+    нативный `input[type=date]` с `min`/`max` (границы видит `validity` браузера, серверная проверка
+    остаётся главной); его рендерит ветка `native` шаблона виджета `widgets/date_field.html` — это
+    единственный нативный date-инпут портала по контракту. Прочие шаблоны `type="date"` не несут;
+    поля дат без границ (birth_date, фильтры аудита и ленты) остаются полем портала с сеткой (FR-148).
+    """
     pattern = re.compile(r"""(?<![\w-])type\s*=\s*["']?date\b""", re.IGNORECASE)
+    allowed = BACKEND_DIR / "templates" / "widgets" / "date_field.html"
     offenders = []
     for path in sorted((BACKEND_DIR / "templates").rglob("*.html")):
+        if path == allowed:
+            continue
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
             if pattern.search(line):
                 offenders.append(f"{path.relative_to(BACKEND_DIR)}:{number}")
     assert not offenders, "родное поле даты в шаблонах: " + ", ".join(offenders)
+    native_lines = [line.strip() for line in allowed.read_text(encoding="utf-8").splitlines()
+                    if pattern.search(line)]
+    assert len(native_lines) == 1 and native_lines[0].startswith("{% if widget.native %}"), (
+        "в widgets/date_field.html `type=\"date\"` допустим только в ветке native поля until (К42/К61): "
+        + repr(native_lines))
 
 
 def _date_field_calls():

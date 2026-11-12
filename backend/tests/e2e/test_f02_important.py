@@ -122,6 +122,7 @@ def _edit(page, post_id, *, text=None, to=(), mention=None, term=None, until=Non
     if mention:
         body.click()
         body.press("End")
+        body.press_sequentially(" ")
         helpers_feed.pick_mention(page, body, mention.split()[0], mention)
     if term:
         helpers_org.set_choice(form, "term", term)
@@ -377,7 +378,7 @@ def test_f02_after_term_expiry_unread_post_left_block_and_stands_in_feed_as_ordi
     assert post_id in helpers_feed.important_ids(tab)
     before = _wait_note(tab, "Важная запись", word)
     helpers_feed.shift(EXPIRE)
-    tab.reload()
+    tab.goto("/")  # после «Мои уведомления» страница — /notifications/: лента нужно открыть заново
     tab.wait_for_load_state()
     assert post_id not in helpers_feed.important_ids(tab), "истёкшая запись осталась в блоке важных"
     assert post_id in helpers_feed.post_ids(tab), "истёкшей записи нет в ленте"

@@ -115,10 +115,11 @@ def _edit_post(page, post_id, *, remove=()) -> None:
     form = page.locator('[data-feed-page="edit"] form:has(textarea[name="text"])').first
     for file_id in remove:
         form.locator(f'input[name="remove"][value="{file_id}"]').check()
-    with page.expect_navigation():
+    with page.expect_response(lambda r: r.request.method == "POST" and f"/feed/{post_id}/edit/" in r.url) as saved:
         form.locator("button[type=submit]").first.click()
-    page.wait_for_load_state()
-    expect(page.locator('[data-feed-page="card"]')).to_be_visible()
+    assert saved.value.status == 200
+    expect(page.locator(f"article#feed-post-{post_id}")).to_be_visible()
+    expect(page.locator('form[data-form="feed-post-edit"]')).to_have_count(0)
 
 
 def _open_feed(new_context, account):

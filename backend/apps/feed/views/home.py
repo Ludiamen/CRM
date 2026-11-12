@@ -85,6 +85,9 @@ def _context(user, flt, result, *, continuation=False):
     link_staff = bool({"staff.view", "accounts.manage"} & permissions.permissions_of(user))
     is_moderator = permissions.has_permission(user, "feed.moderate")
     values = _filter_values(flt)
+    author_name = ""
+    if flt.author is not None:
+        author_name = User.objects.filter(pk=flt.author).values_list("full_name", flat=True).first() or ""
     date_from = PortalDateInput().render("from", flt.date_from, attrs={"id": "id_feed_date_from"})
     date_to = PortalDateInput().render("to", flt.date_to, attrs={"id": "id_feed_date_to"})
     more_url = None
@@ -96,6 +99,7 @@ def _context(user, flt, result, *, continuation=False):
     return {"posts": _cards(result.posts, people, link_staff, user.pk, is_moderator, like_data),
             "important": [] if continuation else _cards(result.important, people, link_staff, user.pk, is_moderator, like_data),
             "link_staff": link_staff, "is_moderator": is_moderator, "flt": flt, "filter_values": values,
+            "filter_author_name": author_name,
              "filter_options": (("all", "Все"), ("important", "Важные"), ("events", "События"),
                                 ("mine", "Мои"), ("mentions", "Упоминают меня")),
              "date_from": date_from, "date_to": date_to,

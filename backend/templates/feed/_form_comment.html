@@ -2,6 +2,7 @@
   {% csrf_token %}
   <label for="id_feed_comment_text_{{ post.pk }}">Комментарий</label>
   <textarea id="id_feed_comment_text_{{ post.pk }}" name="text" data-feed-picker="mention" data-mention-names="{}">{{ text }}</textarea>
+  <div data-feed-pick-list="mention"></div>
   {% if errors.text %}<p data-error="text" data-code="{{ errors.text.code }}">{{ errors.text.message }}</p>{% endif %}
   <label for="id_feed_comment_files_{{ post.pk }}">Файлы</label><input id="id_feed_comment_files_{{ post.pk }}" type="file" data-feed-upload="comment" multiple>
   <div data-feed-files></div>

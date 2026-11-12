@@ -118,16 +118,19 @@ def _comment_href(post_id, comment_id) -> str:
 
 
 def _edit_post(page, post_id, **fields) -> None:
-    """Правка записи формой `/feed/<id>/edit/` (поле `text`); ждёт карточку. Помощника правки в `helpers_feed.py` нет."""
+    """Правка записи формой `/feed/<id>/edit/` (поле `text`). Форма — HTMX (hx-post, подмена карточки на месте,
+    CONTRACT-007 10.2: «НХ — 200: фрагмент _post.html»), поэтому ждём ответ POST и обновлённую карточку.
+    Помощника правки в `helpers_feed.py` нет."""
     page.goto(f"/feed/{post_id}/edit/")
     expect(page.locator('[data-feed-page="edit"]')).to_be_visible()
     form = page.locator('[data-feed-page="edit"] form:has(textarea[name="text"])').first
     for name, value in fields.items():
         form.locator(f'[name="{name}"]').fill(value)
-    with page.expect_navigation():
+    with page.expect_response(lambda r: r.request.method == "POST" and f"/feed/{post_id}/edit/" in r.url) as saved:
         form.locator("button[type=submit]").first.click()
-    page.wait_for_load_state()
-    expect(page.locator('[data-feed-page="card"]')).to_be_visible()
+    assert saved.value.status == 200
+    expect(page.locator(f"article#feed-post-{post_id}")).to_be_visible()
+    expect(page.locator('form[data-form="feed-post-edit"]')).to_have_count(0)
 
 
 def _delete_post(page, post_id) -> None:
@@ -143,14 +146,19 @@ def _delete_post(page, post_id) -> None:
 
 
 def _edit_comment(page, comment_id, text: str) -> None:
-    """Правка комментария формой `/feed/comments/<id>/edit/` (раздел 10.2, 12.1: страница `comment-edit`)."""
+    """Правка комментария формой `/feed/comments/<id>/edit/` (раздел 10.2, 12.1: страница `comment-edit`).
+
+    Форма — HTMX (hx-post, подмена `#c<id>` на месте, CONTRACT-007 10.2: «НХ — 200: комментарий #c<cid>»),
+    поэтому ждём ответ POST и обновлённый комментарий, а не навигацию."""
     page.goto(f"/feed/comments/{comment_id}/edit/")
     expect(page.locator('[data-feed-page="comment-edit"]')).to_be_visible()
     form = page.locator('[data-feed-page="comment-edit"] form:has(textarea[name="text"])').first
     form.locator('textarea[name="text"]').fill(text)
-    with page.expect_navigation():
+    with page.expect_response(lambda r: r.request.method == "POST" and f"/feed/comments/{comment_id}/edit/" in r.url) as saved:
         form.locator("button[type=submit]").first.click()
-    page.wait_for_load_state()
+    assert saved.value.status == 200
+    expect(page.locator(f"#c{comment_id}")).to_be_visible()
+    expect(page.locator('form[data-form="feed-comment-edit"]')).to_have_count(0)
 
 
 def _delete_comment(page, comment_id) -> None:

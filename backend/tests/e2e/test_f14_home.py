@@ -194,7 +194,9 @@ def test_f14_event_block_likers_list_and_search_results_do_not_widen_page_at_360
     word = _word()
     guests = [employee(full_name=f"Гостев{secrets.token_hex(3)} Иван Иванович") for _ in range(3)]
     _open_home(page)
-    post_id = feed.publish(page, f"{word} событие для узкого экрана", kind="event", event=_event())
+    event = _event()
+    event["title"] = f"{word} {event['title']}"
+    post_id = feed.publish(page, "Событие для узкого экрана", kind="event", event=event)
     for guest in guests:
         _post_ok(guest.page, f"/feed/{post_id}/answer/", {"answer": "go"})
         _post_ok(guest.page, f"/feed/{post_id}/like/")

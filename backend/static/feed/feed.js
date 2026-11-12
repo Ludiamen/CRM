@@ -73,9 +73,20 @@
     var fragment = detail.fragment;
     var target = detail.target;
     if (!fragment || !target || !fragment.querySelectorAll) { return; }
+    var root = fragment.firstElementChild;
+    var replacesForm = target.isConnected && target.id === 'feed-form' && target.matches('form[data-feed-form]') &&
+      fragment.children.length === 1 && root && root.matches('form#feed-form[data-feed-form]');
+    var outsideIds;
+    if (replacesForm) {
+      outsideIds = new Set();
+      document.querySelectorAll('[id]').forEach(function (existing) {
+        if (existing !== target && !target.contains(existing)) { outsideIds.add(existing.id); }
+      });
+    }
     var incoming = Array.from(fragment.querySelectorAll('[id]'));
     if (fragment.firstElementChild && fragment.firstElementChild.id) { incoming.push(fragment.firstElementChild); }
     if (incoming.some(function (node) {
+      if (replacesForm) { return outsideIds.has(node.id); }
       var existing = document.getElementById(node.id);
       return existing && existing !== target;
     })) { detail.shouldSwap = false; }
@@ -124,10 +135,14 @@
     window.htmx.remove(original);
     if (cards.some(function (existing) { return existing.dataset.postId === card.dataset.postId; })) { return; }
     var at = publishedAt(card);
-    if (!cards.length || !Number.isFinite(at)) { return; }
-    var newest = publishedAt(cards[0]);
-    var oldest = publishedAt(cards[cards.length - 1]);
-    if (!Number.isFinite(newest) || !Number.isFinite(oldest) || at > newest || at < oldest) { return; }
+    if (!Number.isFinite(at)) { return; }
+    /* FR-614: прочитанная запись встаёт в ленту по времени публикации — новее первой наверх,
+       внутри показанного — по месту. Полная страница с «Ещё записи»: запись старее показанного
+       не вставляем — она придёт с «Ещё записи» (partial, дубль; план 462-463); без кнопки
+       (конец ленты или пустая страница) — вставляем, в том числе последней строкой. */
+    var more = list.querySelector('[data-feed-more]');
+    var oldest = cards.length ? publishedAt(cards[cards.length - 1]) : NaN;
+    if (more && Number.isFinite(at) && Number.isFinite(oldest) && at < oldest) { return; }
     var next = cards.find(function (existing) {
       var existingAt = publishedAt(existing);
       return existingAt < at || (existingAt === at && Number(existing.dataset.postId) < Number(card.dataset.postId));
@@ -135,7 +150,8 @@
     var row = document.createElement('li');
     row.appendChild(card);
     if (next) { next.parentElement.before(row); }
-    else { cards[cards.length - 1].parentElement.after(row); }
+    else if (cards.length) { cards[cards.length - 1].parentElement.after(row); }
+    else { list.appendChild(row); }
     window.htmx.process(row);
     window.htmx.trigger(row, 'htmx:load');
   });

@@ -4,6 +4,7 @@
 """
 
 from datetime import date, datetime, timedelta, timezone as dt_timezone
+from types import SimpleNamespace
 
 import pytest
 
@@ -138,7 +139,7 @@ def test_publish_important_uses_one_clock_and_moscow_date_for_deadline(monkeypat
         calls.append(now)
         return now
 
-    monkeypatch.setattr(posts.timezone, "now", clock)
+    monkeypatch.setattr(posts, "timezone", SimpleNamespace(now=clock))
     post = posts.publish(author, {"kind": "important", "text": f"Публикация @[{mentioned.pk}]",
                                   "to": [f"p{recipient.pk}"], "term": "day"})
     assert calls == [now]

@@ -312,9 +312,12 @@ def test_term_choices_are_day_week_month_and_until_date():
     block = q1(root, None, data_kind_fields="important")
     for label in ("День", "Неделя", "Месяц", "До даты"):
         assert label in block.text()
-    assert (q(block, "input", name="until", type="text", data_datefield_input=True)
-            and q(block, "button", data_datefield_open=True)
-            and q(block, data_datefield_picker=True))
+    # К42/К61 (CONTRACT-007 10.2): until — нативный input[type=date] с границами (validity видит диапазон);
+    # сетка портала остаётся у полей дат без границ (FR-148).
+    until = q(block, "input", name="until", type="date")
+    assert len(until) == 1
+    assert until[0].attrs.get("min") and until[0].attrs.get("max")
+    assert q(block, "input", name="until", data_datefield_input=True) == []
 
 
 # --- срок: отказы --------------------------------------------------------------------------------------------

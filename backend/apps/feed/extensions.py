@@ -23,7 +23,7 @@ def register_all() -> None:
     extensions.register("menu_items", menu_items)
     extensions.register("home_body", body)
     extensions.register("search_providers", search.search_providers)
-    extensions.register("notification_kinds", notify_kinds.kinds)
+    extensions.register("notification_kinds", notify_kinds.notification_kinds)
     extensions.register("file_purposes", files.file_purposes)
     extensions.register("audit_labels", audit_labels.audit_labels)  # подписи журнала (T-7231, CONTRACT-007 8.2)
     extensions.register("stand_reset", stand.stand_reset)  # последняя: сброс зовёт функции в обратном порядке

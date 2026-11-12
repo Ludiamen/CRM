@@ -179,7 +179,12 @@ def pick_mention(page, field, query: str, label: str) -> None:
     строку `[data-pick-label="<label>"]`; ждёт `@<label>` в тексте поля. Если у поля есть отдельный
     `input[data-feed-picker="mention"]` вне текста, `field` — он (тогда проверки текста нет)."""
     box = page.locator(field) if isinstance(field, str) else field
-    box.click()
+    box.focus()
+    at_boundary = box.evaluate(
+        "el => { const p = el.value.slice(0, el.selectionStart); return p === '' || /[\\s(]$/.test(p); }"
+    )
+    if not at_boundary:
+        box.press_sequentially(" ")
     box.press_sequentially("@" + query, delay=30)
     option = page.locator(f'[data-feed-pick-list] [data-pick-label="{label}"]').first
     expect(option).to_be_visible(timeout=10_000)

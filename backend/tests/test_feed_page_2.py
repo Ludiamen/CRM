@@ -440,8 +440,9 @@ def test_card_data_loaded_by_post_ids_array_parameter():
 # --- FR-603: состав записи --------------------------------------------------------------------------------------
 
 def test_post_shows_author_photo_arrow_recipients_and_published_time():
-    """FR-603: plain reader sees full author name instead of inaccessible photo; other content remains intact."""
-    reader = feed.as_plain(full_name="Пётр Адресатов")
+    """FR-603: plain reader sees full author name instead of inaccessible photo; other content remains intact.
+    Персональный адресат в строке адресатов — краткой формой «Фамилия И. О.» (FR-603, сценарий 5 спеки)."""
+    reader = feed.as_plain(full_name="Адресатов Пётр Иванович")
     author = _author("Анна Автор")
     stored = support.model("core.StoredFile").objects.create(
         purpose="photo", owner=author, size=10, sha256="0" * 64, content_type="image/png", status="clean",
@@ -460,7 +461,7 @@ def test_post_shows_author_photo_arrow_recipients_and_published_time():
     assert reader.client.get(f"/staff/{author.pk}/photo/{stored.pk}/96/").status_code == 403
     assert "→" in node.text()
     recipients = node.first(id=f"feed-post-{post.pk}-to").text()
-    assert "Отдел сети" in recipients and "Пётр Адресатов" in recipients
+    assert "Отдел сети" in recipients and "Адресатов П. И." in recipients
     stamp = node.first("time", data_at=True)
     assert datetime.fromisoformat(stamp.attrs["datetime"]) == published
     assert stamp.text() == "10.03.2026 12:30"

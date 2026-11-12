@@ -367,13 +367,25 @@ def test_page_shows_three_channels_with_switch_keys_state_and_default_values(set
     assert {r.attrs["data-notify-kind"] for r in rows} == {kind.code for kind in _kinds()}
     for kind in _kinds():
         row = _one(doc, "tr", {"data-notify-kind": kind.code}, within=table)
+        cells = _find(doc, "td", {"data-channel": True}, within=row)
+        assert sorted(cell.attrs["data-channel"] for cell in cells) == sorted(EXTERNAL), kind.code
         shown = {}
-        for cell in _find(doc, "td", {"data-channel": True}, within=row):
-            box = _one(doc, "input", {"type": "checkbox", "name": "cell"}, within=cell)
-            assert box.attrs["value"] == f"{kind.code}:{cell.attrs['data-channel']}"
-            shown[cell.attrs["data-channel"]] = "checked" in box.attrs
-        assert sorted(shown) == sorted(EXTERNAL), kind.code
+        for cell in cells:
+            channel = cell.attrs["data-channel"]
+            allowed = kind.channels is None or channel in kind.channels
+            assert cell.attrs.get("data-available") == ("1" if allowed else "0"), (kind.code, channel)
+            boxes = _find(doc, "input", {"type": "checkbox"}, within=cell)
+            if not allowed:
+                assert not boxes, (kind.code, channel)
+                shown[channel] = False
+                continue
+            assert len(boxes) == 1, (kind.code, channel)
+            box = boxes[0]
+            assert box.attrs.get("name") == "cell"
+            assert box.attrs["value"] == f"{kind.code}:{channel}"
+            shown[channel] = "checked" in box.attrs
         wanted = ["email"] if kind.code == first.code else _defaults_of(kind)
+        wanted = [c for c in wanted if kind.channels is None or c in kind.channels]
         assert [c for c in EXTERNAL if shown[c]] == wanted, kind.code
 
 

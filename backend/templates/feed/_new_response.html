@@ -6,7 +6,7 @@
 {% endif %}
 <ol id="feed-list" data-feed-list-main class="feed-list" hx-swap-oob="afterbegin:#feed-list">
   {% for item in posts %}<li>{% include "feed/_post.html" with opened=opened %}</li>{% endfor %}
-  {% if has_more %}<li class="feed-more"><a data-feed-reload class="btn btn-outline-primary" href="{{ reload_url }}" hx-get="{{ reload_url }}" hx-target="#feed-live" hx-swap="innerHTML">Показать все</a></li>{% endif %}
+  {% if has_more %}<li class="feed-more"><a data-feed-reload class="btn btn-outline-primary" href="{{ reload_url }}">Показать все</a></li>{% endif %}
 </ol>
 {% include "feed/_new_banner.html" with count=0 since=newest %}
 {% if badge_oob %}{% include "feed/_badge.html" %}{% endif %}
