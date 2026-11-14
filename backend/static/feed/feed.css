@@ -1,7 +1,14 @@
 .feed-page { max-width: 64rem; min-width: 0; margin-inline: auto; overflow-wrap: anywhere; }
 .feed-list { list-style: none; padding: 0; margin: 0; }
 .feed-post { min-width: 0; }
-.feed-post-head { display: flex; gap: .75rem; align-items: flex-start; margin-bottom: .75rem; }
+/* T-7301 (NFR-606): перенос строки шапки записи — в базовой части, вне медиа-блока: в headed Chrome
+   при окне 360 px и clientWidth 345 `matchMedia('(max-width:360px)')` оказывается false (замер
+   оркестратора на стенде, green-20261113-193900-scu02X), и правило внутри медиа-блока 360 px
+   не применяется. `flex-wrap: wrap` не меняет раскладку, пока строка помещается (на 1280 px контент
+   влезает — перенос не наступает, шапка одной строкой, как прежде), и уносит контейнер действий
+   «Править»/«Удалить» на свою строку, когда ширины не хватает (345 px — клиентская ширина окна 360
+   с вертикальной полосой). */
+.feed-post-head { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-start; margin-bottom: .75rem; }
 .feed-post-head > div { min-width: 0; }
 .feed-author-photo { width: 3rem; height: 3rem; object-fit: cover; border-radius: 50%; }
 .feed-text { overflow-wrap: anywhere; }

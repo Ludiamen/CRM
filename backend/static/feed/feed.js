@@ -6,6 +6,17 @@
   window.feedFormLoaded = true;
   var feedSocket = null;
 
+  /* T-7301 (oobErrorNoTarget): захват внутреннего API htmx через defineExtension — тот же приём, которым
+     пользуется htmx-ext-ws (`init(api)` вызывается синхронно при определении). API нужен, чтобы в
+     `htmx:wsBeforeMessage` отфильтровать OOB-фрагменты без цели ДО передачи htmx и применить годные его же
+     `oobSwap`, сохранив штатные события (`oobBeforeSwap`, `oobAfterSwap`, `wsAfterMessage`) и settle. */
+  var htmxInternal = null;
+  if (window.htmx && typeof window.htmx.defineExtension === 'function') {
+    window.htmx.defineExtension('feed-oob-guard', {
+      init: function (api) { htmxInternal = api; }
+    });
+  }
+
   function feedLive(node) {
     if (!node) { return null; }
     if (node.id === 'feed-live') { return node; }
@@ -51,6 +62,101 @@
     var live = feedLive(event.target);
     if (live) { live.dataset.ws = 'closed'; }
   });
+
+  /* T-7301 (oobErrorNoTarget): рассылка кадров портала идёт всем сокетам, включая инициатора, поэтому кадр
+     может не иметь цели на этой странице — удаление записи/комментария (у инициатора узел уже снят
+     HTTP-ответом; старый комментарий — вне показанных последних трёх) и notify-кадры вроде
+     `#notify-binding-telegram` (блок живёт только в «Моих уведомлениях»). htmx 2.0.11 на OOB-фрагмент без
+     цели отвечает console.error (`htmx:oobErrorNoTarget`). Проверяем сообщение на отменяемом
+     `htmx:wsBeforeMessage` (все сокеты страницы, в том числе колокольчик):
+     - у всех верхних фрагментов цель есть — сообщение не трогаем, htmx обрабатывает его штатно;
+     - есть фрагмент без цели — отменяем сообщение и применяем годные фрагменты сами тем же внутренним
+       `oobSwap`, который вызвал бы htmx-ext-ws: правила подмены, `htmx:oobBeforeSwap` (отмена дубля —
+       решение 62), `htmx:oobAfterSwap` и settle не отличаются; бесцельные фрагменты отбрасываются — то, что
+       htmx сделал бы с ними в любом случае, но без ошибки в консоли. Завершаем сообщение штатным
+       `htmx:wsAfterMessage` (состояния `data-ws` ленты и колокольчика не ломаются).
+     HTTP-ответы (сброс формы публикации, вставка записи) не затрагиваются: событие бывает только у кадров
+     WebSocket. Селектор цели вычисляется по правилам htmx oobSwap; формы, которые `querySelectorAll` не
+     понимает (специальные селекторы htmx), считаем годными — фильтр ничего не отбрасывает наугад. */
+  function oobSelectorOf(value, child) {
+    if (typeof value !== 'string' || !value) { return null; }
+    var colon = value.indexOf(':');
+    if (colon > 0) { return value.substring(colon + 1); }
+    /* Как в htmx oobSwap: цель — `#` + CSS.escape(id); без id это заведомо отсутствующая цель. */
+    var id = child.getAttribute ? child.getAttribute('id') : null;
+    return '#' + (window.CSS && typeof window.CSS.escape === 'function' ? window.CSS.escape(id) : String(id));
+  }
+
+  function oobTargetMissing(value, child) {
+    var selector = oobSelectorOf(value, child);
+    if (selector === null) { return true; }
+    try {
+      return document.querySelectorAll(selector).length === 0;
+    } catch (error) {
+      return false; /* селектор не проверить — не фильтруем, пусть решает htmx */
+    }
+  }
+
+  document.addEventListener('htmx:wsBeforeMessage', function (event) {
+    var detail = event.detail || {};
+    var message = detail.message;
+    if (!htmxInternal || typeof message !== 'string' || !message) { return; }
+    var socket = event.target;
+    var fragment;
+    try {
+      fragment = htmxInternal.makeFragment(message);
+    } catch (error) { return; /* сообщение не разбирается — оставим штатному пути */ }
+    var children = Array.prototype.slice.call(fragment.children || []);
+    if (!children.length) { return; }
+    var specs = children.map(function (child) {
+      var value = htmxInternal.getAttributeValue(child, 'hx-swap-oob') || 'true';
+      return {child: child, value: value, missing: oobTargetMissing(value, child)};
+    });
+    if (!specs.some(function (spec) { return spec.missing; })) { return; }
+    event.preventDefault(); /* htmx сообщение не получает: фрагменты без цели отфильтрованы */
+    var settle = htmxInternal.makeSettleInfo(socket);
+    specs.forEach(function (spec) {
+      if (!spec.missing) { htmxInternal.oobSwap(spec.value, spec.child, settle); }
+    });
+    htmxInternal.settleImmediately(settle.tasks);
+    htmxInternal.triggerEvent(socket, 'htmx:wsAfterMessage',
+      {message: message, socketWrapper: detail.socketWrapper});
+  });
+
+  /* T-7301 (oobErrorNoTarget, HTTP-путь): та же гонка с другой стороны — кадр WS успевает снять узел
+     ДО того, как страницу обработает HTTP-ответ действия (удаление записи/комментария: ответ
+     `<div id="…" hx-swap-oob="delete">` приходит на страницу, где цели уже нет), и htmx логирует
+     console.error уже на OOB из HTTP-ответа — WS-guard тут не помогает. Документный слушатель
+     `htmx:beforeSwap` тоже не годится: к моменту ответа цель (вся статья) отцеплена от DOM, и htmx
+     dispatch'ит событие на отцепленном узле — до document оно не доходит. Поэтому фильтр висит на
+     `htmx.logger` — htmx синхронно зовёт его для каждого события ДО dispatch (публичный API; слот
+     `logAll`/`logNone`) и ПЕРЕЧИТЫВАЕТ `detail.serverResponse` после `htmx:beforeSwap`: подменённый
+     ответ уходит в swap уже без бесцельных OOB. Правило цели то же, что у WS-guard; OOB с целью на
+     месте (сброс `#feed-form`, liker-list, счётчики, плашка) и основной контент не трогаются — ответ
+     переписывается, только когда в нём нашёлся фрагмент без цели. Прежний logger сохраняется. */
+  function filterOrphanOob(detail) {
+    var html = detail && detail.serverResponse;
+    if (typeof html !== 'string' || html.indexOf('hx-swap-oob') < 0) { return; }
+    var parsed = new DOMParser().parseFromString(html, 'text/html');
+    var nodes = Array.prototype.slice.call(parsed.querySelectorAll('[hx-swap-oob], [data-hx-swap-oob]'));
+    var orphans = nodes.filter(function (node) {
+      var value = node.getAttribute('hx-swap-oob') || node.getAttribute('data-hx-swap-oob') || 'true';
+      return oobTargetMissing(value, node);
+    });
+    if (!orphans.length) { return; }
+    orphans.forEach(function (node) { node.parentNode.removeChild(node); });
+    detail.serverResponse = parsed.body.innerHTML;
+  }
+
+  if (window.htmx) {
+    var previousHtmxLogger = window.htmx.logger || null;
+    window.htmx.logger = function (elt, eventName, detail) {
+      try {
+        if (eventName === 'htmx:beforeSwap') { filterOrphanOob(detail); }
+      } catch (error) { /* сбой фильтра не должен ломать обработку ответа */ }
+      if (previousHtmxLogger) { previousHtmxLogger(elt, eventName, detail); }
+    };
+  }
 
   document.addEventListener('htmx:afterSwap', function (event) {
     var live = document.getElementById('feed-live');
@@ -118,16 +224,22 @@
   document.addEventListener('htmx:beforeSwap', function (event) {
     var detail = event.detail;
     var source = detail.requestConfig && detail.requestConfig.elt;
-    if (!source || !source.matches('button[data-action="read"]') ||
-        !source.closest('[data-feed-imp]') || !source.closest('#feed-important') ||
+    if (!source || !source.matches || !source.matches('button[data-action="read"]') ||
         detail.xhr.status !== 200 || !detail.shouldSwap) { return; }
-    var original = source.closest('article[data-post-id]');
-    var list = document.querySelector('ol#feed-list[data-feed-list-main]');
-    if (!original || !list) { return; }
+    /* T-7301 (FR-614): кадр WS `#feed-post-<id>-imp` может прийти раньше ответа XHR и отцепить
+       кнопку от DOM — на связанность `source` не опираемся: запись определяется по номеру из
+       ответа и по текущему DOM (`#feed-post-<id>`). */
     var parsed = new DOMParser().parseFromString(detail.serverResponse, 'text/html');
     var card = parsed.querySelector('article[data-post-id]');
-    if (!card || card.id !== original.id || card.dataset.postId !== original.dataset.postId ||
-        card.querySelector('button[data-action="read"]')) { return; }
+    if (!card || !card.id || card.querySelector('button[data-action="read"]')) { return; }
+    var original = document.getElementById(card.id);
+    if (!original || !original.matches('article[data-post-id]') ||
+        original.dataset.postId !== card.dataset.postId) { return; }
+    /* Карточка уже вне блока важных (карточка записи, перенос выполнен) — штатная замена
+       обновляет её на месте; переноса нет и дубль не создаётся. */
+    if (!original.closest('#feed-important')) { return; }
+    var list = document.querySelector('ol#feed-list[data-feed-list-main]');
+    if (!list) { return; }
     /* Ответ сервера уже без кнопки. Подмену внутри блока заменяем переносом;
        остальные HTMX-действия и неуспешные ответы идут штатным путём. */
     detail.shouldSwap = false;
@@ -204,6 +316,34 @@
       pill.textContent = item.label + ' — упомянут';
       to.appendChild(pill);
     });
+  }
+
+  /* T-7301 r2/r3 (форма правки, решение владельца 2026-11-14; ревью r2 — «Дополнение: until»):
+     нативный `input[name=until]` с `min`/`max` (К61) в форме правки истёкшей важной записи хранит старое
+     значение ниже `min`, и HTML5-валидация блокирует POST даже после переключения срока — сервер при
+     term != date `until` не читает. Синхронизируем поле с ВИДОМ и СРОКОМ: оно включено и обязательно
+     ТОЛЬКО при `kind == "important"` И `term == "date"`; в остальных случаях — очистить и выключить
+     (disabled не валидируется и не отправляется). Учёт kind обязателен (r3): без него required-поле
+     остается после переключения вида на «Сообщение»/«Событие», когда блок полей вида скрыт (d-none) —
+     невидимое обязательное поле молча блокирует «Опубликовать». Вид берётся из
+     `input[name="kind"]:checked` — радиокнопки формы публикации и скрытый checked-radio формы правки
+     (`_form_edit.html`) читаются одинаково. Вызывается на загрузке и вставке формы (enhance) и при смене
+     kind/term — для обеих форм (`form[data-feed-form]`). Серверные проверки (`term_required`,
+     `invalid_until`, `date_passed`) остаются главными. */
+  function syncUntilField(form) {
+    if (!form) { return; }
+    var until = form.querySelector('input[name="until"]');
+    if (!until) { return; }
+    var kind = form.querySelector('input[name="kind"]:checked');
+    var term = form.querySelector('input[name="term"]:checked');
+    if (kind && kind.value === 'important' && term && term.value === 'date') {
+      until.disabled = false;
+      until.required = true;
+    } else {
+      until.value = '';
+      until.disabled = true;
+      until.required = false;
+    }
   }
 
   function initialize(form) {
@@ -368,8 +508,13 @@
     if (event.target.matches('[data-feed-picker]')) { suggestions(event.target); }
   });
   document.addEventListener('change', function (event) {
-    var data = state(currentForm(event.target));
+    var form = currentForm(event.target);
+    var data = state(form);
     if (data && event.target.name === 'kind') { refresh(data); }
+    /* T-7301 r2/r3: синхронизация `until` при смене вида и срока — без зависимости от состояния Alpine
+       (форма могла ещё не инициализироваться); при смене вида на не-«Важное» required-поле
+       очищается/выключается, иначе невидимое поле блокировало бы submit. */
+    if (event.target.name === 'term' || event.target.name === 'kind') { syncUntilField(form); }
   });
   document.addEventListener('click', function (event) {
     var button = event.target.closest('[data-pick-value], [data-action="to-remove"], [data-action="pdn-fix"]');
@@ -536,6 +681,7 @@
   function enhance() {
     document.querySelectorAll('form[data-feed-form]').forEach(function (form) {
       if (!form.hasAttribute('x-data')) { form.setAttribute('x-data', 'feedForm'); }
+      syncUntilField(form);  /* T-7301 r2: состояние `until` — по отмеченному term, на каждой вставке */
       /* Alpine mutation observer initializes inserted roots, including HTMX OOB. */
     });
   }
