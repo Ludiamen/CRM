@@ -188,8 +188,10 @@ def test_f06_publish_sends_at_id_marker_instead_of_chosen_full_name(admin_page, 
 
 def test_f06_mentioned_petrov_from_other_unit_sees_post_with_name_link_to_his_card_and_gets_you_were_mentioned(
         admin_page, employee, new_context):
-    """П. 2 (FR-605, FR-611, FR-629): запись группе сети с упоминанием Петрова из другого отдела — Петров видит запись,
-    имя в тексте — ссылка на его карточку, у него одно уведомление «Вас упомянули»."""
+    """П. 2 (FR-605, FR-611, FR-629, FR-603): запись группе сети с упоминанием Петрова из другого отдела — в строке
+    адресатов Петров кратким ФИО («Фамилия И. О.», решение P1 G1, CONTRACT-007 10.2:659), полное ФИО — в полном
+    списке `/feed/<id>/to/`; Петров видит запись, имя в тексте — ссылка на его карточку, у него одно уведомление
+    «Вас упомянули»."""
     tag = _tag()
     writer = _writer(admin_page, employee, tag)
     net_member = _staff(employee, tag, "Сетев")
@@ -199,7 +201,16 @@ def test_f06_mentioned_petrov_from_other_unit_sees_post_with_name_link_to_his_ca
     page_w = open_feed(new_context(), writer)
     text = f"Запись для сети {_word()} "
     post_id = publish(page_w, text, to=[("unit", net_name)], mentions=[petrov.full_name])
-    expect(page_w.locator(f"#feed-post-{post_id}-to")).to_contain_text(petrov.full_name)
+    # Строка адресатов — КРАТКОЕ ФИО «Фамилия И. О.» (FR-603, сценарий 5; решение P1 G1, CONTRACT-007
+    # 10.2:659 — `_short_name` в recipients.line); полное ФИО — в полном списке `/feed/<id>/to/`.
+    parts = petrov.full_name.split()
+    short_name = " ".join([parts[0]] + [f"{part[:1].upper()}." for part in parts[1:]])
+    to_line = page_w.locator(f"#feed-post-{post_id}-to")
+    expect(to_line).to_contain_text(short_name)
+    expect(to_line).not_to_contain_text(petrov.full_name)
+    recipients = helpers_org.direct_get(page_w, f"/feed/{post_id}/to/")
+    assert recipients.status == 200, f"/feed/{post_id}/to/: статус {recipients.status}"
+    assert petrov.full_name in recipients.text(), "в полном списке адресатов нет полного ФИО Петрова"
     page = open_feed(new_context(), petrov)
     expect(page.locator(f"#feed-post-{post_id}")).to_be_visible()
     link = page.locator(f'#feed-post-{post_id}-body a[data-mention="{petrov.id}"]')

@@ -22,7 +22,11 @@ headed Chrome с окном 360×780 и фото автора — условия
 until»): добавлен тест 7 — переключение вида публикации с «Важное»+«До даты» на «Сообщение» обязано
 сбрасывать required у скрытого `until` (иначе невидимое обязательное поле молча блокирует
 «Опубликовать»), плюс контроль публикации важной записи с term=date и реальной датой (см.
-`report-edit-v2.md`); тесты 1-6 не изменены.
+`report-edit-v2.md`); тесты 1-6 не изменены. Версия 8 — по итогам T-7302 (полный прогон): в тесте 3
+контрольный сигнал «счётчик «Ленты» +1» используется только при `base_badge < 100` — на общем стенде
+счётчик может стоять на капизации `data-count=100` («99+», потолок — штатное поведение, не OOB-дефект)
+и не расти (см. `report-tests-badge.md`); счётчики/ассерты `htmx:oobErrorNoTarget`, прочие сигналы
+порядка и тесты 1-2, 4-7 не изменены.
 
 1. **FR-614 (гонка WS/XHR).** Кадр WS `#feed-post-<id>-imp` приходит раньше ответа XHR «Прочитано»: кадр
    заменяет блок важного, кнопка отцепляется от DOM, обработчик переноса в `feed.js` (`htmx:beforeSwap`)
@@ -317,7 +321,12 @@ def test_post_delete_by_initiator_logs_no_oob_error_while_regular_oob_keeps_work
     base_badge = badge(deleter_page)
     p2 = publish_request(publisher_page, kind="post", text=_word("Сигнальная первая"), to=f"p{deleter.id}")
     wait_banner(deleter_page, 1, timeout=WAIT_MS)                 # контроль: плашка (кадр с целью)
-    wait_badge(deleter_page, base_badge + 1, timeout=WAIT_MS)     # контроль: счётчик «Ленты» (notify-сокет)
+    # Контроль счётчика «Ленты» (notify-сокет, OOB `#menu-badge-feed`) — только ниже капизации: при
+    # data-count=100 («99+», потолок unread.count — CONTRACT-007 3.1/12.2) счётчик на общем стенде уже
+    # не растёт (факт T-7302), и wait_badge(base+1) невыполним. Капизация — штатное поведение продукта,
+    # не OOB-дефект; порядок кадров на сокете ленты и так доказан плашкой и liker-list ниже.
+    if base_badge < 100:
+        wait_badge(deleter_page, base_badge + 1, timeout=WAIT_MS)
     p3 = publish_request(publisher_page, kind="post", text=_word("Сигнальная вторая"),
                          to=[f"p{deleter.id}", f"p{watcher.id}"])
     wait_banner(deleter_page, 2, timeout=WAIT_MS)

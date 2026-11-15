@@ -60,6 +60,25 @@ def _pressed(page, post_id) -> str:
     return page.locator(f"#feed-post-{post_id} button[data-feed-like]").first.get_attribute("aria-pressed")
 
 
+def _quiet_off(account) -> None:
+    """Режим «Без тихих часов» для сотрудника на `/me/notifications/` (образец — `test_e01_new_ticket._prefs`;
+    поле `fieldset[data-quiet] input[name=quiet_mode][value=none]`, сохранение `button[data-action=save-prefs]`,
+    проверка `role=status`). Ячейки каналов видов НЕ трогает — только тихие часы. Нужен для детерминизма
+    почтового контроля в любой день: при режиме «По рабочему календарю» письмо в выходной остаётся `held`
+    (quiet=calendar — факт T-7302), и положительный контроль `feed_mail` не проходит."""
+    page = account.page
+    page.goto("/me/notifications/")
+    form = page.locator('form[data-form="notify-prefs"]')
+    expect(form).to_be_visible()
+    form.locator('fieldset[data-quiet] input[type=radio][name="quiet_mode"][value="none"]').check()
+    with page.expect_navigation():
+        form.locator('button[type=submit][data-action="save-prefs"]').click()
+    page.wait_for_load_state()
+    assert not helpers.alert_text(page), f"настройки не сохранены: {helpers.alert_text(page)}"
+    expect(page.locator("[role=status]").first).to_be_visible()
+    expect(page.locator('fieldset[data-quiet] input[name="quiet_mode"][value="none"]')).to_be_checked()
+
+
 def _kind_rows(page, title: str):
     """Строки «Мои уведомления» вида `title` (страница открывается заново)."""
     page.goto("/notifications/")
@@ -145,11 +164,15 @@ def test_f05_five_likers_line_shows_two_latest_names_and_3_more_and_full_list_on
 def test_f05_two_likes_of_petrov_comment_give_him_one_portal_notification_without_letter_or_messenger_message(
         admin_page, employee, new_context, mailpit):
     """П. 3 (FR-629, FR-631): комментарий Петрова отметили два сотрудника — у Петрова одно (склеенное) уведомление на
-    портале; письма нет (после сдвига сроков на 15 минут), у вида «Нравится» нет ячеек почты и мессенджеров."""
+    портале; письма нет (после сдвига сроков на 15 минут), у вида «Нравится» нет ячеек почты и мессенджеров.
+    Автору до действий выключаются тихие часы (`_quiet_off`): положительный контроль — письмо «Новый комментарий»
+    автору — в выходной при режиме «По рабочему календарю» остаётся `held` (факт T-7302), тест обязан быть
+    детерминированным в любой день; ячейка «Почта» у видов не меняется."""
     writer = _writer(admin_page, employee)
     petrov = _staff(employee, "Петров")
     first = _staff(employee, "Первов")
     second = _staff(employee, "Второв")
+    _quiet_off(writer)
     post_id = publish(open_feed(new_context(), writer), f"Запись для комментария Петрова {_word()}")
     page_p = open_feed(new_context(), petrov)
     comment_id = add_comment(page_p, post_id, f"комментарий Петрова {_word()}")
