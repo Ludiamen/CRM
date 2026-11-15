@@ -2898,3 +2898,13 @@ Firefox, Edge, Yandex; срезы 001–006 — Chromium и Yandex; сброс �
 После правок: f05+f06 ×4 — **8/8 PASSED, exit 0** (`f05-f06-20261115-120209-lxGgtz/`); исправленный OOB-тест —
 **2/2 PASSED** (`badge-20261115-111242-NanKcc/`) в Chromium и Yandex. Владелец 2026-11-15 принял такое закрытие
 ворот: точечный повтор вместо полного 26-часового прогона; T-7302 отмечена `[x]`.
+
+## Финальные проверки (T-7303) — 2026-11-15
+
+- `python3 tools/sdd.py проверить` — 105 документов, **0 ошибок, 0 предупреждений**.
+- `python3 -m unittest discover -s tools -p "test_*.py"` — **140 passed**.
+- `python3 -m unittest tools/test_constitution.py` — **6 passed**.
+- `python3 tools/check_secrets.py` — «секретов в индексе не найдено».
+- `python3 tools/verify_vendor.py` — **0 ошибок**, 2 замечания (в ветках есть Bootstrap 5.3.9 и Alpine CSP 3.17.5;
+  `htmx-ext-ws` 2.0.4 прежний, новой сторонней статики нет — обновление не требуется).
+- `git diff --check` — чисто. **T-7303 отмечена `[x]`**.

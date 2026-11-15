@@ -2315,7 +2315,7 @@ Opus. У задачи названы файлы тестов Этапа 2, ко�
   браузере — план: «Риски», htmx-ext-ws вне Chromium); срезы 001–006 — кругами по Chromium и Яндекс Браузеру (`-k`,
   правило владельца 2026-10-21) — backend/tests/e2e/*; docs/reviews/TASKS-007.md, раздел «Приёмка» — (NFR-602,
   NFR-604, NFR-606)
-- [ ] T-7303 [P] [opus] `python3 tools/sdd.py проверить` и `python3 -m unittest discover -s tools -p "test_*.py"` без
+- [x] T-7303 [P] [opus] `python3 tools/sdd.py проверить` и `python3 -m unittest discover -s tools -p "test_*.py"` без
   ошибок; `tools/test_constitution.py` по `backend/` и `deploy/`; `tools/check_secrets.py` по дереву;
   `tools/verify_vendor.py` (новой сторонней статики нет, `htmx-ext-ws` 2.0.4 прежний) — вывод команд в
   docs/reviews/TASKS-007.md — (конституция: «стек-бэкенд», «стек-интерфейс», «бд», «бесплатные-компоненты»,
