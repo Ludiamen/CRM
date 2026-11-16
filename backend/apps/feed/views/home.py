@@ -133,7 +133,7 @@ def more(request):
     context = _context(request.user, flt, result, continuation=True)
     context["badge_oob"] = is_hx
     if is_hx:
-        context["count"] = unread.count(request.user)
+        context["count"] = unread.count(request.user, use_cache=True)
     response = render(request, "feed/_lists.html", context)
     response["Vary"] = "HX-Request"
     return response

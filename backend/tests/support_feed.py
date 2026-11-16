@@ -246,6 +246,10 @@ def make_post(author, kind: str = "post", *, to=(), mentions=(), text: str = "Т
     post = Post.objects.create(**fields)
     _recipient_rows(post, to, mentions, published_at)
     set_post_vector(post)
+    # Фабрика создаёт запись в обход `posts.publish`, поэтому сама сбрасывает кэш числа «Ленты»
+    # (план «Риски»: кэш числа на 5 с); иначе оболочка/меню показывали бы прежнее число.
+    from apps.feed.services import unread
+    unread.invalidate_counts()
     return post
 
 

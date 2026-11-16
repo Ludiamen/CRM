@@ -5,6 +5,26 @@ from apps.feed.services import reminders, retention
 from apps.feed.services.reminders import RunResult
 
 
+def publish_event(post_id, action, comment_id=None, recipients=None, owner_id=None):
+    """Задание очереди `notify`: фан-аут живых обновлений `live.publish_event`.
+
+    Рассылка уходит из запроса действия в worker-notify (план «Риски»: при p95 публикации
+    выше 500 мс уведомления и рассылка уходят заданием очереди `notify`). Порядок и семантика
+    личных групп/ООB/счётчиков сохраняются — задание зовёт ту же `live.publish_event`.
+    `recipients` передаётся списком (сериализация RQ) и снимается готовым множеством только
+    для удаления записи, когда адресатов в базе уже нет.
+    """
+    from apps.feed.services import live
+
+    return live.publish_event(
+        post_id,
+        action,
+        comment_id=comment_id,
+        recipients=frozenset(recipients) if recipients is not None else None,
+        owner_id=owner_id,
+    )
+
+
 def remind_events(now=None) -> RunResult:
     """Разослать напоминания о событиях, срок напоминания которых наступил.
 

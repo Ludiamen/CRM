@@ -1,6 +1,7 @@
 """Показы и число непрочитанных записей ленты (FR-626)."""
 
 from django.apps import apps
+from django.core.cache import cache
 from django.db import connection
 from django.utils import timezone
 
@@ -8,6 +9,43 @@ from apps.core.models import UserState
 
 
 _INACTIVE_STATES = (UserState.BLOCKED, UserState.DISMISSED)
+
+# Кэш числа «Ленты» на 5 с (план «Риски»: «кэш числа на запрос или на 5 с»): число считается на
+# каждой странице у каждого сотрудника, кэш снимает повторные запросы к PG между страницами.
+# Используется только путём оболочки/меню (`use_cache=True`); прямые вызовы службы и вызовы с явным
+# `now` не кэшируются, поэтому замеры и тесты с часами остаются детерминированными.
+# Ключ содержит глобальную версию: сброс всех чисел (запись «Всем», фабрики теста) поднимает версию
+# одним INCR, а показ/обычная запись сбрасывают только затронутых сотрудников (ключи текущей версии).
+COUNT_CACHE_SECONDS = 5
+_VERSION_KEY = "feed:unread:version"
+_COUNT_KEY = "feed:unread:count:{version}:{user_id}"
+
+
+def _version() -> int:
+    version = cache.get(_VERSION_KEY)
+    if version is None:
+        version = 1
+        cache.set(_VERSION_KEY, version, timeout=None)
+    return version
+
+
+def _count_cache_key(user_id: int, version: int) -> str:
+    return _COUNT_KEY.format(version=version, user_id=user_id)
+
+
+def invalidate_counts(user_ids=None) -> None:
+    """Сбросить кэш числа «Ленты».
+
+    `user_ids=None` — сброс всех (поднять версию: прежние ключи устаревают и истекают сами);
+    иначе — сброс только перечисленных сотрудников (показ, запись не «Всем»).
+    """
+    if user_ids is None:
+        cache.set(_VERSION_KEY, _version() + 1, timeout=None)
+        return
+    ids = {int(user_id) for user_id in user_ids if user_id is not None}
+    if ids:
+        version = _version()
+        cache.delete_many([_count_cache_key(user_id, version) for user_id in ids])
 
 
 def _unit_chain(user) -> frozenset[int]:
@@ -73,14 +111,27 @@ def mark_shown(user, post_ids) -> None:
                 chain,
             ],
         )
+    # Показ меняет число «Ленты»: сброс кэша числа сотрудника (план «Риски», кэш на 5 с).
+    invalidate_counts([user_id])
     return None
 
 
-def count(user, *, now=None) -> int:
-    """Сосчитать до 100 видимых чужих записей за последние 30 дней без показа."""
+def count(user, *, now=None, use_cache: bool = False) -> int:
+    """Сосчитать до 100 видимых чужих записей за последние 30 дней без показа.
+
+    `use_cache=True` (путь оболочки/меню) кэширует число на `COUNT_CACHE_SECONDS` и сбрасывается
+    при показе и изменении записей; с явным `now` (замеры, тесты с часами) кэш не используется.
+    """
     user_id = getattr(user, "pk", None)
     if user_id is None or getattr(user, "state", None) in _INACTIVE_STATES:
         return 0
+
+    cacheable = use_cache and now is None
+    version = _version() if cacheable else None
+    if cacheable:
+        cached = cache.get(_count_cache_key(user_id, version))
+        if cached is not None:
+            return cached
 
     moment = timezone.now() if now is None else now
     chain = list(_unit_chain(user))
@@ -116,7 +167,10 @@ def count(user, *, now=None) -> int:
             sql,
             [moment, user_id, user_id, chain, user_id, user_id, user_id, *_INACTIVE_STATES],
         )
-        return cursor.fetchone()[0]
+        result = cursor.fetchone()[0]
+    if cacheable:
+        cache.set(_count_cache_key(user_id, version), result, COUNT_CACHE_SECONDS)
+    return result
 
 
 def counts(user_ids, *, now=None) -> dict[int, int]:

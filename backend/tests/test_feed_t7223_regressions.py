@@ -109,6 +109,7 @@ def test_new_message_has_empty_variants(django_capture_on_commit_callbacks):
     with ff.layer_spy(passthrough=False) as spy:
         with django_capture_on_commit_callbacks(execute=True):
             response = _publish(author, reader.user, text="Новая запись")
+        notify.run_jobs("notify")   # рассылка уходит заданием очереди notify (план «Риски»)
     assert response.status_code == 200
     message = _event(spy, "new")
     assert message["variants"] == {}, "у `new` variants должен быть пустым словарём"
@@ -124,6 +125,7 @@ def test_post_like_owner_is_post_author_not_liker(django_capture_on_commit_callb
     with ff.layer_spy(passthrough=False) as spy:
         with django_capture_on_commit_callbacks(execute=True):
             response = _like(liker, post)
+        notify.run_jobs("notify")   # рассылка уходит заданием очереди notify (план «Риски»)
     assert response.status_code == 200
     message = _event(spy, "like")
     assert message["owner"] == author.user.pk, "owner лайка записи — автор записи"
@@ -137,6 +139,7 @@ def test_comment_like_owner_is_comment_author_not_liker(django_capture_on_commit
     with ff.layer_spy(passthrough=False) as spy:
         with django_capture_on_commit_callbacks(execute=True):
             response = liker.client.post(f"/feed/comments/{comment.pk}/like/", **HX)
+        notify.run_jobs("notify")   # рассылка уходит заданием очереди notify (план «Риски»)
     assert response.status_code == 200
     message = _event(spy, "comment_like")
     assert message["owner"] == commenter.user.pk, "owner лайка комментария — автор комментария"

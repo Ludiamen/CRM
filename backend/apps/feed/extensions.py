@@ -7,7 +7,8 @@ def menu_items() -> list[dict]:
 
     return [
         {"permissions": (), "url": "/", "title": "Лента", "icon": "icons/feed.html", "order": 0,
-         "visible": lambda user: True, "badge": unread.count, "live_badge": "feed"},
+         "visible": lambda user: True, "badge": lambda user: unread.count(user, use_cache=True),
+         "live_badge": "feed"},
         {"permissions": ("settings.portal",), "url": "/settings/feed/", "title": "Настройки ленты",
          "icon": "icons/gear.html", "order": 63},
     ]

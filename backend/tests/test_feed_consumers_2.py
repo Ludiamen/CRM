@@ -681,6 +681,7 @@ def test_new_comment_frame_is_beforeend_into_post_comments_and_carries_comment_i
         with django_capture_on_commit_callbacks(execute=True):
             response = commenter.client.post(f"/feed/{post.pk}/comments/", {"text": "Комментарий коллеги"}, **support.HX)
         assert response.status_code == 200
+        notify.run_jobs("notify")   # рассылка уходит заданием очереди notify (план «Риски»)
         return support.model("core.Comment").objects.filter(object_ref=f"feed.post:{post.pk}").order_by("-pk").first().pk
 
     async def scenario(hub):

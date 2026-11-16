@@ -86,5 +86,5 @@ def mark_read(user, post_id, *, now=None) -> None:
     with transaction.atomic():
         ReadMark.objects.get_or_create(post=post, user=user, defaults={"read_at": moment})
         transaction.on_commit(
-            lambda: _live.publish_event(post.pk, "read", owner_id=post.author_id)
+            lambda: _live.enqueue_publish(post.pk, "read", owner_id=post.author_id)
         )

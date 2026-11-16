@@ -15,6 +15,7 @@ from tests import support
 from tests import support_feed as ff
 from tests import support_org as org
 from tests.support import HX
+from tests.support_notify import run_jobs
 
 pytestmark = pytest.mark.django_db
 
@@ -280,8 +281,10 @@ def test_live_broadcast_sends_no_frame_about_invisible_post(django_capture_on_co
     with ff.layer_spy(passthrough=False) as spy:
         with django_capture_on_commit_callbacks(execute=True):
             post = posts.publish(world.author, {"text": "Запись для друга", "to": [f"p{world.friend.user.pk}"]})
+        run_jobs("notify")   # фан-аут уходит заданием очереди notify (план «Риски»)
         with django_capture_on_commit_callbacks(execute=True):
             comments.add(world.friend.user, post.pk, "Ответ друга")
+        run_jobs("notify")
 
     assert f"feed.u.{world.friend.user.pk}" in spy.by_group
     for user in (world.outsider.user,):

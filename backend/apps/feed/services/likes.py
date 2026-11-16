@@ -87,7 +87,7 @@ def _broadcast(user, post: Post, comment: Comment | None):
     action = "comment_like" if comment else "like"
     owner_id = comment.author_id if comment else post.author_id
     transaction.on_commit(
-        lambda: live.publish_event(
+        lambda: live.enqueue_publish(
             post.pk,
             action,
             comment_id=comment.pk if comment else None,

@@ -19,6 +19,7 @@ from apps.core.services import files as core_files
 from apps.core.models import StoredFile
 from apps.feed.models import FeedFile, Post, Recipient
 from apps.feed.services import events, files, important, mentions, pdn, recipients, search, text, visibility
+from apps.feed.services import unread
 from apps.feed.services import live as _live
 from apps.feed.services.errors import FeedError, PdnFound
 from apps.feed.services.notify_rules import RuleEvent, decide
@@ -89,6 +90,7 @@ def publish(user, data, *, now=None) -> Post:
         files.bind(user, file_ids, post=post)
 
         # Уведомления публикации: фактическая аудитория, упомянутые и личные адресаты «Кому»; автору — ничего.
+        audience_ids = visibility.audience(post)
         if apps.is_installed("apps.notify"):
             from apps.notify.services import dispatch
 
@@ -97,7 +99,7 @@ def publish(user, data, *, now=None) -> Post:
                     actor_id=user.pk,
                     action="publish",
                     post=post,
-                    audience=visibility.audience(post),
+                    audience=audience_ids,
                     mentioned=frozenset(mentioned_ids),
                     to_people=frozenset(targets.user_ids),
                 )
@@ -115,7 +117,9 @@ def publish(user, data, *, now=None) -> Post:
                     ],
                 )
 
-        transaction.on_commit(lambda: _live.publish_event(post.pk, "new", owner_id=user.pk))
+        transaction.on_commit(lambda: _live.enqueue_publish(post.pk, "new", owner_id=user.pk))
+        # Число «Ленты» кэшируется на 5 с (план «Риски»): сброс кэша затронутых после фиксации.
+        transaction.on_commit(lambda: unread.invalidate_counts(audience_ids))
     post.refresh_from_db()
     return post
 
@@ -156,10 +160,11 @@ def delete(user, post_id: int) -> None:
                 paths.append(pathlib.Path(settings.PROTECTED_ROOT) / feed_file.thumb)
 
         transaction.on_commit(
-            lambda: _live.publish_event(
+            lambda: _live.enqueue_publish(
                 post_pk, "delete", recipients=before_audience, owner_id=post_author_id
             )
         )
+        transaction.on_commit(lambda: unread.invalidate_counts(before_audience))
         core_comments.delete_for(f"feed.post:{post_id}")
         post.delete()
         if stored_ids:
@@ -407,7 +412,8 @@ def edit(user, post_id: int, data, *, now=None) -> Post:
                     ],
                 )
 
-        transaction.on_commit(lambda: live.publish_event(post.pk, "post", owner_id=user.pk))
+        transaction.on_commit(lambda: live.enqueue_publish(post.pk, "post", owner_id=user.pk))
+        transaction.on_commit(lambda: unread.invalidate_counts(after_audience))
         if gone_paths:
             transaction.on_commit(lambda: _erase_paths(gone_paths))
 

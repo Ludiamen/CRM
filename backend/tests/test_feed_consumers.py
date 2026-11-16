@@ -16,7 +16,7 @@ from django.utils import timezone
 from tests import support
 from tests import support_feed as ff
 from tests.support import HX
-from tests.support_notify import ws_fragments, ws_run
+from tests.support_notify import run_jobs, ws_fragments, ws_run
 
 pytestmark = pytest.mark.django_db
 
@@ -42,7 +42,9 @@ def _publish(session, *recipients, text: str = "Запись для провер
 
 def _publish_after_commit(capture, session, *recipients):
     with capture(execute=True):
-        return _publish(session, *recipients)
+        response = _publish(session, *recipients)
+    run_jobs("notify")   # рассылка уходит заданием очереди notify (план «Риски»)
+    return response
 
 
 async def _settle(conn, timeout: float = 0.5):
@@ -355,8 +357,10 @@ def test_query_keeps_only_filter_keys_or_post_and_drops_foreign_keys(django_capt
 
     def publish_important():
         with capture(execute=True):
-            return author.client.post("/feed/posts/", {
+            response = author.client.post("/feed/posts/", {
                 "kind": "important", "text": "Важная запись", "term": "day", "to": [f"p{viewer.user.pk}"]}, **HX)
+        run_jobs("notify")   # рассылка уходит заданием очереди notify (план «Риски»)
+        return response
 
     async def scenario(hub):
         page = await ff.ws_client(viewer, "f=important&evil=1&ids=99&since=2000-01-01", hub=hub)
@@ -387,7 +391,9 @@ async def _drain_quiet(conn, timeout: float = 0.4) -> None:
 
 def _comment_after_commit(capture, session, post):
     with capture(execute=True):
-        return session.client.post(f"/feed/{post.pk}/comments/", {"text": "Для карточки"}, **HX)
+        response = session.client.post(f"/feed/{post.pk}/comments/", {"text": "Для карточки"}, **HX)
+    run_jobs("notify")   # рассылка уходит заданием очереди notify (план «Риски»)
+    return response
 
 
 def test_client_messages_do_not_extend_session_idle_time():

@@ -16,6 +16,7 @@ from tests import support
 from tests import support_feed as sf
 from tests import support_org as org
 from tests.support import model
+from tests.support_notify import run_jobs
 
 pytestmark = pytest.mark.django_db
 
@@ -418,7 +419,11 @@ def test_dispatch_create_error_rolls_back_post_recipients_and_file_binding(monke
 
 
 def test_broadcast_runs_only_after_commit(django_capture_on_commit_callbacks):
-    """FR-608: рассылка по слою `publish` идёт только после фиксации; до неё сообщений слоя нет."""
+    """FR-608: рассылка по слою `publish` идёт только после фиксации; до неё сообщений слоя нет.
+
+    Фан-аут уходит заданием очереди `notify` (план «Риски»: p95 публикации > 500 мс), поэтому после
+    фиксации задание выполняется в том же потоке — до его выполнения сообщений слоя по-прежнему нет.
+    """
     writer = sf.as_writer()
     colleague = _person()
     with sf.layer_spy() as spy:
@@ -426,6 +431,7 @@ def test_broadcast_runs_only_after_commit(django_capture_on_commit_callbacks):
             response = _publish(writer, _data("После фиксации", [f"p{colleague.pk}"]))
             assert response.status_code == 302
             assert spy.calls == [], "до фиксации в слой ничего не отправлено"
+        run_jobs("notify")
         assert spy.calls, "после фиксации рассылка ушла"
     post = _posts().get()
     messages = spy.by_group.get(f"feed.u.{colleague.pk}", [])

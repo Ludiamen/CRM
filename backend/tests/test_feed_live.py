@@ -18,7 +18,7 @@ from tests import support
 from tests import support_feed as ff
 from tests import support_org as org
 from tests.support import HX
-from tests.support_notify import ws_fragments, ws_run
+from tests.support_notify import run_jobs, ws_fragments, ws_run
 
 pytestmark = pytest.mark.django_db
 
@@ -56,9 +56,16 @@ def _comment_row(post):
 
 
 def _do(capture, action):
-    """Действие и его рассылка после фиксации (внутри потока теста)."""
+    """Действие и его рассылка после фиксации (внутри потока теста).
+
+    Рассылка уходит заданием очереди `notify` (план «Риски»: p95 публикации > 500 мс — фан-аут
+    из запроса убран в worker-notify), поэтому после `on_commit` задания очереди выполняются в том
+    же потоке: это воспроизводит прежнюю синхронную доставку кадра в пределах теста.
+    """
     with capture(execute=True):
-        return action()
+        result = action()
+    run_jobs("notify")
+    return result
 
 
 def _spied(capture, action, *, passthrough: bool = False):
@@ -156,6 +163,7 @@ def test_publish_frame_is_sent_only_after_commit_into_personal_feed_groups(djang
             assert response.status_code == 200
             assert spy.calls == [], "до фиксации сообщений слоя нет"
         assert callbacks, "рассылка ставится в `transaction.on_commit`"
+        run_jobs("notify")   # фан-аут уходит заданием очереди notify (план «Риски»)
     post = support.model("feed.Post").objects.get(author=author.user)
     assert post.pk
     assert _feed_groups(spy) == {_gid(author.user), _gid(reader.user)}

@@ -85,6 +85,6 @@ def answer(user, post_id, answer, *, now=None) -> EventAnswer:
     row, _ = EventAnswer.objects.update_or_create(
         post=post, user=user, defaults={"answer": answer, "answered_at": moment})
     transaction.on_commit(
-        lambda: _live.publish_event(post.pk, "answer", owner_id=post.author_id)
+        lambda: _live.enqueue_publish(post.pk, "answer", owner_id=post.author_id)
     )
     return row

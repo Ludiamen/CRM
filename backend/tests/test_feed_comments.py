@@ -480,17 +480,42 @@ def test_comment_with_mentions_files_and_notifications_rolls_back_together_on_di
     assert attached.post_id is None and attached.comment_id is None, "файл остался непривязанным"
 
 
-def test_comment_live_frame_sent_only_after_commit(django_capture_on_commit_callbacks):
-    """FR-623, FR-627: кадр `feed.event` с действием `comment` уходит в слой только после фиксации и несёт номер комментария."""
+def test_comment_live_frame_sent_only_after_commit(django_capture_on_commit_callbacks, monkeypatch):
+    """FR-623, FR-627: кадр `feed.event` с действием `comment` уходит в слой только после фиксации и несёт номер комментария.
+
+    Фан-аут ставится заданием очереди `notify` (план «Риски», T-7311). В django_db-тестах реальная
+    постановка RQ не наблюдается (`queue.enqueue` возвращает `None` и не создаёт ключ), поэтому
+    постановка записывается заглушкой `enqueue_publish`, а затем настоящий `live.publish_event`
+    выполняется с записанными аргументами напрямую — ровно то, что делает worker-notify. Смысл
+    «кадр только после фиксации» сохранён: до исполнения callbacks нет ни постановки, ни сообщений слоя.
+    """
+    from apps.feed.services import live as feed_live
+
     comments = importlib.import_module("apps.feed.services.comments")
     post = _post()
     writer = support.make_employee()
+    enqueued: list[tuple] = []
+
+    def fake_enqueue(post_id, action, **kwargs):
+        enqueued.append((post_id, action, kwargs))
+
+    monkeypatch.setattr(feed_live, "enqueue_publish", fake_enqueue)
+
     with fd.layer_spy(passthrough=False) as spy:
         with django_capture_on_commit_callbacks(execute=False) as callbacks:
             created = comments.add(writer, post.pk, "кадр после фиксации")
+            assert enqueued == [], "до фиксации рассылка не ставится"
             assert spy.calls == [], "до фиксации в слой ничего не уходит"
         for callback in callbacks:
             callback()
+        assert len(enqueued) == 1, "после фиксации поставлено ровно одно задание рассылки"
+        post_id, action, kwargs = enqueued[0]
+        assert (post_id, action) == (post.pk, "comment")
+        assert kwargs["comment_id"] == created.pk
+        assert not [m for _, m in spy.calls if isinstance(m, dict) and m.get("type") == "feed.event"], \
+            "действие лишь ставит задание: кадра ленты до выполнения задания нет"
+        # Задание worker-notify зовёт настоящий `publish_event` с постановочными аргументами.
+        feed_live.publish_event(post_id, action, **kwargs)
     assert spy.aliases and set(spy.aliases) == {"publish"}
     sent = [(group, message) for group, message in spy.calls if message.get("type") == "feed.event"]
     assert sent, "после фиксации кадры ушли"

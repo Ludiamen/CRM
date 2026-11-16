@@ -3,6 +3,7 @@
 import asyncio
 import logging
 
+import django_rq
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.apps import apps
@@ -14,6 +15,11 @@ from apps.core.services import files, permissions
 from apps.feed.services import mentions, text, unread, visibility
 
 logger = logging.getLogger("apps.feed.services.live")
+
+# Рассылка уходит заданием очереди `notify` (план «Риски»: p95 публикации выше 500 мс —
+# уведомления и рассылка уходят из запроса в worker-notify, ценой зависимости от Valkey при постановке).
+PUBLISH_QUEUE = "notify"
+PUBLISH_TIMEOUT = 120
 
 
 # Действия, после которых у затронутых сотрудников может измениться число «Ленты».
@@ -38,13 +44,21 @@ def _recipient_users(recipient_ids: frozenset[int]) -> dict[int, User]:
     }
 
 
-def _moderators_and_staff(recipient_ids: frozenset[int]) -> tuple[frozenset[int], frozenset[int]]:
-    users = _recipient_users(recipient_ids)
-    moderators = {uid for uid, user in users.items() if permissions.has_permission(user, "feed.moderate")}
-    staff_viewers = {
-        uid for uid, user in users.items()
-        if permissions.has_any_permission(user, ("staff.view", "accounts.manage"))
-    }
+def _moderators_and_staff(users: dict[int, User]) -> tuple[frozenset[int], frozenset[int]]:
+    """Модераторы и держатели `staff.view`/`accounts.manage` среди получателей.
+
+    Права каждого получателя читаются один раз (`permissions_of`), из одного набора прав
+    выводятся оба признака — без двойного обращения к кэшу прав на получателя (диагноз T-7304:
+    200 последовательных GET прав на аудиторию 100).
+    """
+    moderators: set[int] = set()
+    staff_viewers: set[int] = set()
+    for uid, user in users.items():
+        granted = permissions.permissions_of(user)
+        if "feed.moderate" in granted:
+            moderators.add(uid)
+        if granted.intersection(("staff.view", "accounts.manage")):
+            staff_viewers.add(uid)
     return frozenset(moderators), frozenset(staff_viewers)
 
 
@@ -57,14 +71,40 @@ async def _send_to_groups(layer, groups, message):
         await asyncio.gather(*[layer.group_send(group, message) for group in groups])
 
 
+def enqueue_publish(post_id: int, action: str, *, comment_id: int | None = None,
+                    recipients: frozenset[int] | None = None, owner_id: int | None = None) -> None:
+    """Поставить фан-аут `publish_event` заданием очереди `notify` (план «Риски»: рассылка уходит из запроса).
+
+    Зовётся из `transaction.on_commit` действия (публикация/комментарий/отметка), поэтому ответ
+    отдаётся без фан-аута; рассылку выполняет worker-notify. Сбой постановки (Valkey недоступен)
+    не ломает действие — предупреждение в журнал `apps.feed.services.live`, как у слоя `publish`.
+    """
+    try:
+        from apps.feed import tasks
+
+        queue = django_rq.get_queue(PUBLISH_QUEUE)
+        queue.enqueue(
+            tasks.publish_event,
+            post_id,
+            action,
+            comment_id=comment_id,
+            recipients=sorted(recipients) if recipients is not None else None,
+            owner_id=owner_id,
+            job_timeout=PUBLISH_TIMEOUT,
+        )
+    except Exception:
+        logger.warning("Failed to enqueue feed.event for post %s action %s", post_id, action, exc_info=True)
+
+
 def publish_event(post_id: int, action: str, *, comment_id: int | None = None,
                   recipients: frozenset[int] | None = None, owner_id: int | None = None) -> None:
     """Разослать кадр `feed.event` в личные группы видящих запись.
 
-    Вызывается из `transaction.on_commit`, поэтому отправка выполняется сразу.
-    Сбои рассылки журналируются, но не влияют на действие. Для удаления записи
-    получатели передаются готовым множеством, потому что после фиксации
-    адресатов в базе уже нет.
+    Выполняется заданием очереди `notify` (`enqueue_publish` → `tasks.publish_event`), поэтому
+    фан-аут не занимает поток запроса. Сбои рассылки журналируются, но не влияют на действие.
+    Для удаления записи получатели передаются готовым множеством, потому что после фиксации
+    адресатов в базе уже нет. Получатели, права и рендеры считаются один раз на рассылку
+    (диагноз T-7304: без двойного `_moderators_and_staff` и без повтора рендеров на класс).
     """
     try:
         layer = get_channel_layer("publish")
@@ -74,8 +114,11 @@ def publish_event(post_id: int, action: str, *, comment_id: int | None = None,
         # Для удаления записи или комментария не обращаемся к уже удалённым строкам.
         if action == "delete":
             audience = recipients if recipients is not None else frozenset()
-            variants = _render_delete_variants(post_id, audience, owner_id)
-            message = _build_message(post_id, action, owner_id, comment_id, audience, variants)
+            users = _recipient_users(audience)
+            moderator_ids, staff_viewer_ids = _moderators_and_staff(users)
+            variants = _render_delete_variants(post_id, audience, owner_id, moderator_ids, staff_viewer_ids)
+            message = _build_message(post_id, action, owner_id, comment_id,
+                                     moderator_ids, staff_viewer_ids, variants)
             async_to_sync(_send_to_groups)(
                 layer, [f"feed.u.{uid}" for uid in audience], message
             )
@@ -86,8 +129,8 @@ def publish_event(post_id: int, action: str, *, comment_id: int | None = None,
 
         post = Post.objects.get(pk=post_id)
         audience = recipients if recipients is not None else visibility.audience(post)
-        moderator_ids, staff_viewer_ids = _moderators_and_staff(audience)
         users = _recipient_users(audience)
+        moderator_ids, staff_viewer_ids = _moderators_and_staff(users)
 
         if action == "new":
             variants = {}
@@ -95,7 +138,8 @@ def publish_event(post_id: int, action: str, *, comment_id: int | None = None,
             variants = _render_variants(
                 post, action, comment_id, audience, moderator_ids, staff_viewer_ids, users, owner_id or post.author_id
             )
-        message = _build_message(post_id, action, owner_id, comment_id, audience, variants, post)
+        message = _build_message(post_id, action, owner_id, comment_id,
+                                 moderator_ids, staff_viewer_ids, variants, post)
 
         async_to_sync(_send_to_groups)(
             layer, [f"feed.u.{uid}" for uid in audience], message
@@ -108,8 +152,8 @@ def publish_event(post_id: int, action: str, *, comment_id: int | None = None,
 
 
 def _build_message(post_id: int, action: str, owner_id: int | None, comment_id: int | None,
-                   audience: frozenset[int], variants: dict[str, str], post=None) -> dict:
-    moderator_ids, staff_viewer_ids = _moderators_and_staff(audience)
+                   moderator_ids: frozenset[int], staff_viewer_ids: frozenset[int],
+                   variants: dict[str, str], post=None) -> dict:
     message = {
         "type": "feed.event",
         "post": post_id,
@@ -131,7 +175,7 @@ def _build_message(post_id: int, action: str, owner_id: int | None, comment_id: 
 
 
 def _classes(audience: frozenset[int], owner_id: int, moderator_ids: frozenset[int],
-             staff_viewer_ids: frozenset[int], users: dict[int, User]) -> set[tuple[str, bool]]:
+             staff_viewer_ids: frozenset[int]) -> set[tuple[str, bool]]:
     classes = set()
     for uid in audience:
         role = _classify_role(uid, owner_id, moderator_ids)
@@ -143,7 +187,7 @@ def _classes(audience: frozenset[int], owner_id: int, moderator_ids: frozenset[i
 def _render_variants(post, action: str, comment_id: int | None, audience: frozenset[int],
                      moderator_ids: frozenset[int], staff_viewer_ids: frozenset[int],
                      users: dict[int, User], owner_id: int) -> dict[str, str]:
-    classes = _classes(audience, owner_id, moderator_ids, staff_viewer_ids, users)
+    classes = _classes(audience, owner_id, moderator_ids, staff_viewer_ids)
     variants = {}
     opened = _now()
     event_now = opened
@@ -161,11 +205,31 @@ def _render_variants(post, action: str, comment_id: int | None, audience: frozen
 
     people = _people_for_post(post, card)
 
+    # Запросы Comment/лайков/людей комментария выполняются один раз на рассылку, а не на каждый
+    # класс получателя (диагноз T-7304: 2–3 рендера и запросы повторялись на класс).
+    comment_data = (
+        _comment_render_data(comment_id)
+        if classes and action in ("comment", "comment_edit", "comment_like")
+        else None
+    )
+
     for role, link_staff in classes:
         variants[f"{role}:{int(link_staff)}"] = _render_variant(
-            post, action, comment_id, card, people, role, link_staff, opened, event_now
+            post, action, comment_id, card, people, role, link_staff, opened, event_now, comment_data
         )
     return variants
+
+
+def _comment_render_data(comment_id: int | None) -> dict | None:
+    """Общие данные комментария для всех классов: строка, лайки и упомянутые (один запрос на рассылку)."""
+    if comment_id is None:
+        return None
+    from apps.core.models import Comment
+    from apps.feed.services import likes
+
+    comment = Comment.objects.select_related("author", "author__photo").get(pk=comment_id)
+    like_data = likes.comment_like_data([comment.pk], 0)[comment.pk]
+    return {"comment": comment, "like_data": like_data, "people": _people_for_comment(comment)}
 
 
 def _people_for_post(post, card) -> dict[int, str]:
@@ -185,7 +249,7 @@ def _people_for_comment(comment) -> dict[int, str]:
 
 
 def _render_variant(post, action: str, comment_id: int | None, card, people: dict[int, str],
-                    role: str, link_staff: bool, opened, event_now) -> str:
+                    role: str, link_staff: bool, opened, event_now, comment_data: dict | None = None) -> str:
     is_author = role == "author"
     is_moderator = role == "moderator"
     is_author_or_moderator = is_author or is_moderator
@@ -197,12 +261,9 @@ def _render_variant(post, action: str, comment_id: int | None, card, people: dic
         return render_to_string("feed/_frame_delete_post.html", {"post_id": post.pk})
 
     if action in ("comment", "comment_edit", "comment_like"):
-        from apps.core.models import Comment
-        from apps.feed.services import likes
-
-        comment = Comment.objects.select_related("author", "author__photo").get(pk=comment_id)
-        body_html = text.render_plain(comment.text, _people_for_comment(comment), link_staff)
-        like_data = likes.comment_like_data([comment.pk], 0)[comment.pk]
+        comment = comment_data["comment"]
+        like_data = comment_data["like_data"]
+        body_html = text.render_plain(comment.text, comment_data["people"], link_staff)
         photo_url = None
         if link_staff or (is_author and getattr(comment.author, "photo", None)):
             photo_url = files.photo_url(comment.author, 96)
@@ -252,14 +313,13 @@ def _render_variant(post, action: str, comment_id: int | None, card, people: dic
     return render_to_string("feed/_frame_post_parts.html", context)
 
 
-def _render_delete_variants(post_id: int, audience: frozenset[int], owner_id: int | None) -> dict[str, str]:
+def _render_delete_variants(post_id: int, audience: frozenset[int], owner_id: int | None,
+                            moderator_ids: frozenset[int], staff_viewer_ids: frozenset[int]) -> dict[str, str]:
     html = render_to_string("feed/_frame_delete_post.html", {"post_id": post_id})
     if not audience:
         return {}
-    users = _recipient_users(audience)
-    moderator_ids, staff_viewer_ids = _moderators_and_staff(audience)
     variants = {}
-    for role, link_staff in _classes(audience, owner_id or 0, moderator_ids, staff_viewer_ids, users):
+    for role, link_staff in _classes(audience, owner_id or 0, moderator_ids, staff_viewer_ids):
         variants[f"{role}:{int(link_staff)}"] = html
     return variants
 

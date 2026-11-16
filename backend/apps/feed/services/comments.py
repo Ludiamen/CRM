@@ -141,7 +141,7 @@ def add(user, post_id: int, text: str, *, files=(), pdn_confirmed=False, now=Non
         from apps.feed.services import live
 
         transaction.on_commit(
-            lambda: live.publish_event(
+            lambda: live.enqueue_publish(
                 post.pk, "comment", comment_id=core_comment.pk, owner_id=user.pk
             )
         )
@@ -263,7 +263,7 @@ def edit(user, comment_id: int, text: str, *, files=(), remove=(), pdn_confirmed
         search.vectors(comment_ids=[core_comment.pk])
 
         transaction.on_commit(
-            lambda: _live.publish_event(
+            lambda: _live.enqueue_publish(
                 post.pk, "comment_edit", comment_id=comment.pk, owner_id=user.pk
             )
         )
@@ -304,7 +304,7 @@ def delete(user, comment_id: int) -> None:
 
     with transaction.atomic():
         transaction.on_commit(
-            lambda: _live.publish_event(
+            lambda: _live.enqueue_publish(
                 post.pk, "comment_delete", comment_id=comment_id, owner_id=comment.author_id
             )
         )

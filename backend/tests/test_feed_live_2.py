@@ -20,7 +20,7 @@ from django.utils import timezone
 from tests import factories, support
 from tests import support_feed as ff
 from tests.support import HX
-from tests.support_notify import ws_fragments
+from tests.support_notify import run_jobs, ws_fragments
 
 pytestmark = pytest.mark.django_db
 
@@ -113,10 +113,15 @@ def _add_recipient(post, user) -> None:
 
 
 def _run(capture, action):
-    """Действие, затем рассылка после фиксации; слой `publish` — шпион без отправки. Возвращает шпиона."""
+    """Действие, затем рассылка после фиксации; слой `publish` — шпион без отправки. Возвращает шпиона.
+
+    Рассылка уходит заданием очереди `notify` (план «Риски»: p95 публикации > 500 мс), поэтому после
+    `on_commit` задания очереди выполняются в том же потоке — внутри шпиона слоя, как прежняя синхронная доставка.
+    """
     with ff.layer_spy(passthrough=False) as spy:
         with capture(execute=True):
             response = action()
+        run_jobs("notify")
     assert response.status_code == 200, f"действие закончилось кодом {response.status_code}"
     return spy
 
@@ -597,6 +602,7 @@ def test_layer_down_writes_warning_to_application_log(django_capture_on_commit_c
         with ff.layer_down():
             with django_capture_on_commit_callbacks(execute=True):
                 response = _comment(reader, post, "Текст который не должен попасть в журнал")
+            run_jobs("notify")   # фан-аут выполняется заданием очереди; сбой слоя пишет предупреждение
     assert response.status_code == 200
     warnings = [r for r in caplog.records if r.name == "apps.feed.services.live" and r.levelno == logging.WARNING]
     assert warnings, "в журнале нет предупреждения `apps.feed.services.live`"
