@@ -365,19 +365,20 @@ def test_feed_stand_reset_reconnects_m2m_handler_in_finally_when_seed_raises(
 
 
 def test_feed_stand_reset_is_registered_last_and_runs_first():
-    """FR-640: в точке `stand_reset` функция `apps.feed.stand.stand_reset` зарегистрирована последней, сразу после
-    `apps.lists.stand.stand_reset`; команда зовёт функции в обратном порядке, поэтому `feed` стирается первым
-    (раздел 1.3)."""
+    """FR-640: в точке `stand_reset` функция `apps.feed.stand.stand_reset` зарегистрирована второй с конца, сразу
+    после `apps.lists.stand.stand_reset`; последней стоит `apps.messenger.stand` среза 008 (CONTRACT-008, 15.1);
+    команда зовёт функции в обратном порядке, поэтому `messenger` стирается первым, `feed` — вторым (раздел 1.3)."""
     from apps.core import extensions
     from apps.feed.stand import stand_reset
 
     registered = list(extensions.registered("stand_reset"))
     names = [func.__module__ for func in registered]
     assert registered.count(stand_reset) == 1, "stand_reset модуля feed не зарегистрирован ровно один раз"
-    assert registered[-1] is stand_reset, "stand_reset модуля feed не последний"
-    assert names[-2] == "apps.lists.stand", f"перед feed стоит {names[-2]}, а не lists"
+    assert registered[-2] is stand_reset, "stand_reset модуля feed не второй с конца"
+    assert names[-3] == "apps.lists.stand", f"перед feed стоит {names[-3]}, а не lists"
     call_order = [func.__module__ for func in reversed(registered)]
-    assert call_order[0] == "apps.feed.stand", "feed вызывается не первым"
+    assert call_order[0] == "apps.messenger.stand", "messenger вызывается не первым"
+    assert call_order[1] == "apps.feed.stand", "feed вызывается не вторым"
 
 
 @PLAIN

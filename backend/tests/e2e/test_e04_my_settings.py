@@ -28,6 +28,7 @@ from playwright.sync_api import expect
 from tests.e2e import helpers, helpers_notify, helpers_org, helpers_sd
 from tests.e2e.helpers_sd import MAILBOX
 from tests.support_feed import FEED_KINDS, FEED_MODULE
+from tests.support_messenger import MESSENGER_KINDS, MESSENGER_MODULE
 from tests.support_servicedesk import build_mail
 
 NEW_IN_QUEUE = "servicedesk.new_in_queue"
@@ -56,7 +57,11 @@ LISTS_KINDS = (("lists.deadline", "Срок в записи списка"),)
 LISTS_MODULE = "Списки"
 # срез 007: восемь видов «Ленты» доступны всем (CONTRACT-007, раздел 15.3) — строки у каждого сотрудника, после видов списков
 FEED_KINDS_E2E = tuple((row[0], row[1]) for row in FEED_KINDS)
-ROWS = KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E  # строки таблицы участника очереди в порядке каталога
+# срез 008: два вида «Мессенджера» доступны всем (CONTRACT-008, раздел 7.1) — строки у каждого сотрудника, после
+# видов ленты
+MESSENGER_KINDS_E2E = tuple((row[0], row[1]) for row in MESSENGER_KINDS)
+ROWS = (KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E
+        + MESSENGER_KINDS_E2E)  # строки таблицы участника очереди в порядке каталога
 COLUMNS = ("На портале", "Почта", "Push в браузере", "Telegram", "MAX")  # § 15.5
 CHANNEL_ORDER = ["portal", "email", "push", "telegram", "max"]  # § 14.3
 SAVED = "Настройки уведомлений сохранены."  # § 15.4
@@ -284,7 +289,8 @@ def test_e04_my_notifications_table_shows_kinds_with_module_five_channel_columns
         row = table.locator(f'tr[data-notify-kind="{code}"]')
         expect(row.locator('[data-field="title"]')).to_have_text(title)
         module = (KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.")
-                  else FEED_MODULE if code.startswith("feed.") else MODULE)
+                  else FEED_MODULE if code.startswith("feed.") else MESSENGER_MODULE if code.startswith("messenger.")
+                  else MODULE)
         expect(row.locator('[data-field="module"]')).to_have_text(module)
         cells = row.locator("td[data-channel]")
         expect(cells).to_have_count(5)

@@ -19,7 +19,7 @@ POINTS = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_dir
           "card_sections", "day_marks", "home_notices", "stand_reset",
           "unit_usage", "file_purposes", "mail_renderers", "login_links",
           "notification_kinds", "top_bar_items", "search_providers", "ticket_card_parts",
-          "home_body")
+          "home_body", "unit_form_parts")
 
 _registry: dict[str, list] = {point: [] for point in POINTS}
 
@@ -224,6 +224,20 @@ class SearchProvider:
     search: Callable[["User", ParsedQuery, int, int], list[SearchRow]]
     count: Callable[["User", ParsedQuery], tuple[int, bool]]
     available: Callable[["User"], bool]
+
+
+@dataclass(frozen=True)
+class UnitFormPart:
+    """Поле формы узла структуры (PLAN-008, «Точки расширения ядра и шина событий»; CONTRACT-008, § 3.1).
+
+    `render(request, unit)` возвращает фрагмент HTML или пустую строку — «ничего».
+    `on_saved(unit, post, actor, ip=None)` вызывается после `create_unit`/`update_unit`; каждый обработчик
+    работает в собственном `transaction.atomic()`: сбой откатывает только его работу и не отменяет сохранение узла.
+    """
+    key: str
+    order: int
+    render: Callable[[HttpRequest, "Unit"], str]
+    on_saved: Callable[..., None]
 
 
 @dataclass(frozen=True)

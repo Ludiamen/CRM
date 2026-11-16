@@ -31,6 +31,7 @@ from tests import factories
 from tests.e2e import helpers, helpers_notify, helpers_org, helpers_sd
 from tests.e2e.helpers_sd import MAILBOX
 from tests.support_feed import FEED_KINDS, FEED_MODULE
+from tests.support_messenger import MESSENGER_KINDS, MESSENGER_MODULE
 from tests.support_servicedesk import build_mail
 
 NEW_IN_QUEUE = "servicedesk.new_in_queue"
@@ -58,6 +59,8 @@ LISTS_MODULE = "Списки"
 LISTS_KINDS = (("lists.deadline", "Срок в записи списка"),)
 # срез 007: восемь видов «Ленты» (CONTRACT-007, раздел 15.3) — по строке у каждого сотрудника и в таблице умолчаний
 FEED_KINDS_E2E = tuple((row[0], row[1]) for row in FEED_KINDS)
+# срез 008: два вида «Мессенджера» (CONTRACT-008, раздел 7.1) — строки у каждого сотрудника и в таблице умолчаний
+MESSENGER_KINDS_E2E = tuple((row[0], row[1]) for row in MESSENGER_KINDS)
 EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mandatory, внешний текст)
     NEW_IN_QUEUE: ("Новая заявка в моей очереди", MODULE, False, "Новая заявка в вашей очереди"),
     ASSIGNED: ("Мне назначили заявку", MODULE, False, "Вам назначена заявка"),
@@ -78,6 +81,9 @@ EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mand
     "feed.event_changed": ("Событие изменено", FEED_MODULE, False, "Событие в ленте изменено"),
     "feed.event_reminder": ("Напоминание о событии", FEED_MODULE, False, "Скоро событие в ленте"),
     "feed.like": ("Нравится", FEED_MODULE, False, ""),
+    # CONTRACT-008, раздел 7.1: два вида «Мессенджера», внешний текст постоянный (NFR-705)
+    "messenger.message": ("Новое сообщение в чате", MESSENGER_MODULE, False, "Новое сообщение в чате"),
+    "messenger.mention": ("Упомянул вас в чате", MESSENGER_MODULE, False, "Вас упомянули в чате"),
     "core.new_device": ("Вход с нового устройства", "Ядро", True, ""),
     "core.password_changed": ("Пароль изменён", "Ядро", True, ""),
     "core.second_factor_reset": ("Второй фактор сброшен", "Ядро", True, ""),
@@ -939,27 +945,29 @@ def test_e12_catalog_shows_four_service_desk_kinds_three_security_kinds_and_chan
     assert len([c for c in catalog if c.startswith("knowledge.")]) == 3
     assert len([c for c in catalog if c.startswith("lists.")]) == 1
     assert len([c for c in catalog if c.startswith("feed.")]) == len(FEED_KINDS_E2E)
+    assert len([c for c in catalog if c.startswith("messenger.")]) == len(MESSENGER_KINDS_E2E)
     assert sorted(c for c in catalog if c.startswith("core.")) == [
         "core.new_device", "core.password_changed", "core.second_factor_reset"]
     # таблица «Мои уведомления»: четыре вида сервис-деска, три вида базы знаний, вид списков и две сводные строки
     member.page.goto("/me/notifications/")
-    for code, title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E:
+    for code, title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E + MESSENGER_KINDS_E2E:
         row = member.page.locator(f'table[data-notify-table] tr[data-notify-kind="{code}"]')
         expect(row).to_have_count(1)
         expect(row.locator('[data-field="title"]')).to_have_text(title)
         module = (KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.")
-                  else FEED_MODULE if code.startswith("feed.") else MODULE)
+                  else FEED_MODULE if code.startswith("feed.") else MESSENGER_MODULE if code.startswith("messenger.")
+                  else MODULE)
         expect(row.locator('[data-field="module"]')).to_have_text(module)
     # видимый результат: четыре вида сервис-деска, три вида базы знаний и вид списков; видов безопасности и «Канал отвязан» среди строк видов нет
     expect(member.page.locator("table[data-notify-table] tr[data-notify-kind]")).to_have_count(
-        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E))
+        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E) + len(MESSENGER_KINDS_E2E))
     expect(member.page.locator('table[data-notify-table] tr[data-notify-kind^="core."], '
                                'table[data-notify-table] tr[data-notify-kind^="notify."]')).to_have_count(0)
     # страница администратора: все не обязательные виды — четыре сервис-деска, три базы знаний и вид списков (§ 14.4)
     page.goto("/settings/notifications/")
     expect(page.locator("table[data-defaults-table] tr[data-notify-kind]")).to_have_count(
-        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E))
-    for code, _title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E:
+        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E) + len(MESSENGER_KINDS_E2E))
+    for code, _title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E + MESSENGER_KINDS_E2E:
         expect(page.locator(f'table[data-defaults-table] tr[data-notify-kind="{code}"]')).to_have_count(1)
     expect(member.page.locator('tr[data-notify-fixed="security"]')).to_contain_text(FIXED_SECURITY)
     expect(member.page.locator('tr[data-notify-fixed="channel_unbound"]')).to_contain_text(FIXED_UNBOUND)
@@ -1006,11 +1014,13 @@ def test_e12_ticket_subject_with_markup_shown_as_text_on_portal_and_in_mail(admi
         text = rows.locator('[data-field="text"]')
         assert _norm(text.inner_text()) == _norm(expected)
         assert text.locator("b, script").count() == 0 and "&lt;b&gt;" in text.inner_html()
-        # портал: панель колокольчика
-        tab.locator("button[data-bell-toggle]").click()
-        panel = tab.locator("#notify-bell-panel [data-bell-list]")
-        expect(panel).to_be_visible()
-        entry = panel.locator("li[data-notification]").filter(has_text=word)
+        # портал: вкладка «Уведомления» по ссылке колокольчика (CONTRACT-008, 3.3)
+        with tab.expect_navigation():
+            tab.locator("a[data-bell-link]").click()
+        assert tab.url.split("?")[0].endswith("/messenger/notifications/"), tab.url
+        expect(tab.locator('[data-messenger-tab="notifications"]')).to_have_attribute("aria-selected", "true")
+        expect(tab.locator("[data-notify-list]")).to_be_visible()
+        entry = tab.locator("ul[data-notifications] li[data-notification]").filter(has_text=word)
         expect(entry).to_have_count(1)
         assert "<b>Жирный</b>" in entry.inner_text() and entry.locator("b, script").count() == 0
         # письмо: тема письма — внешний текст, в теле заявка с теми же знаками текстом
@@ -1024,8 +1034,8 @@ def test_e12_ticket_subject_with_markup_shown_as_text_on_portal_and_in_mail(admi
 def test_e12_notification_pages_and_my_notifications_and_admin_settings_have_no_horizontal_scroll_at_360px(
         admin_page, employee, new_context):
     """Критерий «страницы среза без горизонтальной прокрутки на 360 px» (NFR-308): «Уведомления» (все и непрочитанные),
-    «Мои уведомления», страница администратора и панель колокольчика; список заполнен (60 уведомлений), таблицы складываются
-    в карточки."""
+    вкладка «Уведомления» по ссылке колокольчика (CONTRACT-008, 3.3), «Мои уведомления», страница администратора; список
+    заполнен (60 уведомлений), таблицы складываются в карточки."""
     page = admin_page
     helpers_sd.ensure_ready(page)
     tag = _tag()
@@ -1044,9 +1054,11 @@ def test_e12_notification_pages_and_my_notifications_and_admin_settings_have_no_
         assert mine.locator('meta[name="viewport"]').count() == 1, url
         assert helpers.no_horizontal_scroll(mine), f"горизонтальная прокрутка: {url}"
     expect(mine.locator('[data-narrow="cards"] table[data-notify-table]')).to_have_count(1)
-    mine.locator("button[data-bell-toggle]").click()
-    expect(mine.locator("#notify-bell-panel [data-bell-list]")).to_be_visible()
-    assert helpers.no_horizontal_scroll(mine), "горизонтальная прокрутка: панель колокольчика"
+    with mine.expect_navigation():
+        mine.locator("a[data-bell-link]").click()
+    assert mine.url.split("?")[0].endswith("/messenger/notifications/"), mine.url
+    expect(mine.locator("[data-notify-list]")).to_be_visible()
+    assert helpers.no_horizontal_scroll(mine), "горизонтальная прокрутка: вкладка «Уведомления»"
     admin.goto("/settings/notifications/")
     expect(admin.locator("[data-notify-settings]")).to_be_visible()
     assert admin.locator('meta[name="viewport"]').count() == 1

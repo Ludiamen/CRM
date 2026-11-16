@@ -149,8 +149,8 @@ def _list_ids(response) -> list:
 
 
 def _get_list(client, **params):
-    response = client.get("/notifications/", params)
-    assert response.status_code == 200, f"/notifications/ {params}: {response.status_code}"
+    response = client.get("/messenger/notifications/", params)
+    assert response.status_code == 200, f"/messenger/notifications/ {params}: {response.status_code}"
     return response
 
 
@@ -168,8 +168,9 @@ def _count_element(doc, bell):
 # --- колокольчик (FR-318) ------------------------------------------------------------------------------------------
 
 def test_bell_in_top_bar_has_count_and_toast_elements():
-    """FR-318: шаблон колокольчика (элемент `top_bar`) рисует `#notify-bell[data-bell]` в блоке `top-actions` с кнопкой
-    раскрытия панели «по нажатию», `#notify-count`, пустым `#notify-toast` и пустым `#notify-bell-panel`, подключает
+    """FR-318: шаблон колокольчика (элемент `top_bar`) рисует `#notify-bell[data-bell]` в блоке `top-actions` со
+    ссылкой на вкладку «Уведомления» (`a[data-bell-link][href="/messenger/notifications/"]`, CONTRACT-008, 3.3),
+    `#notify-count`, пустым `#notify-toast` и пустым `#notify-bell-panel`, подключает
     `notify.js`; у колокольчика нет `role`, `data-error`, `data-warning` (решение 22 задач)."""
     user, client = _employee_client()
     doc, bell = _bell(client)
@@ -177,12 +178,9 @@ def test_bell_in_top_bar_has_count_and_toast_elements():
     actions = [el for el in doc.elements if "top-actions" in el.classes]
     assert actions and any(inside(bell, el) for el in actions), "колокольчик вне блока top-actions"
 
-    toggle = one(doc, "button", {"data-bell-toggle": True}, within=bell)
-    assert toggle.attrs.get("aria-label") == "Уведомления"
-    assert toggle.attrs.get("hx-get") == "/notifications/bell/"
-    assert toggle.attrs.get("hx-trigger") == "click", "панель должна грузиться по нажатию, не при загрузке страницы"
-    assert toggle.attrs.get("hx-target") == "#notify-bell-panel"
-    assert toggle.attrs.get("hx-swap") == "innerHTML"
+    link = one(doc, "a", {"data-bell-link": True}, within=bell)
+    assert link.attrs.get("aria-label") == "Уведомления"
+    assert link.attrs.get("href") == "/messenger/notifications/"
 
     count = _count_element(doc, bell)
     assert count.attrs.get("data-count") == "0"
@@ -272,8 +270,9 @@ def test_bell_not_rendered_for_anonymous_user():
 
 def test_bell_fragment_lists_last_10_with_all_and_settings_links():
     """FR-318: `/notifications/bell/` отдаёт фрагмент (не страницу) с 10 последними уведомлениями, новые сверху, и
-    ссылками «Все уведомления» (`/notifications/`) и «Настройки» (`/me/notifications/`); при пустом списке —
-    `[data-empty-state="bell"]` «У вас нет уведомлений» и те же ссылки."""
+    ссылками «Все уведомления» (`/messenger/notifications/` — адрес берётся из `bell_link`, CONTRACT-008, 3.3) и
+    «Настройки» (`/me/notifications/`); при пустом списке — `[data-empty-state="bell"]` «У вас нет уведомлений»
+    и те же ссылки; старый `/notifications/` отвечает 302 на вкладку."""
     user, client = _employee_client()
     notes = [_note(user, i, text=f"Панель {i}") for i in range(12)]
     notes.append(_note(user, 11, text="Панель ничья"))        # то же время, что у 11-го: выше по номеру
@@ -294,7 +293,7 @@ def test_bell_fragment_lists_last_10_with_all_and_settings_links():
             else:
                 assert note.pk not in rows, "в панели лишняя (одиннадцатая и старше) запись"
         all_link = one(doc, "a", {"data-bell-all": True})
-        assert all_link.attrs.get("href") == "/notifications/" and all_link.text == "Все уведомления"
+        assert all_link.attrs.get("href") == "/messenger/notifications/" and all_link.text == "Все уведомления"
         settings_link = one(doc, "a", {"data-bell-settings": True})
         assert settings_link.attrs.get("href") == "/me/notifications/" and settings_link.text == "Настройки"
         assert not find(doc, None, {"data-empty-state": "bell"})
@@ -304,8 +303,11 @@ def test_bell_fragment_lists_last_10_with_all_and_settings_links():
     assert not find(doc, "li", {"data-notification": True})
     empty = one(doc, None, {"data-empty-state": "bell"})
     assert empty.text == "У вас нет уведомлений"
-    assert one(doc, "a", {"data-bell-all": True}).attrs.get("href") == "/notifications/"
+    assert one(doc, "a", {"data-bell-all": True}).attrs.get("href") == "/messenger/notifications/"
     assert one(doc, "a", {"data-bell-settings": True}).attrs.get("href") == "/me/notifications/"
+    # CONTRACT-008, 3.3: старый адрес списка — 302 на вкладку мессенджера (ссылка «Все уведомления» ведёт туда же)
+    redirect = client.get("/notifications/")
+    assert redirect.status_code == 302 and redirect["Location"] == "/messenger/notifications/"
 
 
 def test_bell_fragment_shows_only_own_notifications():
@@ -418,8 +420,12 @@ def test_list_page_page_param_returns_next_50():
     assert len(prev) == 1 and len(nxt) == 1
     next_query = parse_qs(urlsplit(nxt[0].attrs["href"]).query)
     assert next_query.get("page") == ["3"] and next_query.get("f") == ["unread"], "ссылка хранит фильтр и ведёт на 3"
+    # CONTRACT-008, 3.3: смена страницы во вкладке идёт во фрагмент `/notifications/list/`, `href` прежней ссылки
+    assert urlsplit(nxt[0].attrs["hx-get"]).path == "/notifications/list/"
+    assert parse_qs(urlsplit(nxt[0].attrs["hx-get"]).query) == next_query, "фрагмент страницы хранит фильтр и номер"
     prev_query = parse_qs(urlsplit(prev[0].attrs["href"]).query)
     assert prev_query.get("page", ["1"]) == ["1"] and prev_query.get("f") == ["unread"]
+    assert urlsplit(prev[0].attrs["hx-get"]).path == "/notifications/list/"
 
     current, prev, nxt = pager(_get_list(client))
     assert current == "1" and prev == [] and len(nxt) == 1, "у первой страницы нет ссылки назад"
@@ -432,8 +438,10 @@ def test_list_page_page_param_returns_next_50():
 
 
 def test_list_filter_unread_shows_only_unread_and_all_shows_every_one():
-    """FR-319: `?f=unread` — только непрочитанные, `?f=all`, пусто и любое другое значение — все; переключатель
-    `a[data-filter]` ведёт на `/notifications/` и `/notifications/?f=unread`, активный помечен `aria-current="true"`."""
+    """FR-319: `?f=unread` — только непрочитанные, `?f=all`, пусто и любое другое значение — все; строки и
+    переключатель фильтра читаются с вкладки `/messenger/notifications/` (CONTRACT-008, 3.3), её
+    `a[data-filter]` ведут на `/notifications/` и `/notifications/?f=unread` прежними `href`, а фрагмент фильтра
+    берётся `hx-get` с `/notifications/list/`; активный помечен `aria-current="true"`."""
     user, client = _employee_client()
     unread = [_note(user, i, text=f"Новое {i}") for i in (1, 3, 5)]
     read = [_note(user, i, text=f"Старое {i}", read=True) for i in (2, 4, 6)]
@@ -454,6 +462,9 @@ def test_list_filter_unread_shows_only_unread_and_all_shows_every_one():
     assert set(links) == {"all", "unread"}
     assert links["all"].attrs.get("href") == "/notifications/" and links["all"].text == "Все"
     assert links["unread"].attrs.get("href") == "/notifications/?f=unread" and links["unread"].text == "Непрочитанные"
+    # CONTRACT-008, 3.3: фрагмент фильтра во вкладке — `/notifications/list/`, `href` прежних ссылок не меняется
+    assert links["all"].attrs.get("hx-get") == "/notifications/list/"
+    assert links["unread"].attrs.get("hx-get") == "/notifications/list/?f=unread"
     assert links["unread"].attrs.get("aria-current") == "true" and links["all"].attrs.get("aria-current") != "true"
     default = switch(_get_list(client))
     assert default["all"].attrs.get("aria-current") == "true" and default["unread"].attrs.get("aria-current") != "true"

@@ -170,6 +170,8 @@ def delete_unit(unit, *, actor, ip=None) -> None:
         before = {"kind": unit.kind, "name": unit.name, "parent": unit.parent.name, "roles": roles}
         pk = unit.pk
         unit.delete()
+        # Шина: обработчики `unit.deleted` зовутся после фиксации (сбой обработчика не откатывает удаление).
+        events.publish("unit.deleted", unit_id=pk, name=before["name"], actor_id=actor.pk if actor else None)
         audit.record("unit.deleted", actor=actor, object_type="unit", object_id=pk, ip=ip, before=before)
 
 

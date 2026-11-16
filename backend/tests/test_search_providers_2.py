@@ -304,10 +304,11 @@ def test_knowledge_disabled_has_no_articles_group_others_work():
     support_org.make_member(person, unit)
     support_kb.make_published(title="Мониторинг сети", text="Текст про мониторинг")
     # CONTRACT-007: поставщик `feed` (order 60) доступен каждому вошедшему; групп выдачи он не добавляет — записей ленты нет
-    assert [p.key for p in services.providers(viewer)] == ["articles", "staff", "units", "feed"]
+    # CONTRACT-008: шестой поставщик `messenger` («Мессенджер», order 61) доступен каждому вошедшему
+    assert [p.key for p in services.providers(viewer)] == ["articles", "staff", "units", "feed", "messenger"]
     assert _group_keys(viewer, "мониторинг") == ["articles", "staff", "units"]
     with support_kb.without_knowledge():
-        assert [p.key for p in services.providers(viewer)] == ["staff", "units", "feed"]
+        assert [p.key for p in services.providers(viewer)] == ["staff", "units", "feed", "messenger"]
         groups = services.page(viewer, _parsed("мониторинг"))
         assert [g.key for g in groups] == ["staff", "units"]
         by_group = {g.key: g for g in groups}
@@ -326,8 +327,9 @@ def test_provider_available_false_hides_group():
     support_kb.make_published(title="Мониторинг сети")
     no_rights = support.make_with_permissions(totp=False)
     viewer = _viewer()
-    assert [p.key for p in services.providers(no_rights)] == ["articles", "feed"]   # `feed` доступен каждому вошедшему
-    assert [p.key for p in services.providers(viewer)] == ["articles", "staff", "units", "feed"]
+    # `feed` и `messenger` доступны каждому вошедшему (CONTRACT-007; CONTRACT-008, 3.4)
+    assert [p.key for p in services.providers(no_rights)] == ["articles", "feed", "messenger"]
+    assert [p.key for p in services.providers(viewer)] == ["articles", "staff", "units", "feed", "messenger"]
     assert _group_keys(no_rights, "мониторинг") == ["articles"]
     assert _provider("tickets").available(no_rights) is False
     assert "tickets" not in [p.key for p in services.providers(viewer)]

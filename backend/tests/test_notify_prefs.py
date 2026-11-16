@@ -15,6 +15,7 @@ import pytest
 from tests import support, support_notify, support_org, support_servicedesk
 from tests.support import HX, model
 from tests.support_feed import FEED_BOXED, FEED_CODES, FEED_LIKE, FEED_MODULE, FEED_TITLES
+from tests.support_messenger import MESSENGER_CODES, MESSENGER_MODULE, MESSENGER_TITLES
 
 pytestmark = pytest.mark.django_db
 
@@ -30,7 +31,8 @@ RUBRIC_KIND = "knowledge.rubric_subscription"   # пятая строка таб
 LISTS_KIND = "lists.deadline"   # шестая строка таблицы: вид доступен всем (срез 006, CONTRACT-006, раздел 7.3)
 TITLES = {NEW_IN_QUEUE: "Новая заявка в моей очереди", ASSIGNED: "Мне назначили заявку",
           REPLIED: "Заявитель ответил", FAILED: "Ответ заявителю не ушёл",
-          RUBRIC_KIND: "Статья в рубрике по подписке", LISTS_KIND: "Срок в записи списка", **FEED_TITLES}
+          RUBRIC_KIND: "Статья в рубрике по подписке", LISTS_KIND: "Срок в записи списка", **FEED_TITLES,
+          **MESSENGER_TITLES}
 EXTERNAL = ["email", "push", "telegram", "max"]     # `default_channels` видов сервис-деска без `portal`
 
 
@@ -198,21 +200,23 @@ def _audit_count(user) -> int:
 # --- строки и столбцы таблицы (FR-321) ------------------------------------------------------------------------
 
 def test_table_rows_show_kind_title_and_module():
-    """FR-321: у участника очереди в таблице четырнадцать строк по порядку каталога: четыре вида сервис-деска, вид «Статья в рубрике по подписке»,
-    вид «Срок в записи списка» (оба доступны всем, срезы 005 и 006) и восемь видов ленты (срез 007, тоже доступны всем); у каждой строки `tr[data-notify-kind]` — название вида
-    в `[data-field=title]` и модуль («Сервис-деск», «База знаний», «Списки» или «Лента») в `[data-field=module]`;
+    """FR-321: у участника очереди в таблице шестнадцать строк по порядку каталога: четыре вида сервис-деска, вид «Статья в рубрике по подписке»,
+    вид «Срок в записи списка» (оба доступны всем, срезы 005 и 006), восемь видов ленты (срез 007, тоже доступны всем) и два вида
+    мессенджера (срез 008, CONTRACT-008, раздел 7.1); у каждой строки `tr[data-notify-kind]` — название вида
+    в `[data-field=title]` и модуль («Сервис-деск», «База знаний», «Списки», «Лента» или «Мессенджер») в `[data-field=module]`;
     виды `mandatory` отдельными строками видов не показаны."""
     user, client = _member()
     doc = _get(client)
     table = one(doc, "table", {"data-notify-table": True})
     rows = find(doc, "tr", {"data-notify-kind": True}, within=table)
-    assert [r.attrs["data-notify-kind"] for r in rows] == list(SD_KINDS) + [RUBRIC_KIND, LISTS_KIND] + FEED_CODES, (
+    assert [r.attrs["data-notify-kind"] for r in rows] == list(SD_KINDS) + [RUBRIC_KIND, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES), (
         "строки видов или их порядок")
     for row in rows:
         code = row.attrs["data-notify-kind"]
         assert one(doc, None, {"data-field": "title"}, within=row).text == TITLES[code]
-        modules = {RUBRIC_KIND: "База знаний", LISTS_KIND: "Списки", **{c: FEED_MODULE for c in FEED_CODES}}
-        expected_module = modules.get(code, "Сервис-деск")  # CONTRACT-006, 7.3; CONTRACT-007, 7.1
+        modules = {RUBRIC_KIND: "База знаний", LISTS_KIND: "Списки", **{c: FEED_MODULE for c in FEED_CODES},
+                   **{c: MESSENGER_MODULE for c in MESSENGER_CODES}}
+        expected_module = modules.get(code, "Сервис-деск")  # CONTRACT-006, 7.3; CONTRACT-007, 7.1; CONTRACT-008, 7.4
         assert one(doc, None, {"data-field": "module"}, within=row).text == expected_module
     assert not find(doc, "tr", {"data-notify-kind": "core.new_device"})
     assert not find(doc, "tr", {"data-notify-kind": "notify.channel_unbound"})
@@ -221,8 +225,9 @@ def test_table_rows_show_kind_title_and_module():
 def test_table_has_five_channel_columns_in_order():
     """FR-321: заголовки таблицы — «На портале», «Почта», «Push в браузере», «Telegram», «MAX» по порядку
     (`th[data-channel]`), у каждой строки вида пять `td[data-channel]` в том же порядке. Таблица с пятью
-    заголовками и `tbody[data-fixed-rows]` есть и у сотрудника без очередей и прав: у него десять строк — вид «по подписке» (доп. 18а, срез 005),
-    вид «Срок в записи списка» (срез 006, CONTRACT-006, раздел 7.3) и восемь видов ленты (срез 007, CONTRACT-007, раздел 7.1)."""
+    заголовками и `tbody[data-fixed-rows]` есть и у сотрудника без очередей и прав: у него двенадцать строк — вид «по подписке» (доп. 18а, срез 005),
+    вид «Срок в записи списка» (срез 006, CONTRACT-006, раздел 7.3), восемь видов ленты (срез 007, CONTRACT-007, раздел 7.1) и два
+    вида мессенджера (срез 008, CONTRACT-008, раздел 7.1)."""
     user, client = _member()
     doc = _get(client)
     table = one(doc, "table", {"data-notify-table": True})
@@ -238,9 +243,9 @@ def test_table_has_five_channel_columns_in_order():
     doc = _get(support.logged_in(plain))
     table = one(doc, "table", {"data-notify-table": True})
     assert [h.attrs["data-channel"] for h in find(doc, "th", {"data-channel": True}, within=table)] == list(CHANNELS)
-    assert [r.attrs["data-notify-kind"] for r in find(doc, "tr", {"data-notify-kind": True})] == [RUBRIC_KIND, LISTS_KIND] + FEED_CODES, (
-        "у сотрудника без прав и очередей в таблице ровно десять строк — виды «по подписке», «Срок в записи списка» "
-        "и восемь видов ленты (доступны всем)")
+    assert [r.attrs["data-notify-kind"] for r in find(doc, "tr", {"data-notify-kind": True})] == [RUBRIC_KIND, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES), (
+        "у сотрудника без прав и очередей в таблице ровно двенадцать строк — виды «по подписке», «Срок в записи списка», "
+        "восемь видов ленты и два вида мессенджера (доступны всем)")
     one(doc, "tbody", {"data-fixed-rows": True})
 
 
@@ -503,7 +508,9 @@ def test_save_with_changed_cell_writes_matrix():
                           LISTS_KIND: ["email"],  # то же умолчание у вида среза 006 (CONTRACT-006, раздел 7.1)
                           # виды ленты (CONTRACT-007): умолчание ("portal", "email") без `portal`; снимок пишет и
                           # «Нравится» (внешних каналов нет) — пустой список (решение 43 (б))
-                          **{code: ["email"] for code in FEED_BOXED}, FEED_LIKE: []}
+                          **{code: ["email"] for code in FEED_BOXED}, FEED_LIKE: [],
+                          # виды мессенджера (CONTRACT-008, 7.1): умолчание ("portal", "email") без `portal`
+                          **{code: ["email"] for code in MESSENGER_CODES}}
     assert _audit_count(user) == before + 1, "ждали одну запись журнала на сохранение"
 
 

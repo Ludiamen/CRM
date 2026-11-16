@@ -260,13 +260,13 @@ def test_feed_has_is_installed_guard_for_each_org_and_notify_import():
 # --- FR-641: точки расширения (CONTRACT-007, 3.1, 3.3) -------------------------------------------------------------
 
 def test_points_tuple_has_eighteen_names_and_feed_uses_home_body_last():
-    """FR-641: `POINTS` ядра — ровно восемнадцать имён: прежние семнадцать в прежнем порядке и `home_body` последней;
-    `_registry` содержит ключ на каждое имя; точку `home_body` занимает единственная функция `feed`
-    (`apps.feed.views.home.body`); `feed` использует новую точку одну."""
+    """FR-641: `POINTS` ядра — ровно девятнадцать имён: прежние восемнадцать в прежнем порядке и `unit_form_parts`
+    последней (CONTRACT-008, 3.1); `_registry` содержит ключ на каждое имя; точку `home_body` занимает единственная
+    функция `feed` (`apps.feed.views.home.body`); `feed` использует новую точку одну."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_17 + feed.POINTS_007
-    assert len(extensions.POINTS) == 18 and extensions.POINTS[-1] == "home_body"
+    assert tuple(extensions.POINTS) == POINTS_17 + feed.POINTS_007 + ("unit_form_parts",)
+    assert len(extensions.POINTS) == 19 and extensions.POINTS[-1] == "unit_form_parts"
     assert set(extensions._registry) == set(extensions.POINTS)
     own = _own("home_body")
     assert [(f.__module__, f.__name__) for f in own] == [("apps.feed.views.home", "body")]

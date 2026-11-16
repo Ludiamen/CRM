@@ -282,13 +282,14 @@ def test_read_notification_stays_in_list():
     assert client.post(f"/notifications/{note.pk}/read/", **HX).status_code == 200
     assert _fresh(note).read_at is not None
 
-    listing = _elements(client.get("/notifications/"))
+    # CONTRACT-008, 3.3: строки потока отдаёт фрагмент `/notifications/list/`; старый адрес — 302 на вкладку
+    listing = _elements(client.get("/notifications/list/"))
     rows = _find(listing, "li", data_notification=str(note.pk))
     assert len(rows) == 1 and rows[0].get("data-unread") == "0"
     assert _find(listing, "li", data_notification=str(kept.pk))[0].get("data-unread") == "1"
     assert len(_find(listing, "form", data_form="read")) == 1, "кнопка «Прочитать» должна остаться только у непрочитанной"
 
-    unread = _elements(client.get("/notifications/?f=unread"))
+    unread = _elements(client.get("/notifications/list/?f=unread"))
     assert not _find(unread, "li", data_notification=str(note.pk))
     assert _find(unread, "li", data_notification=str(kept.pk))
 

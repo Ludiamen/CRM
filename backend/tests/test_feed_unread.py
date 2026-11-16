@@ -172,9 +172,11 @@ def test_three_unread_posts_shown_on_feed_page_badge_drops_to_zero(clock):
     clock.set(NOON)
     _posts(3)
     viewer = fd.as_plain()
-    assert _count_of(_badge(viewer.client.get("/notifications/"))) == 3
+    # CONTRACT-008, 3.3: число «Ленты» читается со страницы вкладки мессенджера (бейдж — в оболочке; домашняя `/`
+    # отметила бы показы записей); старый `/notifications/` отвечает 302 на эту вкладку
+    assert _count_of(_badge(viewer.client.get("/messenger/notifications/"))) == 3
     assert viewer.client.get("/").status_code == 200
-    assert _count_of(_badge(viewer.client.get("/notifications/"))) == 0
+    assert _count_of(_badge(viewer.client.get("/messenger/notifications/"))) == 0
     assert _unread().count(viewer.user) == 0
 
 
@@ -332,7 +334,7 @@ def test_edit_and_new_comment_do_not_make_shown_post_unread(clock):
     commented = fd.as_plain().client.post(f"/feed/{post.pk}/comments/", {"text": "новый комментарий"}, **HX)
     assert commented.status_code == 200
     assert _unread().count(viewer.user) == 0
-    assert _count_of(_badge(viewer.client.get("/notifications/"))) == 0
+    assert _count_of(_badge(viewer.client.get("/messenger/notifications/"))) == 0
 
 
 # --- число (FR-626) --------------------------------------------------------------------------------------
@@ -378,7 +380,7 @@ def test_count_capped_at_100_badge_shows_99_plus_for_120(clock):
     _posts(120)
     viewer = fd.as_plain()
     assert _unread().count(viewer.user) == 100
-    badge = _badge(viewer.client.get("/notifications/"))
+    badge = _badge(viewer.client.get("/messenger/notifications/"))
     assert _count_of(badge) == 100 and badge.text() == "99+"
     assert "d-none" not in badge.attrs["class"].split()
 
@@ -387,7 +389,7 @@ def test_zero_unread_badge_node_hidden(clock):
     """FR-626: непрочитанных нет — узел числа остаётся в разметке, скрыт классом `d-none`, `data-count="0"`."""
     clock.set(NOON)
     viewer = fd.as_plain()
-    badge = _badge(viewer.client.get("/notifications/"))
+    badge = _badge(viewer.client.get("/messenger/notifications/"))
     assert _count_of(badge) == 0 and "d-none" in badge.attrs["class"].split()
     assert "data-menu-live-badge" in badge.attrs
     assert "data-menu-badge" not in badge.attrs
@@ -405,7 +407,7 @@ def test_newcomer_with_50_old_and_3_new_unit_posts_counts_3_and_old_posts_in_fee
     newcomer = fd.as_plain()
     org.make_member(newcomer.user, unit)
     assert _unread().count(newcomer.user) == 3
-    assert _count_of(_badge(newcomer.client.get("/notifications/"))) == 3
+    assert _count_of(_badge(newcomer.client.get("/messenger/notifications/"))) == 3
     response = newcomer.client.get("/")
     shown = _post_ids(response)
     assert set(p.pk for p in fresh) <= set(shown), "новые записи в ленте"

@@ -22,6 +22,7 @@ POINTS_15 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_
              "notification_kinds", "top_bar_items")
 POINTS_17 = POINTS_15 + ("search_providers", "ticket_card_parts")
 POINTS_18 = POINTS_17 + ("home_body",)
+POINTS_19 = POINTS_18 + ("unit_form_parts",)
 MODULE_PATH = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+")
 PUBLIC = "apps.servicedesk.services.public"
 KB_MODELS = ("Article", "ArticleVersion", "Rubric", "Tag", "ArticleFile", "TicketLink", "RubricSubscription",
@@ -277,7 +278,7 @@ def test_notification_catalog_without_knowledge_has_no_knowledge_kinds():
     assert [k.code for k in rest if k.code.startswith("knowledge.") or k.module == "База знаний"] == []
     assert {k.code for k in rest} == set(full) - added
     assert "lists.deadline" in {k.code for k in rest}, "вид среза 006 не зависит от knowledge"
-    assert len(rest) == 17, "прежних видов срезов 003 и 004 — восемь, вид lists.deadline среза 006 и восемь видов ленты"
+    assert len(rest) == 19, "прежних видов срезов 003 и 004 — восемь, вид lists.deadline среза 006, восемь видов ленты и два вида мессенджера"
 
 
 def test_search_without_knowledge_has_no_articles_group():
@@ -352,24 +353,24 @@ def test_menu_without_knowledge_has_no_knowledge_item():
 # --- FR-432, FR-445: точки расширения (CONTRACT-005, 3.1) -----------------------------------------------------------
 
 def test_points_has_seventeen_names():
-    """FR-445, CONTRACT-007: `POINTS` ядра — ровно восемнадцать имён в порядке контракта (пятнадцать прежних, две
-    новые среза 005 и `home_body` среза 007); `_registry` содержит ключ на каждое имя."""
+    """FR-445, CONTRACT-007: `POINTS` ядра — ровно девятнадцать имён в порядке контракта (пятнадцать прежних, две
+    новые среза 005, `home_body` среза 007 и `unit_form_parts` среза 008); `_registry` содержит ключ на каждое имя."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_18
-    assert len(extensions.POINTS) == 18
-    assert set(extensions._registry) == set(POINTS_18)
+    assert tuple(extensions.POINTS) == POINTS_19
+    assert len(extensions.POINTS) == 19
+    assert set(extensions._registry) == set(POINTS_19)
 
 
 def test_points_new_names_search_providers_and_ticket_card_parts_are_last_two():
     """FR-432, FR-445: прежние пятнадцать имён и их порядок не изменились, новые `search_providers` и `ticket_card_parts`
-    стоят перед `home_body` среза 007 (в таком порядке), последняя точка — `home_body`; в `ticket_card_parts` регистрируются только `knowledge` и `lists` (срез 006,
+    стоят перед `home_body` среза 007 и `unit_form_parts` среза 008 (в таком порядке), последняя точка — `unit_form_parts`; в `ticket_card_parts` регистрируются только `knowledge` и `lists` (срез 006,
     CONTRACT-006, раздел 3.2), `servicedesk` её не регистрирует; неизвестная точка отказывает `ValueError`."""
     from apps.core import extensions
 
     assert tuple(extensions.POINTS[:15]) == POINTS_15
-    assert tuple(extensions.POINTS[-3:-1]) == ("search_providers", "ticket_card_parts") == support_kb.POINTS_005
-    assert extensions.POINTS[-1] == "home_body"
+    assert tuple(extensions.POINTS[-4:-2]) == ("search_providers", "ticket_card_parts") == support_kb.POINTS_005
+    assert extensions.POINTS[-1] == "unit_form_parts"
     parts = extensions.registered("ticket_card_parts")
     assert parts, "knowledge не зарегистрировал части карточки"
     owners = {".".join(getattr(f, "__module__", "").split(".")[:2]) for f in parts}
@@ -484,5 +485,5 @@ def test_search_providers_registered_by_servicedesk_knowledge_core_org_in_order(
     support_kb.grant(user, "knowledge.edit")
     # CONTRACT-007: пятый поставщик `feed` («Лента», order 60, доступен каждому вошедшему) от `apps.feed`; `owners` и
     # `expected` выше — прежние четыре, `SearchProvider("feed", "Лента", 60)` проверяет test_feed_search.py
-    assert [p.key for p in services.providers(user)] == ["tickets", "articles", "staff", "units"] + ["feed"]
-    assert [p.title for p in services.providers(user)] == ["Заявки", "Статьи", "Сотрудники", "Подразделения"] + ["Лента"]
+    assert [p.key for p in services.providers(user)] == ["tickets", "articles", "staff", "units"] + ["feed", "messenger"]
+    assert [p.title for p in services.providers(user)] == ["Заявки", "Статьи", "Сотрудники", "Подразделения"] + ["Лента", "Мессенджер"]

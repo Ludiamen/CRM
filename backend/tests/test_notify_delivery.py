@@ -532,8 +532,9 @@ def test_service_failure_keeps_portal_notification_and_pages_respond(bots_on, we
     kept = model("notify.Notification").objects.get(pk=note.pk)
     assert (kept.read_at, kept.text) == (None, note.text)
     client = support.logged_in(user)
-    page = client.get("/notifications/")
+    page = client.get("/notifications/list/")
     assert page.status_code == 200 and f'data-notification="{note.pk}"' in page.content.decode()
+    assert client.get("/notifications/").status_code == 302, "старый адрес списка — 302 на вкладку (CONTRACT-008, 3.3)"
     assert client.get("/notifications/bell/").status_code == 200
 
 
@@ -558,7 +559,8 @@ def test_closed_internet_leaves_deliveries_waiting_for_retries_and_portal_works(
     assert {name: _channel_code(name) for name in ("telegram", "max", "webpush")} == {
         "telegram": "unavailable", "max": "unavailable", "webpush": "unavailable"}
     client = support.logged_in(user)
-    assert client.get("/notifications/").status_code == 200
+    assert client.get("/notifications/list/").status_code == 200
+    assert client.get("/notifications/").status_code == 302, "старый адрес списка — 302 на вкладку (CONTRACT-008, 3.3)"
     assert model("notify.Notification").objects.get(pk=note.pk).read_at is None
     clock.advance(seconds=61)
     with notify.fake_bot_send("telegram"), notify.fake_bot_send("max"), notify.webpush_capture():

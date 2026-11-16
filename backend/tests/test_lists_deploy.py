@@ -119,12 +119,13 @@ def _world():
 
 def test_lists_is_in_installed_apps_after_knowledge_and_before_search():
     """FR-543: в конце `INSTALLED_APPS` — `apps.servicedesk`, `apps.notify`, `apps.knowledge`, `apps.lists`,
-    `apps.search`, `apps.feed` (срез 007); метка `lists`, класс `ListsConfig`, `verbose_name` «Списки» (раздел 1.1)."""
+    `apps.search`, `apps.feed` (срез 007), `apps.messenger` (срез 008); метка `lists`, класс `ListsConfig`,
+    `verbose_name` «Списки» (раздел 1.1)."""
     from django.apps import apps
     from django.conf import settings
     from tests.support_feed import APPS_TAIL
 
-    assert list(settings.INSTALLED_APPS)[-6:] == APPS_TAIL
+    assert list(settings.INSTALLED_APPS)[-7:] == APPS_TAIL
     config = apps.get_app_config("lists")
     assert type(config).__name__ == "ListsConfig"
     assert config.label == "lists"
@@ -161,10 +162,12 @@ def test_cron_has_no_other_maintenance_entry_at_0_5():
 
 
 def test_cron_module_has_eighteen_register_calls():
-    """FR-530: в `config/cron.py` двадцать вызовов `register` (семнадцать прежних, `lists_reminders` и два задания среза 007)."""
+    """FR-530: в `config/cron.py` двадцать один вызов `register` (семнадцать прежних, `lists_reminders`, два задания
+    среза 007 и `messenger_retention` среза 008)."""
     entries = cron_registrations()
-    assert len(entries) == 20, (
-        f"вызовов register {len(entries)}, ожидается 20 (17 прежних, lists_reminders и два задания среза 007)")
+    assert len(entries) == 21, (
+        f"вызовов register {len(entries)}, ожидается 21 (17 прежних, lists_reminders, два задания среза 007 и "
+        "messenger_retention среза 008)")
     assert "lists_reminders" in {item["name"] for item in entries}
 
 

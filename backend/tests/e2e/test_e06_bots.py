@@ -709,10 +709,14 @@ def test_e06_bot_link_and_notification_links_contain_no_binding_code_or_secrets(
         assert rows.count() >= 1, "в списке уведомлений нет ссылок"
         for item in rows.evaluate_all("nodes => nodes.map(n => n.getAttribute('href'))"):
             _assert_clean_url(item, "ссылка уведомления в списке", forbidden)
-        tab.locator("button[data-bell-toggle]").click()
-        expect(tab.locator("[data-bell-panel] [data-bell-list]")).to_be_visible()
-        for item in tab.eval_on_selector_all("[data-bell-panel] a[href]", "nodes => nodes.map(n => n.getAttribute('href'))"):
-            _assert_clean_url(item, "ссылка панели колокольчика", forbidden)
+        with tab.expect_navigation():
+            tab.locator("a[data-bell-link]").click()
+        assert tab.url.split("?")[0].endswith("/messenger/notifications/"), tab.url
+        expect(tab.locator('[data-messenger-tab="notifications"]')).to_have_attribute("aria-selected", "true")
+        expect(tab.locator("[data-notify-list]")).to_be_visible()
+        for item in tab.eval_on_selector_all("[data-notify-list] li[data-notification] a[href]",
+                                              "nodes => nodes.map(n => n.getAttribute('href'))"):
+            _assert_clean_url(item, "ссылка вкладки «Уведомления»", forbidden)
         for channel, chat in chats.items():
             found = helpers_notify.wait_sent(bots, channel, chat_id=chat, text_has=EXTERNAL)
             url = _button_url(channel, found[-1])

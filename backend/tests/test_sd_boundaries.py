@@ -426,12 +426,12 @@ def test_four_servicedesk_events_are_published_by_ticket_services(bus_spy, djang
 # --- FR-292: точки расширения и меню (§ 3.2) ------------------------------------------------------------
 
 def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_links():
-    """FR-292: `POINTS` — восемнадцать имён в порядке контракта (семнадцать прежних и `home_body` среза 007); `org` — в девяти первых и в `search_providers`, `servicedesk` — в своих
+    """FR-292: `POINTS` — девятнадцать имён в порядке контракта (семнадцать прежних, `home_body` среза 007 и `unit_form_parts` среза 008); `org` — в девяти первых и в `search_providers`, `servicedesk` — в своих
     одиннадцати точках (девять прежних, `notification_kinds` и `search_providers`) функциями `apps.servicedesk…`; зарегистрированное отдаёт то, что описано
     в контракте, в том числе ровно четыре вида уведомлений с кодами CONTRACT-004 § 3.2."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_17 + ("home_body",)
+    assert tuple(extensions.POINTS) == POINTS_17 + ("home_body", "unit_form_parts")
 
     def owned(point, prefix):
         return [f for f in extensions.registered(point) if getattr(f, "__module__", "").startswith(prefix)]
@@ -634,7 +634,11 @@ def _check_core_and_org_slice_002(admin, monkeypatch, *, org_present: bool) -> N
     from apps.org.services import structure
 
     menu = permissions.menu_for(admin)
-    assert all(set(item) == {"url", "title", "icon", "order"} for item in menu), "ключа badge быть не должно"
+    # CONTRACT-008, 3.4: у пункта «Мессенджер» есть `badge` и `live_badge`, у «Настроек мессенджера» — прежние четыре ключа
+    keys_008 = {"/messenger/": {"url", "title", "icon", "order", "badge", "live_badge"},
+                "/settings/messenger/": {"url", "title", "icon", "order"}}
+    assert all(set(item) == keys_008.get(item["url"], {"url", "title", "icon", "order"}) for item in menu), \
+        "ключа badge быть не должно, кроме пункта «Мессенджер»"
     urls = [item["url"] for item in menu]
     assert not [u for u in urls if u.startswith(("/tickets/", "/servicedesk/"))]
     assert bool([u for u in urls if u.startswith(("/structure/", "/calendar/"))]) is org_present

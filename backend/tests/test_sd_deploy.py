@@ -420,8 +420,8 @@ def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_min
         assert registered[name]["interval"] == interval, f"{name}: interval={registered[name]['interval']!r}"
         assert registered[name]["cron"] == cron, f"{name}: cron={registered[name]['cron']!r}"
         assert registered[name]["job_timeout"] == timeout, f"{name}: job_timeout={registered[name]['job_timeout']!r}"
-    assert len(cron_registrations()) == 20, (
-        "шесть прежних, восемь среза 003, два среза 004, один среза 005, один среза 006 и два среза 007")
+    assert len(cron_registrations()) == 21, (
+        "шесть прежних, восемь среза 003, два среза 004, один среза 005, один среза 006, два среза 007 и один среза 008")
     source = (BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8")
     assert re.search(r"from apps\.servicedesk\.tasks import", source)
     scheduler = block("scheduler")

@@ -654,8 +654,10 @@ def test_every_slice_view_requires_declared_permission_403():
 
 def test_menu_staff_structure_calendar_items_by_permission():
     """FR-123: пункты «Сотрудники», «Структура», «Календарь» — по правам (`staff.view` или `accounts.manage`; `staff.view`;
-    `staff.view` или `calendar.manage`); у пункта ключи `url`, `title`, `icon`, `order` (и `badge` у «Заявок»; у «Ленты» — `badge` и `live_badge`, срез 007), порядок 0, 5, 7, 8, 10…60, 62, 63, 65, 70
-    (0 — «Лента», `/`, срез 007; 63 — «Настройки ленты», `/settings/feed/`, срез 007)
+    `staff.view` или `calendar.manage`); у пункта ключи `url`, `title`, `icon`, `order` (и `badge` у «Заявок»; у «Ленты» и
+    «Мессенджера» — `badge` и `live_badge`, срезы 007 и 008), порядок 0, 1, 5, 7, 8, 10…60, 62, 63, 64, 65, 70
+    (0 — «Лента», `/`, срез 007; 1 — «Мессенджер», `/messenger/`, срез 008; 63 — «Настройки ленты», `/settings/feed/`,
+    срез 007; 64 — «Настройки мессенджера», `/settings/messenger/`, срез 008)
     (7 — «База знаний», `/kb/`, без прав и без `badge`, срез 005; 8 — «Списки», `/lists/`, без прав и без `badge`,
     видимость по `access.sees_section`, срез 006; 62 — «Уведомления», `notify.manage`, срез 004);
     разметка меню совпадает с `menu_for`; недоступное скрыто."""
@@ -685,23 +687,27 @@ def test_menu_staff_structure_calendar_items_by_permission():
         assert "/roles/" not in urls(user) and "/audit/" not in urls(user)
 
     items = permissions.menu_for(support.make_admin())
-    assert [i["url"] for i in items] == ["/", "/tickets/", "/kb/", "/lists/", "/staff/", "/structure/", "/calendar/",
-                                         "/roles/", "/audit/", "/settings/portal/", "/settings/notifications/",
-                                         "/settings/feed/", "/servicedesk/", "/settings/security/"]
-    assert [i["order"] for i in items] == [0, 5, 7, 8, 10, 20, 30, 40, 50, 60, 62, 63, 65, 70]
-    assert [i["title"] for i in items] == ["Лента", "Заявки", "База знаний", "Списки", "Сотрудники", "Структура",
-                                           "Календарь", "Роли и права", "Журнал событий", "Настройки портала",
-                                           "Уведомления", "Настройки ленты", "Сервис-деск",
-                                           "Безопасность и политика"]
-    # `badge` есть у «Заявок» (CONTRACT-003 § 3.2), у «Ленты» — `badge` и `live_badge` (CONTRACT-007); у остальных
-    # ровно четыре ключа
+    assert [i["url"] for i in items] == ["/", "/messenger/", "/tickets/", "/kb/", "/lists/", "/staff/", "/structure/",
+                                         "/calendar/", "/roles/", "/audit/", "/settings/portal/",
+                                         "/settings/notifications/", "/settings/feed/", "/settings/messenger/",
+                                         "/servicedesk/", "/settings/security/"]
+    assert [i["order"] for i in items] == [0, 1, 5, 7, 8, 10, 20, 30, 40, 50, 60, 62, 63, 64, 65, 70]
+    assert [i["title"] for i in items] == ["Лента", "Мессенджер", "Заявки", "База знаний", "Списки", "Сотрудники",
+                                           "Структура", "Календарь", "Роли и права", "Журнал событий",
+                                           "Настройки портала", "Уведомления", "Настройки ленты",
+                                           "Настройки мессенджера", "Сервис-деск", "Безопасность и политика"]
+    # `badge` есть у «Заявок» (CONTRACT-003 § 3.2), у «Ленты» и «Мессенджера» — `badge` и `live_badge`
+    # (CONTRACT-007; CONTRACT-008, 3.4); у остальных ровно четыре ключа
     assert set(items[0]) == {"url", "title", "icon", "order", "badge", "live_badge"}
     assert items[0]["live_badge"] == "feed"
-    assert set(items[1]) == {"url", "title", "icon", "order", "badge"}
-    assert all(set(i) == {"url", "title", "icon", "order"} for i in items[2:])
+    assert set(items[1]) == {"url", "title", "icon", "order", "badge", "live_badge"}
+    assert items[1]["live_badge"] == "messenger"
+    assert set(items[2]) == {"url", "title", "icon", "order", "badge"}
+    assert all(set(i) == {"url", "title", "icon", "order"} for i in items[3:])
     icons = {i["url"]: i["icon"] for i in items}
     assert icons["/structure/"] == "icons/structure.html" and icons["/calendar/"] == "icons/calendar.html"
     assert icons["/lists/"] == "icons/lists.html"
+    assert icons["/messenger/"] == "icons/chat.html"
     assert all(re.fullmatch(r"icons/[a-z0-9_-]+\.html", icon) for icon in icons.values())
 
 

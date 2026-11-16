@@ -1,6 +1,6 @@
 """T-4101: каталог видов уведомлений и пять каналов (FR-301…FR-306, FR-321, FR-344). Сценарии 1, 3 и 4 спеки среза 004.
 
-Двадцать видов шести модулей (таблица контракта § 3.2, CONTRACT-005, раздел 7.2, CONTRACT-006, раздел 7.3 и CONTRACT-007, раздел 7.1), сборка каталога из точки `notification_kinds` при каждом вызове,
+Двадцать два вида семи модулей (таблица контракта § 3.2, CONTRACT-005, раздел 7.2, CONTRACT-006, раздел 7.3, CONTRACT-007, раздел 7.1 и CONTRACT-008, раздел 7.4), сборка каталога из точки `notification_kinds` при каждом вызове,
 повтор кода как отказ запуска, пять каналов и один столбец push, портал всегда включён, обязательные виды, запись
 `Notification`. Код среза на уровне модуля не импортируется: имена берутся внутри тестов (CONTRACT-004, шапка).
 """
@@ -13,6 +13,7 @@ import pytest
 
 from tests import support, support_notify
 from tests.support_feed import FEED_CHANNELS, FEED_COALESCE, FEED_KINDS
+from tests.support_messenger import MESSENGER_KINDS
 from tests import support_org as org
 from tests import support_servicedesk as sd
 from tests.support import model
@@ -45,6 +46,8 @@ TABLE = [
      "Истекает срок в записи списка"),
     # восемь видов модуля «Лента» (CONTRACT-007, раздел 7.1): order 70–77, у «Нравится» внешнего текста нет (решение 43 (а))
     *FEED_KINDS,
+    # два вида модуля «Мессенджер» (CONTRACT-008, раздел 7.1): order 80 и 81, каналы «На портале» и «Почта»
+    *MESSENGER_KINDS,
     ("core.new_device", "Вход с нового устройства", "Ядро", 110, True, ("portal",), ("core.new_device",), ""),
     ("core.password_changed", "Пароль изменён", "Ядро", 120, True, ("portal",), ("core.password_changed",), ""),
     ("core.second_factor_reset", "Второй фактор сброшен", "Ядро", 130, True, ("portal",),
@@ -107,17 +110,20 @@ def _register_core_and_notify():
 # --- каталог: состав ---------------------------------------------------------------------------------
 
 def test_catalog_contains_eight_kinds_from_three_modules():
-    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно двадцать видов, по `order` (сервис-деск 10–40, база знаний 50–52,
-    списки 60, лента 70–77, ядро 110–130, уведомления 200), из модулей «Сервис-деск», «База знаний», «Списки», «Лента», «Ядро» и «Уведомления»."""
+    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно двадцать два вида, по `order` (сервис-деск 10–40, база знаний
+    50–52, списки 60, лента 70–77, мессенджер 80–81, ядро 110–130, уведомления 200), из модулей «Сервис-деск», «База
+    знаний», «Списки», «Лента», «Мессенджер», «Ядро» и «Уведомления»."""
     catalog = _kinds().catalog()
     assert [kind.code for kind in catalog] == [row[0] for row in TABLE]
-    assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления", "База знаний", "Списки", "Лента"}
+    assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления", "База знаний", "Списки", "Лента",
+                                                 "Мессенджер"}
     assert [kind.module for kind in catalog].count("Сервис-деск") == 4
     assert [kind.module for kind in catalog].count("Ядро") == 3
     assert [kind.module for kind in catalog].count("Уведомления") == 1
     assert [kind.module for kind in catalog].count("База знаний") == 3
     assert [kind.module for kind in catalog].count("Списки") == 1
     assert [kind.module for kind in catalog].count("Лента") == 8
+    assert [kind.module for kind in catalog].count("Мессенджер") == 2
 
 
 def test_catalog_kind_codes_titles_and_modules_match_plan_table():

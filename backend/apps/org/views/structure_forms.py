@@ -4,12 +4,17 @@
 Отправка — обычным POST (без `hx-post`): успех — 302, отказ службы — 200 с `[role=alert]` и введёнными значениями.
 Правила и журнал — в службе `org.services.structure`; здесь только разбор формы и тексты ответа.
 Права проверяют декораторы (T-2230a); без права ответ 403 раньше проверки существования узла.
+Поля формы от точки `unit_form_parts` (PLAN-008, T-8006) рисуются в порядке `order`; `on_saved` зовётся после
+сохранения узла, каждый обработчик — в собственном savepoint. Кто зарегистрировался, форма не знает.
 """
+import logging
+
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_http_methods
 
+from apps.core import extensions
 from apps.core.services.permissions import require_permission
 from apps.core.views.common import flash, is_fragment, render_page
 from apps.org.models import Unit
@@ -19,6 +24,10 @@ from apps.org.views.structure import structure_page
 
 KINDS = (("department", "Отдел"), ("team", "Команда"))
 CONFIRM_REQUIRED = "Подтвердите удаление."  # дополнение 21
+
+# Журнал сбоев полей формы узла — имя из плана среза 008 (`apps.messenger.unit_form`): модуль `org` не импортирует
+# код мессенджера, а только пишет в названный план-канал. Запись — предупреждение с ключом поля и текстом ошибки.
+logger = logging.getLogger("apps.messenger.unit_form")
 
 
 def _unit_options() -> list[dict]:
@@ -63,14 +72,53 @@ def _values(unit: Unit | None, post=None, *, parent_id=None) -> dict:
     return {"kind": "department", "name": "", "description": "", "parent": str(parent_id or "")}
 
 
-def _form_context(*, unit: Unit | None, values: dict, error: str = "") -> dict:
+def _registered_parts() -> list:
+    """Записи точки `unit_form_parts` в порядке `order`; порядок регистрации — при равенстве (устойчивая сортировка)."""
+    return sorted(extensions.registered("unit_form_parts"), key=lambda item: item.order)
+
+
+def _form_parts(request, unit: Unit | None) -> list[dict]:
+    """Поля формы узла от точки `unit_form_parts`: `[{"key", "html"}]` в порядке `order`.
+
+    `render(request, unit)` зовётся и при создании узла, где `unit` ещё нет: запись обязана это терпеть. Пустая
+    строка — поля нет. Исключение записи пишется предупреждением (ключ и текст) и поле пропускается: форма рисуется
+    без него, а не падает.
+    """
+    parts = []
+    for part in _registered_parts():
+        try:
+            html = part.render(request, unit)
+        except Exception as error:  # noqa: BLE001 — сбой чужой записи не должен ронять форму узла
+            logger.warning("Поле формы узла %s не выведено: %s", part.key, error)
+            continue
+        if html:
+            parts.append({"key": part.key, "html": html})
+    return parts
+
+
+def _call_on_saved(unit: Unit, post, actor, ip=None) -> None:
+    """Зовёт `on_saved` записей точки после сохранения узла; каждый обработчик — в своём savepoint.
+
+    Исключение обработчика откатывает только его работу (savepoint) и пишется предупреждением с ключом и текстом;
+    сохранение узла не отменяется, остальные обработчики выполняются.
+    """
+    for part in _registered_parts():
+        try:
+            with transaction.atomic():
+                part.on_saved(unit, post, actor, ip=ip)
+        except Exception as error:  # noqa: BLE001 — сбой чужого обработчика не отменяет сохранение узла
+            logger.warning("Обработчик поля формы узла %s не выполнен: %s", part.key, error)
+
+
+def _form_context(request, *, unit: Unit | None, values: dict, error: str = "") -> dict:
     root = unit is not None and unit.is_root
     title = "Изменить узел" if unit is not None else "Новый узел"
     action = f"/structure/{unit.pk}/edit/" if unit is not None else "/structure/new/"
     return {
         "slider_title": title, "form_name": "unit-edit" if unit is not None else "unit-new", "form_action": action,
         "unit_form": {"unit": unit, "values": values, "error": error, "kinds": KINDS,
-                      "show_kind": unit is None, "show_parent": not root, "options": _unit_options()},
+                      "show_kind": unit is None, "show_parent": not root, "options": _unit_options(),
+                      "parts": _form_parts(request, unit)},
         "slider_close_url": f"/structure/{unit.pk}/" if unit is not None else "/structure/",
     }
 
@@ -84,18 +132,20 @@ def unit_new(request):
         raw = request.GET.get("parent", "")
         parent = Unit.objects.filter(pk=int(raw)).first() if raw.isdigit() else None
         values = _values(None, parent_id=parent.pk if parent else root.pk)
-        return _slider_response(request, parent or root, _form_context(unit=None, values=values))
+        return _slider_response(request, parent or root, _form_context(request, unit=None, values=values))
     post = request.POST
     try:
-        kind = post.get("kind", "")
-        if kind not in dict(KINDS):
-            raise OrgError("kind_rules", "Выберите вид узла: отдел или команда.")
-        parent = _parent_from(post)
-        unit = structure_service.create_unit(
-            kind=kind, name=post.get("name", ""), description=post.get("description", ""), parent=parent,
-            actor=request.user, ip=request.client_ip)
+        with transaction.atomic():
+            kind = post.get("kind", "")
+            if kind not in dict(KINDS):
+                raise OrgError("kind_rules", "Выберите вид узла: отдел или команда.")
+            parent = _parent_from(post)
+            unit = structure_service.create_unit(
+                kind=kind, name=post.get("name", ""), description=post.get("description", ""), parent=parent,
+                actor=request.user, ip=request.client_ip)
+            _call_on_saved(unit, post, request.user, request.client_ip)
     except OrgError as error:
-        context = _form_context(unit=None, values=_values(None, post), error=str(error))
+        context = _form_context(request, unit=None, values=_values(None, post), error=str(error))
         return _slider_response(request, root, context)
     flash(request, f"Узел «{unit.name}» создан.")
     return HttpResponseRedirect(f"/structure/{unit.pk}/")
@@ -107,7 +157,7 @@ def unit_edit(request, unit_id: int):
     """`/structure/<id>/edit/` — изменить узел; у корня поля «Подчиняется» нет."""
     unit = get_object_or_404(Unit.objects.select_related("parent"), pk=unit_id)
     if request.method == "GET":
-        return _slider_response(request, unit, _form_context(unit=unit, values=_values(unit)))
+        return _slider_response(request, unit, _form_context(request, unit=unit, values=_values(unit)))
     post = request.POST
     try:
         with transaction.atomic():
@@ -118,8 +168,9 @@ def unit_edit(request, unit_id: int):
                 actor=request.user, ip=request.client_ip)
             if not unit.is_root and "parent" in post:
                 structure_service.move_unit(unit, _parent_from(post), actor=request.user, ip=request.client_ip)
+            _call_on_saved(unit, post, request.user, request.client_ip)
     except OrgError as error:
-        context = _form_context(unit=unit, values=_values(unit, post), error=str(error))
+        context = _form_context(request, unit=unit, values=_values(unit, post), error=str(error))
         return _slider_response(request, unit, context)
     flash(request, "Изменения сохранены.")
     return HttpResponseRedirect(f"/structure/{unit.pk}/")

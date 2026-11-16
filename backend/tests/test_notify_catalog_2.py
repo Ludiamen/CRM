@@ -14,6 +14,7 @@ import pytest
 
 from tests import support
 from tests.support_feed import FEED_BOXED, FEED_CODES, FEED_LIKE, FEED_MODULE, FEED_TITLES
+from tests.support_messenger import MESSENGER_CODES, MESSENGER_MODULE, MESSENGER_TITLES
 from tests import support_notify as notify
 from tests import support_org as org
 from tests import support_servicedesk as sd
@@ -39,6 +40,7 @@ TITLES = {
     RUBRIC: "Статья в рубрике по подписке",
     LISTS_KIND: "Срок в записи списка",
     **FEED_TITLES,
+    **MESSENGER_TITLES,
 }
 SECURITY_CODES = ["core.new_device", "core.password_changed", "core.second_factor_reset"]
 PAGE = "/me/notifications/"
@@ -227,7 +229,7 @@ def test_effective_table_rows_are_available_non_mandatory_kinds_in_order():
     prefs = _svc("prefs")
     user, _ = _queue_member()
     table = prefs.effective(user)
-    assert [row.kind.code for row in table.rows] == SD_CODES + ["knowledge.rubric_subscription", LISTS_KIND] + FEED_CODES
+    assert [row.kind.code for row in table.rows] == SD_CODES + ["knowledge.rubric_subscription", LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES)
     expected = [kind.code for kind in _svc("kinds").catalog() if not kind.mandatory and kind.available(user)]
     assert [row.kind.code for row in table.rows] == expected
     for row in table.rows:
@@ -236,8 +238,9 @@ def test_effective_table_rows_are_available_non_mandatory_kinds_in_order():
         assert row.cells["portal"] is True
     outsider = support.make_employee()
     assert [row.kind.code for row in prefs.effective(outsider).rows] == [
-        "knowledge.rubric_subscription", LISTS_KIND] + FEED_CODES, (
-        "посторонний видит десять строк: виды «по подписке», «Срок в записи списка» и восемь видов ленты доступны всем")
+        "knowledge.rubric_subscription", LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES), (
+        "посторонний видит двенадцать строк: виды «по подписке», «Срок в записи списка», восемь видов ленты и два вида "
+        "мессенджера доступны всем")
 
 
 def test_effective_table_excludes_security_kinds_and_channel_unbound():
@@ -306,7 +309,7 @@ def test_available_other_sd_kinds_false_without_tickets_menu_item():
         for code in SD_CODES:
             assert catalog[code].available(user) is False, code
         assert [row.kind.code for row in _svc("prefs").effective(user).rows] == [
-            "knowledge.rubric_subscription", LISTS_KIND] + FEED_CODES
+            "knowledge.rubric_subscription", LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES)
 
 
 # --- какие значения действуют (FR-322) --------------------------------------------------------------
@@ -335,7 +338,7 @@ def test_effective_uses_own_matrix_after_first_save():
     assert cells[ASSIGNED]["portal"] is True
     matrix = _row_of(user).matrix
     # решение 43 (б): снимок содержит все строки таблицы, у `feed.like` — пустой список каналов вне портала
-    assert set(matrix) == set(SD_CODES) | {RUBRIC, LISTS_KIND} | set(FEED_CODES)
+    assert set(matrix) == set(SD_CODES) | {RUBRIC, LISTS_KIND} | set(FEED_CODES) | set(MESSENGER_CODES)
     assert matrix[FEED_LIKE] == []
     assert "push" in matrix[ASSIGNED] and "email" not in matrix[ASSIGNED]
     assert all("portal" not in channels for channels in matrix.values())
@@ -484,7 +487,7 @@ def test_my_notifications_page_has_five_channel_columns_portal_checked_and_fixed
     assert [head.attrs["data-channel"] for head in heads] == list(CHANNELS)
     assert [head.text for head in heads] == [HEADERS[channel] for channel in CHANNELS]
     rows = _kind_rows(root)
-    assert list(rows) == SD_CODES + [RUBRIC, LISTS_KIND] + FEED_CODES
+    assert list(rows) == SD_CODES + [RUBRIC, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES)
     for row in rows.values():
         cells = row.find_all("td", {"data-channel": True})
         assert [cell.attrs["data-channel"] for cell in cells] == list(CHANNELS)
@@ -501,8 +504,9 @@ def test_my_notifications_page_rows_show_kind_title_and_module():
     user, _ = _queue_member()
     for code, row in _kind_rows(_page(user)).items():
         assert row.one(None, {"data-field": "title"}).text == TITLES[code]
-        modules = {RUBRIC: "База знаний", LISTS_KIND: "Списки", **{c: FEED_MODULE for c in FEED_CODES}}
-        module = modules.get(code, "Сервис-деск")  # CONTRACT-006, раздел 7.3; CONTRACT-007, раздел 7.1
+        modules = {RUBRIC: "База знаний", LISTS_KIND: "Списки", **{c: FEED_MODULE for c in FEED_CODES},
+                   **{c: MESSENGER_MODULE for c in MESSENGER_CODES}}
+        module = modules.get(code, "Сервис-деск")  # CONTRACT-006, раздел 7.3; CONTRACT-007, раздел 7.1; CONTRACT-008, 7.4
         assert row.one(None, {"data-field": "module"}).text == module
 
 
@@ -517,9 +521,9 @@ def test_my_notifications_page_push_is_one_column_for_both_push_kinds():
         assert len(row.find_all("td", {"data-channel": "push"})) == 1
         assert len(row.find_all("td", {"data-channel": True})) == 5
     values = [box.attrs.get("value", "") for box in table.find_all("input", {"name": "cell"})]
-    # тринадцать флажков: шесть прежних строк (четыре сервис-деска, «по подписке», «Срок в записи списка») и семь видов
-    # ленты с флажками; у «Нравится» (`channels=("portal",)`) флажка push нет (решение 43 (в))
-    assert sorted(value.split(":", 1)[1] for value in values if value.endswith(":push")) == ["push"] * (6 + len(FEED_BOXED))
+    # пятнадцать флажков: восемь прежних строк (четыре сервис-деска, «по подписке», «Срок в записи списка», два вида
+    # мессенджера) и семь видов ленты с флажками; у «Нравится» (`channels=("portal",)`) флажка push нет (решение 43 (в))
+    assert sorted(value.split(":", 1)[1] for value in values if value.endswith(":push")) == ["push"] * (8 + len(FEED_BOXED))
     assert not [value for value in values if value.endswith(":webpush")]
 
 
@@ -572,8 +576,8 @@ def test_my_notifications_page_push_column_carries_permission_hint_and_script_ho
 
     def check(root, available, reason, hint):
         assert len(root.find_all("button", {"data-action": "push-permission"})) == 1
-        assert len(push_cells(root)) == 14, ("четырнадцать строк видов: четыре сервис-деска, «по подписке», срок списка "
-                                             "и восемь видов ленты")
+        assert len(push_cells(root)) == 16, ("шестнадцать строк видов: четыре сервис-деска, «по подписке», срок списка, "
+                                             "восемь видов ленты и два вида мессенджера")
         for code, cell in push_cells(root).items():
             if code == FEED_LIKE:
                 assert not cell.find_all("input"), "у «Нравится» флажка push нет (решение 43 (в))"

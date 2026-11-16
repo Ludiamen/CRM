@@ -74,3 +74,8 @@ if apps.is_installed("apps.feed"):
 
     register(remind_events, queue_name="notify", cron="* * * * *", name="feed_reminders", job_timeout=120)
     register(retention_night, queue_name="maintenance", cron="35 23 * * *", name="feed_retention", job_timeout=600)
+
+# Мессенджер (срез 008, T-8001). Здесь — место для записи `messenger_retention` (`maintenance`, `55 23 * * *`,
+# job_timeout 600) под проверкой `apps.is_installed("apps.messenger")`: импорт задачи `retention_night` и вызов
+# `register` добавляет T-8220 (план, «Хранение» и «Запуск»; CONTRACT-008). Пока мессенджер отключён или пуст,
+# расписание прежних заданий не меняется.

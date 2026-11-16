@@ -85,20 +85,21 @@ def _page(client, path="/me/"):
 # --- core/extensions.py: точка home_body ------------------------------------------------------------------------------
 
 def test_points_end_with_home_body_as_eighteenth_point():
-    """FR-641: `POINTS` ядра — восемнадцать имён, `home_body` последней; `_registry` содержит ключ на каждое имя
-    (CONTRACT-007, 3.1; `support_feed.POINTS_007`)."""
+    """FR-641: `POINTS` ядра — девятнадцать имён, `unit_form_parts` последней; `_registry` содержит ключ на каждое имя
+    (CONTRACT-007, 3.1; CONTRACT-008, 3.1; `support_messenger.POINTS_008`)."""
     from apps.core import extensions
+    from tests.support_messenger import POINTS_008
 
-    assert len(extensions.POINTS) == 18
-    assert extensions.POINTS[-1] == "home_body" and tuple(extensions.POINTS[17:]) == feed.POINTS_007
+    assert len(extensions.POINTS) == 19
+    assert extensions.POINTS[-1] == "unit_form_parts" and tuple(extensions.POINTS[18:]) == POINTS_008
     assert set(extensions._registry) == set(extensions.POINTS)
 
 
 def test_previous_seventeen_points_keep_their_order():
-    """FR-641: прежние семнадцать точек — в прежнем порядке (срезы `[:9]` и `[9:15]` прежних тестов не сдвигаются)."""
+    """FR-641: прежние восемнадцать точек — в прежнем порядке (срезы `[:9]` и `[9:15]` прежних тестов не сдвигаются)."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS[:17]) == POINTS_17
+    assert tuple(extensions.POINTS[:18]) == POINTS_17 + ("home_body",)
     assert tuple(extensions.POINTS[:9]) == POINTS_17[:9] and tuple(extensions.POINTS[9:15]) == POINTS_17[9:15]
 
 
@@ -357,14 +358,15 @@ def test_base_htmx_config_unchanged_with_default_allow_script_tags():
 # --- core/models/files.py и миграция 0010 ------------------------------------------------------------------------------
 
 def test_stored_file_purpose_feed_is_last_and_previous_values_unchanged():
-    """FR-633: `StoredFile.Purpose.FEED = "feed"` («вложение ленты») — последним; прежние четыре значения и подписи те
-    же; `max_length` 16 и значение по умолчанию `photo` не менялись; миграция `core 0010_storedfile_feed_purpose` — одна
-    операция `AlterField` поля `purpose` (зависит от `0009`); строку с назначением `feed` можно создать."""
+    """FR-633: `StoredFile.Purpose.MESSENGER = "messenger"` («вложение сообщения чата») — последним; прежние пять
+    значений и подписи те же; `max_length` 16 и значение по умолчанию `photo` не менялись; миграция
+    `core 0010_storedfile_feed_purpose` — одна операция `AlterField` поля `purpose` (зависит от `0009`); строку с
+    назначением `feed` можно создать."""
     StoredFile = support.model("core.StoredFile")
     assert StoredFile.Purpose.choices == [
         ("photo", "фото"), ("attachment", "вложение"), ("knowledge", "файл статьи"),
-        ("lists", "файл записи списка"), ("feed", "вложение ленты")]
-    assert StoredFile.Purpose.FEED == "feed" and list(StoredFile.Purpose.values)[-1] == "feed"
+        ("lists", "файл записи списка"), ("feed", "вложение ленты"), ("messenger", "вложение сообщения чата")]
+    assert StoredFile.Purpose.FEED == "feed" and list(StoredFile.Purpose.values)[-1] == "messenger"
     field = StoredFile._meta.get_field("purpose")
     assert field.max_length == 16 and field.default == "photo"
     path = support.BACKEND_DIR / "apps" / "core" / "migrations" / "0010_storedfile_feed_purpose.py"

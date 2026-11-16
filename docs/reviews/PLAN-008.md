@@ -81,7 +81,7 @@ id: REV-PLAN-008
 | `25m` станет два; `apps.messenger` последний | `backend/deploy/nginx.conf`/`.prod` — 4×`55m`, 1×`25m`; `backend/config/settings.py:43-60` — последний `apps.feed` | верно |
 | Django 5.2.17, Channels 4.3.2, Pillow 13.0.0; htmx 2.0.11, alpine 3.17.4, htmx-ext-ws 2.0.4 | `backend/requirements.txt`; `backend/static/vendor/`; `backend/templates/_assets.html:13-15` | верно |
 | `FeedUser` — нагрузочный класс | `backend/tests/load/locustfile.py:796`; `FeedWsUser` в коде нет | верно |
-| `snippet(text, limit, *, expand=None)` в ядре и в таблице изменений | `plan.md:185, 770`; `backend/apps/feed/services/text.py:98` — прежний `people` у обёртки | верно |
+| `snippet(text, limit, *, expand=None)` в ядре и в таблице изменений | `plan.md:185, 770`; после T-8004 — `backend/apps/core/services/text.py:173`, обёртка ленты `backend/apps/feed/services/text.py:57` | верно; ссылка обновлена после переноса в ядро |
 | `unit_new` без `atomic`, `unit_edit` в `atomic` | `backend/apps/org/views/structure_forms.py:80-126` | верно; исправление описано |
 | `MessengerConsumer` требует `chat`, чужой — 4404 | `plan.md:363-364, 385-388, 599, 688-689` | верно; F3 — только формулировка 0/-1 |
 | Фраза «Нет отметки — 0» только у чата отдела и «Общего чата» | `plan.md:230-235, 898-900` | верно |

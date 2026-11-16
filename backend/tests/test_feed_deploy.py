@@ -166,12 +166,14 @@ def by_name() -> dict[str, dict]:
 
 def test_feed_is_last_in_installed_apps_after_search():
     """FR-641: в конце `INSTALLED_APPS` — `apps.servicedesk`, `apps.notify`, `apps.knowledge`, `apps.lists`,
-    `apps.search`, `apps.feed`; метка `feed`, класс `FeedConfig`, `verbose_name` «Лента» (раздел 1.1)."""
+    `apps.search`, `apps.feed`, `apps.messenger` (срез 008); метка `feed`, класс `FeedConfig`, `verbose_name` «Лента»
+    (раздел 1.1)."""
     from django.apps import apps
     from django.conf import settings
 
-    assert list(settings.INSTALLED_APPS)[-6:] == feed.APPS_TAIL
-    assert list(settings.INSTALLED_APPS)[-1] == "apps.feed"
+    assert list(settings.INSTALLED_APPS)[-7:] == feed.APPS_TAIL
+    assert list(settings.INSTALLED_APPS)[-2] == "apps.feed"
+    assert list(settings.INSTALLED_APPS)[-1] == "apps.messenger"
     config = apps.get_app_config("feed")
     assert type(config).__name__ == "FeedConfig"
     assert config.label == "feed"
@@ -235,10 +237,12 @@ def test_cron_has_no_other_entry_at_23_35():
 
 
 def test_cron_module_has_twenty_register_calls():
-    """FR-618, FR-638: в `config/cron.py` двадцать вызовов `register` (восемнадцать прежних, `feed_reminders` и
-    `feed_retention`)."""
+    """FR-618, FR-638: в `config/cron.py` двадцать один вызов `register` (восемнадцать прежних, `feed_reminders`,
+    `feed_retention` и `messenger_retention` среза 008)."""
     entries = cron_registrations()
-    assert len(entries) == 20, f"вызовов register {len(entries)}, ожидается 20 (18 прежних и две записи ленты)"
+    assert len(entries) == 21, (
+        f"вызовов register {len(entries)}, ожидается 21 (18 прежних, две записи ленты и "
+        "messenger_retention среза 008)")
     assert {"feed_reminders", "feed_retention"} <= {item["name"] for item in entries}
 
 

@@ -3,7 +3,8 @@
 Сервер запускается на ASGI с первого дня (PLAN-001, «Сверка с конституцией»). С среза 004
 http идёт в Django, websocket — через проверку Origin, сессию и маршрутизатор `notify`
 (PLAN-004, «Запуск»). С среза 007 маршруты соединений собираются из установленных модулей:
-`notify` и — при установленной ленте — `feed` (PLAN-007, «Живые обновления» → «Маршруты»).
+`notify` и — при установленной ленте — `feed` (PLAN-007, «Живые обновления» → «Маршруты»); с среза 008
+там же — маршруты установленного `messenger` (необязательный модуль, каркас T-8001).
 """
 import os
 
@@ -25,6 +26,11 @@ websocket_urlpatterns = list(notify_routing.websocket_urlpatterns)
 if apps.is_installed("apps.feed"):
     from apps.feed import routing as feed_routing  # noqa: E402
     websocket_urlpatterns += feed_routing.websocket_urlpatterns
+
+if apps.is_installed("apps.messenger"):
+    # Каркас T-8001: маршрутов мессенджера ещё нет, его список пуст (Этап 3 добавит `ws/messenger/`).
+    from apps.messenger import routing as messenger_routing  # noqa: E402
+    websocket_urlpatterns += messenger_routing.websocket_urlpatterns
 
 application = ProtocolTypeRouter({
     "http": django_asgi_app,

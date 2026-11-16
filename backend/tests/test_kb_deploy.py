@@ -116,8 +116,8 @@ def test_knowledge_and_search_are_in_installed_apps_after_notify():
     from django.conf import settings
     from tests.support_feed import APPS_TAIL
 
-    assert list(settings.INSTALLED_APPS)[-5:] == APPS_TAIL[1:] == [
-        "apps.notify", "apps.knowledge", "apps.lists", "apps.search", "apps.feed"]
+    assert list(settings.INSTALLED_APPS)[-6:] == APPS_TAIL[1:] == [
+        "apps.notify", "apps.knowledge", "apps.lists", "apps.search", "apps.feed", "apps.messenger"]
     assert apps.get_app_config("knowledge").label == "knowledge"
     assert apps.get_app_config("search").label == "search"
     assert apps.get_app_config("knowledge").verbose_name == "База знаний"
@@ -125,11 +125,13 @@ def test_knowledge_and_search_are_in_installed_apps_after_notify():
 
 def test_purge_trash_is_registered_in_cron_with_45_23_maintenance_timeout_600():
     """FR-417: `config/cron.py` — семнадцатая запись: `purge_trash` (`apps.knowledge.tasks.purge_trash`), очередь
-    `maintenance`, `cron="45 23 * * *"`, `job_timeout=600` (раздел 1.2); всего записей двадцать — восемнадцатая
-    `lists_reminders` среза 006 (CONTRACT-006, раздел 1.2), девятнадцатая и двадцатая — задания среза 007."""
+    `maintenance`, `cron="45 23 * * *"`, `job_timeout=600` (раздел 1.2); всего записей двадцать одна — восемнадцатая
+    `lists_reminders` среза 006 (CONTRACT-006, раздел 1.2), девятнадцатая и двадцатая — задания среза 007,
+    двадцать первая — `messenger_retention` среза 008 (CONTRACT-008, раздел 1.2)."""
     registrations = cron_registrations()
-    assert len(registrations) == 20, (
-        f"вызовов register {len(registrations)}, ожидается 20 (16 прежних, purge_trash, lists_reminders и два задания среза 007)")
+    assert len(registrations) == 21, (
+        f"вызовов register {len(registrations)}, ожидается 21 (16 прежних, purge_trash, lists_reminders, два задания "
+        "среза 007 и messenger_retention среза 008)")
     by_name = {item["name"]: item for item in registrations}
     assert "lists_reminders" in by_name, "нет задания lists_reminders среза 006"
     item = by_name.get("purge_trash")
@@ -576,18 +578,21 @@ def test_stand_reset_knowledge_restores_general_rubric_and_role_permissions():
     from apps.core import extensions
     from apps.knowledge.stand import stand_reset
 
-    # раздел 1.3: функция зарегистрирована в точке позже `notify`; со срезом 007 последней среди приложений стоит
-    # `feed`, `lists` — предпоследней, `knowledge` — третьей с конца (CONTRACT-007, раздел 15: команда зовёт точки в
-    # обратном порядке, поэтому `feed` идёт первой, `lists` — второй, `knowledge` — третьей, раньше `notify`)
+    # раздел 1.3: функция зарегистрирована в точке позже `notify`; со срезом 008 последней среди приложений стоит
+    # `messenger`, `feed` — предпоследней, `lists` — третьей с конца, `knowledge` — четвёртой (CONTRACT-007, раздел 15;
+    # CONTRACT-008, 15.1: команда зовёт точки в обратном порядке, поэтому `messenger` идёт первым, `feed` — вторым,
+    # `lists` — третьим, `knowledge` — четвёртым, раньше `notify`)
     names = [func.__module__ for func in extensions.registered("stand_reset")]
     assert "apps.knowledge.stand" in names, "stand_reset модуля knowledge не зарегистрирован в точке"
     assert "apps.notify.stand" in names
     assert names.index("apps.knowledge.stand") > names.index("apps.notify.stand")
     assert "apps.lists.stand" in names, "stand_reset модуля lists не зарегистрирован в точке"
     assert "apps.feed.stand" in names, "stand_reset модуля feed не зарегистрирован в точке"
-    assert names.index("apps.feed.stand") == len(names) - 1
-    assert names.index("apps.lists.stand") == len(names) - 2
-    assert names.index("apps.knowledge.stand") == len(names) - 3
+    assert "apps.messenger.stand" in names, "stand_reset модуля messenger не зарегистрирован в точке"
+    assert names.index("apps.messenger.stand") == len(names) - 1
+    assert names.index("apps.feed.stand") == len(names) - 2
+    assert names.index("apps.lists.stand") == len(names) - 3
+    assert names.index("apps.knowledge.stand") == len(names) - 4
     for rubric in _on("knowledge.Rubric").order_by("-depth"):
         rubric.delete()
     _on("knowledge.KnowledgeSettings").all().delete()

@@ -318,7 +318,7 @@ def test_portal_and_email_body_carry_the_same_text():
 
     message_id = notify_mail.queue_item(delivery)
     mail_lines = _body(message_id, delivery.pk)
-    page = support.logged_in(scene.assignee).get("/notifications/")
+    page = support.logged_in(scene.assignee).get("/notifications/list/")
 
     assert page.status_code == 200
     assert note.text == drafts[0].text
@@ -483,7 +483,7 @@ def test_subject_markup_shown_as_text_on_portal_pages():
     assert MARKUP_SUBJECT in note.text
     web = support.logged_in(scene.assignee)
 
-    for path in ("/notifications/", "/notifications/bell/"):
+    for path in ("/messenger/notifications/", "/notifications/bell/"):
         response = web.get(path)
         assert response.status_code == 200, path
         body = response.content.decode("utf-8")

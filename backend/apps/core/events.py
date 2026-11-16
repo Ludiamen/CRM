@@ -51,18 +51,18 @@ def empty():
         _registry.update(saved)
 
 
-def publish(name: str, **data) -> None:
+def publish(event: str, **data) -> None:
     """Вызывает обработчики события как `handler(**data)` после фиксации транзакции.
 
     У каждого обработчика своя транзакция; исключение обработчика пишется в лог
     `apps.core.events` и дальше не поднимается.
     """
-    for handler in subscribers(name):
+    for handler in subscribers(event):
         def run(handler=handler):
             try:
                 with transaction.atomic():
                     handler(**data)
             except Exception:
-                logger.exception("Ошибка обработчика %r события %s", handler, name)
+                logger.exception("Ошибка обработчика %r события %s", handler, event)
 
         transaction.on_commit(run, robust=True)

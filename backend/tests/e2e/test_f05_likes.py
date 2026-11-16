@@ -229,8 +229,12 @@ def test_f05_three_likes_give_one_like_notification_with_last_liker_kozlov_and_2
     for liker in (ivanov, sidorov, kozlov):
         _like_by(new_context, liker, post_id)
     page = open_feed(new_context(), petrov)
-    page.locator("button[data-bell-toggle]").click()
-    panel = page.locator("[data-bell-panel] [data-bell-list]")
+    # CONTRACT-008, 3.3: колокольчик — ссылка на вкладку «Уведомления» мессенджера
+    with page.expect_navigation():
+        page.locator("a[data-bell-link]").click()
+    assert page.url.split("?")[0].endswith("/messenger/notifications/"), page.url
+    expect(page.locator('[data-messenger-tab="notifications"]')).to_have_attribute("aria-selected", "true")
+    panel = page.locator("[data-notify-list]")
     expect(panel).to_be_visible()
     rows = panel.locator("li[data-notification]").filter(has_text=re.compile(r"^\s*Нравится "))
     expect(rows).to_have_count(1)

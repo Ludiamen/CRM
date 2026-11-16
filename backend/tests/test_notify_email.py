@@ -320,8 +320,10 @@ def test_skipped_notification_stays_on_portal(django_capture_on_commit_callbacks
     _skipped(delivery, "not_relevant")
     assert model("notify.Notification").objects.filter(pk=note.pk, read_at=None).exists()
     assert reading.unread_count(world.user.pk) == 1
-    response = support.logged_in(world.user).get("/notifications/")
+    response = support.logged_in(world.user).get("/notifications/list/")
     assert response.status_code == 200
+    assert support.logged_in(world.user).get("/notifications/").status_code == 302, \
+        "старый адрес списка — 302 на вкладку (CONTRACT-008, 3.3)"
     html = response.content.decode()
     assert re.search(rf'<li[^>]*data-notification="{note.pk}"[^>]*data-unread="1"|'
                      rf'<li[^>]*data-unread="1"[^>]*data-notification="{note.pk}"', html)

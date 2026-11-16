@@ -332,38 +332,34 @@ def test_e10_unread_filter_shows_only_unread_and_all_filter_shows_all(employee):
 
 
 def test_e10_bell_click_shows_last_10_notifications_and_all_notifications_link(employee):
-    """Сценарий 10, п. 6: сотрудник нажимает на колокольчик — видны последние 10 уведомлений (новые сверху) и ссылка
-    «Все уведомления» (и «Настройки») (FR-318)."""
+    """Сценарий 10, п. 6: сотрудник нажимает на колокольчик — открывается вкладка «Уведомления» мессенджера с потоком
+    уведомлений (новые сверху) и переключателем фильтра (FR-318; CONTRACT-008, 3.3: колокольчик — ссылка
+    `a[data-bell-link]`, `/notifications/` — 302 на эту вкладку)."""
     member = employee()
     page = member.page
     helpers_notify.fill(member.email, 15)
     page.goto("/")
     _ready(page)
-    panel = page.locator("#notify-bell-panel")
-    # дано: до нажатия панель пуста
-    expect(panel.locator("[data-bell-list]")).to_have_count(0)
+    bell = page.locator("a[data-bell-link]")
+    expect(bell).to_have_count(1)
+    expect(bell).to_have_attribute("href", "/messenger/notifications/")
     # когда: нажатие на колокольчик
-    page.locator("button[data-bell-toggle]").click()
-    expect(panel.locator("[data-bell-list]")).to_be_visible()
-    # п. 6: последние 10 — «Тестовое уведомление 15» … «6», новые сверху
-    rows = panel.locator("[data-bell-list] li[data-notification]")
-    expect(rows).to_have_count(10)
-    numbers = _fill_numbers(_texts(rows))
-    assert numbers, "в панели нет тестовых уведомлений"
-    _assert_newest_first(numbers, 15)
-    # п. 6: ссылки «Все уведомления» и «Настройки» — всегда
-    all_link = panel.locator("a[data-bell-all]")
-    expect(all_link).to_have_count(1)
-    expect(all_link).to_have_attribute("href", "/notifications/")
-    expect(all_link).to_contain_text("Все уведомления")
-    settings_link = panel.locator("a[data-bell-settings]")
-    expect(settings_link).to_have_attribute("href", "/me/notifications/")
-    expect(settings_link).to_contain_text("Настройки")
-    # п. 6: «Все уведомления» ведёт на страницу со списком
     with page.expect_navigation():
-        all_link.click()
+        bell.click()
+    assert page.url.split("?")[0].endswith("/messenger/notifications/"), page.url
+    # п. 6: вкладка «Уведомления» выбрана, поток отрисован сервером
+    expect(page.locator('[data-messenger-tab="notifications"]')).to_have_attribute("aria-selected", "true")
     expect(page.locator("[data-notify-list]")).to_be_visible()
-    assert page.url.split("?")[0].endswith("/notifications/"), page.url
+    expect(page.locator("nav[data-notify-filter] a[data-filter]")).to_have_count(2)
+    # п. 6: уведомления — «Тестовое уведомление 15» … «1», новые сверху
+    rows = _all_rows(page)
+    numbers = _fill_numbers(_texts(rows))
+    assert numbers, "во вкладке нет тестовых уведомлений"
+    _assert_newest_first(numbers, 15)
+    # п. 6: «Все уведомления» — эта же вкладка: старый адрес ведёт на неё
+    page.goto("/notifications/")
+    assert page.url.split("?")[0].endswith("/messenger/notifications/"), page.url
+    expect(page.locator("[data-notify-list]")).to_be_visible()
 
 
 def test_e10_nightly_job_deletes_notifications_older_than_retention_and_ticket_history_stays(

@@ -216,8 +216,8 @@ def _mail_ids(mailpit, to: str) -> set:
 def test_k09_comment_by_other_employee_gives_author_new_comment_notification_on_bell(
         admin_page, employee, new_context):
     """Сценарий 9, п. 1: другой сотрудник оставил комментарий под статьёй автора — автор получает «Новый комментарий к
-    вашей статье «Заголовок»» на колокольчике: число растёт на 1, текст — в панели колокольчика и в списке, строка
-    непрочитанная и ведёт на статью (FR-434, FR-435)."""
+    вашей статье «Заголовок»» на колокольчике: число растёт на 1, колокольчик ведёт на вкладку «Уведомления»
+    мессенджера (CONTRACT-008, 3.3), её строка непрочитанная, с тем же текстом и ведёт на статью (FR-434, FR-435)."""
     _rubric_id, rubric = _rubric(admin_page)
     author, other = _editor(employee, "Автор"), _reader(employee, "Комментатор")
     article_id, title = _published(author.page, rubric)
@@ -229,9 +229,12 @@ def test_k09_comment_by_other_employee_gives_author_new_comment_notification_on_
     # п. 1: на колокольчике +1
     helpers_notify.wait_bell_count(tab, before + 1, timeout_ms=15_000)
     expect(tab.locator("#notify-count")).to_have_attribute("data-count", str(before + 1))
-    # п. 1: панель колокольчика содержит текст уведомления
-    tab.locator("button[data-bell-toggle]").click()
-    expect(tab.locator("#notify-bell-panel[data-bell-panel]")).to_contain_text(_comment_text(title))
+    # п. 1: колокольчик — ссылка на вкладку «Уведомления» мессенджера; её поток содержит текст уведомления
+    with tab.expect_navigation():
+        tab.locator("a[data-bell-link]").click()
+    assert tab.url.split("?")[0].endswith("/messenger/notifications/"), tab.url
+    expect(tab.locator('[data-messenger-tab="notifications"]')).to_have_attribute("aria-selected", "true")
+    expect(tab.locator("[data-notify-list]")).to_contain_text(_comment_text(title))
     # п. 1: в списке — одна строка вида «Новый комментарий к моей статье», непрочитанная, с текстом из раздела 7.2
     rows = _wait_rows(tab, title, 1)
     expect(rows.first).to_have_attribute("data-unread", "1")

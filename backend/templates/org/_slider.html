@@ -33,6 +33,7 @@
         </select>
       </div>
       {% endif %}
+      {% for part in f.parts %}<div data-unit-form-part="{{ part.key }}">{{ part.html|safe }}</div>{% endfor %}
       <div class="d-flex flex-wrap gap-2">
         <button class="btn btn-primary" type="submit">{% if f.unit %}Сохранить{% else %}Создать{% endif %}</button>
         <a class="btn btn-outline-secondary" href="{{ slider_close_url }}">Отмена</a>
