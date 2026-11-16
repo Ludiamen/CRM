@@ -1141,3 +1141,464 @@ def _check_feed_p95(environment, **_kwargs):
         print(f"NFR-601…603 (срез 007) не выполнено: p95 выше предела или нет замера {over}, "
               f"ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1
+
+
+# --- срез 008: мессенджер ---------------------------------------------------------------------------------------------
+
+MESSENGER_POST_SECONDS = float(os.environ.get("LOAD_MESSENGER_POST_SECONDS", "20"))
+MESSENGER_KEEPER_SECONDS = 5.0   # цикл гринлета: переподключение двух соединений вкладки и повтор `sync`
+MESSENGER_SCAN_LIMIT = 250       # сколько строк списка просматривать в поисках общего и группового чата
+MESSENGER_PUBLISHED_LIMIT = 4096  # потолок карты «номер сообщения → время публикации»
+_MESSENGER_PUBLISHER_STARTED = False
+_MESSENGER_PUBLISHED: dict[int, float] = {}
+_MESSENGER_CHATS: dict[str, int] = {}
+
+
+def _messenger_remember(message_id: int, published: float) -> None:
+    """Запомнить время публикации сообщения для замера задержки кадров; карта ограничена."""
+    with _lock:
+        _MESSENGER_PUBLISHED[message_id] = published
+        while len(_MESSENGER_PUBLISHED) > MESSENGER_PUBLISHED_LIMIT:
+            _MESSENGER_PUBLISHED.pop(next(iter(_MESSENGER_PUBLISHED)))
+
+
+def _messenger_frame_ids(frame: str) -> list[int]:
+    """Номера сообщений из кадра `/ws/messenger/`: атрибут `data-message-id` и якоря `id="m<id>"`."""
+    ids = set(re.findall(r'data-message-id="(\d+)"', frame))
+    ids.update(re.findall(r'id="m(\d+)"', frame))
+    return sorted({int(value) for value in ids})
+
+
+def _messenger_chat_ids(page: str) -> list[str]:
+    """Номера чатов из строк списка `#messenger-list` (`data-chat-id`), по возрастанию номера.
+
+    Общий чат создаётся данными установки раньше наполнения, поэтому при обходе списка он впереди:
+    поиск вида чата по заголовку беседы заканчивается на первых строках.
+    """
+    return [str(value) for value in sorted({int(value) for value in re.findall(r'data-chat-id="(\d+)"', page)})]
+
+
+def _messenger_chat_kind(user, chat_id: str) -> str:
+    """Вид чата из заголовка беседы (`data-chat-kind`); пусто — разметка вида не назвала."""
+    page = user.client.get(f"/messenger/chats/{chat_id}/", name="setup /messenger/chats/<n>/ (kind)").text
+    match = re.search(r'data-chat-kind="(personal|group|department|general)"', page)
+    return match.group(1) if match else ""
+
+
+def _messenger_broadcast_chat(user, kind: str, ids: list[str]) -> int | None:
+    """Номер своего чата нужного вида (общий или групповой): один на прогон, найденный по заголовку беседы.
+
+    Номер запоминается в `_MESSENGER_CHATS`: общий чат виден всем, поэтому остальные пользователи
+    находят его в своём списке без обхода бесед. Не найден — соединение беседы пойдёт в первый чат списка.
+    """
+    with _lock:
+        known = _MESSENGER_CHATS.get(kind)
+    if known is not None and str(known) in ids:
+        return known
+    for chat_id in ids[:MESSENGER_SCAN_LIMIT]:
+        if _messenger_chat_kind(user, chat_id) == kind:
+            with _lock:
+                _MESSENGER_CHATS[kind] = int(chat_id)
+            return int(chat_id)
+    return None
+
+
+def _messenger_publish(user, chat_id: int) -> int | None:
+    """Сообщение публикатора; номер — из ответа (`data-message-id`), время — до отправки."""
+    token = user.client.cookies.get("csrftoken", "")
+    data = {"text": f"Нагрузочное сообщение мессенджера {random.randrange(10 ** 9)}",
+            "csrfmiddlewaretoken": token}
+    published = time.monotonic()
+    name = "POST /messenger/chats/<n>/messages/ (publisher)"
+    try:
+        with user.client.post(f"/messenger/chats/{chat_id}/messages/", data=data,
+                              headers={"Referer": user.host + f"/messenger/chats/{chat_id}/",
+                                       "HX-Request": "true"}, name=name, catch_response=True) as response:
+            if response.status_code >= 400:
+                response.failure(f"/messenger/chats/{chat_id}/messages/: {response.status_code}")
+                return None
+            response.success()
+            match = re.search(r'data-message-id="(\d+)"', response.text)
+    except Exception as error:  # noqa: BLE001 — публикация не должна ронять поток
+        user.environment.events.request.fire(request_type="POST", name=name, exception=error,
+                                             response_time=0, response_length=0)
+        return None
+    if not match:
+        return None
+    message_id = int(match.group(1))
+    _messenger_remember(message_id, published)
+    return message_id
+
+
+def _messenger_publisher_loop(user, chat_ids: list[int]):
+    """Единственный на прогон поток-публикатор (не на пользователя): сообщение раз в MESSENGER_POST_SECONDS
+    по очереди в общий и групповой чат; время каждой публикации — `{номер сообщения: monotonic}`."""
+    step = 0
+    while True:
+        gevent.sleep(MESSENGER_POST_SECONDS)
+        _messenger_publish(user, chat_ids[step % len(chat_ids)])
+        step += 1
+
+
+@events.test_start.add_listener
+def _reset_messenger_publisher(**_kwargs):
+    """Новый прогон — новый публикатор: состояние модуля сбрасывается (веб-интерфейс перезапускает тесты)."""
+    global _MESSENGER_PUBLISHER_STARTED
+    with _lock:
+        _MESSENGER_PUBLISHER_STARTED = False
+        _MESSENGER_PUBLISHED.clear()
+        _MESSENGER_CHATS.clear()
+
+
+class MessengerUser(HttpUser):
+    """Срез 008 (T-8150, NFR-701, NFR-707): вошедший сотрудник держит оба соединения вкладки — `/ws/notify/`
+    (колокольчик) и `/ws/messenger/?chat=<id>` (беседа) — и работает с мессенджером: список и его фрагмент,
+    беседа, история курсором («Показать более ранние»), поиск по беседе и сквозной, подсказка «@», отправка
+    короткая и в 4000 знаков, правка и удаление своих, прочтение, файл формы. Модель нагрузки та же
+    (PLAN-001 версия 4); данные — `prepare_users.py` и `fill_messenger.py` (200 чатов, 50 000 сообщений,
+    участники и вложения по распределению плана). Запуск только этого класса (замер NFR-707 — после
+    отдельного решения владельца, T-8304, на свободной машине, правила run4.sh среза 006):
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+            --reset-stats --host https://127.0.0.1:8031 MessengerUser
+    (имя класса — в конце команды: без него locust запускает все классы файла и делит `-u` между ними)
+    Номера чатов и сообщений берутся из разметки страниц при входе (`data-chat-id`, `data-message-id`,
+    `data-own`, ссылка `/messenger/chats/<id>/messages/?before=…`). Соединение беседы открывается в общем
+    чате (он виден всем): после входа клиент посылает `sync`, а гринлет-хранитель каждые 5 с переподключает
+    оборванные соединения и повторяет `sync`. Один поток-публикатор на весь прогон публикует сообщение раз
+    в MESSENGER_POST_SECONDS (LOAD_MESSENGER_POST_SECONDS) по очереди в общий и групповой чат и запоминает
+    `{номер сообщения: monotonic}`; каждый читатель разбирает `data-message-id` из кадра `/ws/messenger/`
+    и пишет событие `WS messenger frame` с точной задержкой от публикации (NFR-701: p95 не больше 2 с).
+    Пределы: страницы и действия p95 не больше 500 мс (NFR-707), поиск и подсказка «@» — 1000 мс.
+    Слова поиска — LOAD_MESSENGER_FREQUENT, LOAD_MESSENGER_RARE, LOAD_MESSENGER_MIXED (по умолчанию слова
+    словаря `fill_messenger.py`); подсказка «@» — LOAD_MESSENGER_PICK_QUERY (по умолчанию «На»)."""
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        global _MESSENGER_PUBLISHER_STARTED
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        page = self.client.get("/messenger/", name="setup /messenger/").text
+        self.chat_ids = _messenger_chat_ids(page) or ["1"]
+        self.words = {
+            "frequent": os.environ.get("LOAD_MESSENGER_FREQUENT", "сообщение"),
+            "rare": os.environ.get("LOAD_MESSENGER_RARE", "вложение"),
+            "mixed": os.environ.get("LOAD_MESSENGER_MIXED", "сообщение принтер"),
+        }
+        self.pick_query = os.environ.get("LOAD_MESSENGER_PICK_QUERY", "На")
+        self.message_ids: list[str] = []
+        self.own_ids: list[str] = []
+        self.before_url = None
+        general = _messenger_broadcast_chat(self, "general", self.chat_ids)
+        self.chat_id = general or int(self.chat_ids[0])
+        self._scrape(self.client.get(f"/messenger/chats/{self.chat_id}/",
+                                     name="setup /messenger/chats/<n>/").text)
+        self._alive = True
+        self.notify_socket = None
+        self.messenger_socket = None
+        self._connect_notify()
+        self._connect_messenger()
+        gevent.spawn(self._keep_sockets)
+        become_publisher = False
+        with _lock:
+            if not _MESSENGER_PUBLISHER_STARTED:
+                _MESSENGER_PUBLISHER_STARTED = True
+                become_publisher = True
+        if become_publisher:
+            group = _messenger_broadcast_chat(self, "group", self.chat_ids)
+            chats = [chat for chat in (general, group) if chat is not None] or [self.chat_id]
+            gevent.spawn(_messenger_publisher_loop, self, chats)
+
+    def on_stop(self):
+        self._alive = False
+        for socket in (self.notify_socket, self.messenger_socket):
+            if socket is not None:
+                try:
+                    socket.close()
+                except Exception:  # noqa: BLE001 — закрытие уже закрытого соединения не ошибка
+                    pass
+        self.notify_socket = None
+        self.messenger_socket = None
+
+    def _scrape(self, page: str) -> None:
+        """Номера сообщений, свои сообщения и ссылка «Показать более ранние» из разметки беседы."""
+        self.message_ids = sorted(set(re.findall(r'data-message-id="(\d+)"', page))) or self.message_ids
+        own = []
+        for chunk in page.split("<article")[1:]:
+            if 'data-own="1"' in chunk:
+                match = re.search(r'data-message-id="(\d+)"', chunk)
+                if match:
+                    own.append(match.group(1))
+        self.own_ids = own or self.own_ids
+        more = re.search(r'href="(/messenger/chats/\d+/messages/\?before=[^"]*)"', page)
+        if more:
+            self.before_url = html.unescape(more.group(1))
+
+    def _connect_notify(self) -> None:
+        """Соединение `/ws/notify/` с куками HTTP-клиента; кадры читает и выбрасывает гринлет."""
+        if not self._alive:
+            return
+        import websocket
+
+        cookies = "; ".join(f"{name}={value}" for name, value in self.client.cookies.items())
+        scheme = "wss" if self.host.startswith("https") else "ws"
+        url = f"{scheme}://{self.host.split('://', 1)[1]}/ws/notify/"
+        started = time.monotonic()
+        try:
+            # Origin — параметром: библиотека ставит свой заголовок, второй даёт 400 (T-4304)
+            self.notify_socket = websocket.create_connection(url, header=[f"Cookie: {cookies}"],
+                                                              origin=self.host,
+                                                              sslopt={"cert_reqs": ssl.CERT_NONE}, timeout=60)
+            self.environment.events.request.fire(request_type="WS", name="/ws/notify/ connect (messenger)",
+                                                 exception=None, response_time=(time.monotonic() - started) * 1000,
+                                                 response_length=0)
+            gevent.spawn(self._drain_notify)
+        except Exception as error:  # noqa: BLE001 — без соединения мессенджер продолжает работать
+            self.notify_socket = None
+            self.environment.events.request.fire(request_type="WS", name="/ws/notify/ connect (messenger)",
+                                                 exception=error, response_time=(time.monotonic() - started) * 1000,
+                                                 response_length=0)
+
+    def _drain_notify(self) -> None:
+        """Кадры `/ws/notify/` читаются и выбрасываются: здесь держим вкладку и колокольчик."""
+        socket = self.notify_socket
+        while socket is not None and socket.connected and self._alive:
+            try:
+                socket.recv()
+            except Exception:  # noqa: BLE001 — обрыв: гринлет-хранитель переподключит
+                return
+
+    def _connect_messenger(self) -> None:
+        """Соединение беседы `/ws/messenger/?chat=<id>`: после входа — `sync`, кадры читает гринлет."""
+        if not self._alive:
+            return
+        import websocket
+
+        cookies = "; ".join(f"{name}={value}" for name, value in self.client.cookies.items())
+        scheme = "wss" if self.host.startswith("https") else "ws"
+        url = f"{scheme}://{self.host.split('://', 1)[1]}/ws/messenger/?chat={self.chat_id}"
+        started = time.monotonic()
+        try:
+            self.messenger_socket = websocket.create_connection(url, header=[f"Cookie: {cookies}"],
+                                                                origin=self.host,
+                                                                sslopt={"cert_reqs": ssl.CERT_NONE}, timeout=60)
+            self.environment.events.request.fire(request_type="WS", name="/ws/messenger/ connect",
+                                                 exception=None, response_time=(time.monotonic() - started) * 1000,
+                                                 response_length=0)
+        except Exception as error:  # noqa: BLE001 — без соединения беседа работает обычными запросами
+            self.messenger_socket = None
+            self.environment.events.request.fire(request_type="WS", name="/ws/messenger/ connect",
+                                                 exception=error, response_time=(time.monotonic() - started) * 1000,
+                                                 response_length=0)
+            return
+        socket = self.messenger_socket
+        try:  # чтение без таймаута: соединение живёт до закрытия, обрыв поднимет recv
+            socket.settimeout(None)
+        except Exception:  # noqa: BLE001 — старые версии websocket-client обходятся таймаутом соединения
+            pass
+        gevent.spawn(self._read_messenger_frames, socket)
+        self._send_messenger_sync(socket)
+
+    def _send_messenger_sync(self, socket) -> None:
+        """`sync`: граница живых кадров беседы — сейчас (CONTRACT-008, 11.2)."""
+        payload = {"sync": {"chat": self.chat_id, "at": datetime.now(timezone.utc).isoformat()}}
+        try:
+            socket.send(json.dumps(payload))
+        except Exception:  # noqa: BLE001 — обрыв: гринлет-хранитель переподключит и повторит sync
+            pass
+
+    def _read_messenger_frames(self, socket) -> None:
+        """Кадры `/ws/messenger/`: задержка каждого кадра по номеру опубликованного сообщения."""
+        while socket is not None and socket.connected and self._alive:
+            try:
+                frame = socket.recv()
+            except Exception:  # noqa: BLE001 — обрыв или таймаут: закрываем, хранитель переподключит
+                try:
+                    socket.close()
+                except Exception:  # noqa: BLE001
+                    pass
+                return
+            if frame:
+                self._handle_messenger_frame(frame)
+
+    def _handle_messenger_frame(self, frame: str) -> None:
+        """Событие `WS messenger frame` с точной задержкой от публикации (NFR-701: p95 не больше 2 с)."""
+        received = time.monotonic()
+        with _lock:
+            known = [(message_id, _MESSENGER_PUBLISHED[message_id])
+                     for message_id in _messenger_frame_ids(frame) if message_id in _MESSENGER_PUBLISHED]
+        for _message_id, published in known:
+            latency = max(0.0, (received - published) * 1000)
+            self.environment.events.request.fire(request_type="WS", name="WS messenger frame", exception=None,
+                                                 response_time=latency, response_length=len(frame))
+
+    def _keep_sockets(self) -> None:
+        """Гринлет-хранитель: переподключение соединений вкладки (после входа — снова `sync`)."""
+        while self._alive:
+            gevent.sleep(MESSENGER_KEEPER_SECONDS)
+            try:
+                if self.notify_socket is None or not self.notify_socket.connected:
+                    self._connect_notify()
+                if self.messenger_socket is None or not self.messenger_socket.connected:
+                    self._connect_messenger()
+            except Exception:  # noqa: BLE001 — хранитель не должен умирать
+                pass
+
+    def _query(self) -> str:
+        return random.choice(list(self.words.values()))
+
+    def _post_action(self, path: str, data: dict, name: str) -> None:
+        """Действие мессенджера: ожидаемый отказ 4xx (права, чужое сообщение) — ответ сайта, не сбой."""
+        token = self.client.cookies.get("csrftoken", "")
+        with self.client.post(path, data={**data, "csrfmiddlewaretoken": token},
+                              headers={"Referer": self.host + path, "HX-Request": "true"},
+                              name=name, catch_response=True) as response:
+            if response.status_code >= 500:
+                response.failure(f"{path}: {response.status_code}")
+            else:
+                response.success()
+
+    def _send(self, chat_id: str, text: str) -> int | None:
+        """Сообщение формой беседы; номер — из ответа (`data-message-id`)."""
+        token = self.client.cookies.get("csrftoken", "")
+        with self.client.post(f"/messenger/chats/{chat_id}/messages/",
+                              data={"text": text, "csrfmiddlewaretoken": token},
+                              headers={"Referer": self.host + f"/messenger/chats/{chat_id}/",
+                                       "HX-Request": "true"},
+                              name="POST /messenger/chats/<n>/messages/", catch_response=True) as response:
+            if response.status_code >= 500:
+                response.failure(f"/messenger/chats/{chat_id}/messages/: {response.status_code}")
+                return None
+            response.success()  # 4xx — отказ формы (права, отключённый чат) — ответ сайта
+            match = re.search(r'data-message-id="(\d+)"', response.text)
+        return int(match.group(1)) if match else None
+
+    @task(4)
+    def list_page(self):
+        self.client.get("/messenger/", name="/messenger/")
+
+    @task(4)
+    def list_fragment(self):
+        self.client.get("/messenger/list/", params={"q": self._query()}, headers={"HX-Request": "true"},
+                        name="/messenger/list/?q")
+
+    @task(5)
+    def chat(self):
+        self._scrape(self.client.get(f"/messenger/chats/{random.choice(self.chat_ids)}/",
+                                     name="/messenger/chats/<n>/").text)
+
+    @task(3)
+    def history(self):
+        if self.before_url:
+            self.client.get(self.before_url, headers={"HX-Request": "true"},
+                            name="/messenger/chats/<n>/messages/ (HTMX)")
+
+    @task(4)
+    def send_short(self):
+        message_id = self._send(random.choice(self.chat_ids),
+                                f"Нагрузочное сообщение {random.randrange(10 ** 9)}")
+        if message_id is not None:
+            self.own_ids.append(str(message_id))
+
+    @task(1)
+    def send_long(self):
+        """Отправка в 4000 знаков — предел текста сообщения (CONTRACT-008, 10.2)."""
+        text = ("Нагрузочное сообщение мессенджера в четыре тысячи знаков для проверки отправки и показа. " * 60)[:4000]
+        message_id = self._send(random.choice(self.chat_ids), text)
+        if message_id is not None:
+            self.own_ids.append(str(message_id))
+
+    @task(2)
+    def edit(self):
+        if self.own_ids:
+            message_id = random.choice(self.own_ids)
+            self._post_action(f"/messenger/messages/{message_id}/edit/",
+                              {"text": f"Нагрузочная правка {random.randrange(10 ** 9)}"},
+                              "POST /messenger/messages/<mid>/edit/")
+
+    @task(1)
+    def delete(self):
+        if self.own_ids:
+            message_id = self.own_ids.pop()
+            self._post_action(f"/messenger/messages/{message_id}/delete/", {},
+                              "POST /messenger/messages/<mid>/delete/")
+
+    @task(3)
+    def read(self):
+        self._post_action(f"/messenger/chats/{random.choice(self.chat_ids)}/read/",
+                          {"at": datetime.now(timezone.utc).isoformat()},
+                          "POST /messenger/chats/<n>/read/")
+
+    @task(3)
+    def chat_search(self):
+        self.client.get(f"/messenger/chats/{random.choice(self.chat_ids)}/search/",
+                        params={"q": self._query()}, name="/messenger/chats/<n>/search/?q")
+
+    @task(3)
+    def search(self):
+        self.client.get("/search/", params={"q": self._query()}, name="/search/?q")
+
+    @task(2)
+    def mention(self):
+        self.client.get("/messenger/mentions/", params={"chat": self.chat_id, "q": self.pick_query},
+                        headers={"HX-Request": "true"}, name="/messenger/mentions/?chat")
+
+    @task(1)
+    def upload(self):
+        """Файл формы: загрузка и уборка непривязанного — 30 непривязанных у сотрудника не упираются в предел."""
+        chat_id = random.choice(self.chat_ids)
+        token = self.client.cookies.get("csrftoken", "")
+        body = ("Нагрузка\n" + "".join(f"Строка {number}\n" for number in range(1, 51))).encode("utf-8")
+        with self.client.post("/messenger/files/", data={"chat": chat_id, "csrfmiddlewaretoken": token},
+                              headers={"Referer": self.host + f"/messenger/chats/{chat_id}/", "HX-Request": "true"},
+                              files={"file": ("load.csv", body, "text/csv")}, name="POST /messenger/files/",
+                              catch_response=True) as response:
+            if response.status_code >= 500:
+                response.failure(f"/messenger/files/: {response.status_code}")
+                return
+            response.success()
+            match = re.search(r'data-messenger-file="([0-9a-f-]{36})"', response.text)
+        if match:
+            self._post_action(f"/messenger/files/{match.group(1)}/delete/", {},
+                              "POST /messenger/files/<id>/delete/")
+
+
+MESSENGER_PAGES = ("/messenger/", "/messenger/list/?q", "/messenger/chats/<n>/",
+                   "/messenger/chats/<n>/messages/ (HTMX)")
+MESSENGER_SEARCH_PAGES = ("/messenger/chats/<n>/search/?q", "/search/?q", "/messenger/mentions/?chat")
+MESSENGER_ACTIONS = ("POST /messenger/chats/<n>/messages/", "POST /messenger/messages/<mid>/edit/",
+                     "POST /messenger/messages/<mid>/delete/", "POST /messenger/chats/<n>/read/",
+                     "POST /messenger/files/", "POST /messenger/files/<id>/delete/")
+MESSENGER_FRAME_LIMIT_MS = 2000
+
+
+@events.quitting.add_listener
+def _check_messenger_p95(environment, **_kwargs):
+    """NFR-701, NFR-707 для среза 008: страницы и действия p95 не больше 500 мс, поиск, поиск по беседе
+    и подсказка «@» — не больше 1000 мс, кадр `/ws/messenger/` — не больше 2000 мс; ни одной ошибки.
+    Публикатор измеряется, если успел опубликовать: короткие прогоны его сообщений не имеют."""
+    if MessengerUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    checks = [(name, "GET", P95_LIMIT_MS) for name in MESSENGER_PAGES]
+    checks += [(name, "GET", SEARCH_LIMIT_MS) for name in MESSENGER_SEARCH_PAGES]
+    checks += [(name, "POST", P95_LIMIT_MS) for name in MESSENGER_ACTIONS]
+    for name, method, limit in checks:
+        entry = stats.entries.get((name, method))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > limit:
+            over[name] = p95
+    publisher = stats.entries.get(("POST /messenger/chats/<n>/messages/ (publisher)", "POST"))
+    if publisher and publisher.num_requests and publisher.get_response_time_percentile(0.95) > P95_LIMIT_MS:
+        over["POST /messenger/chats/<n>/messages/ (publisher)"] = publisher.get_response_time_percentile(0.95)
+    frame = stats.entries.get(("WS messenger frame", "WS"))
+    frame_p95 = frame.get_response_time_percentile(0.95) if frame and frame.num_requests else None
+    if frame_p95 is None or frame_p95 > MESSENGER_FRAME_LIMIT_MS:
+        over["WS messenger frame"] = frame_p95
+    if stats.total.num_failures or over:
+        print(f"NFR-701/707 (срез 008) не выполнено: p95 выше предела или нет замера {over}, "
+              f"ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1
