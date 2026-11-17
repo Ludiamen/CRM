@@ -33,7 +33,7 @@ def parse_at(value):
     return min(moment, now)
 
 
-def mark(chat, user, at=None) -> ChatRead:
+def mark(chat, user, at=None, *, enqueue: bool = True) -> ChatRead:
     """Поставить отметку прочтения: `min(max(прежняя, at), now())`, сброс чисел и `object.viewed` (FR-659)."""
     if not members.is_member(user, chat):
         raise PermissionDenied
@@ -47,7 +47,8 @@ def mark(chat, user, at=None) -> ChatRead:
         row.save(update_fields=["last_read_at"])
     unread.invalidate([user.pk])
     events.publish("object.viewed", object_ref=f"{OBJECT_TYPE}:{chat.pk}", user_id=user.pk)
-    _enqueue_read(chat, user)
+    if enqueue:
+        _enqueue_read(chat, user)
     return row
 
 

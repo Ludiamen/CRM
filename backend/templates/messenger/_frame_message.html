@@ -5,6 +5,8 @@
       <header class="messenger-message-head">
         <span class="messenger-message-author">{{ message.author.full_name }}</span>
         <time data-at datetime="{{ message.created_at|date:'c' }}">{{ message.created_at|date:'d.m.Y H:i' }}</time>
+        {% if message.edited_at %}<span data-messenger-edited>изменено
+          <time data-at datetime="{{ message.edited_at|date:'c' }}">{{ message.edited_at|date:'d.m.Y H:i' }}</time></span>{% endif %}
       </header>
       <div class="messenger-message-text">{{ body_html }}</div>
     </article>

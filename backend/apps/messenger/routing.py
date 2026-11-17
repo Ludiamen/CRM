@@ -1,5 +1,12 @@
-"""Маршруты WebSocket мессенджера (срез 008).
+"""Маршрут соединения беседы `/ws/messenger/` (срез 008, T-8213; CONTRACT-008, 5.5, 11.4).
 
-Каркас T-8001: соединений ещё нет, список пуст — `ws/messenger/` и `MessengerConsumer` добавляет Этап 3.
+`chat` — обязательный параметр строки запроса (номер чата в пути не несёт). Проверка Origin и сессии — в
+`config/asgi.py` (`AllowedHostsOriginValidator`, `AuthMiddlewareStack`) и в `SessionGuardMixin` потребителя.
 """
-websocket_urlpatterns = []
+from django.urls import path
+
+from apps.messenger.consumers import MessengerConsumer
+
+websocket_urlpatterns = [
+    path("ws/messenger/", MessengerConsumer.as_asgi()),
+]

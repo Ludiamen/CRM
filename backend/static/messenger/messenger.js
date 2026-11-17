@@ -95,3 +95,49 @@
   }
   document.body.addEventListener("htmx:afterSwap", start);
 })();
+/* Соединение беседы (T-8213): состояние `data-ws`, `sync` при открытии, переход по `data-hx-redirect`. */
+(function () {
+  "use strict";
+
+  function node() {
+    return document.querySelector("[data-ws]");
+  }
+
+  function state(value) {
+    var ws = node();
+    if (ws) ws.dataset.ws = value;
+  }
+
+  function send(payload) {
+    var ws = node();
+    if (!ws || !ws.ws || typeof ws.ws.send !== "function") return;
+    try {
+      ws.ws.send(JSON.stringify(payload));
+    } catch (error) {
+      /* соединение закрылось между событиями — переподключение делает расширение htmx */
+    }
+  }
+
+  document.body.addEventListener("htmx:wsOpen", function () {
+    var chat = new URLSearchParams(window.location.search).get("chat");
+    var match = window.location.pathname.match(/\/messenger\/chats\/(\d+)\//);
+    var id = match ? Number(match[1]) : Number(chat || 0);
+    if (id) {
+      send({sync: {chat: id, at: new Date().toISOString()}});
+    }
+  });
+
+  document.body.addEventListener("htmx:wsClose", function () {
+    state("closed");
+  });
+
+  document.body.addEventListener("htmx:afterSwap", function (event) {
+    if (document.getElementById("messenger-synced")) state("open");
+    var target = event.detail && event.detail.elt;
+    var redirect = target && target.querySelector ? target.querySelector("[data-hx-redirect]") : null;
+    if (redirect) window.location.assign(redirect.getAttribute("data-hx-redirect"));
+    if (document.querySelector("[data-hx-redirect]")) {
+      window.location.assign(document.querySelector("[data-hx-redirect]").getAttribute("data-hx-redirect"));
+    }
+  });
+})();

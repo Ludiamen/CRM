@@ -245,9 +245,10 @@ def test_new_edit_delete_frames_swapped_by_message_id(django_capture_on_commit_c
     from channels.layers import get_channel_layer
 
     capture = django_capture_on_commit_callbacks
-    author, reader = mm.make_user("Автор Авторов"), mm.make_user("Читатель Читателев")
+    author, reader = mm.make_user(full_name="Автор Авторов"), mm.make_user(full_name="Читатель Читателев")
     chat = mm.personal(author, reader)
-    other = mm.personal(author, mm.make_user("Посторонний Узлов"))
+    other = mm.personal(author, mm.make_user(full_name="Посторонний Узлов"))
+    stranger = mm.make_user(full_name="Третий Узлов")
 
     def foreign():
         return {"type": "messenger.event", "chat": other.pk, "action": "new", "message": 1,
@@ -288,7 +289,7 @@ def test_new_edit_delete_frames_swapped_by_message_id(django_capture_on_commit_c
         layer = await hub.do(get_channel_layer)
         await layer.group_send(f"messenger.u.{reader.user.pk}", foreign())
         assert await mine.receive(0.6) is None, "кадр чужого открытого чата дошёл"
-        await layer.group_send(f"messenger.u.{mm.make_user().user.pk}", foreign())
+        await layer.group_send(f"messenger.u.{stranger.user.pk}", foreign())
         assert await mine.receive(0.4) is None, "кадр чужой группы дошёл"
 
     ws_run(scenario)
@@ -298,7 +299,7 @@ def test_chat_delete_frame_sends_hx_redirect_to_list(django_capture_on_commit_ca
     """FR-648, FR-661: удаление чата даёт участнику кадр `HX-Redirect: /messenger/` (чат исчез у всех); список после
     этого открывается обычным запросом, без соединения, и удалённого чата в нём нет."""
     capture = django_capture_on_commit_callbacks
-    creator, member = mm.make_user("Создатель Создателев"), mm.make_user("Участник Участников")
+    creator, member = mm.make_user(full_name="Создатель Создателев"), mm.make_user(full_name="Участник Участников")
     title = "Группа на удаление"
     chat = mm.group(creator, [member], title=title)
 
@@ -320,7 +321,7 @@ def test_chat_delete_frame_sends_hx_redirect_to_list(django_capture_on_commit_ca
 def test_read_message_updates_read_line_for_author():
     """FR-659, FR-661: входящий `read` от читателя отмечает прочтение (`ChatRead`) и рассылает автору кадр
     `#messenger-read` «Прочитали N из M»."""
-    author, reader = mm.make_user("Автор Авторов"), mm.make_user("Читатель Читателев")
+    author, reader = mm.make_user(full_name="Автор Авторов"), mm.make_user(full_name="Читатель Читателев")
     chat = mm.personal(author, reader)
     message = mm.post(chat, author, "Сообщение автора")
 
@@ -387,7 +388,7 @@ def test_frame_has_no_csrf_token(django_capture_on_commit_callbacks):
     """FR-661: живой кадр — готовый фрагмент без `<form`, `csrfmiddlewaretoken`, `<script`, `style=` и `on…=`; текст
     пользователя экранирован; беседа открывается обычным запросом без соединения и показывает отправленное."""
     capture = django_capture_on_commit_callbacks
-    author, reader = mm.make_user("Автор Авторов"), mm.make_user("Читатель Читателев")
+    author, reader = mm.make_user(full_name="Автор Авторов"), mm.make_user(full_name="Читатель Читателев")
     chat = mm.personal(author, reader)
 
     async def scenario(hub):

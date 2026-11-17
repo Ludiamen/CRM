@@ -63,14 +63,14 @@ def publish(chat, action: str = "new", message=None, *, owner=None, recipients=N
         return
     raw_message, message = message, _record(Message, message)
     message_id = getattr(message, "pk", None) or (raw_message if isinstance(raw_message, int) else None)
-    variants = _variants(chat, message, audience, owner_id) if chat is not None else {}
+    variants = _variants(chat, message, audience, owner_id, action) if chat is not None else {}
     counts, totals = {}, []
     for user_id in audience:
         person = _person(user_id)
         if person is None:
             continue
         numbers = unread.counts(person)
-        counts[user_id] = numbers.get(chat_id, 0)
+        counts[str(user_id)] = numbers.get(chat_id, 0)
         totals.append(unread.total(person))
     payload = {
         "type": "messenger.event",
@@ -118,7 +118,7 @@ def _person(user_id: int):
     return User.objects.filter(pk=user_id).first()
 
 
-def _variants(chat, message, audience, owner_id) -> dict:
+def _variants(chat, message, audience, owner_id, action: str = "new") -> dict:
     """Фрагмент один раз на класс «роль + link_staff»: не больше четырёх вариантов (FR-661)."""
     variants = {}
     for user_id in audience:
@@ -129,17 +129,26 @@ def _variants(chat, message, audience, owner_id) -> dict:
         link_staff = permissions.has_permission(person, "staff.view")
         key = f"{role}:{1 if link_staff else 0}"
         if key not in variants:
-            variants[key] = _frame(chat, message, person, role, link_staff)
+            variants[key] = _frame(chat, message, person, role, link_staff, action)
     return variants
 
 
-def _frame(chat, message, person, role: str, link_staff: bool) -> str:
-    """HTML кадра: сообщение с учётом роли и права на карточки сотрудников."""
+def _frame(chat, message, person, role: str, link_staff: bool, action: str = "new") -> str:
+    """HTML кадра: сообщение с учётом роли и права на карточки; у `read` — ещё строка «Прочитали N из M»."""
     body = ""
     if message is not None:
         body = text_service.render_plain(message.text, link_staff=link_staff, chat=chat, viewer=person)
-    return render_to_string("messenger/_frame_message.html", {
+    html = render_to_string("messenger/_frame_message.html", {
         "chat": chat, "message": message, "body_html": body, "role": role, "viewer": person})
+    if action == "read":
+        from apps.messenger.services import read
+
+        own = read.last_own(chat, person)
+        readers, audience = read.line(chat, own)
+        if own is not None and audience:
+            html += render_to_string("messenger/_read_line_frame.html",
+                                     {"text": f"Прочитали {readers} из {audience}"})
+    return html
 
 
 def _send_badges(chat, action, audience) -> None:

@@ -178,8 +178,8 @@ def _rows(chat) -> list:
 
 
 def _marks(*people) -> str:
-    """Маркеры упоминаний людей (CONTRACT-008, 5.2): `@[u<id>]`."""
-    return " ".join(f"@[u{person.pk}]" for person in people)
+    """Маркеры упоминаний людей (CONTRACT-008, 5.2): `@[u<id>]`; принимает `Session` и `core.User`."""
+    return " ".join(f"@[u{getattr(person, 'user', person).pk}]" for person in people)
 
 
 def _paths(attachment) -> list[pathlib.Path]:
@@ -346,7 +346,7 @@ def test_sending_and_editing_create_no_notifications():
     sent = _send(author, chat, f"Привет {_marks(author)}")
     assert sent.status_code == 200, f"отправка в чат: {sent.status_code}"
     assert _q(_tree(sent), data_error=True) == []
-    assert not Notification.objects.filter(user=author).exists(), "своё сообщение автору уведомления не даёт"
+    assert not Notification.objects.filter(user=author.user).exists(), "своё сообщение автору уведомления не даёт"
 
 
 # --- предел упоминаний (FR-652, 655) -----------------------------------------------------------------------------
