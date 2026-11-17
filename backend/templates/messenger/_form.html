@@ -1,13 +1,24 @@
-<form id="messenger-form" method="post" action="/messenger/chats/">
-  {% csrf_token %}
-  <input type="hidden" name="kind" value="personal">
-  {% if addressee %}
-    <input type="hidden" name="user" value="{{ addressee.pk }}">
-    <p class="messenger-addressee" data-messenger-addressee>Кому: {{ addressee.full_name }}</p>
-  {% endif %}
-  {% include "messenger/_form_error.html" with error=errors.user field="user" %}
-  <label for="id_messenger_text">Сообщение</label>
-  <textarea id="id_messenger_text" name="text" class="form-control">{{ form_text }}</textarea>
-  {% include "messenger/_form_error.html" with error=errors.text field="text" %}
-  <button type="submit" class="btn btn-primary">Отправить</button>
-</form>
+{% if chat %}
+  <form id="messenger-form" method="post" action="/messenger/chats/{{ chat.pk }}/messages/" data-chat-id="{{ chat.pk }}">
+    {% csrf_token %}
+    <input type="hidden" name="quote" value="">
+    {% include "messenger/_form_error.html" with error=errors.text field="text" %}
+    <label class="visually-hidden" for="id_messenger_text">Сообщение</label>
+    <textarea id="id_messenger_text" name="text" class="form-control" placeholder="Напишите сообщение"></textarea>
+    <button type="submit" class="btn btn-primary">Отправить</button>
+  </form>
+{% else %}
+  <form id="messenger-form" method="post" action="/messenger/chats/">
+    {% csrf_token %}
+    <input type="hidden" name="kind" value="personal">
+    {% if addressee %}
+      <input type="hidden" name="user" value="{{ addressee.pk }}">
+      <p class="messenger-addressee" data-messenger-addressee>Кому: {{ addressee.full_name }}</p>
+    {% endif %}
+    {% include "messenger/_form_error.html" with error=errors.user field="user" %}
+    <label for="id_messenger_text">Сообщение</label>
+    <textarea id="id_messenger_text" name="text" class="form-control">{{ form_text }}</textarea>
+    {% include "messenger/_form_error.html" with error=errors.text field="text" %}
+    <button type="submit" class="btn btn-primary">Отправить</button>
+  </form>
+{% endif %}

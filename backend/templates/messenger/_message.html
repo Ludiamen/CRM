@@ -1,0 +1,9 @@
+<article id="m{{ message.pk }}" data-message-id="{{ message.pk }}"
+         data-own="{% if message.author_id == request.user.pk %}1{% else %}0{% endif %}"
+         class="messenger-message{% if message.is_system %} messenger-message-system{% endif %}">
+  <header class="messenger-message-head">
+    <span class="messenger-message-author">{% if message.is_system %}Системная запись{% else %}{{ message.author.full_name }}{% endif %}</span>
+    <time data-at datetime="{{ message.created_at|date:'c' }}">{{ message.created_at|date:'d.m.Y H:i' }}</time>
+  </header>
+  <p class="messenger-message-text">{{ message.text }}</p>
+</article>

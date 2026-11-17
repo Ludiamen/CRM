@@ -127,7 +127,16 @@ def _create_group(request):
 @require_POST
 def members_change(request, chat_id: int):
     """`POST /messenger/chats/<id>/members/` — `add` и `remove`; ведёт создатель, пока в чате (FR-646)."""
-    chat = members.get_chat(request.user, chat_id)
+    try:
+        chat = members.get_chat(request.user, chat_id)
+    except Http404:
+        # Создатель после выхода чат уже не видит, но состав заморожен: ему 403, а не 404 (FR-646, 10.2).
+        chat = Chat.objects.filter(pk=chat_id, kind=Chat.Kind.GROUP).first()
+        if chat is None:
+            raise
+        if chat.created_by_id == request.user.pk:
+            raise PermissionDenied
+        raise
     try:
         if request.POST.getlist("add"):
             chats.add_members(chat, request.user, request.POST.getlist("add"))

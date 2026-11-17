@@ -1,15 +1,23 @@
-"""Страница мессенджера и список чатов (срез 008, T-8207).
+"""Страница мессенджера, список чатов, беседа и история порциями (срез 008, T-8207/T-8208).
 
-PLAN-008 «Список чатов и порядок», «Беседа и история порциями»; CONTRACT-008 § 10.1–10.2, 12.1–12.2. Страница
-`GET /messenger/` собирает список одним запросом (`chats.rows`, порядок `COALESCE(last_message_at, created_at)
-DESC, id DESC`), поля `q` (по названиям и ФИО) и `to` (страница «Написать», T-8203, в базу не пишет). Фрагмент
-`GET /messenger/list/` отдаёт тот же список без оболочки; ключ `q` — из белого списка, прочие отбрасываются.
+PLAN-008 «Список чатов и порядок», «Беседа и история порциями», «360 px и две колонки»; CONTRACT-008 § 10.1–10.2,
+12.1–12.4. Список — один запрос `chats.rows` с порядком `COALESCE(last_message_at, created_at) DESC, id DESC`.
+Беседа — `members.get_chat` (чужой чат — 404 как несуществующий), история последних 50, поле ввода и узел
+соединения `/ws/messenger/?chat=<id>`; старые — `GET …/messages/?before=<ISO>,<id>` по курсору
+`(created_at, id) < (%s, %s)` без `OFFSET`. Неверный `before` читается как отсутствующий.
 """
+from datetime import datetime
+from urllib.parse import urlencode
+
 from django.contrib.auth.decorators import login_required
+from django.utils import timezone
 from django.views.decorators.http import require_GET
 
+from apps.core.models import User
 from apps.core.views.common import render_page
-from apps.messenger.services import chats
+from apps.messenger.models import Chat
+from apps.messenger.services import chats, members
+from apps.messenger.services import page as page_service
 from apps.messenger.views import chats as chat_views
 
 # Ключи строки запроса страницы и списка — белый список (CONTRACT-008, 10.1).
@@ -40,3 +48,68 @@ def list_fragment(request):
     query = _value(request, "q")
     return render_page(request, "messenger/_list.html",
                        {"rows": chats.rows(request.user, query), "q": query})
+
+
+@login_required
+@require_GET
+def chat(request, chat_id: int):
+    """`GET /messenger/chats/<id>/` — беседа: шапка, история 50, поле ввода и узел соединения (FR-658)."""
+    found = members.get_chat(request.user, chat_id)
+    messages, more = page_service.history(found)
+    return render_page(request, "messenger/chat.html", _chat_context(request, found, messages, more))
+
+
+@login_required
+@require_GET
+def history(request, chat_id: int):
+    """`GET /messenger/chats/<id>/messages/?before=<ISO>,<id>` — предыдущие 50 сообщений фрагментом (FR-658)."""
+    found = members.get_chat(request.user, chat_id)
+    before = _cursor(request.GET.get("before"))
+    messages, more = page_service.history(found, before)
+    return render_page(request, "messenger/_history.html", _chat_context(request, found, messages, more))
+
+
+def _chat_context(request, chat, messages, more) -> dict:
+    """Контекст беседы и фрагмента истории: название, участники, сообщения, курсор и адрес соединения."""
+    return {
+        "chat": chat,
+        "title": page_service.chat_title(chat, request.user),
+        "member_names": _member_names(chat),
+        "messages": messages,
+        "more_url": _more_url(chat, messages) if more else "",
+        "ws_url": f"/ws/messenger/?chat={chat.pk}",
+    }
+
+
+def _more_url(chat, messages) -> str:
+    """Адрес предыдущей порции: курсор самого старого показанного сообщения, `+` кодируется `%2B` (10.1)."""
+    if not messages:
+        return ""
+    oldest = messages[0]
+    return "/messenger/chats/{}/messages/?{}".format(
+        chat.pk, urlencode({"before": f"{oldest.created_at.isoformat()},{oldest.pk}", "chat": chat.pk}))
+
+
+def _member_names(chat) -> list[str]:
+    """ФИО участников для шапки: личный и групповой — состав `members.members`, иначе пусто."""
+    if chat.kind == Chat.Kind.PERSONAL:
+        return [page_service.chat_title(chat)]
+    if chat.kind != Chat.Kind.GROUP:
+        return []
+    ids = members.members(chat)
+    return list(User.objects.filter(pk__in=ids).order_by("full_name").values_list("full_name", flat=True))
+
+
+def _cursor(raw):
+    """`before=<ISO>,<id>` → `(datetime, id)`; пустое, неверное и без запятой — `None` (как отсутствующее)."""
+    if not raw or "," not in raw:
+        return None
+    at_part, _, id_part = raw.rpartition(",")
+    try:
+        at = datetime.fromisoformat(at_part.replace("Z", "+00:00"))
+        number = int(id_part)
+    except (ValueError, TypeError):
+        return None
+    if timezone.is_naive(at):
+        at = timezone.make_aware(at)
+    return at, number

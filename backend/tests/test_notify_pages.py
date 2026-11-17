@@ -15,6 +15,7 @@ import pytest
 from django.test import Client
 
 from tests import support
+from tests import support_messenger as messenger
 from tests.support import HX, model
 
 pytestmark = pytest.mark.django_db
@@ -208,15 +209,19 @@ def test_bell_in_top_bar_has_count_and_toast_elements():
 def test_bell_carries_ws_connect_to_notify_socket():
     """FR-318: корень колокольчика несёт `hx-ext="ws"`, `ws-connect="/ws/notify/"` и `data-ws="connecting"`
     (решение E21); других `ws-connect` на странице нет. Страница — `/me/`, а не `/`: на главной среза 007 два узла
-    `ws-connect` (колокольчик и `#feed-live`, решение 43 (г) TASKS-007; их проверяет test_feed_home.py)."""
-    user, client = _employee_client()
-    doc, bell = _bell(client, "/me/")
+    `ws-connect` (колокольчик и `#feed-live`, решение 43 (г) TASKS-007; их проверяет test_feed_home.py).
 
-    assert bell.attrs.get("hx-ext") == "ws"
-    assert bell.attrs.get("ws-connect") == "/ws/notify/"
-    assert bell.attrs.get("data-ws") == "connecting"
-    assert [el for el in doc.elements if "ws-connect" in el.attrs] == [bell]
-    assert one(doc, None, {"id": "notify-bell"}) is bell, "на странице один #notify-bell"
+    Проверка — без мессенджера: при установленном колокольчик стал ссылкой на вкладку (`a[data-bell-link]`,
+    CONTRACT-008, 3.3; решение владельца 2026-11-17), своего соединения у него нет."""
+    user, client = _employee_client()
+    with messenger.without_messenger():
+        doc, bell = _bell(client, "/me/")
+
+        assert bell.attrs.get("hx-ext") == "ws"
+        assert bell.attrs.get("ws-connect") == "/ws/notify/"
+        assert bell.attrs.get("data-ws") == "connecting"
+        assert [el for el in doc.elements if "ws-connect" in el.attrs] == [bell]
+        assert one(doc, None, {"id": "notify-bell"}) is bell, "на странице один #notify-bell"
 
 
 def test_bell_count_element_present_but_hidden_at_zero():

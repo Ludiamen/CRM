@@ -1,0 +1,6 @@
+{% for message in messages %}{% include "messenger/_message.html" %}{% endfor %}
+{% if more_url %}
+  <div class="messenger-more" data-messenger-more hx-get="{{ more_url }}" hx-target="#messenger-messages" hx-swap="afterbegin">
+    <button type="button" class="btn btn-outline-secondary">Показать более ранние</button>
+  </div>
+{% endif %}

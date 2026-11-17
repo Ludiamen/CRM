@@ -1,0 +1,18 @@
+<section class="messenger-chat" data-chat-kind="{{ chat.kind }}">
+  <header class="messenger-chat-head">
+    <a href="/messenger/" data-messenger-back class="btn btn-link">Назад</a>
+    <h1 class="page-title">{{ title }}</h1>
+    {% if member_names %}<p class="messenger-chat-members">{{ member_names|join:", " }}</p>{% endif %}
+    <form class="messenger-chat-search" method="get" action="/messenger/chats/{{ chat.pk }}/search/"
+          data-messenger-search role="search">
+      <label class="visually-hidden" for="id_messenger_chat_q">Поиск по беседе</label>
+      <input id="id_messenger_chat_q" type="search" name="q" class="form-control"
+             placeholder="Поиск по беседе" autocomplete="off">
+    </form>
+  </header>
+  <div id="messenger-messages" class="messenger-messages">
+    {% include "messenger/_history.html" %}
+  </div>
+  {% include "messenger/_form.html" %}
+  <div class="messenger-live" data-ws="connecting" hx-ext="ws" ws-connect="{{ ws_url }}"></div>
+</section>

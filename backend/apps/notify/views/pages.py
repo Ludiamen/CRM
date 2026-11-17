@@ -45,9 +45,16 @@ def render_toast(toast: dict, *, oob: bool = True) -> str:
 
 
 def top_bar_context(request) -> dict:
-    """Контекст элемента `top_bar_items`: число непрочитанных (один запрос по частичному индексу)."""
+    """Контекст элемента `top_bar_items`: число непрочитанных (один запрос по частичному индексу).
+
+    При установленном мессенджере колокольчик ведёт ссылкой на вкладку «Уведомления» (`bell_link`, CONTRACT-008,
+    3.3) и своего соединения не открывает; без мессенджера остаётся прежняя кнопка панели.
+    """
+    from django.apps import apps
+
     context = count_context(reading.unread_count(request.user.pk))
-    return {"bell_count": context["count"], "bell_shown": context["shown"]}
+    link = "/messenger/notifications/" if apps.is_installed("apps.messenger") else ""
+    return {"bell_count": context["count"], "bell_shown": context["shown"], "bell_link": link}
 
 
 def _titles() -> dict:

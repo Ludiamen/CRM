@@ -6,8 +6,28 @@ PLAN-008 «Список чатов и порядок», «Виды чатов и
 импортируются, подразделения — публичная служба `org` под `apps.is_installed`.
 """
 from django.apps import apps
+from django.db.models import Q
 
-from apps.messenger.models import Chat, ChatMember
+from apps.messenger.models import Chat, ChatMember, Message
+
+HISTORY_LIMIT = 50
+
+
+def history(chat, before=None, *, limit: int = HISTORY_LIMIT):
+    """Порция истории беседы по курсору `(created_at, id)`: старые — строго раньше, без `OFFSET` (FR-658).
+
+    Возвращает `(messages, more)`; сообщения — от старых к новым для вывода, `more` — есть ли ещё более
+    ранние. Без `before` — последние `limit` сообщений. Удалённые и системные входят: удалённое показывается
+    пометкой, системная запись — своим текстом (FR-649, 657).
+    """
+    queryset = Message.objects.filter(chat=chat).select_related("author", "quote")
+    if before is not None:
+        at, message_id = before
+        queryset = queryset.filter(Q(created_at__lt=at) | Q(created_at=at, id__lt=message_id))
+    fetched = list(queryset.order_by("-created_at", "-id")[:limit + 1])
+    more = len(fetched) > limit
+    messages = list(reversed(fetched[:limit]))
+    return messages, more
 
 
 def chat_title(chat, viewer=None) -> str:
