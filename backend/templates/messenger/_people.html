@@ -1,0 +1,16 @@
+{# Подсказка выбора людей (T-8203): строка `[data-person-id]` с действием «Написать» (CONTRACT-008, 12.6). #}
+<ul class="messenger-people" data-messenger-people>
+  {% for row in rows %}
+    <li data-person-id="{{ row.person.pk }}">
+      <span class="messenger-person-name">{{ row.person.full_name }}</span>
+      {% if row.unit %}<span class="messenger-person-unit">{{ row.unit }}</span>{% endif %}
+      <a href="/messenger/?to={{ row.person.pk }}">Написать</a>
+    </li>
+  {% empty %}
+    {% if q %}
+      <li>Ничего не найдено</li>
+    {% else %}
+      <li>начните вводить имя</li>
+    {% endif %}
+  {% endfor %}
+</ul>
