@@ -14,4 +14,7 @@ urlpatterns = [
     path("messenger/", chats.write, name="home"),
     path("messenger/people/", chats.people, name="people"),
     path("messenger/chats/", chats.create, name="chats"),
+    path("messenger/chats/<int:chat_id>/members/", chats.members_change, name="members"),
+    path("messenger/chats/<int:chat_id>/leave/", chats.leave, name="leave"),
+    path("messenger/chats/<int:chat_id>/delete/", chats.delete, name="delete"),
 ]

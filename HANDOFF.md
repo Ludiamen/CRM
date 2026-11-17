@@ -87,6 +87,15 @@
 > `text` в `create` зовёт `messages.send` — до T-8209 модуль службы пуст, поэтому тесты первого сообщения
 > красные по `AttributeError` (ожидаемо, не ослаблять); после T-8209 ветка оживёт. Гейты: SDD 113 документов,
 > 0/0; tools 140/140. Дальше — T-8204 (групповой чат и выход), потом T-8205…T-8208.
+> **Обновление 9 (T-8204 выполнена 2026-11-17):** `services/chats.py` — `is_creator_in_chat`, `remaining_members`,
+> `add_members`/`remove_members` (создатель, пока в чате; возврат с новым `joined_at`), `leave`, `delete` (снимок
+> журнала `chat_title`/`chat_members`/`chat_created_at` без текста, `StoredFile` и файлы/эскизы с диска после
+> фиксации); `views/chats.py` — `kind=group` в `create`, `members/`, `leave/` (последний участник — подтверждение и
+> удаление), `delete/` (создатель-участник, иначе 403; без `confirm` — второй шаг); `_confirm.html` с
+> `[data-messenger-confirm]`. Фокусно **5 passed** (`test_title_empty_and_201…`, `test_group_without_members…`,
+> `test_creator_deletes…`, `test_non_creator_delete…`, `test_last_member_leaves…`); весь файл — 6 passed / 5 failed,
+> все падения только из-за отсутствия беседы (T-8208) и `unread.counts` (T-8211). SDD 113/0/0, tools 140/140.
+> Дальше — T-8205 (чат отдела и галочка узла).
 
 > **Актуальный краткий статус — 2026-11-12 21:00.** T-7260 **принята владельцем и отмечена `[x]`**;
 > открыт этап 4 (T-7300 → T-7301 → T-7302 → T-7303). Финальный полный сервер на финализированном source

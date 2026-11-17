@@ -13,6 +13,7 @@ CONTRACT-008 § 10.2 (адреса, поля и ответы), 12.1 (`[data-mess
 """
 from django.apps import apps
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.db.models import CharField, Value
 from django.db.models.functions import Lower, Replace
 from django.http import Http404
@@ -21,7 +22,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.core.models import User, UserState
 from apps.core.views.common import render_page
-from apps.messenger.services import chats
+from apps.messenger.services import chats, members
 from apps.messenger.services.errors import MessengerError
 
 PEOPLE_LIMIT = 20
@@ -77,8 +78,9 @@ def create(request):
     «Написать»: пустое не создаёт пустого чата, непустое уходит в `services.messages.send`.
     """
     kind = (request.POST.get("kind") or "personal").strip()
+    if kind == "group":
+        return _create_group(request)
     if kind != "personal":
-        # Групповой чат — T-8204; до неё адрес других видов не принимает.
         raise Http404
 
     text = request.POST.get("text")
@@ -105,6 +107,75 @@ def create(request):
             return render_page(request, "messenger/page.html",
                                _write_context(person, errors={exc.field or "text": exc}, text=text))
     return redirect(f"/messenger/chats/{chat.pk}/")
+
+
+def _create_group(request):
+    """Групповой чат: название 1–200 после среза, участники — действующие, создатель входит сам (FR-646)."""
+    try:
+        chat = chats.create_group(request.user, request.POST.get("title", ""),
+                                  request.POST.getlist("members"))
+    except MessengerError as exc:
+        field = exc.field or "title"
+        return render_page(request, "messenger/page.html",
+                           {"mode": "list", "errors": {field: exc}, "form_text": ""})
+    return redirect(f"/messenger/chats/{chat.pk}/")
+
+
+@login_required
+@require_POST
+def members_change(request, chat_id: int):
+    """`POST /messenger/chats/<id>/members/` — `add` и `remove`; ведёт создатель, пока в чате (FR-646)."""
+    chat = members.get_chat(request.user, chat_id)
+    try:
+        if request.POST.getlist("add"):
+            chats.add_members(chat, request.user, request.POST.getlist("add"))
+        if request.POST.getlist("remove"):
+            chats.remove_members(chat, request.user, request.POST.getlist("remove"))
+    except MessengerError as exc:
+        field = exc.field or "members"
+        return render_page(request, "messenger/page.html",
+                           {"mode": "list", "errors": {field: exc}, "form_text": ""})
+    return redirect(f"/messenger/chats/{chat.pk}/")
+
+
+@login_required
+@require_POST
+def leave(request, chat_id: int):
+    """`POST /messenger/chats/<id>/leave/` — выход с `confirm=1`; последний участник удаляет чат (FR-647)."""
+    chat = members.get_chat(request.user, chat_id)
+    if chat.kind != chats.Chat.Kind.GROUP:
+        raise PermissionDenied
+    if chats.remaining_members(chat) == 1:
+        if request.POST.get("confirm") != "1":
+            return _confirm_page(request, chat, "leave")
+        chats.delete(chat, request.user)
+    else:
+        chats.leave(chat, request.user)
+    return redirect("/messenger/")
+
+
+@login_required
+@require_POST
+def delete(request, chat_id: int):
+    """`POST /messenger/chats/<id>/delete/` — создатель группового чата после `confirm=1` (FR-648).
+
+    Чат отдела удаляет администратор портала — T-8205; «Общий чат» не удаляется (T-8206).
+    """
+    chat = members.get_chat(request.user, chat_id)
+    if chat.kind != chats.Chat.Kind.GROUP:
+        raise PermissionDenied
+    if chat.created_by_id != request.user.pk or not members.is_member(request.user, chat):
+        raise PermissionDenied
+    if request.POST.get("confirm") != "1":
+        return _confirm_page(request, chat, "delete")
+    chats.delete(chat, request.user)
+    return redirect("/messenger/")
+
+
+def _confirm_page(request, chat, action: str):
+    """Второй шаг подтверждения `[data-messenger-confirm]` (CONTRACT-008, 12.6)."""
+    return render_page(request, "messenger/_confirm.html",
+                       {"action": f"/messenger/chats/{chat.pk}/{action}/"})
 
 
 @login_required

@@ -1,0 +1,6 @@
+{# Второй шаг подтверждения (CONTRACT-008, 12.6): текст, button[name="confirm"][value="1"]. #}
+<form method="post" action="{{ action }}" data-messenger-confirm>
+  {% csrf_token %}
+  <p>Удалить чат вместе с историей?</p>
+  <button type="submit" name="confirm" value="1" class="btn btn-danger">Подтвердить</button>
+</form>

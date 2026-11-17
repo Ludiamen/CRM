@@ -7,16 +7,23 @@ CONTRACT-008 § 5.1; PLAN-008, «Виды чатов и создание», «С
 `COALESCE(last_message_at, created_at) DESC, id DESC` (FR-644). SQL — литералы с `%s`, значения уходят параметрами
 (NFR-703); модели `org` не импортируются, имя узла берётся из таблицы по литералу под `apps.is_installed`.
 """
+import pathlib
 from datetime import datetime
 from typing import NamedTuple
 
 from django.apps import apps
+from django.conf import settings as django_settings
+from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, connection, transaction
+from django.http import Http404
 from django.utils import timezone
 
-from apps.core.models import User, UserState
+from apps.core.models import StoredFile, User, UserState
+from apps.core.services import audit
+from apps.core.services import files as core_files
 from apps.core.services import text as core_text
-from apps.messenger.models import Chat, ChatMember
+from apps.core.widgets import MOSCOW
+from apps.messenger.models import Chat, ChatMember, MessageAttachment
 from apps.messenger.services.errors import MessengerError
 
 PREVIEW_LIMIT = 100
@@ -103,6 +110,93 @@ def create_group(creator, title: str, members=()) -> Chat:
 def general() -> Chat | None:
     """Единственная строка «Общего чата» (или `None`, если её нет); включённость проверяет `members.visible_chats`."""
     return Chat.objects.filter(kind=Chat.Kind.GENERAL).first()
+
+
+# --- состав группового чата, выход и удаление (T-8204) -----------------------------------------------------------
+
+def is_creator_in_chat(chat, user) -> bool:
+    """Создатель, пока он в чате: после его выхода состав заморожен (FR-646)."""
+    user_id = getattr(user, "pk", None)
+    if user_id is None or chat.created_by_id != user_id:
+        return False
+    return ChatMember.objects.filter(chat=chat, user_id=user_id, left_at__isnull=True).exists()
+
+
+def remaining_members(chat) -> int:
+    """Сколько сотрудников сейчас в чате: у последнего выход удаляет чат (FR-647)."""
+    return ChatMember.objects.filter(chat=chat, left_at__isnull=True).count()
+
+
+def add_members(chat, actor, member_ids) -> None:
+    """Создатель добавляет действующих сотрудников; вернувшемуся обновляется `joined_at` (FR-646, 647)."""
+    _require_creator(chat, actor)
+    wanted = _user_ids(member_ids)
+    if not wanted:
+        raise MessengerError("no_members", field="members")
+    people = list(User.objects.filter(pk__in=wanted))
+    if len(people) != len(wanted):
+        raise MessengerError("no_members", field="members")
+    if any(person.state in NON_PARTICIPANT_STATES for person in people):
+        raise MessengerError("dismissed", field="members")
+    now = timezone.now()
+    for person in people:
+        if person.pk != chat.created_by_id:
+            _ensure_member(chat, person, now)
+
+
+def remove_members(chat, actor, member_ids) -> None:
+    """Создатель убирает участников: строка остаётся с `left_at`, история сохраняется (FR-646, 647)."""
+    _require_creator(chat, actor)
+    now = timezone.now()
+    (ChatMember.objects
+     .filter(chat=chat, user_id__in=_user_ids(member_ids), left_at__isnull=True, is_creator=False)
+     .update(left_at=now))
+
+
+def leave(chat, user) -> None:
+    """Участник выходит: `left_at`, состав считается без него (FR-647)."""
+    row = ChatMember.objects.filter(chat=chat, user=user, left_at__isnull=True).first()
+    if row is None:
+        raise Http404
+    ChatMember.objects.filter(pk=row.pk).update(left_at=timezone.now())
+
+
+def delete(chat, actor, *, audit_code: str = "messenger.chat_deleted") -> None:
+    """Удалить чат с историей одной транзакцией: файлы, эскизы, журнал без текста (FR-648, 671).
+
+    Снимок журнала — название, число строк состава и время создания; текстов сообщений в нём нет.
+    Файлы и эскизы стираются с диска после фиксации, отсутствующий файл — не ошибка.
+    """
+    if chat.kind == Chat.Kind.GENERAL:  # «Общий чат» не удаляется: его выключают настройкой (T-8206)
+        raise PermissionDenied
+    with transaction.atomic():
+        chat_id = chat.pk
+        chat = Chat.objects.select_for_update().get(pk=chat_id)
+        attachments = list(MessageAttachment.objects.filter(message__chat=chat).select_related("file"))
+        paths: list[pathlib.Path] = []
+        stored_ids: list[int] = []
+        for attachment in attachments:
+            paths.append(core_files.attachment_path(attachment.file))
+            stored_ids.append(attachment.file_id)
+            if attachment.thumb:
+                paths.append(pathlib.Path(django_settings.PROTECTED_ROOT) / attachment.thumb)
+        after = {
+            "chat_title": chat.title,
+            "chat_members": ChatMember.objects.filter(chat=chat).count(),
+            "chat_created_at": chat.created_at.astimezone(MOSCOW).strftime("%d.%m.%Y %H:%M"),
+        }
+        chat.delete()
+        if stored_ids:
+            StoredFile.objects.filter(pk__in=stored_ids).delete()
+        audit.record(audit_code, actor=actor, object_type="messenger.chat", object_id=chat_id, after=after)
+        if paths:
+            transaction.on_commit(lambda: core_files.remove_paths(paths))
+
+
+def _require_creator(chat, actor) -> None:
+    """Состав ведёт только создатель и только группового чата, пока сам в нём (FR-646)."""
+    if chat.kind != Chat.Kind.GROUP or not is_creator_in_chat(chat, actor):
+        raise PermissionDenied
 
 
 def rows(user, q: str = "") -> list[Row]:
