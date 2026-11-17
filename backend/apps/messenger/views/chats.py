@@ -22,9 +22,9 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.core.models import User, UserState
 from apps.core.services import permissions
-from apps.core.views.common import render_page
+from apps.core.views.common import is_fragment, render_page
 from apps.messenger.models import Chat
-from apps.messenger.services import chats, department, members
+from apps.messenger.services import chats, department, members, read, unread
 from apps.messenger.services.errors import MessengerError
 
 PEOPLE_LIMIT = 20
@@ -199,6 +199,26 @@ def delete(request, chat_id: int):
         return _confirm_page(request, chat, "delete")
     chats.delete(chat, request.user)
     return redirect("/messenger/")
+
+
+@login_required
+@require_POST
+def mark_read(request, chat_id: int):
+    """`POST /messenger/chats/<id>/read/` — отметка прочтения; HTMX получает OOB-узлы числа чата, меню и строки.
+
+    `at` неверный или отсутствующий читается как теперь, будущий обрезается (FR-659, 10.1). Обычный POST — 302 в
+    беседу; после отметки — `object.viewed` для уведомлений чата (FR-666).
+    """
+    chat = members.get_chat(request.user, chat_id)
+    read.mark(chat, request.user, read.parse_at(request.POST.get("at")))
+    if not is_fragment(request):
+        return redirect(f"/messenger/chats/{chat.pk}/")
+    last_own = read.last_own(chat, request.user)
+    readers, audience = read.line(chat, last_own)
+    return render_page(request, "messenger/_read_answer.html", {
+        "chat": chat, "chat_count": unread.counts(request.user).get(chat.pk, 0),
+        "total": unread.total(request.user), "readers": readers, "audience": audience,
+        "line_message": last_own})
 
 
 def _confirm_page(request, chat, action: str):

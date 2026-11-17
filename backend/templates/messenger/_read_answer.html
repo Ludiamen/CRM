@@ -1,0 +1,5 @@
+<span id="chat-{{ chat.pk }}-unread" data-count="{{ chat_count }}" hx-swap-oob="true"
+      class="messenger-row-unread badge{% if not chat_count %} d-none{% endif %}">{% if chat_count > 99 %}99+{% else %}{{ chat_count }}{% endif %}</span>
+<span id="menu-badge-messenger" data-count="{{ total }}" data-menu-live-badge hx-swap-oob="true"
+      class="badge text-bg-primary{% if not total %} d-none{% endif %}">{% if total > 99 %}99+{% else %}{{ total }}{% endif %}</span>
+{% if line_message and audience %}<p id="messenger-read" hx-swap-oob="true" class="messenger-read">Прочитали {{ readers }} из {{ audience }}</p>{% endif %}

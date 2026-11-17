@@ -16,7 +16,7 @@ from django.views.decorators.http import require_GET
 from apps.core.models import User
 from apps.core.views.common import render_page
 from apps.messenger.models import Chat
-from apps.messenger.services import chats, members
+from apps.messenger.services import chats, members, read, unread
 from apps.messenger.services import page as page_service
 from apps.messenger.services import text as text_service
 from apps.messenger.views import chats as chat_views
@@ -56,6 +56,7 @@ def list_fragment(request):
 def chat(request, chat_id: int):
     """`GET /messenger/chats/<id>/` — беседа: шапка, история 50, поле ввода и узел соединения (FR-658)."""
     found = members.get_chat(request.user, chat_id)
+    read.mark(found, request.user)
     messages, more = page_service.history(found)
     return render_page(request, "messenger/chat.html", _chat_context(request, found, messages, more))
 
@@ -72,6 +73,8 @@ def history(request, chat_id: int):
 
 def _chat_context(request, chat, messages, more) -> dict:
     """Контекст беседы и фрагмента истории: название, участники, сообщения, курсор и адрес соединения."""
+    last_own = read.last_own(chat, request.user)
+    readers, audience = read.line(chat, last_own)
     return {
         "chat": chat,
         "title": page_service.chat_title(chat, request.user),
@@ -79,6 +82,8 @@ def _chat_context(request, chat, messages, more) -> dict:
         "items": message_items(messages, request.user, chat),
         "more_url": _more_url(chat, messages) if more else "",
         "ws_url": f"/ws/messenger/?chat={chat.pk}",
+        "read_message_id": last_own.pk if last_own is not None else None,
+        "read_text": f"Прочитали {readers} из {audience}" if last_own is not None and audience else "",
     }
 
 

@@ -142,15 +142,18 @@ def add_members(chat, actor, member_ids) -> None:
     for person in people:
         if person.pk != chat.created_by_id:
             _ensure_member(chat, person, now)
+    _invalidate_unread(wanted)
 
 
 def remove_members(chat, actor, member_ids) -> None:
     """Создатель убирает участников: строка остаётся с `left_at`, история сохраняется (FR-646, 647)."""
     _require_creator(chat, actor)
     now = timezone.now()
+    wanted = _user_ids(member_ids)
     (ChatMember.objects
-     .filter(chat=chat, user_id__in=_user_ids(member_ids), left_at__isnull=True, is_creator=False)
+     .filter(chat=chat, user_id__in=wanted, left_at__isnull=True, is_creator=False)
      .update(left_at=now))
+    _invalidate_unread(wanted)
 
 
 def leave(chat, user) -> None:
@@ -159,6 +162,7 @@ def leave(chat, user) -> None:
     if row is None:
         raise Http404
     ChatMember.objects.filter(pk=row.pk).update(left_at=timezone.now())
+    _invalidate_unread([user.pk])
 
 
 def delete(chat, actor, *, audit_code: str = "messenger.chat_deleted", snapshot: dict | None = None) -> None:
@@ -190,6 +194,7 @@ def delete(chat, actor, *, audit_code: str = "messenger.chat_deleted", snapshot:
         if stored_ids:
             StoredFile.objects.filter(pk__in=stored_ids).delete()
         audit.record(audit_code, actor=actor, object_type="messenger.chat", object_id=chat_id, after=after)
+        _invalidate_unread(None)
         if paths:
             transaction.on_commit(lambda: core_files.remove_paths(paths))
 
@@ -217,6 +222,8 @@ def rows(user, q: str = "") -> list[Row]:
     params = [
         user_id,                    # название личного диалога — ФИО собеседника
         user_id, user_id, user_id,  # база отсчёта непрочитанного
+        user_id,                    # вступление (равенство времени вступления считается)
+        user_id,                    # отметка прочтения (равенство при ней не считается)
         user_id,                    # свои сообщения не считаются
         user_id,                    # участие в личном и групповом
         list(chain),                # цепочка узлов сотрудника
@@ -245,6 +252,16 @@ def rows(user, q: str = "") -> list[Row]:
 def list_for(user, q: str = "") -> list[Row]:
     """То же, что `rows` — имя из TASKS-008 T-8202; оставлены оба, чтобы службу звали по контракту и по задаче."""
     return rows(user, q)
+
+
+def _invalidate_unread(user_ids) -> None:
+    """Смена состава меняет числа непрочитанного у затронутых сотрудников (CONTRACT-008, 3.5, 5.3)."""
+    from apps.messenger.services import unread
+
+    if user_ids is None:
+        unread.invalidate(None)
+        return
+    unread.invalidate([user_id for user_id in user_ids if user_id is not None])
 
 
 def _ensure_member(chat, person, now) -> None:
@@ -336,16 +353,28 @@ _ROWS_SQL_TAIL = """
                 FROM "messenger_chatread" AS r
                 WHERE r.chat_id = c.id AND r.user_id = %s
             )
-        END AS at
+        END AS at,
+        CASE WHEN c.kind IN ('personal', 'group') THEN (
+            SELECT cm.joined_at
+            FROM "messenger_chatmember" AS cm
+            WHERE cm.chat_id = c.id AND cm.user_id = %s
+        ) ELSE NULL END AS joined,
+        (SELECT r.last_read_at FROM "messenger_chatread" AS r
+         WHERE r.chat_id = c.id AND r.user_id = %s) AS read_at
     ) AS base ON TRUE
     LEFT JOIN LATERAL (
         SELECT count(*) AS count
         FROM "messenger_message" AS m
         WHERE m.chat_id = c.id
           AND m.deleted_at IS NULL
+          AND m.is_system = false
           AND m.author_id IS DISTINCT FROM %s
           AND base.at IS NOT NULL
-          AND m.created_at > base.at
+          AND (
+              m.created_at > base.at
+              OR (m.created_at = base.at AND base.joined IS NOT NULL AND base.at = base.joined
+                  AND (base.read_at IS NULL OR base.read_at < base.joined))
+          )
     ) AS unread ON TRUE
     WHERE (
         (

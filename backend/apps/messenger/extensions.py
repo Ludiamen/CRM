@@ -7,10 +7,23 @@ CONTRACT-008 § 3.4; PLAN-008 «Точки расширения ядра и ши
 """
 
 
+def menu_items() -> list[dict]:
+    """Пункты меню: «Мессенджер» (order 1, живое число) и «Настройки мессенджера» (order 64) — T-8211."""
+    from apps.messenger.services import unread
+
+    return [
+        {"permissions": (), "url": "/messenger/", "title": "Мессенджер", "icon": "icons/chat.html", "order": 1,
+         "visible": lambda user: True, "badge": lambda user: unread.badge(user), "live_badge": "messenger"},
+        {"permissions": ("settings.portal",), "url": "/settings/messenger/", "title": "Настройки мессенджера",
+         "icon": "icons/gear.html", "order": 64},
+    ]
+
+
 def register_all() -> None:
-    """Зарегистрировать точки мессенджера: поле формы узла (T-8205)."""
+    """Зарегистрировать точки мессенджера: поле формы узла (T-8205) и пункты меню (T-8211)."""
     from apps.core import extensions
     from apps.messenger import unit_form
 
     for part in unit_form.unit_form_parts():
         extensions.register("unit_form_parts", part)
+    extensions.register("menu_items", menu_items)
