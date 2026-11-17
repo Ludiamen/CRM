@@ -185,6 +185,9 @@ def delete(chat, actor, *, audit_code: str = "messenger.chat_deleted", snapshot:
             stored_ids.append(attachment.file_id)
             if attachment.thumb:
                 paths.append(pathlib.Path(django_settings.PROTECTED_ROOT) / attachment.thumb)
+        from apps.messenger.services import members
+
+        recipients = sorted(members.members(chat) - {getattr(actor, "pk", None)})
         after = snapshot if snapshot is not None else {
             "chat_title": chat.title,
             "chat_members": ChatMember.objects.filter(chat=chat).count(),
@@ -195,6 +198,7 @@ def delete(chat, actor, *, audit_code: str = "messenger.chat_deleted", snapshot:
             StoredFile.objects.filter(pk__in=stored_ids).delete()
         audit.record(audit_code, actor=actor, object_type="messenger.chat", object_id=chat_id, after=after)
         _invalidate_unread(None)
+        _enqueue_delete(chat_id, actor, recipients)
         if paths:
             transaction.on_commit(lambda: core_files.remove_paths(paths))
 
@@ -252,6 +256,15 @@ def rows(user, q: str = "") -> list[Row]:
 def list_for(user, q: str = "") -> list[Row]:
     """То же, что `rows` — имя из TASKS-008 T-8202; оставлены оба, чтобы службу звали по контракту и по задаче."""
     return rows(user, q)
+
+
+def _enqueue_delete(chat_id: int, actor, recipients) -> None:
+    """Кадр `chat_delete` прежним участникам: получатели сняты до каскада (FR-648, 661)."""
+    from apps.messenger.services import live
+
+    owner_id = getattr(actor, "pk", None)
+    transaction.on_commit(lambda: live.enqueue(chat_id, None, "chat_delete", owner_id=owner_id,
+                                               recipients=recipients))
 
 
 def _invalidate_unread(user_ids) -> None:

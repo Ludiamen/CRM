@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from apps.core.models import User
+from apps.core.services import permissions
 from apps.core.views.common import render_page
 from apps.messenger.models import Chat
 from apps.messenger.services import chats, members, read, unread
@@ -94,10 +95,11 @@ def message_items(messages, user, chat=None) -> list[dict]:
     """
     items = []
     for message in messages:
+        granted = permissions.has_permission(user, "staff.view") or message.author_id == getattr(user, "pk", None)
         items.append({
             "message": message,
             "own": message.author_id == getattr(user, "pk", None),
-            "body_html": (text_service.render_plain(message.text, link_staff=True,
+            "body_html": (text_service.render_plain(message.text, link_staff=granted,
                                                     chat=chat or message.chat, viewer=user)
                           if message.text else ""),
             "quote": message.quote,

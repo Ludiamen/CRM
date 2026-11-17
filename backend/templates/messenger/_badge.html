@@ -1,0 +1,5 @@
+<span id="menu-badge-messenger" data-count="{{ total }}" data-menu-live-badge hx-swap-oob="true"
+      class="badge text-bg-primary{% if not total %} d-none{% endif %}">{% if total > 99 %}99+{% else %}{{ total }}{% endif %}</span>
+<span id="chat-{{ chat.pk }}-unread" data-count="{{ count }}" hx-swap-oob="true"
+      class="messenger-row-unread badge{% if not count %} d-none{% endif %}">{% if count > 99 %}99+{% else %}{{ count }}{% endif %}</span>
+<span id="chat-{{ chat.pk }}-preview" hx-swap-oob="true" class="messenger-row-preview">{{ preview }}</span>

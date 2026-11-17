@@ -169,9 +169,10 @@ def test_send_enqueues_publish_event_to_notify_queue_on_commit(django_capture_on
         response = _send(author, chat, "Сообщение в очередь")
         assert response.status_code == 200
         assert _publish_jobs(chat.pk) == [], "задание поставлено до фиксации транзакции"
-        assert callbacks, "рассылка ставится в `transaction.on_commit`"
         message = _message(chat)
 
+    # Django 5.2 заполняет список захвата на выходе из `with` (как и в тестах ленты).
+    assert callbacks, "рассылка ставится в `transaction.on_commit`"
     for callback in callbacks:   # фиксация: `on_commit` ставит задание очереди
         callback()
 
@@ -395,7 +396,8 @@ def test_chat_delete_recipients_collected_before_cascade(django_capture_on_commi
     with django_capture_on_commit_callbacks(execute=False) as callbacks:
         response = creator.client.post(f"/messenger/chats/{chat_id}/delete/", {"confirm": "1"})
         assert response.status_code == 302
-        assert callbacks, "рассылка удаления ставится в `on_commit`"
+    # Django 5.2 заполняет список захвата на выходе из `with`.
+    assert callbacks, "рассылка удаления ставится в `on_commit`"
     for callback in callbacks:   # получатели уже сняты, строк чата в базе после фиксации нет
         callback()
 

@@ -16,7 +16,7 @@ from django.utils import timezone
 from apps.core.models import StoredFile
 from apps.core.services import files as core_files
 from apps.messenger.models import Chat, Message, MessageAttachment
-from apps.messenger.services import mentions, unread
+from apps.messenger.services import live, mentions, unread
 from apps.messenger.services.errors import MessengerError
 
 TEXT_LIMIT = 4000
@@ -54,6 +54,7 @@ def send(chat, author, text, quote=None, files=()) -> Message:
         _set_vector(message, clean)
         Chat.objects.filter(pk=chat.pk).update(last_message_at=now)
         unread.invalidate(None)
+        transaction.on_commit(lambda: live.enqueue(chat.pk, message.pk, "new", owner_id=author.pk))
     return message
 
 
@@ -69,6 +70,8 @@ def edit(message, author, text) -> Message:
         message.save(update_fields=["text", "edited_at"])
         _set_vector(message, clean)
         unread.invalidate(None)
+        transaction.on_commit(lambda: live.enqueue(message.chat_id, message.pk, "edit",
+                                                   owner_id=author.pk))
     return message
 
 
@@ -95,6 +98,8 @@ def delete(message, author) -> Message:
         _set_vector(message, "")
         _recalculate_last(message.chat_id)
         unread.invalidate(None)
+        transaction.on_commit(lambda: live.enqueue(message.chat_id, message.pk, "delete",
+                                                   owner_id=author.pk))
         if paths:
             transaction.on_commit(lambda: core_files.remove_paths(paths))
     return message

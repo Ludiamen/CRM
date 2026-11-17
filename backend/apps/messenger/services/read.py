@@ -10,6 +10,8 @@ from datetime import datetime
 from django.core.exceptions import PermissionDenied
 from django.utils import timezone
 
+from django.db import transaction
+
 from apps.core import events
 from apps.messenger.models import ChatRead, Message
 from apps.messenger.services import members, unread
@@ -45,7 +47,19 @@ def mark(chat, user, at=None) -> ChatRead:
         row.save(update_fields=["last_read_at"])
     unread.invalidate([user.pk])
     events.publish("object.viewed", object_ref=f"{OBJECT_TYPE}:{chat.pk}", user_id=user.pk)
+    _enqueue_read(chat, user)
     return row
+
+
+def _enqueue_read(chat, user) -> None:
+    """Кадр «Прочитали N из M» уходит участникам после фиксации (FR-659, 661)."""
+    from apps.messenger.services import live
+
+    message = (Message.objects.filter(chat=chat, deleted_at__isnull=True)
+               .order_by("-created_at", "-id").first())
+    message_id = message.pk if message is not None else None
+    owner_id = message.author_id if message is not None else None
+    transaction.on_commit(lambda: live.enqueue(chat.pk, message_id, "read", owner_id=owner_id))
 
 
 def line(chat, message) -> tuple[int, int]:
