@@ -19,11 +19,23 @@ def menu_items() -> list[dict]:
     ]
 
 
+def card_sections(viewer, target) -> list:
+    """Кнопка «Написать» в карточке коллеги: не себе и не уволенному (T-8214, CONTRACT-008 3.4, 12.6)."""
+    from apps.core import extensions
+
+    if target is None or viewer is None or target.pk == viewer.pk:
+        return []
+    if getattr(target, "state", "") == "dismissed":
+        return []
+    return [extensions.CardSection("messenger", "profile", 70, "messenger/_card_write.html", {})]
+
+
 def register_all() -> None:
-    """Зарегистрировать точки мессенджера: поле формы узла (T-8205) и пункты меню (T-8211)."""
+    """Зарегистрировать точки мессенджера: поле формы узла, меню и карточку сотрудника."""
     from apps.core import extensions
     from apps.messenger import unit_form
 
     for part in unit_form.unit_form_parts():
         extensions.register("unit_form_parts", part)
     extensions.register("menu_items", menu_items)
+    extensions.register("card_sections", card_sections)
