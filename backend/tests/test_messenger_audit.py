@@ -277,8 +277,8 @@ def test_application_role_has_no_update_or_delete_on_audit_table():
 def test_chat_deleted_records_title_members_and_created_at_only():
     """FR-648, FR-671 (CONTRACT-008, 8.1, решение К13): создатель удаляет групповой чат с историей
     (`POST .../delete/`, `confirm=1`) — одна запись `messenger.chat_deleted` на `messenger.chat` с номером чата и
-    действующим-создателем; в `before` ровно `chat_title`, `chat_members` и `chat_created_at` (время по Москве),
-    `after` пуст, текста переписки нет."""
+    действующим-создателем; в `after` ровно `chat_title`, `chat_members` и `chat_created_at` (время по Москве),
+    `before` пуст, текста переписки нет. Сторона снимка — решение владельца 2026-11-17 (совпадает с T-8105)."""
     creator = sm.make_user(full_name="Создатель Удаляемого Чата")
     first = sm.make_user(full_name="Участник Первый")
     second = sm.make_user(full_name="Участник Второй")
@@ -297,11 +297,11 @@ def test_chat_deleted_records_title_members_and_created_at_only():
     event = events[0]
     assert (event.object_type, event.object_id) == ("messenger.chat", str(chat_pk))
     assert event.actor_id == creator.user.pk
-    assert event.before == {"chat_title": GROUP_TITLE_MARK, "chat_members": 3,
-                            "chat_created_at": sm.moscow_text(created)}
-    assert isinstance(event.before["chat_members"], int)
-    assert re.fullmatch(r"\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}", event.before["chat_created_at"])
-    assert event.after == {}
+    assert event.after == {"chat_title": GROUP_TITLE_MARK, "chat_members": 3,
+                           "chat_created_at": sm.moscow_text(created)}
+    assert isinstance(event.after["chat_members"], int)
+    assert re.fullmatch(r"\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}", event.after["chat_created_at"])
+    assert event.before == {}
     assert MESSAGE_MARK not in _journal_dump([event]), "текст переписки попал в журнал"
 
 
