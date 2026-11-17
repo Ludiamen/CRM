@@ -1,0 +1,24 @@
+{% extends layout %}
+{% block title %}Настройки мессенджера{% endblock %}
+{% block content %}
+<div data-messenger-page="settings">
+  <header class="page-head"><h1 class="page-title">Настройки портала → Мессенджер</h1></header>
+  <form method="post" action="/settings/messenger/" novalidate>
+    {% csrf_token %}
+    <section class="card card-body mb-3">
+      <div class="mb-3">
+        <label class="form-label" for="id_messenger_retention_years">Хранить сообщения, лет</label>
+        <input class="form-control" id="id_messenger_retention_years" name="retention_years" type="number"
+               min="1" max="10" value="{{ row.retention_years }}">
+        <div class="form-text">Сообщения старше срока удаляет ночное задание.</div>
+      </div>
+      <div class="form-check mb-3">
+        <input class="form-check-input" id="id_messenger_general_chat" name="general_chat_enabled" type="checkbox"
+               {% if row.general_chat_enabled %}checked{% endif %}>
+        <label class="form-check-label" for="id_messenger_general_chat">Общий чат включён</label>
+      </div>
+      <button type="submit" class="btn btn-primary">Сохранить</button>
+    </section>
+  </form>
+</div>
+{% endblock %}

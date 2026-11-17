@@ -111,6 +111,13 @@
 > `chats.delete(..., snapshot=...)`. Фокусно **15 passed** (все `test_messenger_unit_form.py`, отдел 8);
 > весь `test_messenger_department.py` — 8 passed / 3 failed (только беседа T-8208 и `unread.counts` T-8211).
 > SDD 113/0/0, tools 140/140. Дальше — T-8206 («Общий чат» и настройки портала).
+> **Обновление 11 (T-8206 выполнена 2026-11-17):** `views/settings.py` — `GET/POST /settings/messenger/` под
+> `settings.portal` (403 раньше службы), сохранение галочки; `services/messenger_settings.py::set_general` —
+> `updated_at/by` и одна запись `messenger.general_changed` со словами «включён»/«выключен»; шаблон
+> `messenger/settings.html` (`[data-messenger-page="settings"]`, поле срока, галочка). Фокусно **3 passed**
+> (403 без права, страница, две записи журнала). Общий файл `test_messenger_general.py` + `test_messenger_settings.py`
+> — 3 passed / 15 failed; падения только из-за списка/беседы (T-8207/T-8208), отправки (T-8209), поиска (T-8219)
+> и срока хранения (T-8220). SDD 113/0/0, tools 140/140. Дальше — T-8207 (список чатов и вкладки).
 
 > **Актуальный краткий статус — 2026-11-12 21:00.** T-7260 **принята владельцем и отмечена `[x]`**;
 > открыт этап 4 (T-7300 → T-7301 → T-7302 → T-7303). Финальный полный сервер на финализированном source
