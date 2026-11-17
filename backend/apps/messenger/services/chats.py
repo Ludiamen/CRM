@@ -161,11 +161,12 @@ def leave(chat, user) -> None:
     ChatMember.objects.filter(pk=row.pk).update(left_at=timezone.now())
 
 
-def delete(chat, actor, *, audit_code: str = "messenger.chat_deleted") -> None:
+def delete(chat, actor, *, audit_code: str = "messenger.chat_deleted", snapshot: dict | None = None) -> None:
     """Удалить чат с историей одной транзакцией: файлы, эскизы, журнал без текста (FR-648, 671).
 
-    Снимок журнала — название, число строк состава и время создания; текстов сообщений в нём нет.
-    Файлы и эскизы стираются с диска после фиксации, отсутствующий файл — не ошибка.
+    Снимок журнала по умолчанию — название, число строк состава и время создания; чат отдела передаёт свой
+    (`chat_title` — имя узла, `unit_id`). Текстов сообщений в записи нет. Файлы и эскизы стираются с диска после
+    фиксации, отсутствующий файл — не ошибка.
     """
     if chat.kind == Chat.Kind.GENERAL:  # «Общий чат» не удаляется: его выключают настройкой (T-8206)
         raise PermissionDenied
@@ -180,7 +181,7 @@ def delete(chat, actor, *, audit_code: str = "messenger.chat_deleted") -> None:
             stored_ids.append(attachment.file_id)
             if attachment.thumb:
                 paths.append(pathlib.Path(django_settings.PROTECTED_ROOT) / attachment.thumb)
-        after = {
+        after = snapshot if snapshot is not None else {
             "chat_title": chat.title,
             "chat_members": ChatMember.objects.filter(chat=chat).count(),
             "chat_created_at": chat.created_at.astimezone(MOSCOW).strftime("%d.%m.%Y %H:%M"),

@@ -101,6 +101,16 @@
 > сторону не называет. Владелец выбрал: снимок (`chat_title`, `chat_members`, `chat_created_at`) — в **`after`**,
 > правка только в T-8106 (одно утверждение и строка докстроки), T-8105 не меняется. Код `chats.delete` уже пишет
 > `after`; правка проверена — тест T-8106 **1 passed**.
+> **Обновление 10 (T-8205 выполнена 2026-11-17):** `services/department.py` — `create` (одна строка отдела,
+> две системные записи, идемпотентно), `delete` (журнал `messenger.department_chat_deleted`: имя отдела и
+> `unit_id`), `on_unit_deleted` (журнал `messenger.unit_chat_deleted`); `services/page.py::chat_title` (личный —
+> ФИО, отдел — имя узла); `unit_form.py` — запись `unit_form_parts` подклассом `UnitFormPart` с
+> `__module__ = apps.messenger.unit_form` (снимается `without_messenger`), галочка «Создадим чат для всего
+> отдела» / «Чат отдела создан»; `extensions.py` регистрирует запись, `apps.py` подписан на `unit.deleted`;
+> `views/chats.py` — удаление чата отдела администратором (`settings.portal`), участнику 403, чужаку 404;
+> `chats.delete(..., snapshot=...)`. Фокусно **15 passed** (все `test_messenger_unit_form.py`, отдел 8);
+> весь `test_messenger_department.py` — 8 passed / 3 failed (только беседа T-8208 и `unread.counts` T-8211).
+> SDD 113/0/0, tools 140/140. Дальше — T-8206 («Общий чат» и настройки портала).
 
 > **Актуальный краткий статус — 2026-11-12 21:00.** T-7260 **принята владельцем и отмечена `[x]`**;
 > открыт этап 4 (T-7300 → T-7301 → T-7302 → T-7303). Финальный полный сервер на финализированном source

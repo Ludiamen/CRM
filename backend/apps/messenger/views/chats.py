@@ -21,8 +21,10 @@ from django.shortcuts import redirect
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.core.models import User, UserState
+from apps.core.services import permissions
 from apps.core.views.common import render_page
-from apps.messenger.services import chats, members
+from apps.messenger.models import Chat
+from apps.messenger.services import chats, department, members
 from apps.messenger.services.errors import MessengerError
 
 PEOPLE_LIMIT = 20
@@ -157,11 +159,29 @@ def leave(request, chat_id: int):
 @login_required
 @require_POST
 def delete(request, chat_id: int):
-    """`POST /messenger/chats/<id>/delete/` — создатель группового чата после `confirm=1` (FR-648).
+    """`POST /messenger/chats/<id>/delete/` — создатель группового чата или администратор портала для отдела.
 
-    Чат отдела удаляет администратор портала — T-8205; «Общий чат» не удаляется (T-8206).
+    Групповой чат удаляет создатель-участник (FR-648), чат отдела — `settings.portal` с подтверждением
+    (FR-672); невидимый чужой чат — 404, действие без права — 403 (10.1). «Общий чат» не удаляется.
     """
-    chat = members.get_chat(request.user, chat_id)
+    try:
+        chat = members.get_chat(request.user, chat_id)
+    except Http404:
+        # Администратор портала не входит в состав чата отдела, но удаляет его со страницы настроек.
+        if not permissions.has_permission(request.user, "settings.portal"):
+            raise
+        chat = Chat.objects.filter(pk=chat_id, kind=Chat.Kind.DEPARTMENT).first()
+        if chat is None:
+            raise
+
+    if chat.kind == Chat.Kind.DEPARTMENT:
+        if not permissions.has_permission(request.user, "settings.portal"):
+            raise PermissionDenied
+        if request.POST.get("confirm") != "1":
+            return _confirm_page(request, chat, "delete")
+        department.delete(chat, request.user)
+        return redirect("/messenger/")
+
     if chat.kind != chats.Chat.Kind.GROUP:
         raise PermissionDenied
     if chat.created_by_id != request.user.pk or not members.is_member(request.user, chat):
