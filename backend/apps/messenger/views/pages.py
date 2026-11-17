@@ -104,6 +104,7 @@ def message_items(messages, user, chat=None) -> list[dict]:
                           if message.text else ""),
             "quote": message.quote,
             "quote_text": _quote_text(message.quote),
+            "files": list(message.files.all()),
         })
     return items
 

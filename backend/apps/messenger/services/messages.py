@@ -16,7 +16,7 @@ from django.utils import timezone
 from apps.core.models import StoredFile
 from apps.core.services import files as core_files
 from apps.messenger.models import Chat, Message, MessageAttachment
-from apps.messenger.services import live, mentions, unread
+from apps.messenger.services import files as file_service, live, mentions, unread
 from apps.messenger.services.errors import MessengerError
 
 TEXT_LIMIT = 4000
@@ -50,7 +50,7 @@ def send(chat, author, text, quote=None, files=()) -> Message:
         message = Message.objects.create(chat=chat, author=author, is_system=False, text=clean,
                                          quote=quoted, created_at=now)
         if attachment_ids:
-            _bind_files(message, author, attachment_ids)
+            file_service.bind(author, attachment_ids, message)
         _set_vector(message, clean)
         Chat.objects.filter(pk=chat.pk).update(last_message_at=now)
         unread.invalidate(None)
@@ -132,14 +132,6 @@ def _file_ids(values) -> list[int]:
     if len(result) > FILES_LIMIT:
         raise MessengerError("files_limit", field="files")
     return result
-
-
-def _bind_files(message, author, attachment_ids: list[int]) -> None:
-    """Привязывает непривязанные файлы автора; чужой или уже привязанный — отказ `file_missing` (FR-662)."""
-    rows = list(MessageAttachment.objects.filter(pk__in=attachment_ids, uploaded_by=author, message__isnull=True))
-    if len(rows) != len(attachment_ids):
-        raise MessengerError("file_missing", field="files")
-    MessageAttachment.objects.filter(pk__in=[row.pk for row in rows]).update(message=message)
 
 
 def _set_vector(message, text: str) -> None:

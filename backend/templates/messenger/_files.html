@@ -1,0 +1,15 @@
+{% for item in files %}
+  <span data-messenger-file="{{ item.pk }}" data-file-state="{{ item.file.status }}" class="messenger-file">
+    {% if item.file.status == "clean" and item.thumb %}
+      <a href="/messenger/files/{{ item.pk }}/"><img src="/messenger/files/{{ item.pk }}/thumb/" alt="{{ item.name }}" loading="lazy"></a>
+    {% elif item.file.status == "clean" %}
+      <span class="messenger-file-name">{{ item.name }}</span>
+      <span class="messenger-file-size">{{ item.file.size }}</span>
+      <a href="/messenger/files/{{ item.pk }}/">Скачать</a>
+    {% elif item.file.status == "pending" %}
+      <span class="messenger-file-name">{{ item.name }}</span> <span>проверяется</span>
+    {% else %}
+      <span class="messenger-file-name">{{ item.name }}</span> <span>карантин</span>
+    {% endif %}
+  </span>
+{% endfor %}

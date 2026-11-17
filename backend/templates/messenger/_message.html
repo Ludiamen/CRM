@@ -12,6 +12,7 @@
     </header>
     {% if item.quote %}<blockquote class="messenger-quote" data-quote-id="{{ item.quote.pk }}">{{ item.quote_text }}</blockquote>{% endif %}
     <div class="messenger-message-text">{{ item.body_html }}</div>
+    {% if item.files %}<div class="messenger-message-files">{% include "messenger/_files.html" with files=item.files %}</div>{% endif %}
     {% if item.message.pk == read_message_id and read_text %}<p id="messenger-read" class="messenger-read">{{ read_text }}</p>{% endif %}
   {% endif %}
 </article>

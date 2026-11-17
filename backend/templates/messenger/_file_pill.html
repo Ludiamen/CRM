@@ -1,0 +1,5 @@
+<span data-messenger-file="{{ item.pk }}" data-file-state="{{ item.file.status }}" class="messenger-file">
+  <input type="hidden" name="files" value="{{ item.pk }}">
+  <span class="messenger-file-name">{{ item.name }}</span>
+  <button type="button" data-action="file-remove" aria-label="Убрать файл">×</button>
+</span>

@@ -39,3 +39,6 @@ def register_all() -> None:
         extensions.register("unit_form_parts", part)
     extensions.register("menu_items", menu_items)
     extensions.register("card_sections", card_sections)
+    from apps.messenger.services import files as file_service
+
+    extensions.register("file_purposes", file_service.file_purposes)

@@ -20,7 +20,7 @@ def history(chat, before=None, *, limit: int = HISTORY_LIMIT):
     ранние. Без `before` — последние `limit` сообщений. Удалённые и системные входят: удалённое показывается
     пометкой, системная запись — своим текстом (FR-649, 657).
     """
-    queryset = Message.objects.filter(chat=chat).select_related("author", "quote")
+    queryset = Message.objects.filter(chat=chat).select_related("author", "quote").prefetch_related("files")
     if before is not None:
         at, message_id = before
         queryset = queryset.filter(Q(created_at__lt=at) | Q(created_at=at, id__lt=message_id))
