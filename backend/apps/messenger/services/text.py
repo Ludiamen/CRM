@@ -37,9 +37,11 @@ def _chat_title(chat_id: int) -> str | None:
     return core_text.clean(str(page.chat_title(chat)))
 
 
-def _person_html(match, link_staff: bool) -> str:
+def _person_html(match, link_staff: bool, allowed=None) -> str:
     token = match.group(0)
     number = int(match.group(1))
+    if allowed is not None and number not in allowed:
+        return html.escape(token, quote=True)
     name = _name(number)
     if name is None:
         return html.escape(token, quote=True)
@@ -49,9 +51,11 @@ def _person_html(match, link_staff: bool) -> str:
     return f'<span data-mention="{number}">{safe_name}</span>'
 
 
-def _chat_html(match, link_staff: bool) -> str:
+def _chat_html(match, link_staff: bool, viewer=None) -> str:
     token = match.group(0)
     number = int(match.group(1))
+    if not _chat_visible(number, viewer):
+        return html.escape(token, quote=True)
     title = _chat_title(number)
     if title is None:
         return html.escape(token, quote=True)
@@ -61,9 +65,35 @@ def _chat_html(match, link_staff: bool) -> str:
     return f'<span data-mention="c{number}">«{safe_title}»</span>'
 
 
-def render_plain(text: str, *, link_staff: bool):
-    """Безопасный HTML: экранирование, ссылки `http`/`https`/`mailto`, абзацы, упоминания людей и чатов."""
-    return core_text.render_plain(text, [(PERSON, _person_html), (CHAT, _chat_html)], link_staff=link_staff)
+def _chat_visible(number: int, viewer) -> bool:
+    """Упоминание чата раскрывается, если чат виден смотрящему; без смотрящего — любой существующий (общая обёртка)."""
+    if viewer is None:
+        return True
+    from apps.messenger.services import members
+
+    return members.visible_chats(viewer).filter(pk=number).exists()
+
+
+def render_plain(text: str, *, link_staff: bool, chat=None, viewer=None):
+    """Безопасный HTML: экранирование, ссылки, абзацы, упоминания людей и чатов.
+
+    С `chat` раскрываются только участники этого чата (маркер постороннего остаётся текстом, FR-655); с
+    `viewer` упоминание чата раскрывается, только если чат ему виден. Без `chat` (общая обёртка) раскрывается
+    любой известный номер — так её проверяет `test_messenger_text.py`.
+    """
+    allowed_people = None
+    if chat is not None:
+        from apps.messenger.services import members
+
+        allowed_people = members.members(chat)
+
+    def person(match, link_staff: bool) -> str:
+        return _person_html(match, link_staff, allowed_people)
+
+    def chat_link(match, link_staff: bool) -> str:
+        return _chat_html(match, link_staff, viewer)
+
+    return core_text.render_plain(text, [(PERSON, person), (CHAT, chat_link)], link_staff=link_staff)
 
 
 def snippet(text: str, limit: int, *, expand=None) -> str:

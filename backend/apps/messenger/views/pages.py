@@ -18,6 +18,7 @@ from apps.core.views.common import render_page
 from apps.messenger.models import Chat
 from apps.messenger.services import chats, members
 from apps.messenger.services import page as page_service
+from apps.messenger.services import text as text_service
 from apps.messenger.views import chats as chat_views
 
 # Ключи строки запроса страницы и списка — белый список (CONTRACT-008, 10.1).
@@ -75,10 +76,36 @@ def _chat_context(request, chat, messages, more) -> dict:
         "chat": chat,
         "title": page_service.chat_title(chat, request.user),
         "member_names": _member_names(chat),
-        "messages": messages,
+        "items": message_items(messages, request.user, chat),
         "more_url": _more_url(chat, messages) if more else "",
         "ws_url": f"/ws/messenger/?chat={chat.pk}",
     }
+
+
+def message_items(messages, user, chat=None) -> list[dict]:
+    """Сообщения для шаблона: свой/чужой, готовый безопасный текст и цитата (5.2, 12.3).
+
+    В беседе упоминание человека — всегда ссылка на карточку (`a[data-mention][href="/staff/<id>/"]`, 12.6).
+    """
+    items = []
+    for message in messages:
+        items.append({
+            "message": message,
+            "own": message.author_id == getattr(user, "pk", None),
+            "body_html": (text_service.render_plain(message.text, link_staff=True,
+                                                    chat=chat or message.chat, viewer=user)
+                          if message.text else ""),
+            "quote": message.quote,
+            "quote_text": _quote_text(message.quote),
+        })
+    return items
+
+
+def _quote_text(quote) -> str:
+    """Текст цитаты: у удалённого исходного — «Сообщение удалено» (FR-654, 657)."""
+    if quote is None:
+        return ""
+    return "Сообщение удалено" if quote.deleted_at is not None else quote.text
 
 
 def _more_url(chat, messages) -> str:

@@ -1,0 +1,6 @@
+{% for row in rows %}
+  <button type="button" class="messenger-mention-row" data-mention-value="{{ row.value }}" data-mention-label="{{ row.label }}">
+    <span class="messenger-mention-name">{{ row.label }}</span>
+    {% if row.unit %}<span class="messenger-mention-unit">{{ row.unit }}</span>{% endif %}
+  </button>
+{% endfor %}
