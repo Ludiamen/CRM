@@ -1,0 +1,20 @@
+<ol id="messenger-list" class="messenger-list">
+  {% for row in rows %}
+    <li data-chat-id="{{ row.id }}">
+      <a class="messenger-row" href="/messenger/chats/{{ row.id }}/">
+        <span class="messenger-row-title">{{ row.title }}</span>
+        <span class="messenger-row-preview" id="chat-{{ row.id }}-preview">{{ row.preview }}</span>
+        <time data-at datetime="{{ row.at|date:'c' }}">{{ row.at|date:'d.m.Y H:i' }}</time>
+        <span class="messenger-row-unread badge{% if not row.has_unread %} d-none{% endif %}" id="chat-{{ row.id }}-unread"
+              data-count="{{ row.unread }}">{% if row.unread > 99 %}99+{% else %}{{ row.unread }}{% endif %}</span>
+      </a>
+    </li>
+  {% endfor %}
+</ol>
+{% if not rows %}
+  {% if q %}
+    <p data-empty-state="messenger-search">Ничего не найдено</p>
+  {% else %}
+    <p data-empty-state="messenger">Чатов пока нет: напишите коллеге из карточки сотрудника</p>
+  {% endif %}
+{% endif %}

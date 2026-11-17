@@ -14,7 +14,12 @@
         {% for field, error in errors.items %}{% include "messenger/_form_error.html" with error=error field=field %}{% endfor %}
       </div>
     {% endif %}
-    <p data-empty-state="messenger">Чатов пока нет: напишите коллеге из карточки сотрудника</p>
+    <nav class="messenger-tabs">
+      <a href="/messenger/" data-messenger-tab="chats" aria-selected="true">Чаты</a>
+      <a href="/messenger/notifications/" data-messenger-tab="notifications" aria-selected="false">Уведомления</a>
+    </nav>
+    {% include "messenger/_search.html" %}
+    {% include "messenger/_list.html" %}
   {% endif %}
 </div>
 {% endblock %}
