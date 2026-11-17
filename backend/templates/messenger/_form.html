@@ -2,9 +2,10 @@
   <form id="messenger-form" method="post" action="/messenger/chats/{{ chat.pk }}/messages/" data-chat-id="{{ chat.pk }}">
     {% csrf_token %}
     <input type="hidden" name="quote" value="">
+    {% for field, error in errors.items %}{% if field != "text" %}{% include "messenger/_form_error.html" with error=error field=field %}{% endif %}{% endfor %}
     {% include "messenger/_form_error.html" with error=errors.text field="text" %}
     <label class="visually-hidden" for="id_messenger_text">Сообщение</label>
-    <textarea id="id_messenger_text" name="text" class="form-control" placeholder="Напишите сообщение"></textarea>
+    <textarea id="id_messenger_text" name="text" class="form-control" placeholder="Напишите сообщение">{{ text }}</textarea>
     <button type="submit" class="btn btn-primary">Отправить</button>
   </form>
 {% else %}

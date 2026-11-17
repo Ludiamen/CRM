@@ -486,7 +486,9 @@ def test_send_updates_last_message_at_and_list_order(clock):
     assert older.pk in order and newer.pk in order, order
     assert order.index(newer.pk) < order.index(older.pk), "свежий чат выше старого"
 
-    sent_at = messenger.moscow(2026, 3, 10, 14, 5)
+    # 13:05, а не 14:05: между GET списка в 13:00 и отправкой не должно быть больше таймаута бездействия
+    # (30 минут), иначе POST получает HX-Redirect на вход; сценарий «отправка поднимает чат» тот же.
+    sent_at = messenger.moscow(2026, 3, 10, 13, 5)
     clock.set(sent_at)
     response = _send(author, older, "Свежее сообщение")
     assert response.status_code == 200 and _q(_tree(response), data_error=True) == []

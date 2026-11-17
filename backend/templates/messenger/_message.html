@@ -1,9 +1,16 @@
-<article id="m{{ message.pk }}" data-message-id="{{ message.pk }}"
-         data-own="{% if message.author_id == request.user.pk %}1{% else %}0{% endif %}"
-         class="messenger-message{% if message.is_system %} messenger-message-system{% endif %}">
-  <header class="messenger-message-head">
-    <span class="messenger-message-author">{% if message.is_system %}Системная запись{% else %}{{ message.author.full_name }}{% endif %}</span>
-    <time data-at datetime="{{ message.created_at|date:'c' }}">{{ message.created_at|date:'d.m.Y H:i' }}</time>
-  </header>
-  <p class="messenger-message-text">{{ message.text }}</p>
+<article id="m{{ item.message.pk }}" data-message-id="{{ item.message.pk }}" data-own="{% if item.own %}1{% else %}0{% endif %}"
+         class="messenger-message{% if item.message.is_system %} messenger-message-system{% endif %}{% if item.message.deleted_at %} messenger-message-deleted{% endif %}">
+  {% if item.message.deleted_at %}
+    <p data-messenger-deleted class="messenger-message-deleted-mark">Сообщение удалено
+      <time data-at datetime="{{ item.message.deleted_at|date:'c' }}">{{ item.message.deleted_at|date:'d.m.Y H:i' }}</time></p>
+  {% else %}
+    <header class="messenger-message-head">
+      <span class="messenger-message-author">{% if item.message.is_system %}Системная запись{% else %}{{ item.message.author.full_name }}{% endif %}</span>
+      <time data-at datetime="{{ item.message.created_at|date:'c' }}">{{ item.message.created_at|date:'d.m.Y H:i' }}</time>
+      {% if item.message.edited_at %}<span data-messenger-edited>изменено
+        <time data-at datetime="{{ item.message.edited_at|date:'c' }}">{{ item.message.edited_at|date:'d.m.Y H:i' }}</time></span>{% endif %}
+    </header>
+    {% if item.quote %}<blockquote class="messenger-quote" data-quote-id="{{ item.quote.pk }}">{{ item.quote_text }}</blockquote>{% endif %}
+    <div class="messenger-message-text">{{ item.body_html }}</div>
+  {% endif %}
 </article>

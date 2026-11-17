@@ -5,7 +5,7 @@ T-8203: страница «Написать» (`/messenger/?to=`), поиск л
 """
 from django.urls import path
 
-from apps.messenger.views import chats, pages, settings
+from apps.messenger.views import chats, messages, pages, settings
 
 app_name = "messenger"
 
@@ -16,7 +16,9 @@ urlpatterns = [
     path("messenger/people/", chats.people, name="people"),
     path("messenger/chats/", chats.create, name="chats"),
     path("messenger/chats/<int:chat_id>/", pages.chat, name="chat"),
-    path("messenger/chats/<int:chat_id>/messages/", pages.history, name="messages"),
+    path("messenger/chats/<int:chat_id>/messages/", messages.messages_view, name="messages"),
+    path("messenger/messages/<int:message_id>/edit/", messages.edit, name="message_edit"),
+    path("messenger/messages/<int:message_id>/delete/", messages.delete, name="message_delete"),
     path("messenger/chats/<int:chat_id>/members/", chats.members_change, name="members"),
     path("messenger/chats/<int:chat_id>/leave/", chats.leave, name="leave"),
     path("messenger/chats/<int:chat_id>/delete/", chats.delete, name="delete"),
