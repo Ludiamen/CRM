@@ -23,6 +23,7 @@ def audit_labels() -> dict:
             "unit_id": "номер подразделения",
             "years": "срок хранения, лет",
             "messages": "Удалено по сроку, сообщений",
+            "general_chat_enabled": "общий чат",
         },
         "object_types": {"messenger.chat": "чат мессенджера", "messenger.settings": "настройки мессенджера"},
         "values": {},

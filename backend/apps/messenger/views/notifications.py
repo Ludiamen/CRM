@@ -5,6 +5,7 @@
 `notify.services.pages` (фильтр, 50 на страницу, названия видов), поэтому строки, «Прочитать все» и страницы
 совпадают с прежним списком; смена фильтра и страницы идёт фрагментом `/notifications/list/`.
 """
+from django.apps import apps
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_GET
 
@@ -18,5 +19,9 @@ URL = "/messenger/notifications/"
 @require_GET
 def notifications(request):
     """`GET /messenger/notifications/` — вкладка с первой страницей потока (50, фильтр `f`)."""
+    if not apps.is_installed("apps.notify"):
+        from django.http import Http404
+
+        raise Http404
     return render_page(request, "messenger/notifications.html",
                        notify_pages.list_context(request.user, request.GET))
