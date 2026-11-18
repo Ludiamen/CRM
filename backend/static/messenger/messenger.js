@@ -141,3 +141,29 @@
     }
   });
 })();
+
+/* История: сохранение места при догрузке старых и «Назад» на телефоне (T-8222). */
+(function () {
+  "use strict";
+
+  var scroll = null;
+
+  document.body.addEventListener("htmx:beforeRequest", function (event) {
+    var box = document.getElementById("messenger-messages");
+    var target = event.detail && event.detail.elt;
+    if (!box || !target || !box.contains(target)) return;
+    scroll = {node: box, height: box.scrollHeight, top: box.scrollTop};
+  });
+
+  document.body.addEventListener("htmx:afterSwap", function (event) {
+    if (!scroll) return;
+    var box = document.getElementById("messenger-messages");
+    if (!box || box !== scroll.node) {
+      scroll = null;
+      return;
+    }
+    var added = box.scrollHeight - scroll.height;
+    if (added > 0) box.scrollTop = scroll.top + added;
+    scroll = null;
+  });
+})();

@@ -117,6 +117,7 @@ def protected_table(victim, role):
         ("get", "/audit/", "audit.view"), ("get", "/audit/export.csv", "audit.view"),
         ("get", "/settings/portal/", "settings.portal"), ("post", "/settings/portal/", "settings.portal"),
         ("get", "/settings/feed/", "settings.portal"), ("post", "/settings/feed/", "settings.portal"),
+        ("get", "/settings/messenger/", "settings.portal"), ("post", "/settings/messenger/", "settings.portal"),
         ("get", "/settings/mail-log/", "settings.portal"),
         ("get", "/settings/security/", "settings.security"), ("post", "/settings/security/", "settings.security"),
         ("get", "/settings/notifications/", "notify.manage"), ("post", "/settings/notifications/", "notify.manage"),

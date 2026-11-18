@@ -85,15 +85,10 @@ def _back_url(f: str, page: str = "") -> str:
 
 
 def _list_context(request) -> dict:
-    """Данные потока: фильтр и страница (T-8218 — общие для страницы и фрагмента)."""
-    f = _filter(request.GET.get("f"))
-    notes = Notification.objects.filter(user_id=request.user.pk)
-    if f:
-        notes = notes.filter(read_at__isnull=True)
-    page = Paginator(notes.order_by("-created_at", "-pk"), PAGE_SIZE).get_page(
-        _page_number(request.GET.get("page")) or 1)
-    _with_titles(page.object_list)
-    return {"page": page, "filter_value": f, "page_number": page.number}
+    """Данные потока: фильтр и страница (общая служба `notify.services.pages`, T-8218)."""
+    from apps.notify.services import pages as pages_service
+
+    return pages_service.list_context(request.user, request.GET)
 
 
 @login_required

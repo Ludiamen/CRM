@@ -286,7 +286,7 @@ def test_catalog_eight_feed_kinds_codes_titles_module_order_available_events_coa
     codes = [kind.code for kind in catalog]
     first = codes.index(fd.FEED_CODES[0])
     assert codes[first:first + 8] == fd.FEED_CODES, "восемь видов идут подряд"
-    assert codes[first - 1] == "lists.deadline" and codes[first + 8].startswith("core.")
+    assert codes[first - 1] == "lists.deadline" and codes[first + 8].startswith("messenger.")
     for user in (fd.as_plain().user, fd.as_writer().user, support.make_employee()):
         assert all(kind.available(user) for kind in feed_kinds)
     assert [kind.code for kind in kinds.for_event("feed.anything")] == []
@@ -865,7 +865,7 @@ def test_notification_text_with_markup_escaped_on_display():
                                              "feed.post:1")])
     assert direct, "уведомление с сырой разметкой в тексте создано"
     client = support.logged_in(target)
-    for path in ("/notifications/", "/notifications/bell/"):
+    for path in ("/messenger/notifications/", "/notifications/bell/"):
         response = client.get(path)
         assert response.status_code == 200, path
         body = response.content.decode("utf-8")

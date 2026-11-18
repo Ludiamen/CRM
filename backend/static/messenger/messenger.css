@@ -146,3 +146,27 @@
     grid-column: 1 / -1;
   }
 }
+
+/* Узкий экран: перенос длинных слов и ссылок, эскизы не шире колонки (FR-673, NFR-702). */
+.messenger-message-text, .messenger-quote, .messenger-file-name, .messenger-row-title, .messenger-row-preview {
+  overflow-wrap: anywhere;
+}
+
+.messenger-message-files img {
+  max-width: 100%;
+  height: auto;
+}
+
+#messenger-form {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 899px) {
+  .messenger-chat-head .page-title {
+    font-size: 1.15rem;
+  }
+
+  .messenger-messages {
+    max-height: none;
+  }
+}

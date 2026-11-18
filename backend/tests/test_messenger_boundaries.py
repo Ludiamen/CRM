@@ -23,6 +23,7 @@ APP = "apps.messenger"
 PREVIOUS_APPS = ("core", "org", "notify", "feed")
 ORG_STRUCTURE = "apps.org.services.structure"
 DISPATCH = "apps.notify.services.dispatch"
+NOTIFY_PAGES = "apps.notify.services.pages"
 LIVE = "apps.notify.services.live"
 MESSENGER_MODELS = ("Chat", "ChatMember", "ChatRead", "Message", "MessageAttachment", "MessengerSettings")
 # POINTS ядра до среза 008 (CONTRACT-008, 3.1): прежние восемнадцать имён в прежнем порядке
@@ -231,7 +232,8 @@ def test_messenger_does_not_import_org_notify_feed_models():
     assert _imported_anywhere(ORG_STRUCTURE), "`messenger` не использует `apps.org.services.structure`"
 
     def bad_notify(name):
-        return _under(name, "apps.notify") and not (_under(name, DISPATCH) or _under(name, LIVE))
+        return _under(name, "apps.notify") and not (_under(name, DISPATCH) or _under(name, LIVE)
+                                                          or _under(name, NOTIFY_PAGES))
 
     _check_scanner(bad_notify, ["apps", "messenger", "services"],
                    ("from apps.notify.services import kinds", "import apps.notify.models", "from apps.notify import tasks",

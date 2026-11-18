@@ -467,13 +467,17 @@ def test_asgi_websocket_patterns_include_notify_routes_and_feed_routing_list_whe
     import config.asgi as asgi
     from apps.feed import routing as feed_routing
     from apps.feed.consumers import FeedConsumer
+    from apps.messenger import routing as messenger_routing
     from apps.notify import routing as notify_routing
 
     patterns = asgi.websocket_urlpatterns
-    assert patterns == list(notify_routing.websocket_urlpatterns) + list(feed_routing.websocket_urlpatterns)
-    assert _route_texts(patterns)[-1] == "^ws/feed/$" and "ws/notify/" in _route_texts(patterns)
-    assert getattr(patterns[-1].callback, "consumer_class", None) is FeedConsumer
-    assert patterns[-1].pattern.match("ws/feed/") is not None
+    assert patterns == (list(notify_routing.websocket_urlpatterns) + list(feed_routing.websocket_urlpatterns)
+                        + list(messenger_routing.websocket_urlpatterns))
+    texts = _route_texts(patterns)
+    assert texts[-1] == "ws/messenger/" and "^ws/feed/$" in texts and "ws/notify/" in texts
+    feed_index = texts.index("^ws/feed/$")
+    assert getattr(patterns[feed_index].callback, "consumer_class", None) is FeedConsumer
+    assert patterns[feed_index].pattern.match("ws/feed/") is not None
     source = re.sub(r"\s+", "", (BACKEND_DIR / "config" / "asgi.py").read_text(encoding="utf-8"))
     assert re.search(r"AllowedHostsOriginValidator\(AuthMiddlewareStack\(URLRouter\((?:[\w.]+\.)?websocket_urlpatterns\)\)\)",
                      source), "в маршрутизатор идёт переменная websocket_urlpatterns"
@@ -486,12 +490,14 @@ def test_asgi_without_feed_has_no_ws_feed_route_and_ws_notify_as_before():
     from channels.routing import ProtocolTypeRouter
     from channels.security.websocket import OriginValidator
 
+    from apps.messenger import routing as messenger_routing
     from apps.notify import routing as notify_routing
     from apps.notify.consumers import NotifyConsumer
 
     with feed.reload_asgi_without_feed() as module:
         patterns = module.websocket_urlpatterns
-        assert _route_texts(patterns) == _route_texts(notify_routing.websocket_urlpatterns) == ["ws/notify/"]
+        assert _route_texts(patterns) == (_route_texts(notify_routing.websocket_urlpatterns)
+                                          + _route_texts(messenger_routing.websocket_urlpatterns)) == ["ws/notify/", "ws/messenger/"]
         assert not any("feed" in text for text in _route_texts(patterns))
         assert getattr(patterns[0].callback, "consumer_class", None) is NotifyConsumer
         assert isinstance(module.application, ProtocolTypeRouter)

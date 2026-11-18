@@ -33,21 +33,24 @@ def card_sections(viewer, target) -> list:
 def register_all() -> None:
     """Зарегистрировать точки мессенджера: поле формы узла, меню и карточку сотрудника."""
     from apps.core import extensions
-    from apps.messenger import unit_form
 
-    for part in unit_form.unit_form_parts():
-        extensions.register("unit_form_parts", part)
     extensions.register("menu_items", menu_items)
     extensions.register("card_sections", card_sections)
-    from apps.messenger.services import files as file_service
-
-    extensions.register("file_purposes", file_service.file_purposes)
     from apps.messenger import notify_kinds
 
     extensions.register("notification_kinds", notify_kinds.notification_kinds)
     from apps.messenger.services import search as search_service
 
     extensions.register("search_providers", search_service.search_providers)
+    from apps.messenger.services import files as file_service
+
+    extensions.register("file_purposes", file_service.file_purposes)
     from apps.messenger import audit_labels
 
     extensions.register("audit_labels", audit_labels.audit_labels)
+    from apps.messenger import unit_form
+
+    extensions.register("unit_form_parts", unit_form.unit_form_parts())
+    from apps.messenger import stand
+
+    extensions.register("stand_reset", stand.stand_reset)  # последней: сброс зовёт функции в обратном порядке

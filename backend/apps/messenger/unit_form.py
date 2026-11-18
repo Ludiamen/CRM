@@ -45,6 +45,17 @@ def on_saved(unit, post, actor, ip=None) -> None:
     department.create(unit, actor)
 
 
-def unit_form_parts() -> list:
-    """Записи точки `unit_form_parts` от мессенджера: одна — чат отдела, порядок 10 (CONTRACT-008, 3.4)."""
-    return [ChatUnitFormPart(key=KEY, order=ORDER, render=render, on_saved=on_saved)]
+class UnitFormRegistration(ChatUnitFormPart):
+    """Регистрация точки: сама запись `UnitFormPart`, вызываемая как функция (для `org` — `.order`/`render`)."""
+
+    @property
+    def __name__(self) -> str:
+        return "form_parts"
+
+    def __call__(self) -> list:
+        return [self]
+
+
+def unit_form_parts():
+    """Регистрация точки `unit_form_parts`: одна запись — чат отдела, порядок 10 (CONTRACT-008, 3.4)."""
+    return UnitFormRegistration(key=KEY, order=ORDER, render=render, on_saved=on_saved)

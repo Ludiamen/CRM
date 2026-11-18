@@ -336,7 +336,7 @@ def test_feed_registers_eight_notification_kinds_file_purpose_audit_labels_and_s
     assert {k.module for k in kinds} == {feed.FEED_MODULE}
     assert [p.purpose for p in _own("file_purposes")[0]()] == ["feed"]
     assert set(_own("audit_labels")[0]()) >= {"actions", "fields", "object_types", "values"}
-    assert extensions.registered("stand_reset")[-1] is _own("stand_reset")[0], "stand_reset ленты не последний"
+    assert extensions.registered("stand_reset")[-2] is _own("stand_reset")[0], "stand_reset ленты не предпоследний"
     used = {point for point in extensions.POINTS if _own(point)}
     assert used == FEED_POINTS, f"точки с регистрациями feed: {sorted(used)}"
 
@@ -421,7 +421,7 @@ def test_menu_without_feed_has_no_feed_items_and_home_item_first():
     with feed.without_feed():
         menu = permissions.menu_for(admin)
         html = client.get("/me/").content.decode()
-    assert [m for m in menu if m["title"] in ("Лента", "Настройки ленты") or "live_badge" in m
+    assert [m for m in menu if m["title"] in ("Лента", "Настройки ленты")
             or m["url"] == "/settings/feed/"] == []
     assert len(menu) == len(full) - 2, "прочие пункты меню изменились"
     assert [m["url"] for m in full if m["url"] != "/settings/feed/" and m["title"] != "Лента"] == [m["url"] for m in menu]
@@ -488,8 +488,8 @@ def test_other_modules_pages_render_without_feed():
     безопасность, списки, база знаний, заявки, структура, уведомления, поиск."""
     admin = support.make_admin()
     client = support.logged_in(admin)
-    pages = ("/me/", "/me/security/", "/lists/", "/kb/", "/tickets/", "/structure/", "/notifications/",
-             f"/search/?q={WORD}")
+    pages = ("/me/", "/me/security/", "/lists/", "/kb/", "/tickets/", "/structure/",
+             "/messenger/notifications/", f"/search/?q={WORD}")
     with feed.without_feed():
         responses = [(path, client.get(path)) for path in pages]
     for path, response in responses:

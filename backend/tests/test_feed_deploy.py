@@ -257,7 +257,7 @@ def test_previous_eighteen_cron_entries_keep_names_and_minutes():
             assert item["interval"] == expected and item["cron"] is None, f"{name}: интервал {item['interval']}"
         else:
             assert item["cron"] == expected and item["interval"] is None, f"{name}: cron {item['cron']!r}"
-    assert len(entries) - len(PREVIOUS_CRON) == 2, "кроме прежних должны быть ровно две записи"
+    assert len(entries) - len(PREVIOUS_CRON) == 3, "кроме прежних: две записи ленты и одна мессенджера"
 
 
 def test_feed_urls_are_included_under_is_installed_guard():
@@ -282,8 +282,8 @@ def test_feed_urls_are_included_under_is_installed_guard():
 def _check_feed_files_location(name):
     """Общая проверка для двух файлов: ровно один `location` с 25m — шаблон `^/feed/files/$` (загрузка одного файла);
     адреса записей и файлов под него не подпадают; общий предел 6m не менялся; с 55m — прежние четыре (раздел 1.2)."""
-    found = feed_files_locations(name)
-    assert len(found) == 1, f"{name}: location с client_max_body_size 25m — {len(found)}, нужен один"
+    found = [item for item in feed_files_locations(name) if item[0] == FEED_FILES_PATTERN]
+    assert len(found) == 1, f"{name}: location ленты с client_max_body_size 25m — {len(found)}, нужен один"
     pattern, body = found[0]
     assert pattern == FEED_FILES_PATTERN, f"{name}: шаблон {pattern!r}"
     assert re.search(pattern, "/feed/files/")
@@ -291,7 +291,7 @@ def _check_feed_files_location(name):
         assert not re.search(pattern, other), f"{name}: {other} попал под шаблон загрузки"
     top = uncommented(deploy_text(name))
     assert re.search(r"^\s{4}client_max_body_size 6m;", top, re.M), f"{name}: общий предел 6m изменён"
-    assert len(re.findall(r"client_max_body_size\s+25m;", top)) == 1, f"{name}: location с 25m должно быть один"
+    assert len(re.findall(r"client_max_body_size\s+25m;", top)) == 2, f"{name}: location с 25m должно быть два"
 
 
 def test_nginx_dev_config_has_feed_files_location_with_25m_limit():
@@ -310,7 +310,7 @@ def test_feed_files_location_repeats_proxy_directives_in_both_configs():
     (`$scheme` в dev, `$portal_proto` в prod), `Upgrade`, `Connection`; набор имён директив совпадает с блоком
     `tickets` того же файла (раздел 1.2)."""
     for name in NGINX_FILES:
-        found = feed_files_locations(name)
+        found = [item for item in feed_files_locations(name) if item[0] == FEED_FILES_PATTERN]
         assert len(found) == 1, f"{name}: нет location загрузки файла ленты"
         own = directives(found[0][1])
         for wanted in ("proxy_pass http://portal_web", "proxy_http_version 1.1", "proxy_set_header Host $http_host",

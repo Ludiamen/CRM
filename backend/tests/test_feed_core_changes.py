@@ -278,6 +278,8 @@ def test_menu_for_keys_of_other_items_unchanged():
         items = permissions.menu_for(admin)
     assert len(items) > 5
     for item in items:
+        if item["url"] == "/messenger/":
+            continue  # пункт мессенджера среза 008: у него своё живое число (CONTRACT-008, 3.4)
         assert set(item) - {"badge"} == MENU_KEYS, f"{item['url']}: ключи {sorted(item)}"
         assert "live_badge" not in item
 
