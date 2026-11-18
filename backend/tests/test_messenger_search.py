@@ -209,9 +209,12 @@ def _values(params) -> list:
 
 
 def _arrays(params) -> list[set[int]]:
-    """Целочисленные массивы среди параметров (цепочка узлов уходит именно массивом)."""
+    """Целочисленные массивы среди исходных параметров (цепочка узлов уходит именно массивом).
+
+    Смотрит в `params` без `_values`: тот раскрывает списки, и массивов в его результате уже нет.
+    """
     found = []
-    for value in _values(params):
+    for value in params or ():
         if isinstance(value, (list, tuple, set, frozenset)) and value:
             if all(isinstance(item, int) and not isinstance(item, bool) for item in value):
                 found.append({int(item) for item in value})

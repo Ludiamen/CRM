@@ -9,7 +9,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import redirect
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.core.views.common import is_fragment, render_page
 from apps.messenger.models import Chat, Message
@@ -17,6 +17,8 @@ from apps.messenger.services import members, messages
 from apps.messenger.services import page as page_service
 from apps.messenger.services.errors import MessengerError
 from apps.messenger.views import pages
+from apps.messenger.services import search as search_service
+from apps.search.parse import parse as parse_query
 
 
 @login_required
@@ -55,8 +57,27 @@ def send(request, chat_id: int):
         return _error_response(request, chat, exc)
     if is_fragment(request):
         return render_page(request, "messenger/_send_response.html", {
-            "chat": chat, "items": pages.message_items([message], request.user), "errors": {}})
+            "chat": chat, "items": pages.message_items([message], request.user, message.chat), "errors": {}})
     return redirect(f"/messenger/chats/{chat.pk}/")
+
+
+@login_required
+@require_GET
+def chat_search(request, chat_id: int):
+    """`GET /messenger/chats/<id>/search/?q=` — сообщения беседы с подсветкой и якорем `#m<id>` (FR-668)."""
+    chat = members.get_chat(request.user, chat_id)
+    parsed = parse_query(request.GET.get("q"))
+    rows = search_service.chat_search(request.user, chat, parsed)
+    for row in rows:
+        row["headline_html"] = _highlight(row["headline"])
+    return render_page(request, "messenger/_chat_search.html", {"chat": chat, "rows": rows})
+
+
+def _highlight(value: str) -> str:
+    """Экранировать головку `ts_headline`, вернув только теги `<b>` подсветки."""
+    from django.utils.html import escape
+
+    return escape(value).replace("&lt;b&gt;", "<b>").replace("&lt;/b&gt;", "</b>")
 
 
 @login_required
@@ -72,7 +93,7 @@ def edit(request, message_id: int):
         return _error_response(request, message.chat, exc)
     if is_fragment(request):
         return render_page(request, "messenger/_messages.html",
-                           {"items": pages.message_items([message], request.user)})
+                           {"items": pages.message_items([message], request.user, message.chat)})
     return redirect(f"/messenger/chats/{message.chat_id}/")
 
 
@@ -86,7 +107,7 @@ def delete(request, message_id: int):
     message = messages.delete(message, request.user)
     if is_fragment(request):
         return render_page(request, "messenger/_messages.html",
-                           {"items": pages.message_items([message], request.user)})
+                           {"items": pages.message_items([message], request.user, message.chat)})
     return redirect(f"/messenger/chats/{message.chat_id}/")
 
 

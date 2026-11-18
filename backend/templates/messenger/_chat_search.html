@@ -1,0 +1,11 @@
+<div data-messenger-search-results>
+  {% for row in rows %}
+    <article class="messenger-search-row">
+      <p class="messenger-search-text">{{ row.headline_html|safe }}</p>
+      <time data-at datetime="{{ row.at|date:'c' }}">{{ row.at|date:'d.m.Y H:i' }}</time>
+      <a href="/messenger/chats/{{ chat.pk }}/#m{{ row.id }}">#m{{ row.id }}</a>
+    </article>
+  {% empty %}
+    <p>Ничего не найдено</p>
+  {% endfor %}
+</div>

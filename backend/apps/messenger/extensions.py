@@ -45,3 +45,6 @@ def register_all() -> None:
     from apps.messenger import notify_kinds
 
     extensions.register("notification_kinds", notify_kinds.notification_kinds)
+    from apps.messenger.services import search as search_service
+
+    extensions.register("search_providers", search_service.search_providers)

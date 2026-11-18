@@ -20,6 +20,7 @@ urlpatterns = [
     path("messenger/chats/<int:chat_id>/", pages.chat, name="chat"),
     path("messenger/chats/<int:chat_id>/messages/", messages.messages_view, name="messages"),
     path("messenger/chats/<int:chat_id>/read/", chats.mark_read, name="read"),
+    path("messenger/chats/<int:chat_id>/search/", messages.chat_search, name="chat_search"),
     path("messenger/files/", files.upload, name="files"),
     path("messenger/files/<int:file_id>/delete/", files.remove, name="file_delete"),
     path("messenger/files/<int:file_id>/", files.download, name="file"),
