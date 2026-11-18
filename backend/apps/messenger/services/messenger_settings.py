@@ -48,3 +48,32 @@ def set_general(enabled: bool, actor) -> bool:
             after={"general_chat_enabled": ENABLED_WORD if enabled else DISABLED_WORD},
         )
     return True
+
+def count_to_purge(now, years: int) -> int:
+    """Сколько сообщений удалит ночное задание при новом сроке (второй шаг уменьшения)."""
+    from apps.messenger.services import retention
+
+    return retention.count_older(now, years)
+
+
+def save_retention(years: int, actor, *, confirmed: bool = False) -> dict:
+    """Сохранить срок 1…10: уменьшение требует подтверждения; журнал «было / стало» (FR-670, 671)."""
+    from apps.messenger.services.errors import MessengerError
+
+    if not 1 <= int(years) <= 10:
+        raise MessengerError("retention_range", field="retention_years")
+    row = get()
+    years = int(years)
+    if years == row.retention_years:
+        return {"saved": True, "changed": False}
+    if years < row.retention_years and not confirmed:
+        return {"saved": False, "to_delete": count_to_purge(timezone.now(), years), "years": years}
+    before = row.retention_years
+    with transaction.atomic():
+        row.retention_years = years
+        row.updated_at = timezone.now()
+        row.updated_by = actor
+        row.save(update_fields=["retention_years", "updated_at", "updated_by"])
+        audit.record("messenger.retention_changed", actor=actor, object_type=OBJECT_TYPE, object_id=OBJECT_ID,
+                     before={"years": before}, after={"years": years})
+    return {"saved": True, "changed": True}

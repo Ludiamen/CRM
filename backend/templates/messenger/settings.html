@@ -3,13 +3,24 @@
 {% block content %}
 <div data-messenger-page="settings">
   <header class="page-head"><h1 class="page-title">Настройки портала → Мессенджер</h1></header>
+  {% if confirm %}
+  <form method="post" action="/settings/messenger/" novalidate>
+    {% csrf_token %}
+    <section class="card card-body mb-3" data-messenger-confirm>
+      <p class="mb-3">Ближайшее ночное задание удалит сообщений: {{ confirm.to_delete }}</p>
+      <input type="hidden" name="retention_years" value="{{ confirm.years }}">
+      <button type="submit" class="btn btn-primary" name="confirm" value="1">Подтвердить</button>
+    </section>
+  </form>
+  {% else %}
   <form method="post" action="/settings/messenger/" novalidate>
     {% csrf_token %}
     <section class="card card-body mb-3">
       <div class="mb-3">
         <label class="form-label" for="id_messenger_retention_years">Хранить сообщения, лет</label>
-        <input class="form-control" id="id_messenger_retention_years" name="retention_years" type="number"
-               min="1" max="10" value="{{ row.retention_years }}">
+        <input class="form-control{% if error %} is-invalid{% endif %}" id="id_messenger_retention_years"
+               name="retention_years" type="number" min="1" max="10" value="{{ value }}">
+        {% if error %}<div class="text-danger" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
         <div class="form-text">Сообщения старше срока удаляет ночное задание.</div>
       </div>
       <div class="form-check mb-3">
@@ -20,5 +31,6 @@
       <button type="submit" class="btn btn-primary">Сохранить</button>
     </section>
   </form>
+  {% endif %}
 </div>
 {% endblock %}

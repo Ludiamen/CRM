@@ -215,7 +215,8 @@ def test_unbound_file_visible_only_to_uploader(monkeypatch):
     assert refused.status_code == 404 and support.same_failure(refused, missing)
 
 
-def test_night_purge_removes_unbound_older_than_day(monkeypatch, protected_root):
+def test_night_purge_removes_unbound_older_than_day(monkeypatch, protected_root,
+                                                  django_capture_on_commit_callbacks):
     """FR-662, 670: ночное задание убирает непривязанные файлы старше суток — строки вложения и файла и файл на
     диске; свежий непривязанный и привязанный остаются."""
     author, _, chat = _chat()
@@ -234,7 +235,8 @@ def test_night_purge_removes_unbound_older_than_day(monkeypatch, protected_root)
     old_path = pathlib.Path(django_settings.PROTECTED_ROOT) / "attachments" / str(old.file_id)
     assert old_path.is_file()
 
-    mm.run_retention(now)
+    with django_capture_on_commit_callbacks(execute=True):
+        mm.run_retention(now)
 
     assert not support.model("messenger.MessageAttachment").objects.filter(pk=old.pk).exists()
     assert not support.model("core.StoredFile").objects.filter(pk=old.file_id).exists()

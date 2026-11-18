@@ -10,3 +10,9 @@ def publish_event(chat_id: int, message_id=None, action: str = "new", owner_id=N
     from apps.messenger.services import live
 
     live.publish(chat_id, action, message_id, owner=owner_id, recipients=recipients)
+
+def retention_night(now=None) -> int:
+    """Ночное задание срока хранения: удаляет просроченные сообщения и файлы, возвращает число сообщений."""
+    from apps.messenger.services import retention
+
+    return retention.run(now)

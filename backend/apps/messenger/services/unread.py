@@ -80,9 +80,11 @@ def _unit_chain(user) -> frozenset[int]:
 
 
 def _general_enabled() -> bool:
-    from apps.messenger.services import messenger_settings
+    """Включён ли «Общий чат»; читается строка напрямую, чтобы числа не звали службу настроек на каждой странице."""
+    from apps.messenger.models import MessengerSettings
 
-    return bool(messenger_settings.get().general_chat_enabled)
+    value = MessengerSettings.objects.filter(pk=1).values_list("general_chat_enabled", flat=True).first()
+    return True if value is None else bool(value)
 
 
 def _fetch(user_id: int) -> list:
