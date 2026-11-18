@@ -1,4 +1,4 @@
-{% load static %}<div id="notify-bell" data-bell{% if not bell_link %} data-ws="connecting" hx-ext="ws" ws-connect="/ws/notify/"{% endif %} class="position-relative">
+{% load static %}<div id="notify-bell" data-bell data-ws="connecting" hx-ext="ws" ws-connect="/ws/notify/" class="position-relative">
   {% if bell_link %}
   <a class="top-link top-button" data-bell-link href="{{ bell_link }}" aria-label="Уведомления" title="Уведомления">
     <span class="menu-icon" aria-hidden="true">{% include "icons/bell.html" %}</span>

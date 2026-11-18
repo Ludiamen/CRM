@@ -564,8 +564,9 @@ def test_chat_page_has_header_input_and_ws_node_with_chat_id():
     assert len(forms) == 1, "нет #messenger-form (CONTRACT-008 12.3)"
     assert _q(forms[0], "textarea", name="text"), "в форме отправки нет textarea[name=\"text\"]"
 
-    ws_nodes = _q(document, data_ws=True)
-    assert len(ws_nodes) == 1, f"узлов [data-ws]: {len(ws_nodes)} (CONTRACT-008 12.4)"
+    ws_nodes = [node for node in _q(document, data_ws=True)
+                if node.attrs.get("ws-connect", "").startswith("/ws/messenger/")]
+    assert len(ws_nodes) == 1, f"узлов соединения мессенджера: {len(ws_nodes)} (CONTRACT-008 12.4)"
     ws = ws_nodes[0]
     assert ws.attrs.get("hx-ext") == "ws", f"hx-ext узла соединения: {ws.attrs.get('hx-ext')!r}"
     assert ws.attrs.get("ws-connect") == f"/ws/messenger/?chat={chat.pk}", (

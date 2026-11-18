@@ -10,6 +10,7 @@ from .views import admin, me, pages
 
 urlpatterns = [
     path("notifications/", pages.notification_list, name="notify-list"),
+    path("notifications/list/", pages.notification_list_fragment, name="notify-list-fragment"),
     path("notifications/bell/", pages.bell_panel, name="notify-bell"),
     path("notifications/read-all/", pages.notification_read_all, name="notify-read-all"),
     path("notifications/<int:notification_id>/open/", pages.notification_open, name="notify-open"),

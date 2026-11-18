@@ -53,8 +53,10 @@ def top_bar_context(request) -> dict:
     from django.apps import apps
 
     context = count_context(reading.unread_count(request.user.pk))
-    link = "/messenger/notifications/" if apps.is_installed("apps.messenger") else ""
-    return {"bell_count": context["count"], "bell_shown": context["shown"], "bell_link": link}
+    result = {"bell_count": context["count"], "bell_shown": context["shown"]}
+    if apps.is_installed("apps.messenger"):
+        result["bell_link"] = "/messenger/notifications/"
+    return result
 
 
 def _titles() -> dict:
@@ -82,27 +84,55 @@ def _back_url(f: str, page: str = "") -> str:
     return f"{LIST_URL}?{urlencode(query)}" if query else LIST_URL
 
 
-@login_required
-@require_GET
-def notification_list(request):
-    """Страница «Уведомления»: свои, новые сверху, 50 на страницу, фильтр `?f=unread`."""
+def _list_context(request) -> dict:
+    """Данные потока: фильтр и страница (T-8218 — общие для страницы и фрагмента)."""
     f = _filter(request.GET.get("f"))
     notes = Notification.objects.filter(user_id=request.user.pk)
     if f:
         notes = notes.filter(read_at__isnull=True)
-    # не число и меньше 1 — первая страница; больше числа страниц — последняя (`get_page`)
     page = Paginator(notes.order_by("-created_at", "-pk"), PAGE_SIZE).get_page(
         _page_number(request.GET.get("page")) or 1)
     _with_titles(page.object_list)
-    return render_page(request, "notify/list.html", {"page": page, "filter_value": f, "page_number": page.number})
+    return {"page": page, "filter_value": f, "page_number": page.number}
+
+
+@login_required
+@require_GET
+def notification_list(request):
+    """Страница «Уведомления»: свои, новые сверху, 50 на страницу, фильтр `?f=unread`.
+
+    При установленном мессенджере старый адрес — 302 на вкладку `/messenger/notifications/` с `f` и `page`
+    (CONTRACT-008 3.3); без мессенджера страница прежняя.
+    """
+    from django.apps import apps
+
+    if apps.is_installed("apps.messenger"):
+        query = {key: value for key, value in (("f", _filter(request.GET.get("f"))),
+                                               ("page", _page_number(request.GET.get("page")))) if value}
+        url = "/messenger/notifications/" + (f"?{urlencode(query)}" if query else "")
+        return HttpResponseRedirect(url)
+    return render_page(request, "notify/list.html", _list_context(request))
+
+
+@login_required
+@require_GET
+def notification_list_fragment(request):
+    """`GET /notifications/list/` — фрагмент потока (50 на страницу, `f`, `page`) для вкладки и панели."""
+    return render_page(request, "notify/_list_body.html", _list_context(request))
 
 
 @login_required
 @require_GET
 def bell_panel(request):
-    """Фрагмент панели колокольчика: последние 10, «Все уведомления», «Настройки»; страницы у адреса нет."""
+    """Фрагмент панели колокольчика: последние 10, «Все уведомления», «Настройки»; страницы у адреса нет.
+
+    «Все уведомления» ведут на вкладку мессенджера при его установке и на прежний список без него.
+    """
+    from django.apps import apps
+
     notes = list(Notification.objects.filter(user_id=request.user.pk).order_by("-created_at", "-pk")[:BELL_SIZE])
-    return render(request, "notify/_bell_panel.html", {"notes": notes})
+    bell_all = "/messenger/notifications/" if apps.is_installed("apps.messenger") else "/notifications/"
+    return render(request, "notify/_bell_panel.html", {"notes": notes, "bell_all": bell_all})
 
 
 @login_required

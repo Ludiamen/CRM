@@ -1,0 +1,14 @@
+{% extends layout %}
+{% block title %}Уведомления{% endblock %}
+{% block content %}
+<div class="messenger-page messenger-page-notifications" data-messenger-page="notifications">
+  <header class="page-head"><h1 class="page-title">Уведомления</h1></header>
+  <nav class="messenger-tabs">
+    <a href="/messenger/" data-messenger-tab="chats" aria-selected="false">Чаты</a>
+    <a href="/messenger/notifications/" data-messenger-tab="notifications" aria-selected="true">Уведомления</a>
+  </nav>
+  <div data-notify-list>
+    {% include "notify/_list_body.html" %}
+  </div>
+</div>
+{% endblock %}

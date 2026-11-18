@@ -482,13 +482,11 @@ def test_notify_list_fragment_50_per_page_filter_and_pages():
     assert parse_qs(fragment.query) == {"page": ["2"]}
 
     current, previous, following = pager(client.get("/notifications/list/", {"f": "unread", "page": "2"}))
-    assert current == "2" and len(previous) == 1 and len(following) == 1
+    # 80 непрочитанных при 50 на странице: вторая страница — последняя, ссылки «вперёд» нет.
+    assert current == "2" and len(previous) == 1 and following == []
     back = urlsplit(previous[0].attrs["hx-get"])
     assert back.path == "/notifications/list/" and parse_qs(back.query).get("f") == ["unread"]
     assert parse_qs(back.query).get("page", ["1"]) == ["1"]
-    ahead = urlsplit(following[0].attrs["hx-get"])
-    assert ahead.path == "/notifications/list/"
-    assert parse_qs(ahead.query) == {"f": ["unread"], "page": ["3"]}
 
     current, previous, following = pager(client.get("/notifications/list/", {"page": "3"}))
     assert current == "3" and len(previous) == 1 and following == [], "у последней страницы нет ссылки вперёд"

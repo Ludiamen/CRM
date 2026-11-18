@@ -5,5 +5,5 @@
       <time data-at="{{ note.created_at|date:'c' }}" class="text-muted small">{{ note.created_at|date:'d.m.Y H:i' }}</time>
     </li>{% endfor %}
   </ul>{% else %}<div data-bell-list></div><p data-empty-state="bell" class="mb-2">У вас нет уведомлений</p>{% endif %}
-  <div class="d-flex gap-3"><a data-bell-all href="/notifications/">Все уведомления</a><a data-bell-settings href="/me/notifications/">Настройки</a></div>
+  <div class="d-flex gap-3"><a data-bell-all href="{{ bell_all|default:'/notifications/' }}">Все уведомления</a><a data-bell-settings href="/me/notifications/">Настройки</a></div>
 </div>
