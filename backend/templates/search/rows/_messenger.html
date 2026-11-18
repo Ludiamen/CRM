@@ -1,0 +1,3 @@
+{# Строка группы «Мессенджер»: ссылка, название строки и время по Москве (CONTRACT-008, 9, 12.1). #}
+<a href="{{ row.url }}" class="d-block text-decoration-none"><span data-field="title">{{ row.title }}</span> <span data-field="subtitle" class="text-muted small">{{ row.subtitle }}</span>
+  <time data-at datetime="{{ ctx.at|date:'c' }}" class="text-muted small">{{ ctx.at|date:'d.m.Y H:i' }}</time></a>

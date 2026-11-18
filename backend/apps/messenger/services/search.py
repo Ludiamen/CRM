@@ -101,7 +101,8 @@ def search(user, parsed, limit: int, offset: int) -> list:
         snippet = core_text.snippet(raw or "", 100)
         title = f"{page.chat_title(chat, user)}, {author}, {when} — {snippet}"
         result.append(SearchRow(title=title, subtitle="Мессенджер",
-                                url=f"/messenger/chats/{chat_id}/#m{message_id}"))
+                                url=f"/messenger/chats/{chat_id}/#m{message_id}",
+                                template="search/rows/_messenger.html", context={"at": created_at}))
     return result
 
 

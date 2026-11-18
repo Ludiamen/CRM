@@ -17,6 +17,9 @@ from datetime import datetime, timezone as dt_timezone
 
 import pytest
 
+from django.conf import settings as django_settings
+
+from tests import support
 from tests import support_messenger as messenger
 from tests.support import BACKEND_DIR, repo_file
 
@@ -579,6 +582,9 @@ def test_texts_are_russian_and_time_is_moscow_at_utc_midnight(clock):
     for moment, shown in cases:
         assert messenger.moscow_text(moment) == shown
         clock.set(moment)
+        # 21,5 часа между кругами — больше таймаута бездействия; сессия продолжается, проверяется время по Москве.
+        session_key = admin.client.cookies[django_settings.SESSION_COOKIE_NAME].value
+        support.model("core.UserSession").objects.filter(session_key=session_key).update(last_activity=moment)
         messenger.post(chat, admin, text="Кофемашина в переговорной", created_at=moment)
         for path in messenger.messenger_pages(chat):
             response = admin.client.get(path)

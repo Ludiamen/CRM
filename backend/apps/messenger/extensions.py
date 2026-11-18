@@ -48,3 +48,6 @@ def register_all() -> None:
     from apps.messenger.services import search as search_service
 
     extensions.register("search_providers", search_service.search_providers)
+    from apps.messenger import audit_labels
+
+    extensions.register("audit_labels", audit_labels.audit_labels)
