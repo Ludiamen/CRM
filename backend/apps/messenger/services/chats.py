@@ -361,11 +361,10 @@ _ROWS_SQL_TAIL = """
                 LEFT JOIN "messenger_chatread" AS r ON r.chat_id = c.id AND r.user_id = %s
                 WHERE cm.chat_id = c.id AND cm.user_id = %s
             )
-            ELSE (
-                SELECT r.last_read_at
-                FROM "messenger_chatread" AS r
-                WHERE r.chat_id = c.id AND r.user_id = %s
-            )
+            ELSE COALESCE((SELECT r.last_read_at
+                           FROM "messenger_chatread" AS r
+                           WHERE r.chat_id = c.id AND r.user_id = %s),
+                          '-infinity'::timestamptz)
         END AS at,
         CASE WHEN c.kind IN ('personal', 'group') THEN (
             SELECT cm.joined_at

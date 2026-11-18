@@ -228,7 +228,7 @@ def test_quiet_hours_hold_email_and_send_digest_at_workday_start(clock):
     clock.set(at(MON, 20, 0))
     author = _employee("Автор Вечера")
     member = _employee("Вечерний Читатель")
-    row = _prefs(member, "own", own_days=[0], own_start=time(9, 0), own_end=time(18, 0))
+    row = _prefs(member, "own", own_days=[0, 1, 2, 3, 4], own_start=time(9, 0), own_end=time(18, 0))
     chat = messenger.group(author, [member], title="Вечерняя Беседа")
 
     _send(chat, author, "Сообщение после работы")

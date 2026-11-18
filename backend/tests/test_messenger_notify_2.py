@@ -276,7 +276,7 @@ def test_catalog_has_22_kinds_and_two_messenger_rows():
 
 # --- «Мои уведомления»: две строки и каналы (FR-665) -----------------------------------------------------------
 
-def test_my_notifications_lists_two_rows_with_email_and_external_channels():
+def test_my_notifications_lists_two_rows_with_email_and_external_channels(bots_on):
     """FR-665: в «Моих уведомлениях» у обычного сотрудника обе строки «Мессенджер» — «Новое сообщение в чате» и
     «Упомянул вас в чате» (последние в таблице); у каждой есть «На портале» (заблокирована), «Почта» (отмечена) и
     внешние каналы: ячейки `push`, `telegram`, `max` с флажками — `telegram`/`max` доступны после привязки, ячейка

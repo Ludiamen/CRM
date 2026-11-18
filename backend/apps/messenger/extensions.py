@@ -42,3 +42,6 @@ def register_all() -> None:
     from apps.messenger.services import files as file_service
 
     extensions.register("file_purposes", file_service.file_purposes)
+    from apps.messenger import notify_kinds
+
+    extensions.register("notification_kinds", notify_kinds.notification_kinds)

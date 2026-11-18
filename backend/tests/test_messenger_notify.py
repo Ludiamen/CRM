@@ -270,7 +270,7 @@ def test_edit_and_delete_create_no_notifications():
     author = _employee("Автор Правки")
     member = _employee("Пётр Участник")
     added = _employee("Новый Упомянутый")
-    chat = messenger.group(author, [member, added], title="Беседа правки")
+    chat = messenger.group(author, [member], title="Беседа правки")
     message = _send(chat, author, "Черновик")
     before = set(_notes().values_list("pk", flat=True))
     assert before, "отправка не создала ни одного уведомления"

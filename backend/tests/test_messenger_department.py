@@ -198,8 +198,8 @@ def test_renaming_unit_changes_chat_title_without_new_row():
 
 def test_newcomer_sees_chat_history_and_zero_unread():
     """FR-650, FR-660 (CONTRACT-008, 5.1, 5.3, 5.7): принятый в отдел видит чат и прежнюю историю с первого
-    открытия; строк `ChatMember` для этого не создаётся, непрочитанных у новичка 0 — база счёта у чата отдела
-    пустая отметка, а системные записи счётчика не дают."""
+    открытия; строк `ChatMember` для этого не создаётся, непрочитанных у новичка — история после создания чата
+    (решение владельца 2026-11-17: база чата отдела — создание чата или отметка), системные записи не считаются."""
     from apps.messenger.services import members, unread
 
     unit = sm.unit("Отдел поддержки")
@@ -213,6 +213,7 @@ def test_newcomer_sees_chat_history_and_zero_unread():
     org.make_member(_user(newcomer), unit)
 
     assert members.is_member(newcomer.user, chat) is True
+    assert unread.counts(newcomer.user).get(chat.pk, 0) == 1
     response = newcomer.client.get(_chat_url(chat))
     assert response.status_code == 200
     assert marker in response.content.decode("utf-8")

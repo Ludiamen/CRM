@@ -16,7 +16,8 @@ from django.utils import timezone
 from apps.core.models import StoredFile
 from apps.core.services import files as core_files
 from apps.messenger.models import Chat, Message, MessageAttachment
-from apps.messenger.services import files as file_service, live, mentions, unread
+from apps.core.extensions import Draft
+from apps.messenger.services import files as file_service, live, mentions, notify_rules, unread
 from apps.messenger.services.errors import MessengerError
 
 TEXT_LIMIT = 4000
@@ -53,6 +54,7 @@ def send(chat, author, text, quote=None, files=()) -> Message:
             file_service.bind(author, attachment_ids, message)
         _set_vector(message, clean)
         Chat.objects.filter(pk=chat.pk).update(last_message_at=now)
+        _notify(message)
         unread.invalidate(None)
         transaction.on_commit(lambda: live.enqueue(chat.pk, message.pk, "new", owner_id=author.pk))
     return message
@@ -103,6 +105,20 @@ def delete(message, author) -> Message:
         if paths:
             transaction.on_commit(lambda: core_files.remove_paths(paths))
     return message
+
+
+def _notify(message) -> None:
+    """Уведомления участникам: «упомянул» — только упомянутым, остальным — «новое сообщение» (FR-663, 664)."""
+    from apps.notify.services import dispatch
+
+    decisions = notify_rules.decide(message)
+    if not decisions:
+        return
+    for user_id, (code, text) in decisions.items():
+        dispatch.create(code, [Draft(
+            user_id=user_id, text=text,
+            url=f"/messenger/chats/{message.chat_id}/#m{message.pk}",
+            object_ref=f"messenger.chat:{message.chat_id}")])
 
 
 def _quote(chat, value) -> Message | None:

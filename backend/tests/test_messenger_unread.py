@@ -412,11 +412,11 @@ def test_120_unread_shown_as_99_plus(clock):
 # --- база отсчёта: чат отдела и «Общий чат» (FR-650, FR-660) ---------------------------------------------------
 
 def test_newcomer_of_department_has_zero_and_history_available(clock):
-    """FR-650, FR-660: у чата отдела без отметки число 0, хотя прежняя история видна новичку.
+    """FR-650, FR-660: у чата отдела без отметки база — создание чата (решение владельца 2026-11-17), история видна.
 
-    База чата отдела и «Общего чата» — отметка прочтения, а не `joined_at` (строк `ChatMember` у них нет, 2.2);
-    поэтому новичок без отметки начинает с нуля, но открывает беседу и видит историю. Отметка на момент до истории
-    оставляет 0, следующее сообщение даёт 1, отметка после него обнуляет. Чат чужого отдела в числа не входит.
+    База чата отдела и «Общего чата» — `GREATEST(ChatRead.last_read_at, Chat.created_at)`: до отметки в число
+    входит вся история после создания чата, отметка её обнуляет, следующее сообщение даёт 1. Чат чужого отдела в
+    числа не входит. Имя теста сохранено (на него ссылаются TASKS-008), ожидания — по решению владельца.
     """
     general = messenger.general()
     unit = messenger.unit("Отдел Новичка Чисел")
@@ -436,9 +436,9 @@ def test_newcomer_of_department_has_zero_and_history_available(clock):
     org.make_member(newcomer.user, unit)
     assert _ChatMember().objects.filter(chat=department).count() == 0, "у чата отдела появились строки состава"
 
-    assert _counts(newcomer).get(department.pk, 0) == 0, "новичок отдела без отметки начал не с нуля (FR-660)"
-    assert _counts(newcomer).get(general.pk, 0) == 0, "«Общий чат» без отметки начал не с нуля"
-    assert _total(newcomer) == 0, f"без отметок числа не нулевые: {_counts(newcomer)!r}"
+    assert _counts(newcomer).get(department.pk, 0) == 3, "история после создания чата не попала в число"
+    assert _counts(newcomer).get(general.pk, 0) == 1, "сообщение «Общего чата» не попало в число"
+    assert _total(newcomer) == 4, f"без отметок числа не те: {_counts(newcomer)!r}"
     opened = newcomer.client.get(_chat_url(department))
     assert opened.status_code == 200, f"беседа отдела: {opened.status_code}"
     body = opened.content.decode("utf-8")
@@ -454,12 +454,12 @@ def test_newcomer_of_department_has_zero_and_history_available(clock):
     fresh = messenger.post(department, insider, "Сообщение после прихода",
                            created_at=base + timedelta(minutes=1))
     assert _counts(newcomer).get(department.pk) == 1, "сообщение после отметки не посчитано"
-    assert _total(newcomer) == 1
+    assert _total(newcomer) == 2
     page = _tree(newcomer.client.get("/messenger/"))
     assert _unread(page, department).attrs.get("data-count") == "1"
     general_node = _unread(page, general)
-    assert general_node.attrs.get("data-count") == "0", general_node.attrs
-    assert HIDDEN in _classes(general_node), "узел «Общего чата» без отметки не скрыт"
+    assert general_node.attrs.get("data-count") == "1", general_node.attrs
+    assert HIDDEN not in _classes(general_node), "узел «Общего чата» с непрочитанным скрыт"
     assert general_message.text == "Общее сообщение до отметки"
 
     clock.set(base + timedelta(minutes=2))
