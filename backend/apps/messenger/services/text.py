@@ -60,9 +60,8 @@ def _chat_html(match, link_staff: bool, viewer=None) -> str:
     if title is None:
         return html.escape(token, quote=True)
     safe_title = html.escape(title, quote=True)
-    if link_staff:
-        return f'<a href="/messenger/chats/{number}/" data-mention="c{number}">«{safe_title}»</a>'
-    return f'<span data-mention="c{number}">«{safe_title}»</span>'
+    # Упоминание чата — всегда ссылка (CONTRACT-008 12.6); право видеть карточки влияет только на людей.
+    return f'<a href="/messenger/chats/{number}/" data-mention="c{number}">«{safe_title}»</a>'
 
 
 def _chat_visible(number: int, viewer) -> bool:

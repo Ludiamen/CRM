@@ -273,8 +273,9 @@ def test_opening_chat_creates_read_mark(clock):
     department = messenger.department_chat(unit)
     history = messenger.post(department, insider, "История до прихода новичка",
                              created_at=base + timedelta(minutes=3))
-    assert _counts(newcomer.user).get(department.pk, 0) == 0, (
-        "новичок отдела без отметки начинает с нуля (FR-660)")
+    # Решение владельца 2026-11-17: у чата отдела без отметки база — создание чата, история считается.
+    assert _counts(newcomer.user).get(department.pk, 0) == 1, (
+        "история чата отдела после создания не попала в число (FR-660)")
 
     page = newcomer.client.get(_chat_url(department))
     assert page.status_code == 200, f"беседа отдела: {page.status_code}"

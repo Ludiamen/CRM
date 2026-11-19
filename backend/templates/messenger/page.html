@@ -1,9 +1,6 @@
 {% extends layout %}
-{% load static %}
 {% block title %}Мессенджер{% endblock %}
 {% block content %}
-<link rel="stylesheet" href="{% static 'messenger/messenger.css' %}">
-<script defer src="{% static 'messenger/messenger.js' %}"></script>
 <div class="messenger-page" data-messenger-page="{{ mode }}">
   <h1 class="page-title">Мессенджер</h1>
   {% if mode == "write" %}
