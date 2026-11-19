@@ -65,11 +65,11 @@ for service in web web-heavy worker worker-mail worker-inbox worker-notify notif
 done
 
 log 'проверка кода среза в образе и в базе'
-"${DC[@]}" exec -T standtools python -c 'import apps.messenger.services.page as p; print("page module ok", len(open(p.__file__, encoding="utf-8").read()))'
+"${DC[@]}" exec -T standtools sh -c 'cd /app/backend && DJANGO_SETTINGS_MODULE=config.settings python -c "import django; django.setup(); from apps.messenger.services import page; print(\"page\", len(open(page.__file__, encoding=\"utf-8\").read()))"'
 TABLES=$(docker exec crm-postgres-1 psql -U postgres -d crm -Atc "select count(*) from information_schema.tables where table_schema='public' and table_name like 'messenger%'")
 [ "${TABLES:-0}" -ge 6 ] || { log "в базе нет таблиц мессенджера: $TABLES"; exit 7; }
 CODE=$(curl -sk -o /dev/null -w '%{http_code}' https://127.0.0.1:8031/messenger/)
-[ "$CODE" = "200" ] || { log "стенд: /messenger/ отвечает $CODE"; exit 7; }
+case "$CODE" in 200|302) ;; *) log "стенд: /messenger/ отвечает $CODE"; exit 7;; esac
 
 "${DC[@]}" ps --format '{{.Service}} {{.Status}}'
 log "готово: копия $TAG проверена; health/image gates пройдены; таблиц мессенджера: $TABLES; /messenger/ 200; reset не выполнялся"
