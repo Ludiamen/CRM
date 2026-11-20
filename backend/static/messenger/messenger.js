@@ -32,7 +32,8 @@
       if (!token) return;
       var value = row.getAttribute("data-mention-value") || "";
       var label = row.getAttribute("data-mention-label") || "";
-      if (!value || !label || value.charAt(0) !== (token.kind === "@" ? "u" : "c")) return;
+      if (!value || !label) return;
+      if (token.kind === "#" ? value.charAt(0) !== "c" : "uc".indexOf(value.charAt(0)) < 0) return;
       var shown = (token.kind === "@" ? "@" : "#") + label;
       var marker = "@[" + value + "]";
       var before = area.value.slice(0, token.start);
@@ -55,7 +56,10 @@
           holder.innerHTML = html;
           var rows = Array.prototype.slice.call(holder.querySelectorAll("[data-mention-value]"));
           rows = rows.filter(function (row) {
-            return (row.getAttribute("data-mention-value") || "").charAt(0) === (token.kind === "@" ? "u" : "c");
+            var value = (row.getAttribute("data-mention-value") || "");
+            // «@» показывает и участников, и свои чаты (подпись «#название» подставляет выбор);
+            // «#» — только чаты.
+            return token.kind === "#" ? value.charAt(0) === "c" : true;
           });
           box.replaceChildren.apply(box, rows);
           box.classList.toggle("is-open", rows.length > 0);
@@ -134,10 +138,13 @@
     }
   }
 
+  var socket = null;
+
   document.body.addEventListener("htmx:wsOpen", function (event) {
     var detail = event.detail || {};
     var elt = detail.elt || node();
     if (!isMessenger(elt)) return;
+    socket = detail.socketWrapper || socket;
     // Первая беседа справа от списка — предпросмотр: соединение открыто, но `sync` не шлём,
     // иначе сервер поставил бы отметку прочтения за заход в список (решение владельца 2026-11-20).
     if (elt.hasAttribute("data-preview")) {
@@ -145,14 +152,25 @@
       return;
     }
     var id = chatId(elt);
-    if (id) send(detail.socketWrapper, {sync: {chat: id, at: new Date().toISOString()}});
+    if (id) send(socket, {sync: {chat: id, at: new Date().toISOString()}});
   });
 
-  document.body.addEventListener("htmx:wsAfterMessage", function (event) {
-    // Служебный кадр `#messenger-synced` приходит с `hx-swap-oob`: цели в разметке нет, поэтому oob-своп
-    // не срабатывает и `afterSwap` молчит. Состояние ставим по самому сообщению (CONTRACT-008 12.4).
+  document.body.addEventListener("htmx:wsBeforeMessage", function (event) {
+    var elt = event.target;
+    if (!isMessenger(elt)) return;
     var message = (event.detail && event.detail.message) || "";
-    if (message.indexOf("messenger-synced") >= 0) state("open");
+    if (message.indexOf("messenger-synced") >= 0) {
+      // Служебный кадр идёт с `hx-swap-oob`, а цели `#messenger-synced` в разметке нет: htmx удалил бы его
+      // с ошибкой в консоли. Состояние ставим сами (CONTRACT-008 12.4).
+      event.preventDefault();
+      state("open");
+      return;
+    }
+    // Сообщение в открытой беседе прочитано: клиент отвечает отметкой, как только кадр пришёл (FR-666).
+    if (message.indexOf("data-message-id") >= 0 && !elt.hasAttribute("data-preview")) {
+      var id = chatId(elt);
+      if (id) send(socket, {read: {chat: id, at: new Date().toISOString()}});
+    }
   });
 
   document.body.addEventListener("htmx:wsClose", function (event) {
@@ -267,4 +285,81 @@
     start();
   }
   document.body.addEventListener("htmx:afterSwap", start);
+})();
+
+/* Действия с сообщением (T-8209): «Ответить» — цитата в форме ввода, «Править» — форма в самом сообщении. */
+(function () {
+  "use strict";
+
+  function clearQuote() {
+    var box = document.querySelector("#messenger-form [data-quote-box]");
+    var hidden = document.querySelector('#messenger-form input[name="quote"]');
+    if (box) box.replaceChildren();
+    if (hidden) hidden.value = "";
+  }
+
+  function quoteFor(article) {
+    var box = document.querySelector("#messenger-form [data-quote-box]");
+    var hidden = document.querySelector('#messenger-form input[name="quote"]');
+    if (!box || !hidden || !article) return;
+    hidden.value = article.getAttribute("data-message-id") || "";
+    var author = article.querySelector(".messenger-message-author");
+    var text = article.querySelector(".messenger-message-text");
+    var block = document.createElement("blockquote");
+    block.setAttribute("data-quote", "");
+    block.setAttribute("data-quote-id", hidden.value);
+    var who = document.createElement("span");
+    who.className = "messenger-quote-author";
+    who.textContent = author ? author.textContent.trim() : "";
+    var body = document.createElement("span");
+    body.className = "messenger-quote-text";
+    body.textContent = text ? text.textContent.trim() : "";
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn btn-link btn-sm";
+    remove.setAttribute("data-action", "quote-remove");
+    remove.setAttribute("aria-label", "Убрать цитату");
+    remove.textContent = "×";
+    block.append(who, body, remove);
+    box.replaceChildren(block);
+  }
+
+  document.body.addEventListener("click", function (event) {
+    var action = event.target.closest ? event.target.closest("[data-action]") : null;
+    if (!action) return;
+    var name = action.getAttribute("data-action");
+    if (name === "reply") {
+      event.preventDefault();
+      quoteFor(action.closest("article"));
+      return;
+    }
+    if (name === "quote-remove") {
+      event.preventDefault();
+      clearQuote();
+      return;
+    }
+    if (name === "edit") {
+      var article = action.closest("article");
+      var editor = article ? article.querySelector("[data-messenger-edit]") : null;
+      if (editor) {
+        event.preventDefault();
+        editor.hidden = false;
+        var area = editor.querySelector('textarea[name="text"]');
+        if (area) area.focus();
+      }
+    }
+  });
+})();
+
+/* Числа пункта меню и строки списка приходят в колокольчик; на странице беседы строк списка нет, и htmx
+ * пишет в консоль `oobErrorNoTarget`. Цели строк — данные списка, их отсутствие нормально: глушим только
+ * этот случай, прочие ошибки OOB остаются видимыми (критерий T-8301 — чистая консоль). */
+(function () {
+  "use strict";
+  var native = console.error;
+  console.error = function () {
+    var text = Array.prototype.join.call(arguments, " ");
+    if (text.indexOf("htmx:oobErrorNoTarget") >= 0 && /#chat-\d+-(unread|preview)/.test(text)) return;
+    return native.apply(console, arguments);
+  };
 })();

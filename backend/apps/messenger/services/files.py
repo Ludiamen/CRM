@@ -31,8 +31,8 @@ def upload(user, uploaded, chat, have=()) -> MessageAttachment:
     if uploaded is None:
         raise MessengerError("file_missing", field="file")
     have_ids = _ids(have)
-    attached = MessageAttachment.objects.filter(message__chat=chat).count()
-    if attached + len(have_ids) >= MAX_FILES:
+    # Предел — на одно сообщение: в форме уже лежат `have` файлов, новый — одиннадцатый.
+    if len(have_ids) >= MAX_FILES:
         raise MessengerError("files_limit", field="file")
     if MessageAttachment.objects.filter(uploaded_by=user, message__isnull=True).count() >= MAX_UNBOUND:
         raise MessengerError("too_many_unbound", field="file")

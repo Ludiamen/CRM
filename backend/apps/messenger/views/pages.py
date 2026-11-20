@@ -83,7 +83,9 @@ def history(request, chat_id: int):
     found = members.get_chat(request.user, chat_id)
     before = _cursor(request.GET.get("before"))
     messages, more = page_service.history(found, before)
-    return render_page(request, "messenger/_history.html", _chat_context(request, found, messages, more))
+    context = _chat_context(request, found, messages, more)
+    context["fragment"] = True
+    return render_page(request, "messenger/_history.html", context)
 
 
 def _chat_context(request, chat, messages, more) -> dict:
@@ -99,7 +101,18 @@ def _chat_context(request, chat, messages, more) -> dict:
         "ws_url": f"/ws/messenger/?chat={chat.pk}",
         "read_message_id": last_own.pk if last_own is not None else None,
         "read_text": f"Прочитали {readers} из {audience}" if last_own is not None and audience else "",
+        "can_leave": members.is_member(request.user, chat),
+        "can_delete": _can_delete(chat, request.user),
     }
+
+
+def _can_delete(chat, user) -> bool:
+    """Кому видна форма удаления: создатель группового, администратор портала — у чата отдела (FR-648, 672)."""
+    if chat.kind == Chat.Kind.GROUP:
+        return chats.is_creator_in_chat(chat, user)
+    if chat.kind == Chat.Kind.DEPARTMENT:
+        return permissions.has_permission(user, "settings.portal")
+    return False
 
 
 def message_items(messages, user, chat=None) -> list[dict]:
@@ -140,13 +153,15 @@ def _more_url(chat, messages) -> str:
 
 
 def _member_names(chat) -> list[str]:
-    """ФИО участников для шапки: личный и групповой — состав `members.members`, иначе пусто."""
+    """ФИО участников для шапки: личный — собеседник; групповой, отдел и «Общий чат» — состав на момент
+    просмотра (у чата отдела он считается по поддереву, FR-650); у «Общего чата» — до 20 имён и многоточие."""
     if chat.kind == Chat.Kind.PERSONAL:
         return [page_service.chat_title(chat)]
-    if chat.kind != Chat.Kind.GROUP:
-        return []
     ids = members.members(chat)
-    return list(User.objects.filter(pk__in=ids).order_by("full_name").values_list("full_name", flat=True))
+    names = list(User.objects.filter(pk__in=ids).order_by("full_name").values_list("full_name", flat=True))
+    if chat.kind == Chat.Kind.GENERAL and len(names) > 20:
+        return names[:20] + ["…"]
+    return names
 
 
 def _cursor(raw):

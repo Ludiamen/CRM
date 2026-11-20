@@ -2,6 +2,7 @@
   <form id="messenger-form" method="post" action="/messenger/chats/{{ chat.pk }}/messages/">
     {% csrf_token %}
     <input type="hidden" name="quote" value="">
+    <div data-quote-box></div>
     {% for field, error in errors.items %}{% if field != "text" %}{% include "messenger/_form_error.html" with error=error field=field %}{% endif %}{% endfor %}
     {% include "messenger/_form_error.html" with error=errors.text field="text" %}
     <label class="visually-hidden" for="id_messenger_text">Сообщение</label>

@@ -1,6 +1,9 @@
 {% include "messenger/_messages.html" %}
 {% if more_url %}
-  <div class="messenger-more" data-messenger-more hx-get="{{ more_url }}" hx-target="#messenger-messages" hx-swap="afterbegin">
+  <div id="messenger-more" class="messenger-more" data-messenger-more hx-get="{{ more_url }}" hx-target="#messenger-messages" hx-swap="afterbegin">
     <button type="button" class="btn btn-outline-secondary">Показать более ранние</button>
   </div>
+{% elif fragment %}
+  {# Догрузка дошла до первого сообщения: старую кнопку убираем OOB (она осталась от первой страницы). #}
+  <div id="messenger-more" hx-swap-oob="delete"></div>
 {% endif %}

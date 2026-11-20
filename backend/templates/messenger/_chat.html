@@ -9,6 +9,14 @@
       <input id="id_messenger_chat_q" type="search" name="q" class="form-control"
              placeholder="Поиск по беседе" autocomplete="off">
     </form>
+    {% if can_leave or can_delete %}
+      <div class="messenger-chat-actions d-flex gap-2">
+        {% if can_leave %}<form method="post" action="/messenger/chats/{{ chat.pk }}/leave/">{% csrf_token %}
+          <button type="submit" class="btn btn-link">Выйти из чата</button></form>{% endif %}
+        {% if can_delete %}<form method="post" action="/messenger/chats/{{ chat.pk }}/delete/">{% csrf_token %}
+          <button type="submit" class="btn btn-link">Удалить чат</button></form>{% endif %}
+      </div>
+    {% endif %}
   </header>
   <div id="messenger-messages" class="messenger-messages">
     {% include "messenger/_history.html" %}

@@ -10,6 +10,29 @@
       {% if item.message.edited_at %}<span data-messenger-edited>изменено
         <time data-at datetime="{{ item.message.edited_at|date:'c' }}">{{ item.message.edited_at|date:'d.m.Y H:i' }}</time></span>{% endif %}
     </header>
+    {% if not item.message.is_system %}
+      <details class="messenger-message-menu" data-message-menu>
+        <summary aria-label="Действия с сообщением">⋯</summary>
+        <button type="button" class="btn btn-link btn-sm" data-action="reply">Ответить</button>
+        {% if item.own %}
+          <button type="button" class="btn btn-link btn-sm" data-action="edit">Править</button>
+          <button type="button" class="btn btn-link btn-sm" data-action="delete"
+                  hx-post="/messenger/messages/{{ item.message.pk }}/delete/"
+                  hx-target="#m{{ item.message.pk }}" hx-swap="outerHTML">Удалить</button>
+        {% endif %}
+      </details>
+      {% if item.own %}
+        <form class="messenger-edit" data-messenger-edit hidden method="post"
+              action="/messenger/messages/{{ item.message.pk }}/edit/"
+              hx-post="/messenger/messages/{{ item.message.pk }}/edit/"
+              hx-target="#m{{ item.message.pk }}" hx-swap="outerHTML">
+          {% csrf_token %}
+          <label class="visually-hidden" for="id_edit_{{ item.message.pk }}">Текст сообщения</label>
+          <textarea id="id_edit_{{ item.message.pk }}" name="text" class="form-control">{{ item.message.text }}</textarea>
+          <button type="submit" class="btn btn-primary btn-sm">Сохранить</button>
+        </form>
+      {% endif %}
+    {% endif %}
     {% if item.quote %}<blockquote class="messenger-quote" data-quote-id="{{ item.quote.pk }}">{{ item.quote_text }}</blockquote>{% endif %}
     <div class="messenger-message-text">{{ item.body_html }}</div>
     {% if item.files %}<div class="messenger-message-files">{% include "messenger/_files.html" with files=item.files %}</div>{% endif %}

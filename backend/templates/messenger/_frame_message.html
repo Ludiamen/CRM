@@ -6,5 +6,8 @@
     {% if message.edited_at %}<span data-messenger-edited>изменено
       <time data-at datetime="{{ message.edited_at|date:'c' }}">{{ message.edited_at|date:'d.m.Y H:i' }}</time></span>{% endif %}
   </header>
+  <details class="messenger-message-menu"><summary aria-label="Действия с сообщением">⋯</summary>
+    <button type="button" class="btn btn-link btn-sm" data-action="reply">Ответить</button>
+  </details>
   <div class="messenger-message-text">{{ body_html }}</div>
 </article>{% endif %}
