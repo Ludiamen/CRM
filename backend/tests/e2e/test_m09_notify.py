@@ -237,7 +237,7 @@ def _send_mention(page, tail: str) -> int:
     with page.expect_response(lambda r: r.request.method == "POST" and "/messenger/chats/" in r.url
                               and r.url.split("?")[0].endswith("/messages/")) as info:
         form.locator('button[type="submit"]').first.click()
-    html = info.value.text()
+    html = "" if info.value.status in (301, 302, 303, 307, 308) else info.value.text()
     codes = _codes(html)
     assert not codes, f"сообщение с упоминанием отклонено: {codes}"
     ids = [int(value) for value in _MSG_ID.findall(html)]

@@ -181,7 +181,9 @@ def _send(page):
         form.locator('button[type="submit"]').first.click()
     response = info.value
     body = unquote_plus((response.request.post_data_buffer or b"").decode("utf-8", "replace"))
-    ids = _MESSAGE_ID.findall(response.text())
+    # обычный POST по CONTRACT-008 10.2 — 302 на беседу, тела у ответа нет
+    body_html = "" if response.status in (301, 302, 303, 307, 308) else response.text()
+    ids = _MESSAGE_ID.findall(body_html)
     if ids:
         message_id = int(ids[-1])
     else:
