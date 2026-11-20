@@ -22,7 +22,7 @@ printf '%s\n' "$TAG" > "$D/last-tag.txt"
 
 exec 9>"$LOCK"
 if ! flock -n 9; then log 'заблокировано: test.lock занят'; exit 2; fi
-if pgrep -f '[p]ytest' >/dev/null; then log 'заблокировано: идёт pytest'; exit 2; fi
+if pgrep -f '[p]ython -m pytest' >/dev/null; then log 'заблокировано: идёт pytest'; exit 2; fi
 cd "$CRM"
 [ -f "$BACKUP" ] || { log 'нет скрипта копии'; exit 3; }
 if compgen -G "$B/*$TAG*" >/dev/null; then log 'метка копии занята'; exit 3; fi
