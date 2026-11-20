@@ -28,7 +28,7 @@ if apps.is_installed("apps.feed"):
     websocket_urlpatterns += feed_routing.websocket_urlpatterns
 
 if apps.is_installed("apps.messenger"):
-    # Каркас T-8001: маршрутов мессенджера ещё нет, его список пуст (Этап 3 добавит `ws/messenger/`).
+    # Маршрут `/ws/messenger/` установленного модуля (T-8001, T-8213).
     from apps.messenger import routing as messenger_routing  # noqa: E402
     websocket_urlpatterns += messenger_routing.websocket_urlpatterns
 

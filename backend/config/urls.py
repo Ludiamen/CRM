@@ -16,7 +16,7 @@ if apps.is_installed("apps.feed"):
     urlpatterns.append(path("", include("apps.feed.urls")))  # /feed/…, /settings/feed/
 
 if apps.is_installed("apps.messenger"):
-    # Каркас T-8001: список адресов мессенджера пуст, поведение портала не меняется.
+    # Адреса мессенджера — только у установленного модуля (T-8001, Этап 3).
     urlpatterns.append(path("", include("apps.messenger.urls")))  # /messenger/…
 
 handler400 = "apps.core.views.pages.bad_request"
