@@ -146,12 +146,13 @@ def test_m01_dialog_is_one_for_pair_started_from_card_and_from_messenger(circle,
     messenger = helpers_messenger.open_messenger(new_context(), c.writer)
     from_messenger = helpers_messenger.start_dialog(messenger, c.peer)
     assert from_messenger == from_card, f"из мессенджера открылся новый чат {from_messenger} вместо {from_card}"
+    greeting = _message_ids(messenger)[-1]  # «Здравствуйте!» второго start_dialog — та же история
     second = helpers_messenger.write(messenger, "Сообщение из мессенджера")
 
     expect(messenger.locator(f'article[data-message-id="{first}"]')).to_be_visible()
     expect(messenger.locator(f'article[data-message-id="{second}"]')).to_be_visible()
     expect(messenger.locator("[data-chat-kind]")).to_have_attribute("data-chat-kind", "personal")
-    assert _message_ids(messenger)[-2:] == [first, second], "сообщения пары не в одной истории"
+    assert _message_ids(messenger)[-3:] == [first, greeting, second], "сообщения пары не в одной истории"
 
 
 def test_m01_new_message_appears_in_open_peer_chat_within_2s_without_reload(circle, new_context):
