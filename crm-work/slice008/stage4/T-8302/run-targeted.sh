@@ -22,7 +22,7 @@ done
 
 exec 9>"$LOCK"
 if ! flock -n 9; then log 'заблокировано: lock занят'; exit 2; fi
-if pgrep -f '[p]ytest' >/dev/null; then log 'заблокировано: идёт pytest'; exit 2; fi
+if pgrep -f '[p]ython -m pytest' >/dev/null; then log 'заблокировано: идёт pytest'; exit 2; fi
 
 set -a
 . "$CRM/deploy/.env" >/dev/null 2>&1 || { log 'не прочитан deploy/.env'; exit 5; }
