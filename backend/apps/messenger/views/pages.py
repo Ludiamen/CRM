@@ -10,6 +10,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
@@ -35,12 +36,25 @@ def _value(request, key: str) -> str:
 @login_required
 @require_GET
 def page(request):
-    """`GET /messenger/` — список чатов, вкладки и поле ввода; `?to=` — страница «Написать» (T-8203)."""
+    """`GET /messenger/` — список чатов, вкладки и поле ввода; `?to=` — страница «Написать» (T-8203).
+
+    На широком экране справа открыта первая беседа списка (CONTRACT-008 10.1, FR-673). Отметку прочтения
+    показ списка не ставит: открытие беседы отмечается её собственной страницей и отметкой `read`.
+    """
     if "to" in request.GET:
         return chat_views.write(request)
     query = _value(request, "q")
-    return render_page(request, "messenger/page.html", {
-        "mode": "list", "rows": chats.rows(request.user, query), "q": query, "errors": {}})
+    rows = chats.rows(request.user, query)
+    context = {"mode": "list", "rows": rows, "q": query, "errors": {}}
+    if rows:
+        try:
+            first = members.get_chat(request.user, rows[0].id)
+        except Http404:
+            first = None
+        if first is not None:
+            messages, more = page_service.history(first)
+            context.update(_chat_context(request, first, messages, more))
+    return render_page(request, "messenger/page.html", context)
 
 
 @login_required

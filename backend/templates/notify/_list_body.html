@@ -1,8 +1,10 @@
 {# Тело потока уведомлений: фильтр, «Прочитать все», строки, страницы (T-8218, CONTRACT-008 3.3, 10.2). #}
 <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
   <nav data-notify-filter aria-label="Фильтр" class="d-flex gap-2">
-    <a data-filter="all" href="/notifications/" hx-get="/notifications/list/"{% if filter_value != "unread" %} aria-current="true"{% endif %}>Все</a>
-    <a data-filter="unread" href="/notifications/?f=unread" hx-get="/notifications/list/?f=unread"{% if filter_value == "unread" %} aria-current="true"{% endif %}>Непрочитанные</a>
+    <a data-filter="all" href="/notifications/" hx-get="/notifications/list/"
+       hx-target="[data-notify-list]" hx-swap="innerHTML" hx-push-url="{{ push_base }}"{% if filter_value != "unread" %} aria-current="true"{% endif %}>Все</a>
+    <a data-filter="unread" href="/notifications/?f=unread" hx-get="/notifications/list/?f=unread"
+       hx-target="[data-notify-list]" hx-swap="innerHTML" hx-push-url="{{ push_base }}?f=unread"{% if filter_value == "unread" %} aria-current="true"{% endif %}>Непрочитанные</a>
   </nav>
   {% if page.paginator.count %}<form data-form="read-all" method="post" action="/notifications/read-all/" hx-post="/notifications/read-all/">{% csrf_token %}
     <input type="hidden" name="f" value="{{ filter_value }}">
@@ -19,9 +21,13 @@
 {% if page.paginator.num_pages > 1 %}
 <nav data-pager class="pager d-flex flex-wrap gap-3 align-items-center" aria-label="Страницы">
   {% if page.has_previous %}<a data-page-prev href="/notifications/?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.previous_page_number }}"
-     hx-get="/notifications/list/?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.previous_page_number }}">Назад</a>{% endif %}
+     hx-get="/notifications/list/?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.previous_page_number }}"
+     hx-target="[data-notify-list]" hx-swap="innerHTML"
+     hx-push-url="{{ push_base }}?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.previous_page_number }}">Назад</a>{% endif %}
   <span data-page-current>{{ page.number }}</span>
   {% if page.has_next %}<a data-page-next href="/notifications/?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.next_page_number }}"
-     hx-get="/notifications/list/?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.next_page_number }}">Вперёд</a>{% endif %}
+     hx-get="/notifications/list/?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.next_page_number }}"
+     hx-target="[data-notify-list]" hx-swap="innerHTML"
+     hx-push-url="{{ push_base }}?{% if filter_value %}f={{ filter_value }}&amp;{% endif %}page={{ page.next_page_number }}">Вперёд</a>{% endif %}
 </nav>
 {% endif %}

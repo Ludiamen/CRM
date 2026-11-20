@@ -35,12 +35,13 @@ from pathlib import Path
 from typing import NamedTuple
 from urllib.parse import urlencode
 
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 
 from tests.e2e import helpers, helpers_kb, helpers_notify, helpers_org, helpers_sd
 
 PAGE_TIMEOUT = 20_000          # готовность узла соединения беседы (12.4)
+# Узел соединения беседы: у колокольчика тоже есть `data-ws`, поэтому ищем по адресу слоя мессенджера.
+WS_CHAT = '[data-ws][ws-connect*="/ws/messenger/"]'
 FRAME_TIMEOUT = 2_000          # живой кадр до получателя и числа (FR-660, NFR-701)
 FILE_TIMEOUT = 60_000          # «проверяется → чистый» (FR-662, NFR-704)
 AGE_MIN, AGE_MAX = 1, 4_000    # границы `--days` команды `e2e_messenger_age` (14.1, К21)
@@ -143,7 +144,7 @@ def open_messenger(context, account, live: bool = True):
     page.wait_for_load_state()
     expect(page.locator('[data-messenger-page="list"]')).to_be_visible()
     if live:
-        expect(page.locator("[data-ws]")).to_be_attached(timeout=PAGE_TIMEOUT)
+        expect(page.locator(WS_CHAT)).to_be_attached(timeout=PAGE_TIMEOUT)
     return page
 
 
@@ -155,7 +156,8 @@ def open_chat(context, account, chat_id):
     page.goto(f"/messenger/chats/{chat_id}/")
     page.wait_for_load_state()
     expect(page.locator('[data-messenger-page="chat"]')).to_be_visible()
-    expect(page.locator("[data-ws]")).to_have_attribute("data-ws", "open", timeout=PAGE_TIMEOUT)
+    expect(page.locator(WS_CHAT)).to_have_attribute(
+        "data-ws", "open", timeout=PAGE_TIMEOUT)
     return page
 
 
@@ -164,8 +166,8 @@ def open_chat(context, account, chat_id):
 def start_dialog(page, account) -> int:
     """Первый личный диалог с `account`: «Написать» в уже открытой карточке сотрудника
     (`[data-messenger-card-write]`, 12.6) или в `/messenger/people/?q=<фамилия>` — строка `[data-person-id="<id>"]`
-    со ссылкой `/messenger/?to=<id>`; затем первое сообщение `FIRST_TEXT` формой `#messenger-form`. Ждёт переход в
-    беседу (200 с фрагментом без смены адреса — переход по номеру из ответа). Возвращает номер чата."""
+    со ссылкой `/messenger/?to=<id>`; затем первое сообщение `FIRST_TEXT` формой `#messenger-form`. Форма —
+    обычный POST: по CONTRACT-008 10.2 ответ 302 на беседу, браузер идёт по нему сам. Возвращает номер чата."""
     card_button = page.locator("[data-messenger-card-write]")
     if card_button.count():
         card_button.first.click()
@@ -182,17 +184,8 @@ def start_dialog(page, account) -> int:
     form = _form(page)
     expect(form).to_be_visible()
     form.locator('textarea[name="text"]').first.fill(FIRST_TEXT)
-    with page.expect_response(lambda r: r.request.method == "POST"
-                              and r.url.split("?")[0].endswith("/messenger/chats/")) as info:
-        form.locator('button[type="submit"]').first.click()
-    html = info.value.text()
-    try:
-        page.wait_for_url(_CHAT_URL, timeout=PAGE_TIMEOUT)
-    except PlaywrightTimeoutError:
-        found = _CHAT_URL.search(html)
-        assert found, "после первого сообщения страница не перешла в беседу"
-        page.goto(f"/messenger/chats/{found.group(1)}/")
-        page.wait_for_load_state()
+    form.locator('button[type="submit"]').first.click()
+    page.wait_for_url(_CHAT_URL, timeout=PAGE_TIMEOUT)
     return int(_CHAT_URL.search(page.url).group(1))
 
 

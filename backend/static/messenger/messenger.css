@@ -132,6 +132,13 @@
 }
 
 /* Две колонки от 900 px; до 900 px — одна (список, беседа — по адресу) (FR-673). */
+@media (max-width: 899.98px) {
+  /* Первая беседа справа — только для широкого экрана; на узком открывается по адресу. */
+  .messenger-page:not(.messenger-page-chat) > .messenger-chat {
+    display: none;
+  }
+}
+
 @media (min-width: 900px) {
   .messenger-page:not(.messenger-page-chat) {
     display: grid;

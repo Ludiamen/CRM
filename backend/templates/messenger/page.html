@@ -17,6 +17,7 @@
     </nav>
     {% include "messenger/_search.html" %}
     {% include "messenger/_list.html" %}
+    {% if chat %}{% include "messenger/_chat.html" %}{% endif %}
   {% endif %}
 </div>
 {% endblock %}

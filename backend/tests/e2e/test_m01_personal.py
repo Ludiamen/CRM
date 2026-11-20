@@ -115,11 +115,12 @@ def _settle(page) -> None:
     page.evaluate("() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
 
 
-def _card_page(context, account: helpers.Account):
-    """Страница карточки сотрудника `/staff/<id>/` с сессией `account` (`helpers_notify.adopt_session`)."""
+def _card_page(context, account: helpers.Account, target: helpers.Account | None = None):
+    """Страница карточки сотрудника `/staff/<id>/` с сессией `account` (`helpers_notify.adopt_session`);
+    `target` — чья карточка открыта (по умолчанию своя)."""
     helpers_notify.adopt_session(context, account)
     page = context.new_page()
-    page.goto(f"/staff/{account.id}/")
+    page.goto(f"/staff/{(target or account).id}/")
     page.wait_for_load_state()
     return page
 
@@ -135,7 +136,7 @@ def test_m01_dialog_is_one_for_pair_started_from_card_and_from_messenger(circle,
     """Сценарий 1, п. 1 (FR-645): первый сотрудник шлёт сообщение второму кнопкой «Написать» в карточке — открывается
     личный диалог; вторая отправка того же сотрудника из мессенджера попадает в него же, а не в новый чат."""
     c = circle.cast
-    card = _card_page(new_context(), c.writer)
+    card = _card_page(new_context(), c.writer, c.peer)
     write_button = card.locator("[data-messenger-card-write]")
     expect(write_button).to_be_visible()  # кнопка «Написать» в карточке собеседника
     from_card = helpers_messenger.start_dialog(card, c.peer)

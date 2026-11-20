@@ -24,7 +24,7 @@ def page_number(raw) -> str:
 
 
 def list_context(user, query) -> dict:
-    """`{page, filter_value, page_number}` для тела потока; `query` — `request.GET`."""
+    """`{page, filter_value, page_number, push_base}` для тела потока; `query` — `request.GET`."""
     f = filter_value(query.get("f"))
     notes = Notification.objects.filter(user_id=user.pk)
     if f:
@@ -32,7 +32,14 @@ def list_context(user, query) -> dict:
     page = Paginator(notes.order_by("-created_at", "-pk"), PAGE_SIZE).get_page(
         page_number(query.get("page")) or 1)
     _with_titles(page.object_list)
-    return {"page": page, "filter_value": f, "page_number": page.number}
+    return {"page": page, "filter_value": f, "page_number": page.number, "push_base": push_base()}
+
+
+def push_base() -> str:
+    """Адрес для `hx-push-url` фильтра и страниц: вкладка мессенджера при установленном модуле, иначе список."""
+    from django.apps import apps
+
+    return "/messenger/notifications/" if apps.is_installed("apps.messenger") else "/notifications/"
 
 
 def _with_titles(notes) -> list:
