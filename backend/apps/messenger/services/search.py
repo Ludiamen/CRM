@@ -71,6 +71,23 @@ LIMIT %s
 """
 
 
+def vectors(message_ids) -> int:
+    """Пересчитать вектор поиска пачки сообщений тем же правилом, что отправка: без маркеров упоминаний.
+
+    Нужен наполнению стенда (`tests/load/fill_messenger.py`): пачка вставляется `bulk_create`, и штатный
+    `messages._set_vector` по одному был бы слишком медленным. Возвращает число обновлённых строк.
+    """
+    ids = [int(value) for value in message_ids if value is not None]
+    if not ids:
+        return 0
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE messenger_message SET search = to_tsvector('russian', "
+            "regexp_replace(text, '@\\[[uc][0-9]{1,9}\\]', ' ', 'g')) WHERE id = ANY(%s)",
+            [ids])
+        return cursor.rowcount
+
+
 def search_providers() -> list:
     """Запись точки `search_providers`: группа «Мессенджер» после «Ленты» (order 61)."""
     return [SearchProvider(key="messenger", title="Мессенджер", order=61,
