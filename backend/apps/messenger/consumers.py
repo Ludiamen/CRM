@@ -180,6 +180,10 @@ class MessengerConsumer(SessionGuardMixin, AsyncWebsocketConsumer):
                 await self.send(text_data=line)
             return
         oob = "beforeend:#messenger-messages" if action == "new" else "outerHTML"
+        if action == "new":
+            # htmx у OOB `beforeend` вставляет **детей** элемента: обёртка даёт вставку самой статьи.
+            await self.send(text_data=f'<div hx-swap-oob="{oob}">{html}</div>')
+            return
         await self.send(text_data=html.replace("<article ", f'<article hx-swap-oob="{oob}" ', 1))
 
     def _variant(self, event) -> str:
