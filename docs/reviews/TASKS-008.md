@@ -317,6 +317,47 @@ m02/m03 ×2/m06 (старый `[data-ws]`), m05 Firefox (чтение тела 3
 (`e05-retry.log`, «устройство 2: []») — это вне среза 008 (уведомление сервис-деска, не мессенджер) и прежде
 известный флейк; к T-8302 не относится, вынесен в наблюдения T-8305/решение владельца.
 
+
+## Инварианты (T-8306)
+
+Проверка по диффу среза (`1f216a9..HEAD` и правки приёмки 2026-11-20/21) против конституции, PLAN-008
+(«Сверка с конституцией», «Точки расширения», «Изменения кода прежних срезов») и решения 11 задач.
+
+| Инвариант | Проверка | Итог |
+|---|---|---|
+| модуль-приложение | `apps/messenger/**` не импортирует модели `org`, `notify`, `feed` и `apps.feed`; из `org` — только `services.structure` (7 мест, локально и под `apps.is_installed`); из `notify` — `dispatch.create`, `live.group` и (для вкладки) `services.pages`; прежние модули `apps.messenger` не импортируют; `POINTS` — 19, `unit_form_parts` последняя; мессенджер регистрирует 8 точек и не регистрирует `top_bar_items`; адреса, ASGI и cron — под `is_installed` | PASS |
+| настройка-без-кода | срок (`retention_years`, 1…10, по умолчанию 3) и «Общий чат» (`general_chat_enabled`) читаются из строки `MessengerSettings`; каналы — данные `notify`; порогов в коде нет | PASS |
+| интеграции-через-адаптеры | ClamAV — через точку `file_purposes` ядра (прямых `clamd`/`clamav` в мессенджере нет); рассылка — через слой `publish` (таймаут 2 с, сбой — предупреждение) | PASS |
+| аудит-изменений | текста сообщений в журнале нет (снимок удаления — `chat_title`, `chat_members`, `chat_created_at` в «стало», решение владельца 2026-11-17); журнал только дополняется — ни `update`, ни `delete` `AuditEntry` в мессенджере нет | PASS |
+| пдн-152фз | невидимое = несуществующее (`members.get_chat`/`visible_chats` во всех чтениях, 404/4404, поиск по видимым); внешние каналы получают постоянный текст без имён и текста; срок 3 года — данные | PASS |
+| секреты-в-url | в адресах только номера и ключи (20 адресов и `/ws/messenger/?chat=`), токенов и адресов почты нет | PASS |
+| sql-только-параметры | все `cursor.execute` — с параметрами (`messages._set_vector`, `unread`, `search`, `chats.rows`); динамика в тексте SQL — только структура запроса | PASS |
+| двухфакторная-авторизация (соединение) | `SessionGuardMixin` (не «ok» — 4401, цикл 25 с), затем видимость чата (4400 до подписки, 4404), предел кадра 4 КБ — 1009, сбой слоя — 1011 | PASS |
+
+**Изменённые файлы прежних срезов.** Таблица плана покрывает `config/{settings,urls,asgi,cron}.py`,
+`core/extensions.py` (19-я точка и `UnitFormPart`), `core/models/files.py` + `0011`, `core/services/text.py`,
+`core/services/thumbs.py`, `feed/services/{text,thumbs}.py`, `org/views/structure_forms.py`,
+`org/services/structure.py`, `templates/org/_slider.html`, `templates/_assets.html`, `notify/urls.py`,
+`notify/views/pages.py`, `templates/notify/{bell,_bell_panel}.html`, `deploy/nginx{,.prod}.conf`,
+`tests/load/locustfile.py`; у каждого — тест прежнего поведения (110 passed, `prior3.log`). Вне таблицы, с
+причиной и тестом: `core/events.py` (параметр `name` → `event` из-за payload `name` события `unit.deleted`;
+`test_core_events`, `test_org_structure*`), новый `notify/services/pages.py` (общая служба потока для вкладки —
+план, стр. 33/470; `test_notify_pages*`), `templates/notify/_list_body.html` (общее тело; те же тесты),
+`templates/search/rows/_messenger.html` (строка поставщика; `test_messenger_search`), `icons/chat.html` (пункт меню).
+
+**Правки приёмки** (2026-11-20/21, коммиты `54c15f4`, `e196da2`, `36f173f`, `dc00972`, `f401a3d`, `7eed113`,
+`7e3b9dd`, `32dcf2f`): `messenger.js`, `_form.html`, `_message.html`, `_history.html`, `_chat.html`, `_card_write.html`,
+`_frame_message.html`, `page.html`, `_files.html`, `messenger.css`, `notify/_list_body.html`,
+`notify/services/pages.py`, `views/pages.py`, `consumers.py`, `services/files.py`, `services/search.py`,
+`services/chats.py` (докстрока), `config/{urls,asgi}.py` (комментарии) и помощники e2e. Причина — дефекты
+приёмки (соединение, кадр, зацепки, недостающий UI), а не расширение среза; лишних правок нет.
+
+**Найденные и исправленные расхождения с планом:** (1) зависимость от `notify.services.pages` — допущена общей
+формулировкой плана «публичными службами core, org и notify» и подписанным тестом границ; (2) устаревшие
+комментарии каркаса `config/{urls,asgi}.py` и докстрока `chats.rows` — исправлены текстом; (3) `search.vectors`
+для наполнения стенда отсутствовал — добавлен (T-8304). Других отклонений нет; конституция и решение 11
+соблюдены.
+
 ## Наблюдения на стенде (T-8305)
 
 Разрешение владельца 2026-11-19 («T-8305 — после T-8302»); после наблюдений службы восстановлены, стенд здоров.
