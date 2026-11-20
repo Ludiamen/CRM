@@ -208,3 +208,8 @@
   background: var(--bs-tertiary-bg, #f1f3f5);
   font-size: 0.875rem;
 }
+
+/* Догрузка истории: позицию держит messenger.js, встроенное «привязывание» прокрутки браузера только мешает. */
+#messenger-messages {
+  overflow-anchor: none;
+}

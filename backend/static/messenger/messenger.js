@@ -34,7 +34,7 @@
       var label = row.getAttribute("data-mention-label") || "";
       if (!value || !label) return;
       if (token.kind === "#" ? value.charAt(0) !== "c" : "uc".indexOf(value.charAt(0)) < 0) return;
-      var shown = (token.kind === "@" ? "@" : "#") + label;
+      var shown = (value.charAt(0) === "c" ? "#" : "@") + label;
       var marker = "@[" + value + "]";
       var before = area.value.slice(0, token.start);
       var after = area.value.slice(area.selectionStart);

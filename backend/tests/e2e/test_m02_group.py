@@ -114,7 +114,7 @@ def _member_opens(context, account, chat_id, title):
     expect(row).to_contain_text(title)
     page.goto(_chat_url(chat_id))
     expect(page.locator('[data-messenger-page="chat"]')).to_be_visible()
-    expect(page.locator("[data-ws]")).to_have_attribute("data-ws", "open", timeout=DEFAULT_TIMEOUT)
+    expect(page.locator(helpers_messenger.WS_CHAT)).to_have_attribute("data-ws", "open", timeout=DEFAULT_TIMEOUT)
     return page
 
 
