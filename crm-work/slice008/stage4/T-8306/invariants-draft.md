@@ -93,6 +93,14 @@ T-8210; `messenger.js` T-8208, T-8210, T-8213, T-8222; `messenger.css` T-8208, T
 
 ## Находки к записи
 
+0. **Правки по итогам приёмки T-8302 (2026-11-20, решение владельца).** К диффу среза добавляются:
+   `templates/notify/_list_body.html` (hx-target/hx-push-url), `apps/notify/services/pages.py` (`push_base`),
+   `apps/messenger/views/pages.py` (первая беседа списка), `templates/messenger/page.html` (`_chat.html`),
+   `templates/messenger/_form.html` (убран лишний `data-chat-id`), `static/messenger/messenger.css` (скрытие
+   второй колонки до 900 px), `tests/e2e/helpers_messenger.py`, `tests/e2e/test_m01_personal.py`. Повод —
+   дефекты приёмки (фильтр вкладки, FR-673, зацепки тестов), а не расширение среза; тесты прежнего поведения —
+   `test_notify_pages*`, `test_messenger_page`, `test_messenger_unread` (8 повторно зелёных).
+
 1. **Зависимость от `notify.services.pages`** — вне узкой формулировки плана (стр. 59), допущена подписанным
    тестом границ и общей формулировкой стр. 33; данных `notify` не раскрывает (только фильтр/страницы/названия видов).
 2. **`core/events.py`** — переименование параметра вне таблицы плана; причина — payload `name`; тесты ядра и узла
