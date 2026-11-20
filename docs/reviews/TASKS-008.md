@@ -318,6 +318,58 @@ m02/m03 ×2/m06 (старый `[data-ws]`), m05 Firefox (чтение тела 3
 известный флейк; к T-8302 не относится, вынесен в наблюдения T-8305/решение владельца.
 
 
+## Прохождение требований (T-8307)
+
+Таблица: требование SPEC-008 → тест (Этап 2 и браузерные сценарии) → реализация → результат. Сервер — 4400 passed
+(T-8260) + 265/879/155 на правках приёмки; браузер — точечный прогон `m01…m13` в четырёх кругах (240 из 240).
+
+| Требование | Тест | Реализация | Результат |
+|---|---|---|---|
+| FR-643 | `test_messenger_models`, `test_messenger_chats`, e2e `m13` | `models.py`, `services/members.py`, `migrations/0001` | PASS |
+| FR-644 | `test_messenger_page`, e2e `m01`, `m12` | `services/chats.rows`, `views/pages.py`, `_list.html` | PASS |
+| FR-645 | `test_messenger_personal`, `test_messenger_chats`, e2e `m01` | `services/chats.personal`, `views/chats.py`, `_card_write.html` | PASS |
+| FR-646 | `test_messenger_group`, e2e `m02` | `services/chats` (состав), `views/chats.py::members_change` | PASS |
+| FR-647 | `test_messenger_group`, e2e `m02` | `services/chats.leave`, формы `_chat.html` | PASS |
+| FR-648 | `test_messenger_group`, `test_messenger_audit`, e2e `m02` | `services/chats.delete`, `views/chats.py::delete`, `live` | PASS |
+| FR-649 | `test_messenger_unit_form`, `test_messenger_department`, e2e `m03` | `services/department.py`, `unit_form.py`, `org/structure_forms` | PASS |
+| FR-650 | `test_messenger_department`, `test_messenger_core_changes`, e2e `m03` | `services/members.py`, `department.on_unit_deleted` | PASS |
+| FR-651 | `test_messenger_general`, `test_messenger_settings`, e2e `m04` | `services/chats.general`, `messenger_settings.py`, `views/settings.py` | PASS |
+| FR-652 | `test_messenger_messages`, `test_messenger_text`, e2e `m01`, `m05` | `services/messages.send` | PASS |
+| FR-653 | `test_messenger_text`, `test_messenger_core_changes`, e2e `m05` | `core/services/text.py`, `messenger/services/text.py` | PASS |
+| FR-654 | `test_messenger_messages`, e2e `m05` | `services/messages` (цитата), `_message.html`, `messenger.js` | PASS |
+| FR-655 | `test_messenger_mentions`, e2e `m06` | `services/mentions.py`, `views/mentions.py`, `messenger.js` | PASS |
+| FR-656 | `test_messenger_messages`, e2e `m05` | `services/messages.edit`, форма правки `_message.html` | PASS |
+| FR-657 | `test_messenger_messages`, `test_messenger_files`, e2e `m05` | `services/messages.delete`, `_message.html` | PASS |
+| FR-658 | `test_messenger_page`, e2e `m01` | `services/page.history`, `views/pages.py`, `_history.html` | PASS |
+| FR-659 | `test_messenger_read`, e2e `m08` | `services/read.py`, `_read_line_frame.html` | PASS |
+| FR-660 | `test_messenger_unread`, `test_messenger_live`, e2e `m08` | `services/unread.py`, `live.py`, `_badge.html` | PASS |
+| FR-661 | `test_messenger_live`, `test_messenger_consumers`, e2e `m08` | `services/live.py`, `consumers.py`, `tasks.publish_event` | PASS |
+| FR-662 | `test_messenger_files*`, `test_messenger_deploy`, e2e `m07` | `services/files.py`, `views/files.py`, `core/thumbs`, `nginx` | PASS |
+| FR-663 | `test_messenger_notify*`, e2e `m09` | `notify_kinds.py`, `notify_rules.py` | PASS |
+| FR-664 | `test_messenger_notify*`, e2e `m06`, `m09` | `notify_rules.decide`, `notify_kinds.py` | PASS |
+| FR-665 | `test_messenger_notify*`, `test_notify_prefs*` | данные каналов `notify` | PASS |
+| FR-666 | `test_messenger_notify*`, `test_messenger_live`, e2e `m08`, `m09` | `notify_rules.py`, `messenger.js` (отметка по кадру) | PASS |
+| FR-667 | `test_messenger_notify*`, `test_notify_pages*`, e2e `m09` | `notify/views/pages.py`, `messenger/views/notifications.py`, `_list_body.html` | PASS |
+| FR-668 | `test_messenger_search`, e2e `m10` | `services/search.py`, `views/messages.chat_search` | PASS |
+| FR-669 | `test_messenger_chats`, `test_messenger_files*`, `test_messenger_search`, e2e `m13` | `members.get_chat` во всех чтениях; 404/4404 | PASS |
+| FR-670 | `test_messenger_retention`, `test_messenger_settings`, e2e `m11` | `services/retention.py`, `tasks.retention_night`, `config/cron.py` | PASS |
+| FR-671 | `test_messenger_audit`, e2e `m02`, `m03`, `m11` | `chats.delete`, `messenger_settings`, `retention`, `audit_labels.py` | PASS |
+| FR-672 | `test_messenger_department`, e2e `m03` | `views/chats.py::delete` (админ портала) | PASS |
+| FR-673 | e2e `m12` в четырёх кругах | `page.html` (первая беседа от 900 px), `messenger.css` | PASS |
+| NFR-701 | `test_messenger_live`, `test_messenger_consumers`, e2e `m08`; locust `WS messenger frame` | `services/live.py`, `consumers.py`; замер — T-8304 | PASS (e2e `m08`); замер — T-8304 |
+| NFR-702 | e2e `m12` в четырёх браузерах | `messenger.css` | PASS |
+| NFR-703 | `test_messenger_search` (`capture_sql`), `test_messenger_page`, границы | параметры SQL во всех запросах | PASS |
+| NFR-704 | `test_messenger_files*`, e2e `m07` | `services/files.py` (20 МБ, 40 Мп), `nginx` 25m | PASS |
+| NFR-705 | `test_messenger_notify*` | `notify_kinds.external_text` | PASS |
+| NFR-706 | `test_messenger_retention` | `services/retention.py` | PASS |
+| NFR-707 | `test_messenger_deploy` (наличие профиля); замер — T-8304 | `tests/load/locustfile.py::MessengerUser`, `fill_messenger.py` | PASS формально; замер — T-8304 |
+| NFR-708 | `test_messenger_deploy`, e2e `m01…m13` | `texts.py`, шаблоны, `page.py` (Europe/Moscow) | PASS |
+| NFR-709 | `test_messenger_audit` (права роли) | журнал ядра, `audit_labels.py` | PASS |
+
+**Итог T-8307:** 40 требований; 39 подтверждены сервером и браузером, NFR-701 подтверждён поведением
+(e2e `m08`), его порог и NFR-707 — замером T-8304. Таблица TASKS-008 помечена `[x]` по задачам этапов 1–4,
+кроме T-8304 (после замера), T-8306 и T-8309 (владелец); документ переведён в «на-проверке» (`sdd.py на-проверку`).
+
 ## Инварианты (T-8306)
 
 Проверка по диффу среза (`1f216a9..HEAD` и правки приёмки 2026-11-20/21) против конституции, PLAN-008
