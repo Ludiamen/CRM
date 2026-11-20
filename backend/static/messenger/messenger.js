@@ -95,12 +95,22 @@
   }
   document.body.addEventListener("htmx:afterSwap", start);
 })();
-/* Соединение беседы (T-8213): состояние `data-ws`, `sync` при открытии, переход по `data-hx-redirect`. */
+/* Соединение беседы (T-8213): состояние `data-ws`, `sync` при открытии, переход по `data-hx-redirect`.
+ *
+ * Узел соединения ищется по адресу слоя мессенджера: у колокольчика тоже есть `data-ws`, и он стоит в
+ * разметке первым, поэтому голый `[data-ws]` давал чужое соединение (приёмка T-8302, 2026-11-20).
+ */
 (function () {
   "use strict";
 
+  var SELECTOR = '[data-ws][ws-connect*="/ws/messenger/"]';
+
+  function isMessenger(elt) {
+    return !!(elt && elt.getAttribute && (elt.getAttribute("ws-connect") || "").indexOf("/ws/messenger/") >= 0);
+  }
+
   function node() {
-    return document.querySelector("[data-ws]");
+    return document.querySelector(SELECTOR);
   }
 
   function state(value) {
@@ -108,27 +118,32 @@
     if (ws) ws.dataset.ws = value;
   }
 
-  function send(payload) {
-    var ws = node();
-    if (!ws || !ws.ws || typeof ws.ws.send !== "function") return;
+  function chatId(elt) {
+    var match = /[?&]chat=(\d+)/.exec((elt && elt.getAttribute("ws-connect")) || "");
+    if (match) return Number(match[1]);
+    var byPath = window.location.pathname.match(/\/messenger\/chats\/(\d+)\//);
+    return byPath ? Number(byPath[1]) : 0;
+  }
+
+  function send(elt, payload) {
+    if (!elt || !elt.ws || typeof elt.ws.send !== "function") return;
     try {
-      ws.ws.send(JSON.stringify(payload));
+      elt.ws.send(JSON.stringify(payload));
     } catch (error) {
       /* соединение закрылось между событиями — переподключение делает расширение htmx */
     }
   }
 
-  document.body.addEventListener("htmx:wsOpen", function () {
-    var chat = new URLSearchParams(window.location.search).get("chat");
-    var match = window.location.pathname.match(/\/messenger\/chats\/(\d+)\//);
-    var id = match ? Number(match[1]) : Number(chat || 0);
-    if (id) {
-      send({sync: {chat: id, at: new Date().toISOString()}});
-    }
+  document.body.addEventListener("htmx:wsOpen", function (event) {
+    var elt = (event.detail && event.detail.elt) || node();
+    if (!isMessenger(elt)) return;
+    var id = chatId(elt);
+    if (id) send(elt, {sync: {chat: id, at: new Date().toISOString()}});
   });
 
-  document.body.addEventListener("htmx:wsClose", function () {
-    state("closed");
+  document.body.addEventListener("htmx:wsClose", function (event) {
+    var elt = (event.detail && event.detail.elt) || node();
+    if (isMessenger(elt)) state("closed");
   });
 
   document.body.addEventListener("htmx:afterSwap", function (event) {
@@ -166,4 +181,76 @@
     if (added > 0) box.scrollTop = scroll.top + added;
     scroll = null;
   });
+})();
+
+/* Вложения (T-8215): выбранный файл сразу уходит на `/messenger/files/`, ответ — таблетка со скрытым `files`;
+ * крестик таблетки убирает файл (CONTRACT-008 10.2, 12.5). Ошибка службы (размер, тип, предел) рисуется рядом. */
+(function () {
+  "use strict";
+
+  function csrf(form) {
+    var input = form.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input ? input.value : "";
+  }
+
+  function current(form) {
+    return Array.prototype.slice.call(form.querySelectorAll("[data-messenger-file]"));
+  }
+
+  function sendFile(form, box, input, file) {
+    var body = new FormData();
+    body.append("chat", input.getAttribute("data-chat") || "");
+    current(form).forEach(function (pill) {
+      body.append("have", pill.getAttribute("data-messenger-file") || "");
+    });
+    body.append("file", file, file.name);
+    fetch("/messenger/files/", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {"X-CSRFToken": csrf(form), "X-Requested-With": "fetch"},
+      body: body
+    })
+      .then(function (response) { return response.text(); })
+      .then(function (html) { box.insertAdjacentHTML("beforeend", html); })
+      .catch(function () { /* сеть недоступна — файл просто не прикрепился */ });
+  }
+
+  function setup(form) {
+    var input = form.querySelector("input[type='file'][data-messenger-upload]");
+    var box = form.querySelector("[data-messenger-files]");
+    if (!input || !box) return;
+
+    input.addEventListener("change", function () {
+      Array.prototype.forEach.call(input.files || [], function (file) {
+        sendFile(form, box, input, file);
+      });
+      input.value = "";
+    });
+
+    form.addEventListener("click", function (event) {
+      var button = event.target.closest('[data-action="file-remove"]');
+      if (!button) return;
+      event.preventDefault();
+      var pill = button.closest("[data-messenger-file]");
+      if (!pill) return;
+      fetch("/messenger/files/" + pill.getAttribute("data-messenger-file") + "/delete/", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {"X-CSRFToken": csrf(form), "X-Requested-With": "fetch"}
+      }).then(function (response) {
+        if (response.ok) pill.remove();
+      }).catch(function () { /* остаётся на месте — повтор */ });
+    });
+  }
+
+  function start() {
+    document.querySelectorAll("#messenger-form").forEach(setup);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+  document.body.addEventListener("htmx:afterSwap", start);
 })();

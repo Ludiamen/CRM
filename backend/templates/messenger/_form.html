@@ -6,6 +6,11 @@
     {% include "messenger/_form_error.html" with error=errors.text field="text" %}
     <label class="visually-hidden" for="id_messenger_text">Сообщение</label>
     <textarea id="id_messenger_text" name="text" class="form-control" placeholder="Напишите сообщение">{{ text }}</textarea>
+    <div data-messenger-files class="messenger-files"></div>
+    <label class="messenger-upload btn btn-outline-secondary btn-sm">
+      <input type="file" name="file" data-messenger-upload data-chat="{{ chat.pk }}" multiple>
+      <span>Прикрепить файл</span>
+    </label>
     {% if chat.kind != "personal" %}
       <div data-messenger-mention-list data-mention-url="/messenger/mentions/?chat={{ chat.pk }}" class="messenger-mention-list"></div>
     {% endif %}

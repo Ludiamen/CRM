@@ -177,3 +177,34 @@
     max-height: none;
   }
 }
+
+/* Вложения (T-8215): выбор файла спрятан в кнопке, таблетки формы — в строку с переносом. */
+.messenger-upload {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+}
+
+.messenger-upload input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.messenger-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: 0.25rem 0;
+}
+
+.messenger-files .messenger-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: var(--bs-tertiary-bg, #f1f3f5);
+  font-size: 0.875rem;
+}

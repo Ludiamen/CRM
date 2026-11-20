@@ -228,14 +228,21 @@ def _menu_action(node, label: str) -> None:
 
 
 def _send(page, text: str) -> str:
-    """Заполняет поле ввода и отправляет форму беседы; возвращает тело ответа на POST `…/messages/`."""
+    """Заполняет поле ввода и отправляет форму беседы; возвращает тело ответа на POST `…/messages/`.
+
+    Обычный POST по CONTRACT-008 10.2 даёт 302 на беседу (тела у ответа нет) — тогда возвращается пустая строка,
+    а номер сообщения берётся из истории страницы (`_sent_id`)."""
     form = _form(page)
     expect(form).to_be_visible()
     form.locator('textarea[name="text"]').first.fill(text)
     with page.expect_response(lambda r: r.request.method == "POST" and "/messenger/chats/" in r.url
                               and r.url.split("?")[0].endswith("/messages/")) as info:
         form.locator('button[type="submit"]').first.click()
-    return info.value.text()
+    response = info.value
+    if response.status in (301, 302, 303, 307, 308):
+        page.wait_for_load_state()
+        return ""
+    return response.text()
 
 
 def _sent_id(page, html: str) -> int:

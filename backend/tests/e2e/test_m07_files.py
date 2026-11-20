@@ -87,12 +87,12 @@ def _chat_page(new_context, account, peer) -> tuple:
     """Личный диалог `account` ↔ `peer` (существующий или новый) и страница беседы: `start_dialog` уже
     отправляет первое сообщение и оставляет страницу в беседе (14.3). Возвращает `(страница, номер чата)`."""
     # список ждём без `[data-ws]`: «Общий чат» мог быть выключен соседним сценарием того же круга
-    page = helpers_messenger.start_dialog(
-        helpers_messenger.open_messenger(new_context(), account, live=False), peer)
+    page = helpers_messenger.open_messenger(new_context(), account, live=False)
+    chat_id = helpers_messenger.start_dialog(page, peer)
     expect(page.locator('[data-messenger-page="chat"]')).to_be_visible()
     found = _CHAT_URL.search(page.url)
     assert found, f"после начала диалога адрес {page.url!r}, ожидался /messenger/chats/<id>/"
-    return page, int(found.group(1))
+    return page, chat_id
 
 
 def _write(tmp_path, name: str, data: bytes):
