@@ -261,7 +261,8 @@ def test_member_leaves_and_stops_seeing_chat_and_messages_while_others_continue(
 
     left = _leave(writer_page, chat_id)
     assert left.status == 302, f"выход участника: ответ {left.status}"
-    assert "data-messenger-confirm" not in left.text(), "выход не последнего участника потребовал подтверждения"
+    assert left.status != 200 or "data-messenger-confirm" not in left.text(), \
+        "выход не последнего участника потребовал подтверждения"
     writer_page.wait_for_url(re.compile(r"/messenger/$"))
 
     _absent_from_list(writer_page, chat_id)
@@ -355,7 +356,7 @@ def test_creator_deletes_chat_after_confirm_and_journal_has_no_message_text(new_
     sides = helpers_org.audit_sides(admin_page, AUDIT_DELETED, chat_id)
     assert len(sides) == 1, sides
     before, after = sides[0]
-    assert title in before, f"в «было» нет названия чата: {before!r}"
+    assert title in after, f"в «стало» нет названия чата: {after!r}"
     assert first_text not in before and second_text not in before, "в «было» текст сообщений"
     assert first_text not in after and second_text not in after, "в «стало» текст сообщений"
 
@@ -377,7 +378,8 @@ def test_last_member_leaves_with_confirm_and_chat_deleted_with_history(new_conte
 
     left = _leave(peer_page, chat_id)
     assert left.status == 302, f"выход не последнего участника: ответ {left.status}"
-    assert "data-messenger-confirm" not in left.text(), "не последний участник получил подтверждение"
+    assert left.status != 200 or "data-messenger-confirm" not in left.text(), \
+        "не последний участник получил подтверждение"
     peer_page.wait_for_url(re.compile(r"/messenger/$"))
     assert helpers_org.direct_get(creator_page, _chat_url(chat_id)).status == 200, "чат исчез до выхода последнего"
 

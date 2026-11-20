@@ -195,11 +195,23 @@
 
   var scroll = null;
 
+  function firstVisible(box) {
+    var boxTop = box.getBoundingClientRect().top;
+    var nodes = box.querySelectorAll("article[data-message-id]");
+    for (var index = 0; index < nodes.length; index += 1) {
+      if (nodes[index].getBoundingClientRect().bottom > boxTop) return nodes[index];
+    }
+    return null;
+  }
+
   document.body.addEventListener("htmx:beforeRequest", function (event) {
     var box = document.getElementById("messenger-messages");
     var target = event.detail && event.detail.elt;
     if (!box || !target || !box.contains(target)) return;
-    scroll = {node: box, height: box.scrollHeight, top: box.scrollTop};
+    var anchor = firstVisible(box);
+    // Место держим по видимому сообщению: высота контейнера меняется и сверху, и снизу (кнопка «раньше»).
+    scroll = anchor ? {node: box, id: anchor.id,
+                       offset: anchor.getBoundingClientRect().top - box.getBoundingClientRect().top} : null;
   });
 
   document.body.addEventListener("htmx:afterSwap", function (event) {
@@ -209,8 +221,11 @@
       scroll = null;
       return;
     }
-    var added = box.scrollHeight - scroll.height;
-    if (added > 0) box.scrollTop = scroll.top + added;
+    var anchor = scroll.id ? document.getElementById(scroll.id) : null;
+    if (anchor) {
+      var offset = anchor.getBoundingClientRect().top - box.getBoundingClientRect().top;
+      box.scrollTop += offset - scroll.offset;
+    }
     scroll = null;
   });
 })();
