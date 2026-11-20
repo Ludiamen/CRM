@@ -1,14 +1,10 @@
-<div class="messenger-frame" data-messenger-role="{{ role }}">
-  {% if message %}
-    <article id="m{{ message.pk }}" data-message-id="{{ message.pk }}"
-             data-own="{% if role == "author" %}1{% else %}0{% endif %}" class="messenger-message">
-      <header class="messenger-message-head">
-        <span class="messenger-message-author">{{ message.author.full_name }}</span>
-        <time data-at datetime="{{ message.created_at|date:'c' }}">{{ message.created_at|date:'d.m.Y H:i' }}</time>
-        {% if message.edited_at %}<span data-messenger-edited>изменено
-          <time data-at datetime="{{ message.edited_at|date:'c' }}">{{ message.edited_at|date:'d.m.Y H:i' }}</time></span>{% endif %}
-      </header>
-      <div class="messenger-message-text">{{ body_html }}</div>
-    </article>
-  {% endif %}
-</div>
+{% if message %}<article id="m{{ message.pk }}" data-message-id="{{ message.pk }}"
+         data-own="{% if role == "author" %}1{% else %}0{% endif %}" data-messenger-role="{{ role }}" class="messenger-message">
+  <header class="messenger-message-head">
+    <span class="messenger-message-author">{{ message.author.full_name }}</span>
+    <time data-at datetime="{{ message.created_at|date:'c' }}">{{ message.created_at|date:'d.m.Y H:i' }}</time>
+    {% if message.edited_at %}<span data-messenger-edited>изменено
+      <time data-at datetime="{{ message.edited_at|date:'c' }}">{{ message.edited_at|date:'d.m.Y H:i' }}</time></span>{% endif %}
+  </header>
+  <div class="messenger-message-text">{{ body_html }}</div>
+</article>{% endif %}
