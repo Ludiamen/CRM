@@ -14,5 +14,5 @@
     {% include "messenger/_history.html" %}
   </div>
   {% include "messenger/_form.html" %}
-  <div class="messenger-live" data-ws="connecting" hx-ext="ws" ws-connect="{{ ws_url }}"></div>
+  <div class="messenger-live" data-ws="connecting" hx-ext="ws" ws-connect="{{ ws_url }}"{% if preview %} data-preview="1"{% endif %}></div>
 </section>

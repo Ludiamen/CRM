@@ -125,20 +125,34 @@
     return byPath ? Number(byPath[1]) : 0;
   }
 
-  function send(elt, payload) {
-    if (!elt || !elt.ws || typeof elt.ws.send !== "function") return;
+  function send(wrapper, payload) {
+    if (!wrapper || typeof wrapper.send !== "function") return;
     try {
-      elt.ws.send(JSON.stringify(payload));
+      wrapper.send(JSON.stringify(payload));
     } catch (error) {
       /* соединение закрылось между событиями — переподключение делает расширение htmx */
     }
   }
 
   document.body.addEventListener("htmx:wsOpen", function (event) {
-    var elt = (event.detail && event.detail.elt) || node();
+    var detail = event.detail || {};
+    var elt = detail.elt || node();
     if (!isMessenger(elt)) return;
+    // Первая беседа справа от списка — предпросмотр: соединение открыто, но `sync` не шлём,
+    // иначе сервер поставил бы отметку прочтения за заход в список (решение владельца 2026-11-20).
+    if (elt.hasAttribute("data-preview")) {
+      state("open");
+      return;
+    }
     var id = chatId(elt);
-    if (id) send(elt, {sync: {chat: id, at: new Date().toISOString()}});
+    if (id) send(detail.socketWrapper, {sync: {chat: id, at: new Date().toISOString()}});
+  });
+
+  document.body.addEventListener("htmx:wsAfterMessage", function (event) {
+    // Служебный кадр `#messenger-synced` приходит с `hx-swap-oob`: цели в разметке нет, поэтому oob-своп
+    // не срабатывает и `afterSwap` молчит. Состояние ставим по самому сообщению (CONTRACT-008 12.4).
+    var message = (event.detail && event.detail.message) || "";
+    if (message.indexOf("messenger-synced") >= 0) state("open");
   });
 
   document.body.addEventListener("htmx:wsClose", function (event) {
