@@ -1,5 +1,5 @@
 {% if chat %}
-  <form id="messenger-form" method="post" action="/messenger/chats/{{ chat.pk }}/messages/" data-chat-id="{{ chat.pk }}">
+  <form id="messenger-form" method="post" action="/messenger/chats/{{ chat.pk }}/messages/">
     {% csrf_token %}
     <input type="hidden" name="quote" value="">
     {% for field, error in errors.items %}{% if field != "text" %}{% include "messenger/_form_error.html" with error=error field=field %}{% endif %}{% endfor %}
