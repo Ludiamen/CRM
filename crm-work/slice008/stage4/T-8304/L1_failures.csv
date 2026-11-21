@@ -1,0 +1,15 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,POST /messenger/messages/<mid>/edit/,CatchResponseError('/messenger/messages/50186/edit/: 500'),1,2026-11-21T06:54:25Z,2026-11-21T06:54:25Z
+GET,/search/?q,HTTPError('500 Server Error: Internal Server Error for url: /search/?q'),1,2026-11-21T06:54:21Z,2026-11-21T06:54:21Z
+WS,/ws/messenger/ connect,WebSocketTimeoutException('Connection timed out'),5,2026-11-21T06:51:07Z,2026-11-21T06:51:31Z
+WS,/ws/notify/ connect (messenger),WebSocketTimeoutException('Connection timed out'),4,2026-11-21T06:51:02Z,2026-11-21T06:51:22Z
+POST,POST /messenger/messages/<mid>/delete/,CatchResponseError('/messenger/messages/50156/delete/: 504'),1,2026-11-21T06:56:21Z,2026-11-21T06:56:21Z
+POST,POST /messenger/messages/<mid>/delete/,CatchResponseError('/messenger/messages/50076/delete/: 500'),1,2026-11-21T06:54:19Z,2026-11-21T06:54:19Z
+GET,/messenger/chats/<n>/search/?q,HTTPError('500 Server Error: Internal Server Error for url: /messenger/chats/<n>/search/?q'),1,2026-11-21T06:54:12Z,2026-11-21T06:54:12Z
+POST,POST /messenger/chats/<n>/messages/,CatchResponseError('/messenger/chats/44/messages/: 500'),1,2026-11-21T06:54:09Z,2026-11-21T06:54:09Z
+GET,/messenger/mentions/?chat,HTTPError('500 Server Error: Internal Server Error for url: /messenger/mentions/?chat'),1,2026-11-21T06:54:20Z,2026-11-21T06:54:20Z
+POST,POST /messenger/chats/<n>/read/,CatchResponseError('/messenger/chats/1/read/: 500'),1,2026-11-21T06:54:13Z,2026-11-21T06:54:13Z
+POST,POST /messenger/chats/<n>/messages/,CatchResponseError('/messenger/chats/1/messages/: 504'),9,2026-11-21T06:52:55Z,2026-11-21T06:56:50Z
+POST,POST /messenger/chats/<n>/messages/ (publisher),CatchResponseError('/messenger/chats/1/messages/: 504'),1,2026-11-21T06:53:00Z,2026-11-21T06:53:00Z
+POST,POST /messenger/chats/<n>/read/,CatchResponseError('/messenger/chats/199/read/: 500'),1,2026-11-21T06:54:22Z,2026-11-21T06:54:22Z
+GET,/messenger/,HTTPError('500 Server Error: Internal Server Error for url: /messenger/'),1,2026-11-21T06:54:20Z,2026-11-21T06:54:20Z

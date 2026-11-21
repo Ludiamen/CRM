@@ -1,0 +1,7 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,POST /request/,"CatchResponseError('/request/: 200, заявка не принята')",30,2026-11-21T07:13:56Z,2026-11-21T07:20:29Z
+GET,/kb/<n>/history/,HTTPError('404 Client Error: Not Found for url: /kb/<n>/history/'),40,2026-11-21T07:14:01Z,2026-11-21T07:20:30Z
+GET,/lists/<n>/<n>/,HTTPError('404 Client Error: Not Found for url: /lists/<n>/<n>/'),97,2026-11-21T07:13:44Z,2026-11-21T07:20:32Z
+GET,/kb/<n>/,HTTPError('404 Client Error: Not Found for url: /kb/<n>/'),82,2026-11-21T07:13:44Z,2026-11-21T07:20:31Z
+GET,/kb/<n>/compare/,HTTPError('404 Client Error: Not Found for url: /kb/<n>/compare/'),34,2026-11-21T07:14:11Z,2026-11-21T07:20:13Z
+GET,/tickets/<n>/ (HTMX),HTTPError('404 Client Error: Not Found for url: /tickets/<n>/ (HTMX)'),91,2026-11-21T07:13:44Z,2026-11-21T07:20:31Z
