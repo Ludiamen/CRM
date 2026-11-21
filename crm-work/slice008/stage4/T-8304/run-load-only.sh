@@ -12,7 +12,8 @@ TAG="load-only-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$D"
 log() { echo "$(date '+%F %T') $*" >> "$D/run-load.log"; }
 owner() { pgrep -l -u gpgr -x 'yandex_browser|Telegram|chrome|firefox|google-chrome' 2>/dev/null | awk '{print $2}' | sort | uniq -c | tr '\n' ' '; }
-cool() { for i in $(seq 1 240); do read a b c rest < /proc/loadavg; awk -v a="$a" -v b="$b" 'BEGIN{exit !(a<1.5 && b<1.5)}' && return 0; sleep 10; done; return 1; }
+# Решение владельца 2026-11-21: порог остывания для этого окна — 2,5 вместо 1,5 (правила T-7304); записано в отчёт.
+cool() { for i in $(seq 1 240); do read a b c rest < /proc/loadavg; awk -v a="$a" -v b="$b" 'BEGIN{exit !(a<2.5 && b<2.5)}' && return 0; sleep 10; done; return 1; }
 pgconn() { "${DC[@]}" exec -T postgres psql -U postgres -d crm -tAc "select coalesce(usename,'-')||':'||coalesce(state,'-')||'='||count(*) from pg_stat_activity where datname='crm' group by usename,state order by 1" 2>/dev/null | tr '\n' ' '; }
 rec() { LC_ALL=C vmstat -t 1 > "$D/vmstat-$1.txt" & V=$!; LC_ALL=C mpstat -P ALL 5 > "$D/mpstat-$1.txt" & M=$!; LC_ALL=C pidstat -u 10 > "$D/pidstat-$1.txt" & P=$!; T0=$(date -u +%FT%TZ); }
 unrec() { kill $V $M $P 2>/dev/null; wait $V $M $P 2>/dev/null
