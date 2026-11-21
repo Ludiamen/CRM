@@ -1,7 +1,7 @@
 """T-8113: тесты чисел непрочитанного (FR-650, FR-660).
 
 План «Прочтение и счётчики»: у чата — число непрочитанных (`#chat-<id>-unread`), у пункта меню — сумма
-(`#menu-badge-messenger`, «99+» выше 99); числа кэшируются на 5 с с версией и сбрасываются при отправке,
+(`#menu-badge-messenger`, «99+» выше 99); числа кэшируются на 60 с с версией и сбрасываются при отправке,
 прочтении и смене состава; база отсчёта — `joined_at` у личного и группового чата, 0 без отметки у чата отдела
 и «Общего чата»; свои, системные и удалённые сообщения не входят. SPEC-008 сценарий 8; CONTRACT-008: 2.2
 (`ChatMember.joined_at`, `ChatRead`), 3.5 (`access.changed` на кэш чисел), 5.1 (`unread.counts/total/badge`,
@@ -17,7 +17,7 @@
 запросом к `messenger_message` при любом числе чатов (проверка `capture_sql`, как 5.1 для списка); 3) заблокированный
 входит в состав `members.members`, но кадров и уведомлений не получает (5.1); 4) у чата отдела и «Общего чата» база
 без отметки — 0, поэтому рост числа проверяется после явной отметки прочтения, а не после открытия беседы;
-5) истечение кэша по реальному времени (5 с) не ждём: контракт называет константу и три сброса, а не таймер.
+5) истечение кэша по реальному времени (60 с) не ждём: контракт называет константу и три сброса, а не таймер.
 """
 from datetime import datetime, timedelta, timezone as dt_timezone
 from html.parser import HTMLParser
@@ -549,10 +549,10 @@ def test_personal_first_message_counts_one(clock, django_capture_on_commit_callb
     assert _badge_node(page).attrs.get("data-count") == "1"
 
 
-# --- кэш 5 с и три сброса (FR-660) -----------------------------------------------------------------------------
+# --- кэш чисел и три сброса (FR-660) -----------------------------------------------------------------------------
 
 def test_cache_invalidated_by_send_read_and_membership_change(clock, django_capture_on_commit_callbacks):
-    """FR-660, 5.3: числа кэшируются на 5 с и сбрасываются отправкой, прочтением и сменой состава.
+    """FR-660, 5.3: числа кэшируются на 60 с и сбрасываются отправкой, прочтением и сменой состава.
 
     `COUNT_CACHE_SECONDS == 5`; прямая вставка `Message` мимо службы не меняет уже посчитанное число, `invalidate`
     сбрасывает. Затем число растёт после обычной отправки, обнуляется после отметки прочтения, а у выведенного из
@@ -566,13 +566,13 @@ def test_cache_invalidated_by_send_read_and_membership_change(clock, django_capt
     chat = messenger.group(viewer, [peer], title="Кэш Чисел")
     from apps.messenger.services import unread
 
-    assert unread.COUNT_CACHE_SECONDS == 5, "кэш чисел мессенджера — 5 секунд (5.3)"
+    assert unread.COUNT_CACHE_SECONDS == 60, "кэш чисел мессенджера — 60 секунд (решение владельца 2026-11-21)"
 
     clock.set(base)
     messenger.post(chat, peer, "Первое", created_at=base)
     assert _counts(viewer).get(chat.pk) == 1, "первое сообщение не посчитано"
     _message(chat, peer, base + timedelta(minutes=1))
-    assert _counts(viewer).get(chat.pk) == 1, "числа не кэшируются на 5 секунд (5.3)"
+    assert _counts(viewer).get(chat.pk) == 1, "числа не кэшируются на 60 секунд (5.3)"
     unread.invalidate([viewer.user.pk])
     assert _counts(viewer).get(chat.pk) == 2, "invalidate списка сотрудников не сбросил число"
 

@@ -365,16 +365,3 @@
     }
   });
 })();
-
-/* Числа пункта меню и строки списка приходят в колокольчик; на странице беседы строк списка нет, и htmx
- * пишет в консоль `oobErrorNoTarget`. Цели строк — данные списка, их отсутствие нормально: глушим только
- * этот случай, прочие ошибки OOB остаются видимыми (критерий T-8301 — чистая консоль). */
-(function () {
-  "use strict";
-  var native = console.error;
-  console.error = function () {
-    var text = Array.prototype.join.call(arguments, " ");
-    if (text.indexOf("htmx:oobErrorNoTarget") >= 0 && /#chat-\d+-(unread|preview)/.test(text)) return;
-    return native.apply(console, arguments);
-  };
-})();

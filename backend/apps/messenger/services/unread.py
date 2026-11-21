@@ -12,7 +12,7 @@ from django.db import connection
 
 from apps.core.models import UserState
 
-COUNT_CACHE_SECONDS = 5
+COUNT_CACHE_SECONDS = 60   # решение владельца 2026-11-21: 5 с истекали на тяжёлой странице
 _VERSION_KEY = "messenger:unread:version"
 _COUNT_KEY = "messenger:unread:count:{version}:{user_id}"
 HIDDEN_STATES = (UserState.DISMISSED, UserState.INVITED)
