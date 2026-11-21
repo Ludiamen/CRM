@@ -19,10 +19,17 @@ HIDDEN_STATES = (UserState.DISMISSED, UserState.INVITED)
 
 
 def counts(user) -> dict[int, int]:
-    """Числа непрочитанного по чатам: `{chat_id: count}` для чатов с ненулевым числом; кэш 5 с."""
+    """Числа непрочитанного по чатам: `{chat_id: count}` для чатов с ненулевым числом; кэш 5 с.
+
+    Попадание в кэш — без запросов к базе: цепочка узлов и «Общий чат» читаются только при промахе
+    (`test_capacity` считает запросы страницы).
+    """
     user_id = getattr(user, "pk", None)
     if user_id is None or getattr(user, "state", None) in HIDDEN_STATES:
         return {}
+    cached = cache.get(_count_key(user_id))
+    if cached is not None:
+        return dict(cached)
     return _counts_with(user_id, _chain_ids(user_id), _general_enabled())
 
 
@@ -30,19 +37,24 @@ def counts_for(people) -> dict[int, dict[int, int]]:
     """Числа для нескольких сотрудников: `{user_id: {chat_id: count}}` (T-8304).
 
     Правила те же, что у `counts`, но общие данные — цепочки узлов (два запроса на всех) и включённость
-    «Общего чата» — читаются один раз, а не на каждого получателя рассылки. Значения кладутся в тот же кэш.
+    «Общего чата» — читаются один раз и только для тех, у кого нет кэша. Значения кладутся в тот же кэш.
     """
     people = [person for person in people if getattr(person, "pk", None) is not None]
     if not people:
         return {}
-    ids = [person.pk for person in people if getattr(person, "state", None) not in HIDDEN_STATES]
-    chains = _chains(ids)
-    general = _general_enabled()
-    result = {}
+    result: dict[int, dict[int, int]] = {}
+    missing: list[int] = []
     for person in people:
-        if person.pk not in chains:
-            continue
-        result[person.pk] = _counts_with(person.pk, chains[person.pk], general)
+        cached = cache.get(_count_key(person.pk))
+        if cached is not None:
+            result[person.pk] = dict(cached)
+        else:
+            missing.append(person.pk)
+    if missing:
+        chains = _chains(missing)
+        general = _general_enabled()
+        for user_id in missing:
+            result[user_id] = _counts_with(user_id, chains[user_id], general)
     return result
 
 
