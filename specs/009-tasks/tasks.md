@@ -2,7 +2,7 @@
 id: TASKS-009
 вид: задачи
 статус: черновик
-версия: 3
+версия: 4
 зависит_от: PLAN-009
 основан_на: PLAN-009 sha256:9e1d9e7b218b04e99240a70b006b83c8b01c1b4c0e2c3c3c46848eafdf8bb519
 ---
@@ -17,7 +17,7 @@ opus (архитектурные и финальные), человек (под�
 не принимал, собраны в разделе «Решения Opus по задачам».
 
 Как читать и исполнять:
-- **Нумерация.** Этап 1 — T-9001…T-9012, Этап 2 — T-9101…T-9125 (плюс стенд T-9159 и красный прогон T-9160),
+- **Нумерация.** Этап 1 — T-9001…T-9012, Этап 2 — T-9101…T-9125 (плюс профиль нагрузки T-9150, стенд T-9159 и красный прогон T-9160),
   Этап 3 — T-9201…T-9217 и зелёная сборка T-9260, Этап 4 — T-9300…T-9309.
 - **Порядок.** Этапы идут подряд. Внутри этапа задача без `[P]` начинается, когда закончены все предыдущие;
   `[P]` не зависит от соседей и не правит с ними общих файлов (решение 11 и таблица общих файлов Этапа 1).
@@ -103,7 +103,7 @@ opus (архитектурные и финальные), человек (под�
   | 17 | `test_permissions.py::test_three_builtin_roles_with_initial_permissions` | «все восемнадцать прав» | 20 прав, состав «Сотрудника ИТ» | T-9004 |
   | 18 | `test_org_permissions.py::test_three_new_permissions_and_initial_distribution` | «всего восемнадцать прав» | 20 | T-9004 |
   | 19 | `test_feed_seed.py::test_seed_on_slice_006_base_creates_post_all_and_moderate_permissions_with_russian_names` | `count() == 16` | 18 | T-9004 |
-  | 20 | `test_feed_seed.py::test_portal_has_eighteen_permissions_after_seed` | 18 | 20, имя поправить | T-9004 |
+  | 20 | `test_feed_seed.py::test_portal_has_eighteen_permissions_after_seed` | в тесте 16 до seed и 18 после | 18 и 20, имя поправить | T-9004 |
   | 21 | `test_lists_seed.py::test_portal_has_sixteen_permissions_after_seed` | в тесте 17, после seed 18 | 19 и 20, имя поправить | T-9004 |
   | 22 | `test_org_permissions.py::test_menu_staff_structure_calendar_items_by_permission` | без «Задачи» | +«Задачи» (order 2, право `tasks.use`), +«Настройки задач» (order 65) | T-9217 (меню), T-9004 (право) |
   | 23 | `test_messenger_deploy.py::test_admin_menu_has_16_items_with_messenger_second_and_settings_order_64` | 16 пунктов | 18 | T-9217 |
@@ -113,12 +113,12 @@ opus (архитектурные и финальные), человек (под�
   | 27 | `test_messenger_deploy.py::test_nginx_has_two_25m_locations_and_repeated_proxy_directives` | два `25m` | три | T-9012 |
   | 28 | `test_deploy_files.py::test_nginx_body_size_6m_and_protected_location_internal_with_headers` | перечень location и «вне location формы и ответа один 6m» | +`/tasks/files/` 25m, правило перечня | T-9012 |
   | 29 | `tests/support_feed.py` (`APPS_TAIL`), `test_messenger_deploy.py` (локальный `APPS_TAIL`) | `"apps.messenger"` последним | `"apps.tasks"` последним | T-9001 |
-  | 29а | `test_feed_deploy.py::test_feed_is_last_in_installed_apps_after_search` | `apps.feed` последним | `apps.tasks` последним | T-9001 |
-  | 29б | `test_lists_deploy.py`, `test_kb_deploy.py`, `test_notify_deploy.py` (хвост `INSTALLED_APPS` срезами `[-7:]`/индексом) | срез без задач | +`apps.tasks` в конце | T-9001 |
+  | 29а | `test_feed_deploy.py::test_feed_is_last_in_installed_apps_after_search` | хвост `INSTALLED_APPS` срезом `[-7:]`, последний `apps.messenger` | последний `apps.tasks`, срез расширен | T-9001 |
+  | 29б | `test_lists_deploy.py` (индекс), `test_kb_deploy.py` (срез `[-6:]`), `test_notify_deploy.py` (индекс) | хвост без задач | +`apps.tasks` в конце, срезы/индексы поправить | T-9001 |
   | 29в | `test_messenger_deploy.py::test_messenger_is_last_in_installed_apps` | messenger последним | tasks последним | T-9001 |
-  | 29г | `test_lists_stand.py`, `test_kb_deploy.py` (порядок `stand_reset`), `test_feed_boundaries.py`, `test_messenger_boundaries.py` | порядок сброса без задач | tasks в конце регистрации/сброса | T-9010 |
+  | 29г | `test_lists_stand.py`, `test_kb_deploy.py` (порядок `stand_reset`), `test_feed_boundaries.py`, `test_messenger_boundaries.py` | порядок регистрации сброса без задач | tasks регистрируется последним и **вызывается первым** (сброс идёт обратным порядком), feed и messenger сдвигаются | T-9010 |
   | 30 | `test_pages_stage3b.py` — если при исполнении найдётся проверка перечня статики срезов | без задач | +`tasks.js`, `tasks.css` | T-9008; если теста нет — строку снять |
-  | 31 | e2e `test_e04_my_settings.py` (строки каталога `SD_KINDS + … + MESSENGER_KINDS_E2E`), `test_e12_criteria.py` (разделы каталога), меню в `test_d08_heads.py`, `test_o04_find_colleague.py` | без видов задач | +виды задач | T-9212, T-9009; проверить при исполнении |
+  | 31 | e2e `test_e04_my_settings.py` (строки каталога `SD_KINDS + … + MESSENGER_KINDS_E2E`), `test_e12_criteria.py` (разделы каталога), меню в `test_d08_heads.py`, `test_o04_find_colleague.py` | без видов задач и пунктов «Задачи» | +виды задач и «Задачи»/«Настройки задач» | T-9212 (виды), T-9217 (меню); проверить при исполнении |
   — `backend/tests/` — (FR-674…699)
 - [ ] T-9012 [P] [opus] nginx: `location ~ ^/tasks/files/$` с `client_max_body_size 25m` и повтором
   `proxy_*` (образец мессенджера) в `deploy/nginx.conf` и `deploy/nginx.prod.conf`; проверка — строка 27–28
@@ -182,7 +182,7 @@ opus (архитектурные и финальные), человек (под�
   `test_tasks_card_section.py` — (FR-698)
 - [ ] T-9121 [sonnet] развёртывание: маршруты, cron три задания под `is_installed`, меню с правом
   `tasks.use`, статика и CSP, nginx 25m, права ролей, профиль `TaskUser` и `fill_tasks.py` на месте —
-  `test_tasks_deploy.py` (целиком после T-9150) — (NFR-713, NFR-717, NFR-719)
+  `test_tasks_deploy.py` — (NFR-713, NFR-717, NFR-719)
 - [ ] T-9122 [sonnet] границы: `tasks` импортирует только публичные службы и точки, чужие модели напрямую не
   импортируются, приложение отключается без ошибок — `test_tasks_boundaries.py` — (конституция)
 - [ ] T-9123 [sonnet] изменения ядра: `Purpose.TASK`, `managed_units`, `settings/urls/cron`, права установки,
@@ -340,8 +340,9 @@ opus (архитектурные и финальные), человек (под�
     детерминированно («Настройки задач» перед «Сервис-деск»); коллизия записывается в CONTRACT-009 и дифф
     T-9011 (строка 22).
 18. **Тесты прежних срезов, зависящие от каталога видов и прав.** Строка 11 ломается уже от T-9002 (шесть
-    назначений) и окончательно после T-9212; строки 12–21 — после T-9212/T-9004; строки 25–26 — после T-9214;
-    до этого тесты зелёные. Строка 16 (`push_cells == 24`) предполагает доступность всех восьми видов задач
+    назначений) и окончательно после T-9212; строки 12–16 — после T-9212 (виды уведомлений); строки 17–21 —
+    после T-9004 (права); строки 22–24, 31 (меню) — после T-9217, строка 31 в части видов — после T-9212;
+    строки 25–26 — после T-9214; до этого тесты зелёные. Строка 16 (`push_cells == 24`) предполагает доступность всех восьми видов задач
     рядовому сотруднику — подтвердить при T-9212, иначе число иное.
 19. **Проверка после реализации.** Отдельного раздела плана нет — проверка названа решением 14 и T-9300.
 20. **Статика.** Строка 30 T-9011 условна: если проверки перечня статики не найдётся, строку снять.
