@@ -23,12 +23,26 @@ def counts(user) -> dict[int, int]:
     user_id = getattr(user, "pk", None)
     if user_id is None or getattr(user, "state", None) in HIDDEN_STATES:
         return {}
-    key = _count_key(user_id)
-    cached = cache.get(key)
-    if cached is not None:
-        return dict(cached)
-    result = {chat_id: int(count) for chat_id, count in _fetch(user_id) if count}
-    cache.set(key, result, COUNT_CACHE_SECONDS)
+    return _counts_with(user_id, _chain_ids(user_id), _general_enabled())
+
+
+def counts_for(people) -> dict[int, dict[int, int]]:
+    """Числа для нескольких сотрудников: `{user_id: {chat_id: count}}` (T-8304).
+
+    Правила те же, что у `counts`, но общие данные — цепочки узлов (два запроса на всех) и включённость
+    «Общего чата» — читаются один раз, а не на каждого получателя рассылки. Значения кладутся в тот же кэш.
+    """
+    people = [person for person in people if getattr(person, "pk", None) is not None]
+    if not people:
+        return {}
+    ids = [person.pk for person in people if getattr(person, "state", None) not in HIDDEN_STATES]
+    chains = _chains(ids)
+    general = _general_enabled()
+    result = {}
+    for person in people:
+        if person.pk not in chains:
+            continue
+        result[person.pk] = _counts_with(person.pk, chains[person.pk], general)
     return result
 
 
@@ -87,7 +101,28 @@ def _general_enabled() -> bool:
     return True if value is None else bool(value)
 
 
-def _fetch(user_id: int) -> list:
+def _counts_with(user_id: int, chain, general: bool) -> dict[int, int]:
+    """Числа одного сотрудника по готовым общим данным: кэш 5 с, иначе один запрос `_fetch`."""
+    key = _count_key(user_id)
+    cached = cache.get(key)
+    if cached is not None:
+        return dict(cached)
+    result = {chat_id: int(count) for chat_id, count in _fetch(user_id, chain=chain, general=general) if count}
+    cache.set(key, result, COUNT_CACHE_SECONDS)
+    return result
+
+
+def _chains(user_ids: list[int]) -> dict[int, frozenset[int]]:
+    """Цепочки узлов многих сотрудников пачкой; без `org` — пустые."""
+    if not apps.is_installed("apps.org"):
+        return {user_id: frozenset() for user_id in user_ids}
+
+    from apps.org.services import structure
+
+    return structure.unit_chains(user_ids)
+
+
+def _fetch(user_id: int, *, chain=None, general: bool | None = None) -> list:
     """Один запрос: номер чата и число непрочитанных; значения — параметры SQL (NFR-703)."""
     sql = """
 SELECT c.id, COALESCE(unread.count, 0) AS count
@@ -142,7 +177,8 @@ WHERE (
 """
     with connection.cursor() as cursor:
         cursor.execute(sql, [user_id, user_id, user_id, user_id, user_id, user_id, user_id,
-                             list(_chain_ids(user_id)), _general_enabled()])
+                             list(_chain_ids(user_id)) if chain is None else list(chain),
+                             _general_enabled() if general is None else general])
         return cursor.fetchall()
 
 

@@ -63,15 +63,11 @@ def publish(chat, action: str = "new", message=None, *, owner=None, recipients=N
         return
     raw_message, message = message, _record(Message, message)
     message_id = getattr(message, "pk", None) or (raw_message if isinstance(raw_message, int) else None)
+    people = _people(audience)
     variants = _variants(chat, message, audience, owner_id, action) if chat is not None else {}
-    counts, totals = {}, []
-    for user_id in audience:
-        person = _person(user_id)
-        if person is None:
-            continue
-        numbers = unread.counts(person)
-        counts[str(user_id)] = numbers.get(chat_id, 0)
-        totals.append(unread.total(person))
+    numbers = unread.counts_for(people.values())
+    counts = {str(user_id): values.get(chat_id, 0) for user_id, values in numbers.items()}
+    total = max((sum(values.values()) for values in numbers.values()), default=0)
     payload = {
         "type": "messenger.event",
         "chat": chat_id,
@@ -79,12 +75,13 @@ def publish(chat, action: str = "new", message=None, *, owner=None, recipients=N
         "message": message_id,
         "owner": owner_id,
         "counts": counts,
-        "total": max(totals) if totals else 0,
+        "total": total,
         "variants": variants,
         "meta": {"created_at": (message.created_at if message is not None else timezone.now()).isoformat()},
     }
-    _send_groups({group(user_id): payload for user_id in audience})
-    _send_badges(chat, action, audience)
+    messages = {group(user_id): payload for user_id in audience}
+    messages.update(_badge_messages(chat, action, audience, numbers=numbers, people=people))
+    _send_groups(messages)
 
 
 def _record(model, value):
@@ -114,17 +111,18 @@ def _audience(chat, owner_id, recipients, action) -> list[int]:
     return [user_id for user_id in everyone if user_id in allowed and user_id != owner_id]
 
 
-def _person(user_id: int):
-    return User.objects.filter(pk=user_id).first()
+def _people(user_ids) -> dict[int, User]:
+    """Сотрудники получателей пачкой: `{номер: запись}` — одним запросом на всю рассылку (T-8304)."""
+    ids = {int(user_id) for user_id in user_ids if user_id is not None}
+    if not ids:
+        return {}
+    return {person.pk: person for person in User.objects.filter(pk__in=ids)}
 
 
 def _variants(chat, message, audience, owner_id, action: str = "new") -> dict:
     """Фрагмент один раз на класс «роль + link_staff»: не больше четырёх вариантов (FR-661)."""
     variants = {}
-    for user_id in audience:
-        person = _person(user_id)
-        if person is None:
-            continue
+    for user_id, person in _people(audience).items():
         role = ROLE_AUTHOR if user_id == owner_id else ROLE_READER
         link_staff = permissions.has_permission(person, "staff.view")
         key = f"{role}:{1 if link_staff else 0}"
@@ -151,21 +149,30 @@ def _frame(chat, message, person, role: str, link_staff: bool, action: str = "ne
     return html
 
 
-def _send_badges(chat, action, audience) -> None:
-    """`notify.html` каждому получателю: число пункта меню и OOB-строка списка (11.3, FR-660)."""
+def _badge_messages(chat, action, audience, *, numbers=None, people=None) -> dict:
+    """Сообщения `notify.html` каждому получателю: число пункта меню и OOB-строка списка (11.3, FR-660).
+
+    Числа считаются пачкой (`unread.counts_for`), превью — один раз, все сообщения уходят одним вызовом
+    слоя вместе с кадром беседы: работа не растёт с числом получателей по числу вызовов (T-8304).
+    """
     if action == "chat_delete" or chat is None:
-        return
+        return {}
     from apps.notify.services import live as notify_live
 
-    for user_id in audience:
-        person = _person(user_id)
-        if person is None:
-            continue
-        numbers = unread.counts(person)
+    people = people if people is not None else _people(audience)
+    if not people:
+        return {}
+    if numbers is None:
+        numbers = unread.counts_for(people.values())
+    preview = _preview(chat)
+    messages = {}
+    for user_id in people:
+        per_chat = numbers.get(user_id, {})
         html = render_to_string("messenger/_badge.html", {
-            "chat": chat, "count": numbers.get(chat.pk, 0), "total": unread.total(person),
-            "preview": _preview(chat)})
-        _send_groups({notify_live.group(user_id): {"type": "notify.html", "html": html}})
+            "chat": chat, "count": per_chat.get(chat.pk, 0), "total": sum(per_chat.values()),
+            "preview": preview})
+        messages[notify_live.group(user_id)] = {"type": "notify.html", "html": html}
+    return messages
 
 
 def _preview(chat) -> str:

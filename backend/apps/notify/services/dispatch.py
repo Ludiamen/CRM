@@ -76,6 +76,49 @@ def _lock_coalesce(kind, drafts, states) -> None:
             cursor.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", [key])
 
 
+def _unread_notes(kind, drafts, states) -> dict:
+    """Непрочитанные записи склейки одним запросом: `{(user_id, object_ref): Notification}` (T-8304).
+
+    Прежде запись искалась отдельным запросом на каждого получателя; при рассылке в большой чат это
+    сотни запросов на одно сообщение. Порядок и смысл те же: у пары «получатель + объект» одна непрочитанная.
+    """
+    if not kind.coalesce:
+        return {}
+    users = {d.user_id for d in drafts if d.object_ref and states.get(d.user_id) in RECIPIENT_STATES}
+    refs = {d.object_ref for d in drafts if d.object_ref and states.get(d.user_id) in RECIPIENT_STATES}
+    if not users or not refs:
+        return {}
+    found: dict = {}
+    rows = (Notification.objects.filter(user_id__in=users, kind=kind.code, object_ref__in=refs,
+                                       read_at__isnull=True).order_by("id"))
+    for note in rows:
+        found.setdefault((note.user_id, note.object_ref), note)
+    return found
+
+
+def _merge_texts(kind, merges) -> None:
+    """Тексты склейки для непрочитанных записей: пачкой, если вид это умеет (`coalesce_text.many`), иначе по одной.
+
+    Пачка нужна рассылке в большой чат: у вида мессенджера текст считается одним запросом на всех получателей (T-8304).
+    """
+    if not merges:
+        return
+    many = getattr(kind.coalesce_text, "many", None)
+    texts = None
+    if many is not None:
+        try:
+            texts = many([(user_id, object_ref, note.created_at) for user_id, object_ref, note in merges])
+        except Exception as error:  # noqa: BLE001 — пачка не должна ломать уведомления: поштучный путь ниже
+            log.warning("Пакетные тексты склейки вида %s не сложились: %s", kind.code, type(error).__name__)
+            texts = None
+    for index, (user_id, object_ref, note) in enumerate(merges):
+        if texts is not None and index < len(texts):
+            note.text = texts[index]
+        else:
+            note.text = kind.coalesce_text(user_id, object_ref, note.created_at)
+        note.save(update_fields=["text"])
+
+
 def create(kind_code: str, drafts) -> list[int]:
     """Записи и доставки по черновикам; номера записей в порядке создания. Неизвестный вид — `NotifyError`."""
     kind = kinds.get(kind_code)
@@ -94,17 +137,17 @@ def create(kind_code: str, drafts) -> list[int]:
         held_users: list[int] = []
         if kind.coalesce:
             _lock_coalesce(kind, drafts, states)
+        unread_by_key = _unread_notes(kind, drafts, states)
+        merges: list[tuple[int, str, Notification]] = []
         for draft in drafts:
             state = states.get(draft.user_id)
             if state not in RECIPIENT_STATES:
                 continue
             if kind.coalesce and draft.object_ref:
-                unread = Notification.objects.filter(
-                    user_id=draft.user_id, kind=kind.code, object_ref=draft.object_ref, read_at__isnull=True).first()
+                unread = unread_by_key.get((draft.user_id, draft.object_ref))
                 if unread is not None:
                     if kind.coalesce_text is not None:
-                        unread.text = kind.coalesce_text(draft.user_id, draft.object_ref, unread.created_at)
-                        unread.save(update_fields=["text"])
+                        merges.append((draft.user_id, draft.object_ref, unread))
                     continue
             note = Notification.objects.create(user_id=draft.user_id, kind=kind.code, text=draft.text, url=draft.url,
                                                object_ref=draft.object_ref, created_at=now)
@@ -118,6 +161,7 @@ def create(kind_code: str, drafts) -> list[int]:
                 working = _external(kind, draft.user_id, note, now, delay, immediate, held_users)
             toasts[draft.user_id] = {"text": note.text, "url": f"/notifications/{note.pk}/open/", "tag": f"n-{note.pk}",
                                      "show": _toast_show(kind, draft.user_id, working)}
+        _merge_texts(kind, merges)
         for user_id in (sorted(set(held_users)) if kind.coalesce else dict.fromkeys(held_users)):
             plan_digest(user_id)
         if recipients:

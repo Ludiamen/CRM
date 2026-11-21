@@ -61,6 +61,70 @@ def message_coalesce_text(user_id: int, object_ref: str, since) -> str:
     return f"Новых сообщений: {count} в чате «{page_service.chat_title(chat, person)}»"
 
 
+def message_coalesce_texts(items) -> list[str]:
+    """Тексты склейки пачкой: `items` — `[(user_id, object_ref, since), …]`, ответ — в том же порядке (T-8304).
+
+    Тот же текст, что у `message_coalesce_text`: «Новых сообщений: N в чате «Название»». Числа считаются одним
+    запросом на всех получателей чата, название — один раз на чат; у личного диалога — по собеседнику.
+    """
+    from apps.messenger.models import Chat
+    from apps.messenger.services import page as page_service
+
+    result = [""] * len(items)
+    by_chat: dict[int, list[int]] = {}
+    for index, (user_id, object_ref, _since) in enumerate(items):
+        chat_id = _chat_id(object_ref)
+        if chat_id is None:
+            continue
+        by_chat.setdefault(chat_id, []).append(index)
+    for chat_id, indexes in by_chat.items():
+        chat = Chat.objects.filter(pk=chat_id).first()
+        if chat is None:
+            continue
+        users = [items[index][0] for index in indexes]
+        counts = _coalesce_counts(chat_id, users, [items[index][2] for index in indexes])
+        titles = _coalesce_titles(chat, users)
+        for index in indexes:
+            user_id = items[index][0]
+            result[index] = f"Новых сообщений: {counts.get(user_id, 0) + 1} в чате «{titles.get(user_id, '')}»"
+    return result
+
+
+def _coalesce_counts(chat_id: int, users: list[int], since: list) -> dict[int, int]:
+    """Сколько сообщений других пришло после первого непрочитанного — одним запросом по всем получателям."""
+    from django.db import connection
+
+    sql = """
+SELECT p.user_id, count(m.id) AS count
+FROM unnest(%s::int[], %s::timestamptz[]) AS p(user_id, since)
+LEFT JOIN "messenger_message" AS m
+    ON m.chat_id = %s
+   AND m.deleted_at IS NULL
+   AND m.author_id IS NOT NULL
+   AND m.author_id IS DISTINCT FROM p.user_id
+   AND m.created_at > p.since
+GROUP BY p.user_id
+"""
+    with connection.cursor() as cursor:
+        cursor.execute(sql, [users, since, chat_id])
+        return {int(user_id): int(count) for user_id, count in cursor.fetchall()}
+
+
+def _coalesce_titles(chat, users: list[int]) -> dict[int, str]:
+    """Названия чата для каждого получателя: у личного диалога — свой собеседник, у остальных — имя чата."""
+    from apps.messenger.models import Chat
+    from apps.messenger.services import page as page_service
+
+    if chat.kind != Chat.Kind.PERSONAL:
+        title = page_service.chat_title(chat, None)
+        return {user_id: title for user_id in users}
+    people = {person.pk: person for person in User.objects.filter(pk__in=users)}
+    return {user_id: page_service.chat_title(chat, people.get(user_id)) for user_id in users}
+
+
+message_coalesce_text.many = message_coalesce_texts
+
+
 def still_relevant(user_id: int, object_ref: str) -> bool:
     """Письмо и сводка идут, пока чат виден получателю и в нём есть непрочитанные (FR-663, 666)."""
     from apps.messenger.services import members, unread

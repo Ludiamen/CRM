@@ -108,17 +108,24 @@ def delete(message, author) -> Message:
 
 
 def _notify(message) -> None:
-    """Уведомления участникам: «упомянул» — только упомянутым, остальным — «новое сообщение» (FR-663, 664)."""
+    """Уведомления участникам: «упомянул» — только упомянутым, остальным — «новое сообщение» (FR-663, 664).
+
+    Черновики собираются по коду вида и создаются одним вызовом `dispatch.create`: запись уведомлений
+    не делает отдельный вызов и транзакцию на каждого получателя (T-8304).
+    """
     from apps.notify.services import dispatch
 
     decisions = notify_rules.decide(message)
     if not decisions:
         return
+    grouped: dict[str, list[Draft]] = {}
     for user_id, (code, text) in decisions.items():
-        dispatch.create(code, [Draft(
+        grouped.setdefault(code, []).append(Draft(
             user_id=user_id, text=text,
             url=f"/messenger/chats/{message.chat_id}/#m{message.pk}",
-            object_ref=f"messenger.chat:{message.chat_id}")])
+            object_ref=f"messenger.chat:{message.chat_id}"))
+    for code, drafts in grouped.items():
+        dispatch.create(code, drafts)
 
 
 def _quote(chat, value) -> Message | None:
