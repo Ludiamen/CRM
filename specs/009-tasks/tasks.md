@@ -2,7 +2,7 @@
 id: TASKS-009
 вид: задачи
 статус: черновик
-версия: 1
+версия: 2
 зависит_от: PLAN-009
 основан_на: PLAN-009 sha256:9e1d9e7b218b04e99240a70b006b83c8b01c1b4c0e2c3c3c46848eafdf8bb519
 ---
@@ -13,93 +13,112 @@ id: TASKS-009
 `[P]` — можно делать параллельно с соседними задачами (нет общих файлов). Исполнитель — sonnet (код и тесты),
 opus (архитектурные и финальные), человек (подписи и ручные проходы). Модель под каждую роль выбирается по
 действующему порядку владельца (`~/.config/opencode/AGENTS.md`, `go-plus-routing.md`), а не по этим ярлыкам.
-Задачи собраны только из SPEC-009 (14 сценариев, FR-674…699, NFR-710…719) и PLAN-009 (модель данных,
-механизмы, контракты, интеграции, проверка, «Изменения кода прежних срезов», «Прежние тесты, которые придётся
-поправить», риски). Задач вне плана здесь нет. Решения, которых план не принимал, собраны в разделе
-«Решения Opus по задачам».
+Задачи собраны только из SPEC-009 (14 сценариев, FR-674…699, NFR-710…719) и PLAN-009. Решения, которых план
+не принимал, собраны в разделе «Решения Opus по задачам».
 
 Как читать и исполнять:
 - **Нумерация.** Этап 1 — T-9001…T-9012, Этап 2 — T-9101…T-9125 (плюс стенд T-9159 и красный прогон T-9160),
-  Этап 3 — T-9201…T-9217 и зелёная сборка T-9260, Этап 4 — T-9300…T-9309. Требования — FR-674…FR-699 и
-  NFR-710…NFR-719 спеки.
+  Этап 3 — T-9201…T-9218 и зелёная сборка T-9260, Этап 4 — T-9300…T-9309.
 - **Порядок.** Этапы идут подряд. Внутри этапа задача без `[P]` начинается, когда закончены все предыдущие;
-  `[P]` не зависит от соседей и не правит с ними общих файлов. Этап 3 идёт партиями; после каждой партии —
-  весь серверный набор тестов.
-- **Тест-на-требование.** В Этапе 2 у каждого теста в скобках стоит FR или NFR, который он закрывает; запись
-  `файл::имя_теста` и есть связь T-NNNN → требование → тест. Сценарии 1–10 браузерного прохода — файлы
-  `backend/tests/e2e/test_t09_*.py` (по сценарию на файл). У каждой задачи Этапа 3 названы файлы и тесты
-  Этапа 2, которые она делает зелёными; файл зеленеет целиком с последней названной задачей.
-- **Красный прежде зелёного.** Этап 3 не начинается, пока не выполнен T-9160: тесты сначала падают, причина
-  падения записана. Тест не ослабляют, чтобы он прошёл; правят код. Правка теста — только по правилам ниже.
+  `[P]` не зависит от соседей и не правит с ними общих файлов (решение 11 и таблица общих файлов Этапа 1).
+  Этап 3 идёт партиями; после каждой партии — весь серверный набор тестов.
+- **Тест-на-требование.** В Этапе 2 у каждого теста в скобках стоит FR или NFR; запись `файл::имя_теста` и
+  есть связь T-NNNN → требование → тест. Сценарии 1–10 браузерного прохода — `backend/tests/e2e/test_t09_*.py`.
+  У каждой задачи Этапа 3 названы файлы и тесты Этапа 2, которые она делает зелёными; файл зеленеет целиком с
+  **последней** названной задачей.
+- **Красный прежде зелёного.** Этап 3 не начинается, пока не выполнен T-9160: тесты падают, причина записана.
+  Тест не ослабляют; правят код. Правка теста — только по правилам ниже.
 - **Правки прежних тестов — одна задача.** Тесты и помощники срезов 001–008 меняет только T-9011, по точному
   «было / стало» из таблицы этой задачи. Каждая правка — с разрешения владельца, по одному тесту, с диффом;
-  разрешение спрашивает Opus, исполнитель правит только после ответа. Если в Этапе 3 упадёт прежний тест,
-  которого нет в перечне T-9011, его не ослабляют: исполнитель останавливается, решение принимает Opus и
-  вписывает в раздел решений.
+  разрешение спрашивает Opus, исполнитель правит после ответа. Если в Этапе 3 упадёт прежний тест вне
+  перечня, его не ослабляют: остановка, решение Opus, запись в раздел решений.
 - **Один автор на общий файл.** `backend/tests/CONTRACT-009.md` пишет только T-9005, `tests/support_tasks.py` —
-  только T-9006, `tests/e2e/helpers_tasks.py` — только T-9007. В Этапе 3 общие файлы кода
-  (`extensions.py`, `tasks.js`, `tasks.css`, `views/*`, `services/*`, `config/*`, `templates/_assets.html`)
-  правит одна задача за раз; перечень — решение 11. Параллельные исполнители держат помощники в своих файлах и
-  общих файлов не правят.
-- **Размер.** Одна задача — не больше полудня одного исполнителя; задание агенту — не больше ~50 вызовов; файл
-  тестов — не больше ~25 тестов (больше — делится на `_2`).
+  T-9006, `tests/e2e/helpers_tasks.py` — T-9007. В Этапе 1 общие файлы: `apps/tasks/urls.py` — T-9001 создаёт,
+  T-9009 наполняет (последовательно); `apps/tasks/{apps,extensions}.py` — T-9001, T-9010 (последовательно);
+  данные установки — только T-9004. В Этапе 3 общие файлы кода правит одна задача за раз (решение 11).
+- **Размер.** Задача — не больше полудня одного исполнителя; задание агенту — не больше ~50 вызовов; файл
+  тестов — не больше ~25 тестов (больше — `_2`).
 - **Секреты.** В отчётах, логах и сообщениях — только `***`; ПДн и пароли в задачи не попадают.
 
 ## Этап 1 — каркас, контракт, помощники, правки ядра
 
-- [ ] T-9001 [P] [opus] каркас `apps.tasks` по PLAN-009 «Где живёт код»: `apps.py` (register_all), пустые
-  `extensions.py`, `models.py`, `urls.py`, `notify_kinds.py`, `audit_labels.py`, пакеты `services/`, `views/`,
-  `migrations/`, `templates/tasks/`, `static/tasks/`; `"apps.tasks"` последним в `INSTALLED_APPS`;
-  `include("apps.tasks.urls")` под `apps.is_installed`; сбор тестов растёт без ошибок — `backend/apps/tasks/`,
-  `backend/config/settings.py`, `backend/config/urls.py` — (FR-674…699)
-- [ ] T-9002 [P] [opus] `Purpose.TASK = "task"` в конце перечня назначений и миграция `core 0012`; тест
-  `test_core_uploads.py::test_task_purpose_is_last_and_label_is_russian` — `backend/apps/core/models/files.py`,
-  `backend/apps/core/migrations/0012_storedfile_task_purpose.py`, `backend/tests/test_core_uploads.py` — (FR-693)
+- [ ] T-9001 [opus] каркас `apps.tasks` по PLAN-009 «Где живёт код»: `apps.py` (register_all пустой),
+  `extensions.py`, `models.py`, пустые `urls.py`, `notify_kinds.py`, `audit_labels.py`, пакеты `services/`,
+  `views/`, `migrations/`, `templates/tasks/`, `static/tasks/`; `"apps.tasks"` последним в `INSTALLED_APPS`;
+  пустой `include("apps.tasks.urls")` под `apps.is_installed`; сбор тестов растёт без ошибок —
+  `backend/apps/tasks/`, `backend/config/settings.py`, `backend/config/urls.py` — (FR-674…699)
+- [ ] T-9002 [P] [opus] `Purpose.TASK = "task"` в конце перечня и миграция `core 0012`; тест добавления значения —
+  `backend/apps/core/models/files.py`, `backend/apps/core/migrations/0012_storedfile_task_purpose.py`,
+  `backend/tests/test_tasks_models.py::test_purpose_task_is_last` — (FR-693)
 - [ ] T-9003 [P] [opus] `org.services.structure.managed_units(user)` — узлы с отметкой руководителя или
   заместителя и все вложенные, **без обычных членств**; тесты «рядовой участник вышестоящего узла не
   управляет вложенными», «заместитель управляет как руководитель», «уволенный — пусто» —
   `backend/apps/org/services/structure.py`, `backend/tests/test_org_structure.py` (добавление) — (FR-677, FR-678)
-- [ ] T-9004 [P] [opus] права `tasks.use` и `tasks.assign` — строки `core.Permission` в данных установки и
-  выдача роли «Сотрудник ИТ»; тест «роль без `tasks.assign` не ставит задачу другому, с правом — ставит в
-  управляемом узле» — данные установки (`backend/apps/core/`), `backend/tests/test_tasks_permissions.py::test_assign_permission_is_data`
+- [ ] T-9004 [P] [opus] данных установки: права `tasks.use`, `tasks.assign` — строки `core.Permission`, выданы
+  роли «Сотрудник ИТ»; миграция/данные установки ядра по образцу `core 0002`; тест «роль без `tasks.assign`
+  не ставит задачу другому» — данные установки `backend/apps/core/`, `backend/tests/test_tasks_permissions.py`
   — (FR-676, FR-678)
-- [ ] T-9005 [P] [opus] `CONTRACT-009`: адреса (таблица PLAN-009 «Контракты»), зацепки `data-*`, коды и тексты
-  отказов (`title_range`, `deadline_past`, `assignee_forbidden`, `status_forbidden`, `move_forbidden`,
-  `files_limit`, `file_type`, `file_too_big`, `comment_forbidden`), правила ответов HTMX и обычных запросов —
-  `backend/tests/CONTRACT-009.md` — (все FR)
+- [ ] T-9005 [P] [opus] `CONTRACT-009`: адреса, зацепки `data-*`, коды и тексты отказов (`title_range`,
+  `deadline_past`, `assignee_forbidden`, `status_forbidden`, `move_forbidden`, `comment_forbidden`,
+  `files_limit`, `file_type`, `file_too_big`), ответы HTMX и обычных запросов, подпись
+  `tasks.reminder_failed` — `backend/tests/CONTRACT-009.md` — (все FR)
 - [ ] T-9006 [P] [opus] помощники серверных тестов: `make_task`, `add_member`, `make_column`, `make_category`,
-  `move`, `board_rows`, `reminders_of`, `post_comment`, помощник ролей для прав-данных; без импорта кода
-  приложения на уровне модуля (CONTRACT-009) — `backend/tests/support_tasks.py` — (все FR)
+  `move`, `board_rows`, `reminders_of`, `post_comment`, роли для прав-данных; без импорта кода приложения на
+  уровне модуля — `backend/tests/support_tasks.py` — (все FR)
 - [ ] T-9007 [P] [opus] помощники e2e: `open_tasks`, `create_task`, `open_card`, `move_card`, `board_titles`,
   `plan_columns`, `comment`, `upload_task_file`, `check_360`; локаторы — только зацепки CONTRACT-009 —
   `backend/tests/e2e/helpers_tasks.py` — (FR-680…684, FR-699)
-- [ ] T-9008 [P] [opus] SortableJS 1.15.6 в `static/vendor` с `LICENSE-sortable` и разделом в `VERSIONS.md`;
+- [ ] T-9008 [P] [opus] SortableJS 1.15.6 в `static/vendor` с `LICENSE-sortable` и разделом `VERSIONS.md`;
   `tools/verify_vendor.py` — пакет `sortablejs@1.15.6`; подключение `tasks.css`, `tasks.js` и
   `vendor/Sortable-1.15.6.min.js` (defer) для `/tasks/` и `/settings/tasks/` — `backend/static/vendor/`,
-  `backend/static/tasks/`, `backend/templates/_assets.html`, `tools/verify_vendor.py`, `backend/tests/test_pages_stage3b.py`
-  (проверка перечня — T-9011) — (NFR-711, NFR-716)
-- [ ] T-9009 [P] [opus] маршруты и запуск: `config/cron.py` — `tasks_reminders` (`*/5 * * * *`, 300 с),
-  `tasks_digest` (`*/15 * * * *`, 300 с), `tasks_retention` (`42 23 * * *`, 600 с) под `is_installed`;
-  страницы-заглушки списка и настроек; `urls.py` — адреса из контракта — `backend/config/cron.py`,
-  `backend/apps/tasks/urls.py`, `backend/apps/tasks/views/` — (FR-685, FR-696, NFR-719)
-- [ ] T-9010 [P] [opus] стенд: `tasks` в `stand_reset` (задачи, участники, колонки, категории, напоминания,
-  комментарии, файлы), данные установки (категория «Сеть», права ролей), команда `e2e_tasks_seed` для
-  сценариев с задачами; тест сброса — `backend/apps/tasks/stand.py` (или `management/commands/`),
-  `backend/tests/test_tasks_stand.py` — (все FR)
-- [ ] T-9011 [opus] **правки прежних тестов — только с разрешения владельца**, по одному тесту, с диффом
-  «было / стало». Таблица (уточняется при выполнении; каждая строка — отдельный вопрос владельцу):
-  | Файл | Было | Стало | Почему |
-  |---|---|---|---|
-  | `tests/test_org_permissions.py` | перечень пунктов меню без «Задачи» | «Задачи» (order 2, право `tasks.use`) и «Настройки задач» (order 65) | новый модуль |
-  | `tests/test_*_deploy.py` (хвост `INSTALLED_APPS`) | `"apps.messenger"` последним | `"apps.tasks"` последним | новый модуль |
-  | `tests/test_deploy_files.py` | число заданий `config/cron.py` и перечень `location` | +3 задания, `location ~ ^/tasks/files/$` 25m | план |
-  | `tests/test_core_uploads.py` | шесть назначений файла | семь, `task` последним | FR-693 |
-  | `tests/test_pages_stage3b.py` | перечень статики | +`tasks.js`, `tasks.css` | план |
-  | `tests/test_org_structure.py` | — | +`managed_units` | T-9003 |
+  `backend/static/tasks/`, `backend/templates/_assets.html`, `tools/verify_vendor.py` — (NFR-711, NFR-716)
+- [ ] T-9009 [opus] маршруты и запуск (после T-9001): `urls.py` — адреса контракта; `config/cron.py` —
+  `tasks_reminders` (`*/5 * * * *`, 300 с), `tasks_digest` (`*/15 * * * *`, 300 с), `tasks_retention`
+  (`42 23 * * *`, 600 с) под `is_installed`; страницы-заглушки списка и настроек —
+  `backend/apps/tasks/urls.py`, `backend/apps/tasks/views/`, `backend/config/cron.py` — (FR-685, FR-696)
+- [ ] T-9010 [opus] стенд (после T-9001 и T-9004): `tasks` в `stand_reset` (задачи, участники, колонки,
+  категории, напоминания, комментарии, файлы) регистрацией в `extensions.register_all`; команда
+  `e2e_tasks_seed` (категории, три задачи) для сценариев; тест сброса — `backend/apps/tasks/stand.py`,
+  `backend/apps/tasks/extensions.py`, `backend/tests/test_tasks_stand.py` — (все FR)
+- [ ] T-9011 [opus] **правки прежних тестов — только с разрешения владельца**, по одному тесту, диффом
+  «было / стало». Перечень (каждая строка — отдельный вопрос; при падении теста вне перечня — остановка):
+  | № | Файл::тест | Было | Стало | Почему |
+  |---|---|---|---|---|
+  | 1 | `test_feed_core_changes.py::test_stored_file_purpose_feed_is_last_and_previous_values_unchanged` | полный перечень `Purpose.choices`, `values[-1] == "messenger"` | семь значений, последнее `"task"` | T-9002 |
+  | 2 | `test_messenger_core_changes.py::test_purpose_messenger_choice_last_and_migration_0011_depends_on_0010` и `support_messenger.PURPOSES_008` | `messenger` последним, шесть значений | `task` последним, семь | T-9002 |
+  | 3 | `test_sd_deploy.py::test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_minute` | `register` 21 | 24 | T-9009 |
+  | 4 | `test_kb_deploy.py::test_purge_trash_is_registered_in_cron_with_45_23_maintenance_timeout_600` | 21 | 24 | T-9009 |
+  | 5 | `test_notify_deploy.py::test_cron_notify_tick_interval_30_queue_notify_timeout_120` | 21 | 24 | T-9009 |
+  | 6 | `test_lists_deploy.py::test_cron_module_has_eighteen_register_calls` | 21 (имя теста «восемнадцать») | 24, имя теста поправить | T-9009 |
+  | 7 | `test_feed_deploy.py::test_cron_module_has_twenty_register_calls` | 21 (имя «двадцать») | 24, имя поправить | T-9009 |
+  | 8 | `test_messenger_deploy.py::test_cron_has_21_registers_and_messenger_retention_55_23_maintenance` | 21 | 24, имя поправить | T-9009 |
+  | 9 | `test_feed_stand.py::test_feed_stand_reset_is_registered_last_and_runs_first` | feed второй с конца, messenger последний | tasks последний, feed третий с конца; порядок вызова с tasks | T-9010 |
+  | 10 | `test_messenger_stand.py::test_stand_reset_runs_last_and_before_feed` | messenger последний | tasks последний | T-9010 |
+  | 11 | `test_messenger_deploy.py::test_slice_numbers_nineteen_points_twenty_two_kinds_six_purposes_and_order_61` | 22 вида, шесть назначений | 30 видов, семь назначений, points 19 | T-9002, T-9201, T-9212 |
+  | 12 | `test_messenger_notify_2.py::test_catalog_has_22_kinds_and_two_messenger_rows` | 22 | 30 | T-9212 |
+  | 13 | `test_notify_catalog.py::test_catalog_contains_eight_kinds_from_three_modules` | «ровно двадцать два вида» | 30 | T-9212 |
+  | 14 | `test_notify_catalog.py::test_catalog_kind_codes_titles_and_modules_match_plan_table` | таблица видов | +8 видов задач | T-9212 |
+  | 15 | `test_notify_prefs.py::test_table_rows_show_kind_title_and_module` | список строк и модулей | +8 строк «Задачи» | T-9212 |
+  | 16 | `test_notify_catalog_2.py::test_my_notifications_page_push_column_carries_permission_hint_and_script_hook_server_does_not_read_permission` | `push_cells == 16` | 24 | T-9212 |
+  | 17 | `test_permissions.py::test_three_builtin_roles_with_initial_permissions` | «все восемнадцать прав» | 20 прав, состав «Сотрудника ИТ» | T-9004 |
+  | 18 | `test_org_permissions.py::test_three_new_permissions_and_initial_distribution` | «всего восемнадцать прав» | 20 | T-9004 |
+  | 19 | `test_feed_seed.py::test_seed_on_slice_006_base_creates_post_all_and_moderate_permissions_with_russian_names` | `count() == 16` | 18 | T-9004 |
+  | 20 | `test_feed_seed.py::test_portal_has_eighteen_permissions_after_seed` | 18 | 20, имя поправить | T-9004 |
+  | 21 | `test_lists_seed.py::test_portal_has_sixteen_permissions_after_seed` | 16 | 20, имя поправить | T-9004 |
+  | 22 | `test_org_permissions.py` (перечень и порядок пунктов меню) | без «Задачи» | +«Задачи» (order 2, право `tasks.use`), +«Настройки задач» (order 65) | T-9009 |
+  | 23 | `test_messenger_deploy.py::test_admin_menu_has_16_items_with_messenger_second_and_settings_order_64` | 16 пунктов | 18 | T-9009 |
+  | 24 | `test_lists_access.py::test_menu_item_lists_has_order_8_empty_permissions_and_is_visible_by_sees_section` | 16 пунктов | 18 | T-9009 |
+  | 25 | `test_search_providers_2.py::test_knowledge_disabled_has_no_articles_group_others_work` (и соседние) | списки провайдеров без «tasks» | +«Задачи» (order 62) | T-9214 |
+  | 26 | `test_kb_boundaries.py` (providers/titles) | без «tasks» | +«Задачи» | T-9214 |
+  | 27 | `test_messenger_deploy.py::test_nginx_has_two_25m_locations_and_repeated_proxy_directives` | два `25m` | три | T-9012 |
+  | 28 | `test_deploy_files.py::test_nginx_body_size_6m_and_protected_location_internal_with_headers` | перечень location и «вне location формы и ответа один 6m» | +`/tasks/files/` 25m, правило перечня | T-9012 |
+  | 29 | `tests/support_feed.py` (`APPS_TAIL`), `test_messenger_deploy.py` (локальный `APPS_TAIL`) | `"apps.messenger"` последним | `"apps.tasks"` последним | T-9001 |
+  | 30 | `test_pages_stage3b.py` — если при исполнении найдётся проверка перечня статики срезов | без задач | +`tasks.js`, `tasks.css` | T-9008; если теста нет — строку снять |
+  | 31 | e2e `test_e04_my_settings.py` (строки каталога `SD_KINDS + … + MESSENGER_KINDS_E2E`), `test_e12_criteria.py` (разделы каталога), меню в `test_d08_heads.py`, `test_o04_find_colleague.py` | без видов задач | +виды задач | T-9212, T-9009; проверить при исполнении |
   — `backend/tests/` — (FR-674…699)
 - [ ] T-9012 [P] [opus] nginx: `location ~ ^/tasks/files/$` с `client_max_body_size 25m` и повтором
-  `proxy_*` (образец мессенджера) в `deploy/nginx.conf` и `deploy/nginx.prod.conf`; проверка — T-9011 —
-  `deploy/nginx.conf`, `deploy/nginx.prod.conf` — (NFR-713)
+  `proxy_*` (образец мессенджера) в `deploy/nginx.conf` и `deploy/nginx.prod.conf`; проверка — строка 27–28
+  T-9011 — `deploy/nginx.conf`, `deploy/nginx.prod.conf` — (NFR-713)
 
 ## Этап 2 — красные серверные тесты
 
@@ -111,7 +130,8 @@ opus (архитектурные и финальные), человек (под�
   `test_tasks_access.py` — (FR-677, FR-678)
 - [ ] T-9103 [sonnet] права: создание себе и другому (право `tasks.assign` + структура), правка полей и
   статуса, цель `manages` — узел **исполнителя** (руководитель узла постановщика чужую задачу не правит),
-  чужая задача 404, роль без права — отказ — `test_tasks_permissions.py` — (FR-676, FR-678)
+  **удаление** (автор, руководитель, заместитель узла исполнителя, второй шаг `confirm=1`, посторонний —
+  403/404), чужая задача 404, роль без права — отказ — `test_tasks_permissions.py` — (FR-676, FR-678, FR-695)
 - [ ] T-9104 [sonnet] видимость: автор, участники, руководители и заместители автора и исполнителя по
   цепочке, администратор не видит, `deleted_at` исключает, перевод — на момент просмотра —
   `test_tasks_visibility.py` — (FR-677, FR-686)
@@ -151,14 +171,14 @@ opus (архитектурные и финальные), человек (под�
 - [ ] T-9117 [sonnet] журнал: создание, изменение полей «было/стало», удаление минимальным снимком, правка и
   удаление комментария без текста, только дополнение — `test_tasks_audit.py` — (FR-694, FR-695, NFR-718)
 - [ ] T-9118 [sonnet] срок хранения: только удалённые, отсчёт от удаления, календарное вычитание (29 февраля),
-  файлы и комментарии, идемпотентность, действующие не удаляются, смена срока — журнал «было/стало» —
-  `test_tasks_retention.py` — (FR-695, FR-696, NFR-715)
+  файлы и комментарии, идемпотентность, действующие не удаляются — `test_tasks_retention.py` — (FR-695, FR-696, NFR-715)
 - [ ] T-9119 [sonnet] поиск: группа «Задачи» (номер, название, описание, комментарии), только видимые, потолок
   300, слова параметрами — `test_tasks_search.py` — (FR-697, NFR-712)
 - [ ] T-9120 [sonnet] карточка сотрудника: раздел «Задачи» с видимыми смотрящему задачами, пусто для чужих —
   `test_tasks_card_section.py` — (FR-698)
 - [ ] T-9121 [sonnet] развёртывание: маршруты, cron три задания под `is_installed`, меню с правом
-  `tasks.use`, статика и CSP, nginx 25m, права ролей — `test_tasks_deploy.py` — (NFR-713, NFR-717)
+  `tasks.use`, статика и CSP, nginx 25m, права ролей, профиль `TaskUser` и `fill_tasks.py` на месте —
+  `test_tasks_deploy.py` — (NFR-713, NFR-717, NFR-719)
 - [ ] T-9122 [sonnet] границы: `tasks` импортирует только публичные службы и точки, чужие модели напрямую не
   импортируются, приложение отключается без ошибок — `test_tasks_boundaries.py` — (конституция)
 - [ ] T-9123 [sonnet] изменения ядра: `Purpose.TASK`, `managed_units`, `settings/urls/cron`, права установки,
@@ -168,8 +188,7 @@ opus (архитектурные и финальные), человек (под�
 - [ ] T-9125 [sonnet] настройки задач: право `settings.portal`, срок 1–10, второй шаг, журнал
   `tasks.retention_changed`, влияние только на будущие уборки — `test_tasks_settings.py` — (FR-696)
 - [ ] T-9159 [opus] стенд для прогонов (после разрешения владельца): копия, сборка с `tasks`, миграции
-  `core 0012` и `tasks 0001`, перезапуск, проверки здоровья; прогон e2e невозможен до него —
-  `crm-work/slice009/stage2/stand/` — (все FR)
+  `core 0012` и `tasks 0001`, перезапуск, проверки здоровья — `crm-work/slice009/stage2/stand/` — (все FR)
 - [ ] T-9160 [opus] **красный прогон**: весь серверный набор; каждый новый тест падает, причина записана;
   прежние тесты зелёные или перечислены в T-9011 — `crm-work/slice009/stage2/red/`, отчёт
   `docs/reviews/TASKS-009.md` — (все FR)
@@ -178,48 +197,46 @@ opus (архитектурные и финальные), человек (под�
 
 **Партия 1 — модели и настройки.**
 - [ ] T-9201 [sonnet] модели и миграция `tasks 0001`: `Task`, `TaskMember`, `TaskCategory`, `PlanColumn`,
-  `TaskReminder` (частичный уникальный индекс), `TaskComment`, `TaskFile`, `TaskSettings`; служба настроек
-  (ленивая строка, журнал смены) — `backend/apps/tasks/models.py`, `migrations/0001_initial.py`,
-  `services/settings.py` — зелёные: `test_tasks_models`, `test_tasks_settings` — (FR-674…679, FR-682, FR-683, FR-687…690, FR-693, FR-696)
+  `TaskReminder` (частичный уникальный индекс), `TaskComment`, `TaskFile`, `TaskSettings`; служба настроек —
+  `backend/apps/tasks/models.py`, `migrations/0001_initial.py`, `services/settings.py` — зелёные:
+  `test_tasks_models`, `test_tasks_settings` — (FR-674…679, FR-682, FR-683, FR-687…690, FR-693, FR-696)
 
 **Партия 2 — права, создание, правка.**
-- [ ] T-9202 [sonnet] `services/access.py` (+ `managed_units` из org), права ролей, видимость —
-  `backend/apps/tasks/services/access.py` — зелёные: `test_tasks_access`, `test_tasks_permissions`,
-  `test_tasks_visibility` — (FR-676…678)
+- [ ] T-9202 [sonnet] `services/access.py` (+ `managed_units` из org), права ролей, видимость, права
+  удаления — `backend/apps/tasks/services/access.py` — зелёные: `test_tasks_access`, `test_tasks_permissions`,
+  `test_tasks_visibility` — (FR-676…678, FR-695)
 - [ ] T-9203 [sonnet] создание, правка полей и статусы, журнал: `services/tasks.py`, `views/actions.py`,
-  формы и шаблоны карточки-формы — `backend/apps/tasks/services/tasks.py`, `views/actions.py`,
-  `templates/tasks/` — зелёные: `test_tasks_create`, `test_tasks_edit`, `test_tasks_audit` (часть) —
-  (FR-674, FR-675, FR-678, FR-679, FR-694)
+  формы и шаблоны — `backend/apps/tasks/services/tasks.py`, `views/actions.py`, `templates/tasks/` — зелёные:
+  `test_tasks_create`, `test_tasks_edit`, `test_tasks_audit` (часть) — (FR-674, FR-675, FR-678, FR-679, FR-694)
 
 **Партия 3 — список и доски.**
 - [ ] T-9204 [sonnet] список: пресеты, фильтры, сортировки, страницы, SQL параметрами —
   `services/list.py`, `views/pages.py`, `templates/tasks/_list.html`, `_row.html` — зелёный:
   `test_tasks_list` — (FR-685, FR-686, NFR-712)
-- [ ] T-9205 [sonnet] доска «Стадии»: колонки, числа, `[data-board]`, SortableJS-инициализация, перенос
-  статуса — `views/pages.py`, `services/boards.py`, `static/tasks/tasks.js`, `templates/tasks/_board.html` —
-  зелёные: `test_tasks_boards` (часть), `test_tasks_move` (часть) — (FR-679, FR-680, NFR-711)
+- [ ] T-9205 [sonnet] доска «Стадии»: колонки, числа, `[data-board]`, SortableJS, перенос статуса —
+  `views/pages.py`, `services/boards.py`, `static/tasks/tasks.js`, `templates/tasks/_board.html` — зелёные
+  (части): `test_tasks_boards`, `test_tasks_move` — (FR-679, FR-680, NFR-711)
 - [ ] T-9206 [sonnet] доска «Сроки»: группы, пятница, запрет «Просрочены», «Готово» и дальше 7 дней нет —
-  `services/boards.py`, `views/pages.py` — зелёные: `test_tasks_boards` (часть), `test_tasks_move` (часть) —
-  (FR-681)
+  `services/boards.py`, `views/pages.py` — зелёные (части): `test_tasks_boards`, `test_tasks_move` — (FR-681)
 - [ ] T-9207 [sonnet] «Мой план»: колонки (ленивые три), CRUD, перенос только владельцем, чужой план для
   чтения — `services/plan.py`, `views/plan.py`, `templates/tasks/_plan.html` — зелёный: `test_tasks_plan` —
   (FR-682)
-- [ ] T-9208 [sonnet] категории и доска категорий: справочник в настройках, перенос, «Без категории» —
-  `services/categories.py`, `views/settings.py`, `templates/tasks/settings.html` — зелёные:
-  `test_tasks_categories`, `test_tasks_settings` (категории) — (FR-683)
+- [ ] T-9208 [sonnet] категории и доска категорий: справочник, перенос, «Без категории» —
+  `services/categories.py`, `views/settings.py`, `templates/tasks/settings.html` — **зелёные целиком**:
+  `test_tasks_boards`, `test_tasks_move`, `test_tasks_categories` — (FR-681…683)
 
 **Партия 4 — карточка, комментарии, файлы.**
 - [ ] T-9209 [sonnet] карточка задачи: лента (журнал + комментарии), файлы, напоминания, выбор полей
-  (запасной путь), права — `views/pages.py`, `templates/tasks/_card.html`, `_message.html`, `_comment.html` —
-  зелёные: `test_tasks_comments` (часть), `test_tasks_edit` (карточка) — (FR-674…678, FR-684)
+  (запасной путь), права — `views/pages.py`, `templates/tasks/_card.html`, `_comment.html` — зелёные (части):
+  `test_tasks_comments`, `test_tasks_edit` — (FR-674…678, FR-684)
 - [ ] T-9210 [sonnet] комментарии и файлы: `services/comments.py`, `services/files.py`, `views/files.py`,
   `Purpose.TASK`, ClamAV, X-Accel — `backend/apps/tasks/services/comments.py`, `files.py`, `views/files.py` —
   зелёные: `test_tasks_comments`, `test_tasks_files` — (FR-693, NFR-713)
 
 **Партия 5 — напоминания, уведомления, сводка.**
-- [ ] T-9211 [sonnet] напоминания: `services/reminders.py`, личные тихие часы, `tasks.reminders`-задание,
-  пересчёт при смене срока/состава, отложить — `backend/apps/tasks/services/reminders.py`, `tasks.py` —
-  зелёный: `test_tasks_reminders` — (FR-687…690, NFR-715)
+- [ ] T-9211 [sonnet] напоминания: `services/reminders.py`, личные тихие часы, задание, пересчёт, отложить,
+  подпись `tasks.reminder_failed` — `backend/apps/tasks/services/reminders.py`, `tasks.py` — зелёный:
+  `test_tasks_reminders` — (FR-687…690, NFR-715)
 - [ ] T-9212 [sonnet] виды уведомлений и получатели: `notify_kinds.py`, `services/notify_rules.py`,
   `services/digest.py`, задание сводки — `backend/apps/tasks/notify_kinds.py`, `services/notify_rules.py`,
   `services/digest.py` — зелёные: `test_tasks_notify`, `test_tasks_digest` — (FR-691, FR-692, NFR-714)
@@ -227,26 +244,31 @@ opus (архитектурные и финальные), человек (под�
 **Партия 6 — удаление, хранение, поиск, карточка сотрудника, 360.**
 - [ ] T-9213 [sonnet] удаление и срок хранения: `services/retention.py`, задание, настройки срока с журналом,
   файлы и комментарии, непривязанные — `backend/apps/tasks/services/retention.py`, `views/settings.py` —
-  зелёные: `test_tasks_retention`, `test_tasks_settings` — (FR-694…696, NFR-715)
+  **зелёные целиком**: `test_tasks_retention`, `test_tasks_settings`, `test_tasks_audit` — (FR-694…696, NFR-715)
 - [ ] T-9214 [sonnet] поиск и карточка сотрудника: поставщик «Задачи», раздел карточки —
   `backend/apps/tasks/services/search.py`, `extensions.py` — зелёные: `test_tasks_search`,
   `test_tasks_card_section` — (FR-697, FR-698, NFR-712)
 - [ ] T-9215 [sonnet] 360 px и запасной путь: `tasks.css`, поведение доски и карточки —
-  `backend/static/tasks/tasks.css` — зелёные: e2e `t10` — (FR-699, NFR-716)
+  `backend/static/tasks/tasks.css` — зелёный: e2e `t10` — (FR-699, NFR-716)
 - [ ] T-9216 [sonnet] установка и стенд: данные установки, `stand_reset`, `e2e_tasks_seed` —
   `backend/apps/tasks/stand.py` — зелёные: `test_tasks_seed`, `test_tasks_stand` — (все FR)
 - [ ] T-9217 [sonnet] развёртывание и границы: маршруты, cron, меню, статика, CSP, nginx, границы импорта —
   `backend/apps/tasks/{urls,extensions}.py`, `config/cron.py` — зелёные: `test_tasks_deploy`,
-  `test_tasks_boundaries`, `test_tasks_core_changes` — (NFR-713, NFR-717)
+  `test_tasks_boundaries`, `test_tasks_core_changes` — (NFR-713, NFR-717, NFR-719)
+- [ ] T-9218 [sonnet] **нагрузочный профиль**: `fill_tasks.py` (1 000 задач, 100 сотрудников, статусы,
+  сроки, категории, комментарии, напоминания; строка итога `fill_tasks: tasks=…`), класс `TaskUser` в
+  `locustfile.py` (список, пресеты, карточка, доски, перенос, комментарий, поиск), проверка наличия —
+  `backend/tests/load/fill_tasks.py`, `backend/tests/load/locustfile.py` — зелёный: `test_tasks_deploy`
+  — (NFR-710, NFR-719)
 - [ ] T-9260 [opus] зелёная сборка: весь серверный набор зелёный, ни один тест не ослаблен; правки прежних
   тестов — только из T-9011 с разрешения; отчёт — `docs/reviews/TASKS-009.md` — (все FR)
 
 ## Этап 4 — приёмка
 
 - [ ] T-9300 [opus] полный серверный прогон на PostgreSQL в контейнере (`systemd-run --user`): сверка красного
-  T-9160 с зелёным, ни одного пропущенного/ослабленного; отдельной строкой «Проверить после реализации» плана
+  T-9160 с зелёным, ни одного пропущенного/ослабленного; регрессия правополезных тестов
   (`test_permissions`, `test_sd_access`, `test_org_permissions`, `test_feed_home`, `test_notify_admin`,
-  `test_k09_notify`, `test_org_structure` после `managed_units`) — сводка в `docs/reviews/TASKS-009.md` —
+  `test_org_structure`, `test_tasks_*`) — повтор после реализации; сводка в `docs/reviews/TASKS-009.md` —
   (FR-674…699, NFR-710…719)
 - [ ] T-9301 [opus] проход в браузере по 10 сценариям (после стенда): список, личная задача, подчинённый,
   «Стадии», «Сроки», «Мой план», категории, напоминания и уведомления, комментарии и файлы, 360 px и права;
@@ -278,45 +300,47 @@ opus (архитектурные и финальные), человек (под�
 
 ## Решения Opus по задачам
 
-План этих деталей не задал; ниже — решения, принятые при сборке задач. Владелец принимает их подписью.
-
-1. **Номера и имена файлов.** T-9001…T-9012, T-9101…T-9125 + T-9159/T-9160, T-9201…T-9217 + T-9260,
-   T-9300…T-9309. Серверные тесты — `test_tasks_<тема>.py` по разделам плана; файлы больше ~25 тестов делятся
-   на `_2` (как `test_tasks_notify_2`). Сценарии браузера — `test_t09_<тема>.py` (10 файлов).
-2. **Порядок этапов 1–2.** T-9011 (правки прежних тестов) — единственная задача правок; она идёт после
-   T-9002…T-9004 и до T-9160, чтобы красный прогон не спотыкался о прежние перечни.
-3. **Красный прогон.** T-9160 запускается после стенда T-9159; если стенд нельзя обновить (нет разрешения
-   владельца), T-9160 выполняется на копии стенда и это записывается в отчёт.
-4. **Правки тестов.** Каждая строка таблицы T-9011 — отдельный вопрос владельцу с диффом; разрешение — по
-   одному тесту, как в срезах 005–008. Без ответа тест не правится, задача стоит.
-5. **Права-данные.** `tasks.use`/`tasks.assign` вводятся данными установки; тест T-9004 проверяет, что роль
-   без `tasks.assign` не ставит задачу другому; сама проверка структуры — в `access.py`.
-6. **Комментарии.** Своя `TaskComment` (правка/мягкое удаление); `core.Comment` не используется — обоснование
-   в плане (модель комментариев ядра удаляет физически).
-7. **Напоминания.** Момент сдвигается персонально `quiet.next_start(prefs, moment)`; задание `tasks_reminders`
-   каждые 5 минут; `None` — pending до следующего цикла, при повторе отмена с предупреждением и подписью
-   `tasks.reminder_failed` в `audit_labels` (добавить при реализации).
-8. **Сводка.** Атомарный `cache.add` с датой; «горящие» — срок сегодня или «скоро» в пределах рабочего дня.
-9. **Файлы.** `TaskFile.file` — OneToOne; имя в `TaskFile.name`; непривязанные чистятся `tasks_retention`
-   старше 24 часов; доступ — через вьюху с проверкой видимости задачи.
-10. **Срок хранения.** Вычитание календарное, 29 февраля → 28 февраля; отсчёт от `deleted_at`; действующие
-    задачи не удаляются; смена срока — журнал и подпись.
-11. **Один автор на общий файл.** `config/{settings,urls,cron}.py`, `templates/_assets.html`,
-    `static/tasks/tasks.{js,css}`, `views/*`, `services/*`, `extensions.py` — правит по одной задаче за раз
-    в порядке партий; параллельные исполнители держат помощники в своих файлах.
-12. **Стенд.** T-9010 готовит данные и сброс; T-9159 обновляет стенд с разрешения владельца; T-9260 — зелёная
-    сборка до Этапа 4.
-13. **Нагрузка.** Профиль `TaskUser` и `fill_tasks.py` (1 000 задач, 100 сотрудников); замер — T-9304 после
-    отдельного решения владельца; порог — NFR-710 с оговоркой об известных дефектах 007–008.
-14. **Проверка после реализации.** Перед T-9160 дополнительно прогнать `test_permissions`, `test_sd_access`,
-    `test_org_permissions`, `test_feed_home`, `test_notify_admin`, `test_org_structure`: падение вне перечня
-    T-9011 — остановка и решение Opus.
-15. **Модели ролей.** Ярлыки `[opus]`/`[sonnet]` — роли, не модели; конкретная модель — по действующему
-    порядку владельца (`AGENTS.md`, `go-plus-routing.md`); независимое ревью — другая модель.
+1. **Номера и имена файлов.** T-9001…T-9012, T-9101…T-9125 + T-9159/T-9160, T-9201…T-9218 + T-9260,
+   T-9300…T-9309. Серверные тесты — `test_tasks_<тема>.py`; настройки — отдельный `test_tasks_settings.py`
+   (26-й файл; в плане перечень «25 файлов» примерный, `test_tasks_t7200_regressions` из плана не нужен).
+   Сценарии — `test_t09_<тема>.py` (10 файлов).
+2. **Порядок T-9011.** Правки прежних тестов — одна задача после T-9002…T-9004; до T-9160, чтобы красный
+   прогон не спотыкался о прежние перечни.
+3. **Красный прогон.** T-9160 после стенда T-9159; если стенд нельзя обновить, прогон на копии с записью в
+   отчёт.
+4. **Правки тестов.** Каждая строка таблицы T-9011 — отдельный вопрос владельцу с диффом; без ответа задача
+   стоит.
+5. **Права-данные.** `tasks.use`/`tasks.assign` — строки `core.Permission` в данных установки, роль
+   «Сотрудник ИТ»; структура — второй замок.
+6. **Комментарии.** Своя `TaskComment` (правка/мягкое удаление); `core.Comment` не используется.
+7. **Напоминания.** Персональный сдвиг `quiet.next_start`; `None` — pending до следующего цикла, при повторе
+   отмена с предупреждением и подписью `tasks.reminder_failed`.
+8. **Сводка.** Атомарный `cache.add`; «горящие» — срок сегодня или «скоро» в пределах рабочего дня.
+9. **Файлы.** `TaskFile.file` — OneToOne; имя в `TaskFile.name`; непривязанные чистятся старше 24 часов.
+10. **Срок хранения.** Календарное вычитание, 29.02→28.02; отсчёт от `deleted_at`; смена срока — журнал.
+11. **Один автор на общий файл.** Этап 1: `urls.py` — T-9001 затем T-9009; `apps.py`/`extensions.py` —
+    T-9001 затем T-9010; данные установки — только T-9004. Этап 3: `config/*`, `_assets.html`,
+    `tasks.{js,css}`, `views/*`, `services/*`, `extensions.py` — по одной задаче в порядке партий.
+12. **Стенд.** T-9010 готовит данные и сброс; T-9159 обновляет стенд с разрешения владельца; T-9260 —
+    зелёная сборка до Этапа 4.
+13. **Нагрузка.** Профиль — T-9218 (до T-9160); замер — T-9304 после решения владельца.
+14. **Регрессия.** Базовая проверка правополезных тестов — перед T-9160 (T-9011 после правок), повтор — в
+    T-9300; один и тот же список: `test_permissions`, `test_sd_access`, `test_org_permissions`,
+    `test_feed_home`, `test_notify_admin`, `test_org_structure`, `test_tasks_*`.
+15. **Модели ролей.** Ярлыки `[opus]`/`[sonnet]` — роли; модель — по порядку владельца; ревью — другой моделью.
+16. **Детали, которых план не задал.** Коды отказов и тексты — T-9005; имена помощников — T-9006/T-9007;
+    команда `e2e_tasks_seed` — T-9010; подпись `tasks.reminder_failed` — в `audit_labels`.
+17. **Меню.** «Настройки задач» — order 65; он занят «Сервис-деском», порядок разрешается по `(order, title)`
+    детерминированно («Настройки задач» перед «Сервис-деск»); коллизия записывается в CONTRACT-009 и дифф
+    T-9011 (строка 22).
+18. **Тесты прежних срезов, зависящие от каталога видов и прав.** Строки 11–21 и 31 T-9011 — правки после
+    реализации T-9212/T-9004; до них тесты зелёные, правка не нужна.
+19. **Проверка после реализации.** Отдельного раздела плана нет — проверка названа решением 14 и T-9300.
+20. **Статика.** Строка 30 T-9011 условна: если проверки перечня статики не найдётся, строку снять.
 
 ## Таблица покрытия требований
 
-| Требование | Тесты (Этап 2) | Реализация (Этап 3) |
+| Требование | Тесты и приёмка | Реализация |
 |---|---|---|
 | FR-674 | T-9101, T-9105, T-9106 | T-9201, T-9203, T-9209 |
 | FR-675 | T-9101, T-9105 | T-9201, T-9203 |
@@ -324,8 +348,8 @@ opus (архитектурные и финальные), человек (под�
 | FR-677 | T-9102, T-9104 | T-9202 |
 | FR-678 | T-9102, T-9103, T-9106 | T-9202, T-9203 |
 | FR-679 | T-9101, T-9106 | T-9201, T-9203 |
-| FR-680 | T-9108, T-9109 | T-9205 |
-| FR-681 | T-9108, T-9109 | T-9206 |
+| FR-680 | T-9108, T-9109 | T-9205, T-9208 |
+| FR-681 | T-9108, T-9109 | T-9206, T-9208 |
 | FR-682 | T-9101, T-9108, T-9110 | T-9201, T-9207 |
 | FR-683 | T-9101, T-9108, T-9111 | T-9201, T-9208 |
 | FR-684 | T-9108, T-9109, T-9215 (e2e) | T-9205…T-9209, T-9215 |
@@ -339,12 +363,12 @@ opus (архитектурные и финальные), человек (под�
 | FR-692 | T-9113 | T-9212 |
 | FR-693 | T-9115, T-9116 | T-9209, T-9210 |
 | FR-694 | T-9115, T-9117 | T-9203, T-9210 |
-| FR-695 | T-9117, T-9118 | T-9213 |
+| FR-695 | T-9103, T-9117, T-9118 | T-9202, T-9213 |
 | FR-696 | T-9118, T-9125 | T-9213, T-9201 |
 | FR-697 | T-9119 | T-9214 |
 | FR-698 | T-9120 | T-9214 |
 | FR-699 | T-9215 (e2e), T-9301 | T-9215 |
-| NFR-710 | T-9304 | T-9211, T-9260 |
+| NFR-710 | T-9304 | T-9218 |
 | NFR-711 | T-9301, T-9302 | T-9205, T-9215 |
 | NFR-712 | T-9107, T-9119 | T-9204, T-9214 |
 | NFR-713 | T-9116, T-9121 | T-9210, T-9012, T-9217 |
@@ -353,4 +377,4 @@ opus (архитектурные и финальные), человек (под�
 | NFR-716 | T-9301, T-9302 | T-9215 |
 | NFR-717 | T-9121 | T-9217 |
 | NFR-718 | T-9117 | T-9213 |
-| NFR-719 | T-9121, T-9304 | T-9211, T-9260 |
+| NFR-719 | T-9121 | T-9218, T-9201 |
