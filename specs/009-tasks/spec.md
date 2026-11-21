@@ -1,9 +1,10 @@
 ---
 id: SPEC-009
 вид: спека
-статус: на-проверке
+статус: утверждён
 версия: 3
 зависит_от: CONST, REF-CAP, REF-UX, REF-MOD-TASKS, REF-SRC, REQ-CTX, TGT-ARCH, TGT-NFR, ADR-0002, ADR-0004, ADR-0009, ADR-0010, ADR-0011, ADR-0017, ADR-0018, SPEC-002, SPEC-004, SPEC-007
+подпись: Максим | 2026-11-21T22:39+03:00 | sha256:166eed06c9d60f32a8821cc3bdcd77db2ef51d40cef5c5fe79cee25d020b386f
 ---
 
 # Срез 009: Задачи
