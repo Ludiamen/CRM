@@ -153,10 +153,11 @@ def _more_url(chat, messages) -> str:
 
 
 def _member_names(chat) -> list[str]:
-    """ФИО участников для шапки: личный — собеседник; групповой, отдел и «Общий чат» — состав на момент
-    просмотра (у чата отдела он считается по поддереву, FR-650); у «Общего чата» — до 20 имён и многоточие."""
+    """ФИО участников для шапки: групповой, отдел и «Общий чат» — состав на момент просмотра (у чата отдела он
+    считается по поддереву, FR-650); у «Общего чата» — до 20 имён и многоточие. У личного диалога состав не
+    повторяется: название беседы — это уже ФИО собеседника (проход T-8301: в шапке было два одинаковых ФИО)."""
     if chat.kind == Chat.Kind.PERSONAL:
-        return [page_service.chat_title(chat)]
+        return []
     ids = members.members(chat)
     names = list(User.objects.filter(pk__in=ids).order_by("full_name").values_list("full_name", flat=True))
     if chat.kind == Chat.Kind.GENERAL and len(names) > 20:
