@@ -554,7 +554,7 @@ def test_personal_first_message_counts_one(clock, django_capture_on_commit_callb
 def test_cache_invalidated_by_send_read_and_membership_change(clock, django_capture_on_commit_callbacks):
     """FR-660, 5.3: числа кэшируются на 60 с и сбрасываются отправкой, прочтением и сменой состава.
 
-    `COUNT_CACHE_SECONDS == 5`; прямая вставка `Message` мимо службы не меняет уже посчитанное число, `invalidate`
+    `COUNT_CACHE_SECONDS == 60`; прямая вставка `Message` мимо службы не меняет уже посчитанное число, `invalidate`
     сбрасывает. Затем число растёт после обычной отправки, обнуляется после отметки прочтения, а у выведенного из
     состава участника числа больше нет — каждый шаг проверяется без ручного сброса кэша.
     """

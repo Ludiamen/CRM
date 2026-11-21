@@ -287,7 +287,7 @@ def test_opening_chat_creates_read_mark(clock):
 
 def test_repeat_read_keeps_max_and_does_not_decrease(clock):
     """FR-659: повторная отметка не ошибка и не уменьшает `last_read_at`: служба держит максимум из прежней и
-    присланной; кэш чисел живёт 5 с и сбрасывается при записи сообщения и при прочтении."""
+    присланной; кэш чисел живёт 60 с (решение владельца 2026-11-21) и сбрасывается при записи сообщения и при прочтении."""
     viewer = _employee("Читающий Повторно")
     peer = _employee("Пишущий Повторно")
     base = _moment()
@@ -317,14 +317,14 @@ def test_repeat_read_keeps_max_and_does_not_decrease(clock):
 
     from apps.messenger.services import unread
 
-    assert unread.COUNT_CACHE_SECONDS == 5, "кэш чисел мессенджера — 5 секунд (5.3)"
+    assert unread.COUNT_CACHE_SECONDS == 60, "кэш чисел мессенджера — 60 секунд (решение владельца 2026-11-21)"
     clock.set(base + timedelta(minutes=6))
     messenger.post(chat, peer, "Третье", created_at=base + timedelta(minutes=6))
     assert _counts(viewer.user).get(chat.pk) == 1, "кэш чисел не сброшен записью сообщения"
 
     _Message().objects.create(chat=chat, author=peer.user, is_system=False,
                               text="Прямая запись мимо службы", created_at=base + timedelta(minutes=6))
-    assert _counts(viewer.user).get(chat.pk) == 1, "числа не кэшируются на 5 секунд (5.3)"
+    assert _counts(viewer.user).get(chat.pk) == 1, "числа не кэшируются на 60 секунд (5.3)"
     unread.invalidate([viewer.user.pk])
     assert _counts(viewer.user).get(chat.pk) == 2, "invalidate не сбросил число сотрудника"
 
