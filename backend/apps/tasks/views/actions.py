@@ -7,7 +7,7 @@ import datetime
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import redirect
 from django.utils import timezone
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 
 from apps.core.models import User
 from apps.core.services import permissions
@@ -55,10 +55,12 @@ def _category(value):
 def _deadline(value):
     if value in (None, ""):
         return None
-    try:
-        return datetime.date.fromisoformat(value)
-    except ValueError:
-        raise TasksError("deadline_past", "deadline") from None
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
+        try:
+            return datetime.datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    raise TasksError("deadline_past", "deadline")
 
 
 def _people(request):
@@ -81,6 +83,15 @@ def _form(request, error=None, task=None):
     return render_page(request, "tasks/new.html" if task is None else "tasks/card.html", context, status=200)
 
 
+@require_http_methods(["GET", "POST"])
+@permissions.require_permission("tasks.use")
+def tasks_root(request):
+    """`/tasks/`: GET — список, POST — создание."""
+    from apps.tasks.views import pages
+
+    return create(request) if request.method == "POST" else pages.list_page(request)
+
+
 @require_POST
 @permissions.require_permission("tasks.use")
 def create(request):
@@ -93,6 +104,15 @@ def create(request):
     except TasksError as exc:
         return _form(request, _error(exc))
     return redirect(f"/tasks/{task.pk}/")
+
+
+@require_http_methods(["GET", "POST"])
+@permissions.require_permission("tasks.use")
+def task_detail(request, task_id):
+    """`/tasks/<id>/`: GET — карточка, POST — правка полей."""
+    from apps.tasks.views import pages
+
+    return update(request, task_id) if request.method == "POST" else pages.card_page(request, task_id)
 
 
 @require_POST

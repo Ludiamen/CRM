@@ -6,16 +6,14 @@ from apps.tasks.views import actions, comments, files, pages, plan, reminders, s
 app_name = "tasks"
 
 urlpatterns = [
-    path("tasks/", pages.list_page, name="list"),
+    path("tasks/", actions.tasks_root, name="list"),
     path("tasks/list/", pages.list_fragment, name="list_fragment"),
     path("tasks/board/status/", pages.board_status, name="board_status"),
     path("tasks/board/deadline/", pages.board_deadline, name="board_deadline"),
     path("tasks/board/plan/", pages.board_plan, name="board_plan"),
     path("tasks/board/category/", pages.board_category, name="board_category"),
     path("tasks/new/", pages.new_page, name="new"),
-    path("tasks/", actions.create, name="create"),
-    path("tasks/<int:task_id>/", pages.card_page, name="card"),
-    path("tasks/<int:task_id>/", actions.update, name="update"),
+    path("tasks/<int:task_id>/", actions.task_detail, name="card"),
     path("tasks/<int:task_id>/status/", actions.change_status, name="status"),
     path("tasks/<int:task_id>/move/", actions.move, name="move"),
     path("tasks/<int:task_id>/delete/", actions.delete, name="delete"),

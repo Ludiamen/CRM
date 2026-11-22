@@ -9,7 +9,7 @@
     <ol class="list-unstyled">
       {% for task in column.tasks %}
       <li data-task-card data-task-id="{{ task.pk }}" data-task-status="{{ task.status }}" draggable="true">
-        <a href="/tasks/{{ task.pk }}/" data-task-title>№{{ task.pk }} {{ task.title }}</a>
+        <a href="/tasks/{{ task.pk }}/" draggable="false"><span data-task-number>#{{ task.pk }}</span> <span data-task-title>{{ task.title }}</span></a>
         <div class="text-muted small">{{ task.assignee.full_name }} · {{ task.deadline|date:"d.m.Y"|default:"без срока" }}</div>
       </li>
       {% endfor %}

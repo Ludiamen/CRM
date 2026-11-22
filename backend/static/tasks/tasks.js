@@ -36,15 +36,54 @@
     });
   }
 
+  function nativeDrag(board) {
+    if (board.dataset.dnd === "1") {
+      return;
+    }
+    board.dataset.dnd = "1";
+    board.addEventListener("dragstart", function (event) {
+      board.dataset.dragging = "1";
+      var card = event.target.closest("[data-task-card]");
+      if (card && event.dataTransfer) {
+        event.dataTransfer.setData("text/plain", card.getAttribute("data-task-id"));
+      }
+    });
+    board.addEventListener("dragend", function () {
+      window.setTimeout(function () { delete board.dataset.dragging; }, 300);
+    });
+    board.addEventListener("click", function (event) {
+      if (board.dataset.dragging) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }, true);
+    board.addEventListener("dragover", function (event) {
+      event.preventDefault();
+    });
+    board.addEventListener("drop", function (event) {
+      var column = event.target.closest("[data-column]");
+      var taskId = event.dataTransfer && event.dataTransfer.getData("text/plain");
+      var card = taskId && board.querySelector('[data-task-card][data-task-id="' + taskId + '"]');
+      if (column && card) {
+        event.preventDefault();
+        move(board, card, column);
+      }
+    });
+  }
+
   function init(board) {
     if (typeof window.Sortable !== "function" || !board.getAttribute("data-move-url")) {
       return;
     }
+    nativeDrag(board);
     board.querySelectorAll("[data-column]").forEach(function (column) {
-      window.Sortable.create(column, {
+      var list = column.querySelector("ol") || column;
+      window.Sortable.create(list, {
         group: board.getAttribute("data-board"),
         draggable: "[data-task-card]",
         animation: 120,
+        forceFallback: true,
+        fallbackTolerance: 3,
         onEnd: function (event) {
           var card = event.item;
           var target = event.to.closest("[data-column]");

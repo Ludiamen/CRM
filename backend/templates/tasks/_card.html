@@ -1,6 +1,6 @@
 <article class="card card-body tasks-card" data-task-id="{{ task.pk }}" data-task-status="{{ task.status }}">
   <header class="d-flex flex-wrap gap-2 align-items-center">
-    <h1 class="h4 mb-0">№{{ task.pk }} <span data-task-title>{{ task.title }}</span></h1>
+    <h1 class="h4 mb-0">#{{ task.pk }} <span data-task-title>{{ task.title }}</span></h1>
     <span class="badge" data-status>{{ task.get_status_display }}</span>
     <a class="btn btn-sm btn-outline-secondary" href="/tasks/">Назад</a>
   </header>
@@ -8,7 +8,7 @@
   {% if error %}<div class="text-danger" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
 
   {% if can_status %}
-  <form method="post" action="/tasks/{{ task.pk }}/status/" class="d-flex gap-2 mb-3" data-form="task-status">
+  <form method="post" action="/tasks/{{ task.pk }}/status/" class="d-flex gap-2 mb-3" data-form="task-status" data-task-field="status">
     {% csrf_token %}
     <select name="status" class="form-select" data-task-field="status">
       <option value="new"{% if task.status == "new" %} selected{% endif %}>Новая</option>
@@ -21,19 +21,14 @@
   {% endif %}
 
   {% if can_edit %}
-  <form method="post" action="/tasks/{{ task.pk }}/" data-form="task-edit" novalidate>
+  <form method="post" action="/tasks/{{ task.pk }}/" data-form="task-edit" data-task-field="plan_column" novalidate>
     {% csrf_token %}
     <div class="mb-2"><label class="form-label">Название</label>
-      <input class="form-control" name="title" value="{{ task.title }}" maxlength="300" data-task-field="title"></div>
+      <input class="form-control" name="title" value="{{ task.title }}" data-task-field="title"></div>
     <div class="mb-2"><label class="form-label">Описание</label>
       <textarea class="form-control" name="description" rows="3" data-task-field="description">{{ task.description }}</textarea></div>
     <div class="mb-2"><label class="form-label">Срок</label>
-      <input class="form-control" type="text" data-datefield-input inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10" name="deadline" value="{{ task.deadline|date:'Y-m-d' }}" data-task-field="deadline"></div>
-    <div class="mb-2"><label class="form-label">Категория</label>
-      <select class="form-select" name="category" data-task-field="category">
-        <option value="">Без категории</option>
-        {% for category in categories %}<option value="{{ category.pk }}"{% if task.category_id == category.pk %} selected{% endif %}>{{ category.title }}</option>{% endfor %}
-      </select></div>
+      <input class="form-control" type="text" data-datefield-input inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10" name="deadline" value="{{ task.deadline|date:'d.m.Y' }}" data-task-field="deadline"></div>
     {% if request.user.pk == task.assignee_id %}
     <div class="mb-2"><label class="form-label">Колонка плана</label>
       <select class="form-select" name="plan_column" data-task-field="plan_column">
@@ -42,6 +37,14 @@
       </select></div>
     {% endif %}
     <button class="btn btn-primary" type="submit">Сохранить</button>
+  </form>
+  <form method="post" action="/tasks/{{ task.pk }}/" data-form="task-category" data-task-field="category" class="d-flex gap-2 mb-2">
+    {% csrf_token %}
+    <select class="form-select" name="category" data-task-field="category">
+      <option value="">Без категории</option>
+      {% for category in categories %}<option value="{{ category.pk }}"{% if task.category_id == category.pk %} selected{% endif %}>{{ category.title }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-outline-primary" type="submit">Категория</button>
   </form>
   {% else %}
   <p data-task-field="description">{{ task.description }}</p>
@@ -64,7 +67,6 @@
       <input class="form-control" name="on" type="text" data-datefield-input inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10">
       <button class="btn btn-outline-primary" type="submit">Напомнить</button>
     </form>
-    {% if error.field == 'reminder' %}<div class="text-danger" data-error="reminder" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
   </section>
 
   <section class="mt-3" aria-label="Комментарии">
@@ -74,7 +76,8 @@
       <li{% if item.kind == "comment" %} data-comment-id="{{ item.comment.pk }}"{% endif %}>
         {% if item.kind == "event" %}<span class="text-muted">{% if item.event.action == "tasks.created" %}Создал задачу{% else %}{{ item.event.action }}{% endif %}: {{ item.event.at|date:"d.m.Y H:i" }}</span>
         {% else %}{% if item.comment.deleted_at %}<span class="text-muted">Комментарий удалён</span>
-        {% else %}<strong>{{ item.comment.author.full_name }}</strong> {{ item.comment.text }}{% if item.comment.edited_at %} <span data-comment-edited>изменено</span>{% endif %}{% endif %}{% endif %}
+        {% else %}<strong>{{ item.comment.author.full_name }}</strong> {{ item.comment.text }}{% if item.comment.edited_at %} <span data-comment-edited>изменено</span>{% endif %}
+        {% for entry in item.comment.files.all %}<a href="/tasks/files/{{ entry.pk }}/">{{ entry.name }}</a> {% endfor %}{% endif %}{% endif %}
       </li>
       {% endfor %}
     </ol>

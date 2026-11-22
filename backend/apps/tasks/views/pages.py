@@ -5,7 +5,7 @@
 """
 from django.http import Http404
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_http_methods
 
 from apps.core.services import permissions
 from apps.core.views.common import render_page
@@ -89,9 +89,13 @@ def reminders_of(task):
     return task.reminders.select_related("user").order_by("moment", "pk")
 
 
-@require_GET
+@require_http_methods(["GET", "POST"])
 @permissions.require_permission("tasks.use")
 def new_page(request):
+    if request.method == "POST":
+        from apps.tasks.views import actions
+
+        return actions.create(request)
     return render_page(request, "tasks/new.html", {
         "assignee": request.user,
         "people": User.objects.exclude(state="dismissed").order_by("full_name", "pk"),

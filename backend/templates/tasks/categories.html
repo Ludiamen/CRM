@@ -17,6 +17,7 @@
   <ol>
     {% for category in categories %}
     <li data-category-id="{{ category.pk }}">
+      <span data-category-title>{{ category.title }}</span>
       <form method="post" action="/settings/tasks/categories/{{ category.pk }}/" class="d-inline-flex gap-2">{% csrf_token %}
         <input class="form-control" name="title" value="{{ category.title }}">
         <button class="btn btn-sm btn-outline-secondary" type="submit">Переименовать</button>

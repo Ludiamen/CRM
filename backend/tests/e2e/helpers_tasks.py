@@ -107,11 +107,14 @@ def open_tasks(context, account, preset="mine", **params):
     (или доска, если `preset` начинается с `board:`); параметры — строками запроса. Возвращает страницу."""
     from tests.e2e import helpers_notify
 
+    context.clear_cookies()
     helpers_notify.adopt_session(context, account)
     page = context.new_page()
     path = "/tasks/"
     if preset and preset.startswith("board:"):
         path = f"/tasks/board/{preset.split(':', 1)[1]}/"
+    elif preset:
+        params["preset"] = preset
     query = "&".join(f"{key}={value}" for key, value in params.items() if value not in (None, ""))
     page.goto(path + (f"?{query}" if query else ""))
     page.wait_for_load_state()
@@ -123,6 +126,7 @@ def open_card(context, account, task_id):
     """Вход и карточка `/tasks/<id>/`; ждёт `[data-tasks-page="card"]`."""
     from tests.e2e import helpers_notify
 
+    context.clear_cookies()
     helpers_notify.adopt_session(context, account)
     page = context.new_page()
     page.goto(f"/tasks/{task_id}/")
@@ -164,7 +168,7 @@ def _card(page, task_id):
 def move_card(page, task_id, board, column):
     """Перетаскивает карточку в колонку `[data-column="<column>"]` (мышью, SortableJS). Ждёт ответ переноса;
     если перетаскивание недоступно, пользуется выбором в карточке (запасной путь FR-684)."""
-    card, target = _card(page).first, page.locator(f'[data-column="{column}"]').first
+    card, target = _card(page, task_id).first, page.locator(f'[data-column="{column}"]').first
     expect(card).to_be_visible()
     expect(target).to_be_visible()
     source_box, target_box = card.bounding_box(), target.bounding_box()
@@ -172,12 +176,12 @@ def move_card(page, task_id, board, column):
         x1 = source_box["x"] + source_box["width"] / 2
         y1 = source_box["y"] + source_box["height"] / 2
         x2 = target_box["x"] + target_box["width"] / 2
-        y2 = target_box["y"] + min(target_box["height"] / 4, 120)
+        y2 = target_box["y"] + min(target_box["height"] / 3, 120)
         with page.expect_response(lambda response: "/move/" in response.url, timeout=MOVE_TIMEOUT):
             page.mouse.move(x1, y1)
             page.mouse.down()
-            page.mouse.move(x1 + 10, y1 + 10, steps=5)
-            page.mouse.move(x2, y2, steps=15)
+            page.mouse.move(x1 + 8, y1 + 8, steps=4)
+            page.mouse.move(x2, y2, steps=20)
             page.mouse.up()
         page.wait_for_load_state()
         return

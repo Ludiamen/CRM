@@ -2,7 +2,7 @@
 <ol class="tasks-list" data-tasks-list>
   {% for task in rows %}
   <li data-task-id="{{ task.pk }}" data-task-status="{{ task.status }}">
-    <a href="/tasks/{{ task.pk }}/" data-task-title>№{{ task.pk }} {{ task.title }}</a>
+    <a href="/tasks/{{ task.pk }}/"><span data-task-number>#{{ task.pk }}</span> <span data-task-title>{{ task.title }}</span></a>
     <span data-task-assignee>{{ task.assignee.full_name }}</span>
     <span data-deadline="{{ task.deadline|date:'Y-m-d' }}">{{ task.deadline|date:"d.m.Y"|default:"без срока" }}</span>
     <span data-status>{{ task.get_status_display }}</span>

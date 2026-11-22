@@ -37,10 +37,16 @@ def _clean_deadline(value, *, allow_past: bool = False) -> datetime.date | None:
     if value in (None, ""):
         return None
     if isinstance(value, str):
-        try:
-            value = datetime.date.fromisoformat(value)
-        except ValueError:
-            raise TasksError("deadline_past", "deadline") from None
+        parsed = None
+        for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
+            try:
+                parsed = datetime.datetime.strptime(value, fmt).date()
+                break
+            except ValueError:
+                continue
+        if parsed is None:
+            raise TasksError("deadline_past", "deadline")
+        value = parsed
     if not isinstance(value, datetime.date):
         raise TasksError("deadline_past", "deadline")
     if not allow_past and value < moscow_today():

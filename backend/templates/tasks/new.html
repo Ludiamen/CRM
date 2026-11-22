@@ -3,11 +3,11 @@
 {% block content %}
 <div data-tasks-page="new">
   <header class="page-head"><h1 class="page-title">Новая задача</h1></header>
-  <form method="post" action="/tasks/" data-form="task-new" novalidate>
+  <form method="post" action="/tasks/new/" data-form="task-new" novalidate>
     {% csrf_token %}
     <div class="mb-3">
       <label class="form-label" for="id_title">Название</label>
-      <input class="form-control{% if error.field == 'title' %} is-invalid{% endif %}" id="id_title" name="title" maxlength="300" value="{{ posted.title|default:'' }}" data-task-field="title">
+      <input class="form-control{% if error.field == 'title' %} is-invalid{% endif %}" id="id_title" name="title" value="{{ posted.title|default:'' }}" data-task-field="title">
       {% if error.field == 'title' %}<div class="text-danger" data-error="title" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
     </div>
     <div class="mb-3">
