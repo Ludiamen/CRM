@@ -77,7 +77,7 @@ opus (архитектурные и финальные), человек (под�
   `tasks_reminders` (`*/5 * * * *`, 300 с), `tasks_digest` (`*/15 * * * *`, 300 с), `tasks_retention`
   (`42 23 * * *`, 600 с) под `is_installed`; страницы-заглушки списка и настроек —
   `backend/apps/tasks/urls.py`, `backend/apps/tasks/views/`, `backend/config/cron.py` — (FR-685, FR-696)
-- [ ] T-9010 [opus] стенд (после T-9001 и T-9004): `tasks` в `stand_reset` (задачи, участники, колонки,
+- [x] T-9010 [opus] стенд (после T-9001 и T-9004): `tasks` в `stand_reset` (задачи, участники, колонки,
   категории, напоминания, комментарии, файлы) регистрацией в `extensions.register_all`; команда
   `e2e_tasks_seed` (категории, три задачи) для сценариев; тест сброса — `backend/apps/tasks/stand.py`,
   `backend/apps/tasks/extensions.py`, `backend/tests/test_tasks_stand.py` — (все FR)

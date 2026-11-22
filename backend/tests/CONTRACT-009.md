@@ -26,7 +26,7 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
   и на 21:00–23:59 UTC; службы передают время в SQL параметром `%s`, а не `now()` базы (как CONTRACT-007/008);
 - задания выполняются синхронно: `test_tasks_reminders` зовёт `tasks_reminders(now=…)`, `test_tasks_digest` —
   `tasks_digest(now=…)`, `test_tasks_retention` — `tasks_retention(now=…)` (все принимают время параметром);
-  приёмка сдвигает сроки и даты удаления командой `e2e_tasks_seed`/`e2e_tasks_age` (раздел 13.1);
+  приёмка наполняет стенд командой `e2e_tasks_seed` (раздел 13.1);
 - всё, что идёт «после фиксации» (рассылка, стирание файлов с диска), проверяется внутри
   `django_capture_on_commit_callbacks(execute=True)`;
 - гонки — без потоков: по SQL (`support_tasks.capture_sql`), последовательно (два переноса, две уборки), подменой
@@ -107,7 +107,7 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
 | Транзакция | всё стирание и восстановление данных установки — в одной `transaction.atomic(using=<алиас>)` | T-9124 test_stand_reset_runs_in_migration_transaction |
 | Таблицы | стираются все таблицы `tasks`: `TaskFile`, `TaskComment`, `TaskReminder`, `TaskMember`, `Task`, `PlanColumn`, `TaskCategory`, `TaskSettings` (сначала зависимые); строки `core.StoredFile` с `purpose="task"` удаляются вместе с вложениями | T-9124 test_stand_reset_wipes_tasks_and_files |
 | Файлы | пути оригиналов собираются по строкам `TaskFile`/`StoredFile` (все состояния) до удаления; диск — `transaction.on_commit(lambda: core_files.remove_paths(paths), using=<алиас>)` на том же алиасе | T-9124 |
-| Восстановление | данные установки среза: строка `TaskSettings(pk=1, retention_years=3)` и категории, если их нет (повторный запуск ничего не дублирует) | T-9124 test_stand_reset_returns_settings_and_categories |
+| Восстановление | данные установки среза: строка `TaskSettings(pk=1, retention_years=3)`; повторный запуск ничего не дублирует (категории — данные администратора и сбросом не возвращаются) | T-9124 test_stand_reset_returns_settings |
 | Порядок | в `extensions.registered("stand_reset")` функция `apps.tasks.stand.stand_reset` — последняя, сразу после `apps.messenger.stand.stand_reset`; в вызове `e2e_reset_stand` — первая | T-9124 test_tasks_stand_reset_is_registered_last_and_runs_first |
 | Проверка стенда | `apps.tasks.stand.require_stand()` и `REFUSAL = "Команда работает только на стенде приёмочных проходов (E2E_STAND=1); ничего не изменено."` — своя копия (как `lists`, `feed`, `messenger`) | T-9124 test_stand_command_refused_without_e2e_stand |
 
@@ -509,7 +509,6 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
 | Команда | Требование | Тесты |
 |---|---|---|
 | `e2e_tasks_seed` | `apps/tasks/management/commands/e2e_tasks_seed.py`; `require_stand()` первой строкой; создаёт категории («Работа», «Личное») и три задачи (свою, подчинённому, с соисполнителем и наблюдателем) для сценариев; строка итога `e2e_tasks_seed: tasks=3 categories=2`; повторный запуск не дублирует | T-9124; e2e |
-| `e2e_tasks_age` | `--days N` (1…4000) сдвигает `Task.deadline`, `Task.created_at`/`deleted_at` и `TaskReminder.moment` на N дней раньше; без стенда — `CommandError(REFUSAL)`; строка `e2e_tasks_age: aged=<N>` | T-9124; e2e |
 | Сброс | `helpers_sd.reset_stand_and_relogin()` перед кругом; `tasks` — последний зарегистрированный, зовётся первым (раздел 1.3) | e2e |
 
 ### 13.2. Нагрузка (NFR-710, NFR-719)
