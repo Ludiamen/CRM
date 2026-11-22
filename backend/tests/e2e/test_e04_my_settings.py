@@ -60,8 +60,14 @@ FEED_KINDS_E2E = tuple((row[0], row[1]) for row in FEED_KINDS)
 # срез 008: два вида «Мессенджера» доступны всем (CONTRACT-008, раздел 7.1) — строки у каждого сотрудника, после
 # видов ленты
 MESSENGER_KINDS_E2E = tuple((row[0], row[1]) for row in MESSENGER_KINDS)
+TASKS_KINDS_E2E = (
+    ("tasks.assigned", "Назначена задача"), ("tasks.due_soon", "Задача скоро просрочена"),
+    ("tasks.due", "Срок наступил"), ("tasks.overdue", "Задача просрочена"),
+    ("tasks.subordinate_overdue", "Задача подчинённого просрочена"), ("tasks.reminder", "Вы просили напомнить"),
+    ("tasks.comment", "Новый комментарий"), ("tasks.subordinate_digest", "Сводка по задачам подчинённых"),
+)
 ROWS = (KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E
-        + MESSENGER_KINDS_E2E)  # строки таблицы участника очереди в порядке каталога
+        + MESSENGER_KINDS_E2E + TASKS_KINDS_E2E)  # строки таблицы участника очереди в порядке каталога
 COLUMNS = ("На портале", "Почта", "Push в браузере", "Telegram", "MAX")  # § 15.5
 CHANNEL_ORDER = ["portal", "email", "push", "telegram", "max"]  # § 14.3
 SAVED = "Настройки уведомлений сохранены."  # § 15.4
@@ -288,7 +294,8 @@ def test_e04_my_notifications_table_shows_kinds_with_module_five_channel_columns
     for code, title in ROWS:
         row = table.locator(f'tr[data-notify-kind="{code}"]')
         expect(row.locator('[data-field="title"]')).to_have_text(title)
-        module = (KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.")
+        module = ("Задачи" if code.startswith("tasks.") else
+                  KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.")
                   else FEED_MODULE if code.startswith("feed.") else MESSENGER_MODULE if code.startswith("messenger.")
                   else MODULE)
         expect(row.locator('[data-field="module"]')).to_have_text(module)

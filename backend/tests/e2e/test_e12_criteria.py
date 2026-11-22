@@ -61,6 +61,13 @@ LISTS_KINDS = (("lists.deadline", "Срок в записи списка"),)
 FEED_KINDS_E2E = tuple((row[0], row[1]) for row in FEED_KINDS)
 # срез 008: два вида «Мессенджера» (CONTRACT-008, раздел 7.1) — строки у каждого сотрудника и в таблице умолчаний
 MESSENGER_KINDS_E2E = tuple((row[0], row[1]) for row in MESSENGER_KINDS)
+TASKS_KINDS_E2E = (
+    ("tasks.assigned", "Назначена задача"), ("tasks.due_soon", "Задача скоро просрочена"),
+    ("tasks.due", "Срок наступил"), ("tasks.overdue", "Задача просрочена"),
+    ("tasks.subordinate_overdue", "Задача подчинённого просрочена"), ("tasks.reminder", "Вы просили напомнить"),
+    ("tasks.comment", "Новый комментарий"), ("tasks.subordinate_digest", "Сводка по задачам подчинённых"),
+)
+
 EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mandatory, внешний текст)
     NEW_IN_QUEUE: ("Новая заявка в моей очереди", MODULE, False, "Новая заявка в вашей очереди"),
     ASSIGNED: ("Мне назначили заявку", MODULE, False, "Вам назначена заявка"),
@@ -84,6 +91,14 @@ EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mand
     # CONTRACT-008, раздел 7.1: два вида «Мессенджера», внешний текст постоянный (NFR-705)
     "messenger.message": ("Новое сообщение в чате", MESSENGER_MODULE, False, "Новое сообщение в чате"),
     "messenger.mention": ("Упомянул вас в чате", MESSENGER_MODULE, False, "Вас упомянули в чате"),
+    "tasks.assigned": ("Назначена задача", "Задачи", False, "Вам назначена задача"),
+    "tasks.due_soon": ("Задача скоро просрочена", "Задачи", False, "Срок задачи приближается"),
+    "tasks.due": ("Срок наступил", "Задачи", False, "Срок задачи наступил"),
+    "tasks.overdue": ("Задача просрочена", "Задачи", False, "Задача просрочена"),
+    "tasks.subordinate_overdue": ("Задача подчинённого просрочена", "Задачи", False, "Задача подчинённого просрочена"),
+    "tasks.reminder": ("Вы просили напомнить", "Задачи", False, "Напоминание о задаче"),
+    "tasks.comment": ("Новый комментарий", "Задачи", False, "Новый комментарий к задаче"),
+    "tasks.subordinate_digest": ("Сводка по задачам подчинённых", "Задачи", False, "Сводка по задачам подчинённых"),
     "core.new_device": ("Вход с нового устройства", "Ядро", True, ""),
     "core.password_changed": ("Пароль изменён", "Ядро", True, ""),
     "core.second_factor_reset": ("Второй фактор сброшен", "Ядро", True, ""),
@@ -950,23 +965,26 @@ def test_e12_catalog_shows_four_service_desk_kinds_three_security_kinds_and_chan
         "core.new_device", "core.password_changed", "core.second_factor_reset"]
     # таблица «Мои уведомления»: четыре вида сервис-деска, три вида базы знаний, вид списков и две сводные строки
     member.page.goto("/me/notifications/")
-    for code, title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E + MESSENGER_KINDS_E2E:
+    for code, title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E + MESSENGER_KINDS_E2E + TASKS_KINDS_E2E:
         row = member.page.locator(f'table[data-notify-table] tr[data-notify-kind="{code}"]')
         expect(row).to_have_count(1)
         expect(row.locator('[data-field="title"]')).to_have_text(title)
-        module = (KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.")
+        module = ("Задачи" if code.startswith("tasks.") else
+                  KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.")
                   else FEED_MODULE if code.startswith("feed.") else MESSENGER_MODULE if code.startswith("messenger.")
                   else MODULE)
         expect(row.locator('[data-field="module"]')).to_have_text(module)
     # видимый результат: четыре вида сервис-деска, три вида базы знаний и вид списков; видов безопасности и «Канал отвязан» среди строк видов нет
     expect(member.page.locator("table[data-notify-table] tr[data-notify-kind]")).to_have_count(
-        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E) + len(MESSENGER_KINDS_E2E))
+        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E) + len(MESSENGER_KINDS_E2E)
+        + len(TASKS_KINDS_E2E))
     expect(member.page.locator('table[data-notify-table] tr[data-notify-kind^="core."], '
                                'table[data-notify-table] tr[data-notify-kind^="notify."]')).to_have_count(0)
     # страница администратора: все не обязательные виды — четыре сервис-деска, три базы знаний и вид списков (§ 14.4)
     page.goto("/settings/notifications/")
     expect(page.locator("table[data-defaults-table] tr[data-notify-kind]")).to_have_count(
-        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E) + len(MESSENGER_KINDS_E2E))
+        len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E) + len(MESSENGER_KINDS_E2E)
+        + len(TASKS_KINDS_E2E))
     for code, _title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E + MESSENGER_KINDS_E2E:
         expect(page.locator(f'table[data-defaults-table] tr[data-notify-kind="{code}"]')).to_have_count(1)
     expect(member.page.locator('tr[data-notify-fixed="security"]')).to_contain_text(FIXED_SECURITY)
