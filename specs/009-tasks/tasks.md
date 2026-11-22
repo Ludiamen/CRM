@@ -81,7 +81,7 @@ opus (архитектурные и финальные), человек (под�
   категории, напоминания, комментарии, файлы) регистрацией в `extensions.register_all`; команда
   `e2e_tasks_seed` (категории, три задачи) для сценариев; тест сброса — `backend/apps/tasks/stand.py`,
   `backend/apps/tasks/extensions.py`, `backend/tests/test_tasks_stand.py` — (все FR)
-- [ ] T-9011 [opus] **правки прежних тестов — только с разрешения владельца**, по одному тесту, диффом
+- [x] T-9011 [opus] **правки прежних тестов — только с разрешения владельца**, по одному тесту, диффом
   «было / стало». Перечень (каждая строка — отдельный вопрос; при падении теста вне перечня — остановка):
   | № | Файл::тест | Было | Стало | Почему |
   |---|---|---|---|---|
@@ -197,9 +197,9 @@ opus (архитектурные и финальные), человек (под�
   класс `TaskUser` в `locustfile.py` (список, пресеты, карточка, доски, перенос, комментарий, поиск); проверка
   наличия — `test_tasks_deploy` (зеленеет вместе с T-9217) — `backend/tests/load/fill_tasks.py`,
   `backend/tests/load/locustfile.py` — (NFR-710, NFR-719)
-- [ ] T-9159 [opus] стенд для прогонов (после разрешения владельца): копия, сборка с `tasks`, миграции
+- [x] T-9159 [opus] стенд для прогонов (после разрешения владельца): копия, сборка с `tasks`, миграции
   `core 0012` и `tasks 0001`, перезапуск, проверки здоровья — `crm-work/slice009/stage2/stand/` — (все FR)
-- [ ] T-9160 [opus] **красный прогон**: весь серверный набор; каждый новый тест падает, причина записана;
+- [x] T-9160 [opus] **красный прогон**: весь серверный набор; каждый новый тест падает, причина записана;
   прежние тесты зелёные или перечислены в T-9011 — `crm-work/slice009/stage2/red/`, отчёт
   `docs/reviews/TASKS-009.md` — (все FR)
 
@@ -259,19 +259,19 @@ opus (архитектурные и финальные), человек (под�
 - [x] T-9214 [sonnet] поиск и карточка сотрудника: поставщик «Задачи», раздел карточки —
   `backend/apps/tasks/services/search.py`, `extensions.py` — зелёные: `test_tasks_search`,
   `test_tasks_card_section` — (FR-697, FR-698, NFR-712)
-- [ ] T-9215 [sonnet] 360 px и запасной путь: `tasks.css`, поведение доски и карточки —
+- [x] T-9215 [sonnet] 360 px и запасной путь: `tasks.css`, поведение доски и карточки —
   `backend/static/tasks/tasks.css` — зелёный: e2e `t10` — (FR-699, NFR-716)
 - [x] T-9216 [sonnet] установка и стенд: данные установки, `stand_reset`, `e2e_tasks_seed` —
   `backend/apps/tasks/stand.py` — зелёные: `test_tasks_seed`, `test_tasks_stand` — (все FR)
 - [x] T-9217 [sonnet] развёртывание и границы: маршруты, cron, меню, статика, CSP, nginx, границы импорта —
   `backend/apps/tasks/{urls,extensions}.py`, `config/cron.py` — зелёные: `test_tasks_deploy`,
   `test_tasks_boundaries`, `test_tasks_core_changes` — (NFR-713, NFR-717, NFR-719)
-- [ ] T-9260 [opus] зелёная сборка: весь серверный набор зелёный, ни один тест не ослаблен; правки прежних
+- [x] T-9260 [opus] зелёная сборка: весь серверный набор зелёный, ни один тест не ослаблен; правки прежних
   тестов — только из T-9011 с разрешения; отчёт — `docs/reviews/TASKS-009.md` — (все FR)
 
 ## Этап 4 — приёмка
 
-- [ ] T-9300 [opus] полный серверный прогон на PostgreSQL в контейнере (`systemd-run --user`): сверка красного
+- [x] T-9300 [opus] полный серверный прогон на PostgreSQL в контейнере (`systemd-run --user`): сверка красного
   T-9160 с зелёным, ни одного пропущенного/ослабленного; регрессия правополезных тестов
   (`test_permissions`, `test_sd_access`, `test_org_permissions`, `test_feed_home`, `test_notify_admin`,
   `test_org_structure`, `test_tasks_*`) — повтор после реализации; сводка в `docs/reviews/TASKS-009.md` —
@@ -283,7 +283,7 @@ opus (архитектурные и финальные), человек (под�
 - [ ] T-9302 [opus] приёмка Playwright из `CRM/.venv` со сбросом стенда перед кругом: `t09` в четырёх
   браузерах (Chromium, Firefox, Edge, Яндекс) плюс прежние срезы `-k` в Chromium и Яндексе;
   `tests/e2e/conftest.py` не правится — `docs/reviews/TASKS-009.md`, раздел «Приёмка» — (NFR-716)
-- [ ] T-9303 [P] [opus] ворота: `sdd.py проверить`, `tools` unittest, конституция по `backend/` и `deploy/`,
+- [x] T-9303 [P] [opus] ворота: `sdd.py проверить`, `tools` unittest, конституция по `backend/` и `deploy/`,
   `check_secrets`, `verify_vendor` (SortableJS), `git diff --check` — `docs/reviews/TASKS-009.md` —
   (конституция)
 - [ ] T-9304 [opus] нагрузка NFR-710 — только после отдельного решения владельца, на остывшей машине по
