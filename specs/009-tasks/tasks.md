@@ -66,7 +66,7 @@ opus (архитектурные и финальные), человек (под�
 - [x] T-9006 [P] [opus] помощники серверных тестов: `make_task`, `add_member`, `make_column`, `make_category`,
   `move`, `board_rows`, `reminders_of`, `post_comment`, роли для прав-данных; без импорта кода приложения на
   уровне модуля — `backend/tests/support_tasks.py` — (все FR)
-- [ ] T-9007 [P] [opus] помощники e2e: `open_tasks`, `create_task`, `open_card`, `move_card`, `board_titles`,
+- [x] T-9007 [P] [opus] помощники e2e: `open_tasks`, `create_task`, `open_card`, `move_card`, `board_titles`,
   `plan_columns`, `comment`, `upload_task_file`, `check_360`; локаторы — только зацепки CONTRACT-009 —
   `backend/tests/e2e/helpers_tasks.py` — (FR-680…684, FR-699)
 - [ ] T-9008 [P] [opus] SortableJS 1.15.6 в `static/vendor` с `LICENSE-sortable` и разделом `VERSIONS.md`;
