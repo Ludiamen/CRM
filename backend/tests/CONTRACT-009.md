@@ -333,7 +333,7 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
 | `[data-board="status\|deadline\|plan\|category"]` | корень доски | T-9108; T-9109 |
 | `[data-column="<ключ>"]` | колонка доски; ключи — раздел 7; внутри — `[data-column-title]`, `[data-column-count]` и карточки | T-9108; T-9109 |
 | `[data-column-title]` | название колонки доски и личного плана | T-9108; T-9110 |
-| `[data-plan-column]` | колонка личного плана с `data-plan-column="<id>"` и `data-plan-readonly="1"` у чужого плана | T-9110 |
+| `[data-plan-column]` | колонка личного плана с `data-plan-column="<id>"`, `data-column="<id>"` (цель переноса — та же зацепка, что у доски) и `data-plan-readonly="1"` у чужого плана | T-9110; e2e `t06` |
 | `[data-task-card]` | карточка на доске (несёт `[data-task-id]`) | T-9108; T-9109 |
 | `[data-move-url]` | корень доски: шаблон адреса переноса `/tasks/{id}/move/`; номер подставляется из `[data-task-id]` | T-9109 |
 | `[data-task-field="title\|description\|deadline\|status\|assignee\|members\|category\|plan_column"]` | поле в форме создания, правки и в карточке (запасной путь — `select`/`input` с этим признаком) | T-9105; T-9108 |
