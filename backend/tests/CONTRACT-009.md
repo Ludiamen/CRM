@@ -559,7 +559,13 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
 | Виды уведомлений | двадцать два | тридцать (T-9212) |
 
 Полный перечень строк таблицы T-9011 (1–31) с точным «было / стало» — в TASKS-009; T-9011 исполняется **после**
-T-9002…T-9004 и **до** T-9160 (решение 2 задач).
+T-9002…T-9004 и **до** T-9160 (решение 2 задач). Владелец 2026-11-22 разрешил все 31 строку и пять дополнительных
+тестов той же природы (строки 32–36): `test_permissions.py::test_every_protected_view_requires_permission_403`
+(таблица прав и перечень разделов без `/tasks/` и `/settings/tasks/`), `test_messenger_boundaries.py::test_purposes_are_7_and_task_last`
+(бывшее имя `…_6_and_messenger_last`), `test_feed_deploy.py::test_previous_eighteen_cron_entries_keep_names_and_minutes`
+(3 → 6 записей сверх прежних) и два теста `test_feed_deploy.py::test_nginx_{dev,prod}_config_has_feed_files_location_with_25m_limit`
+(2 → 3 `25m`). Строки 11–16, 22–26 и 31 правятся партиями Этапа 3, когда появляется их поведение (решение 18 задач):
+до этого прежние тесты остаются зелёными.
 
 ## 15. Решения контракта
 

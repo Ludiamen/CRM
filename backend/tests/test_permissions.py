@@ -23,21 +23,22 @@ def test_seven_permissions_created_by_migration():
 
 
 def test_three_builtin_roles_with_initial_permissions():
-    """FR-015, FR-020, FR-118: три начальные роли; у администратора все восемнадцать прав (срезы 001–007), у «Руководителя» ровно `staff.view` и `feed.post_all`, у «Сотрудника ИТ» `staff.view`, `knowledge.edit` и `feed.post_all`."""
+    """FR-015, FR-020, FR-118: три начальные роли; у администратора все двадцать прав (срезы 001–009), у «Руководителя» ровно `staff.view` и `feed.post_all`, у «Сотрудника ИТ» `staff.view`, `knowledge.edit`, `feed.post_all`, `tasks.use` и `tasks.assign`."""
     from tests.support_feed import PERMISSIONS_007
     from tests.support_kb import PERMISSIONS_005
     from tests.support_lists import PERMISSIONS_006
     from tests.support_notify import PERMISSIONS_004
+    from tests.support_tasks import PERMISSIONS_009
 
     Role = model("core.Role")
     builtin = {r.name: r for r in Role.objects.filter(is_builtin=True)}
     assert set(builtin) == {support.ADMIN_ROLE, support.MANAGER_ROLE, support.STAFF_ROLE}
     assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(
         PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003 + PERMISSIONS_004 + PERMISSIONS_005 + PERMISSIONS_006
-        + PERMISSIONS_007)
+        + PERMISSIONS_007 + PERMISSIONS_009)
     assert set(builtin[support.MANAGER_ROLE].permissions.values_list("code", flat=True)) == {"staff.view", "feed.post_all"}
     assert set(builtin[support.STAFF_ROLE].permissions.values_list("code", flat=True)) == {
-        "staff.view", "knowledge.edit", "feed.post_all"}
+        "staff.view", "knowledge.edit", "feed.post_all", *PERMISSIONS_009}
     employee = support.logged_in(support.make_employee(roles=[builtin[support.STAFF_ROLE]]))
     assert employee.get("/me/").status_code == 200 and employee.get("/me/security/").status_code == 200
     assert employee.get("/staff/").status_code == 200, "сотрудник со `staff.view` открывает список"
@@ -121,6 +122,7 @@ def protected_table(victim, role):
         ("get", "/settings/mail-log/", "settings.portal"),
         ("get", "/settings/security/", "settings.security"), ("post", "/settings/security/", "settings.security"),
         ("get", "/settings/notifications/", "notify.manage"), ("post", "/settings/notifications/", "notify.manage"),
+        ("get", "/settings/tasks/", "settings.portal"), ("get", "/settings/tasks/categories/", "settings.portal"),
     ]
 
 
@@ -148,7 +150,7 @@ def test_every_protected_view_requires_permission_403():
     from tests.support_org import SLICE_002_STAFF_ROUTES, route_path
 
     known = ("login/", "logout/", "password/", "activate/", "me/", "staff/", "structure/", "calendar/", "ui/",
-             "roles/", "audit/", "settings/", "health/", "media/", "static/", "")
+             "roles/", "audit/", "settings/", "tasks/", "health/", "media/", "static/", "")
     paths = [path for _, path, _ in table] + [route_path(t, 1) for _, t, _ in SLICE_002_STAFF_ROUTES]
     for route, _ in support.all_routes():
         assert route.startswith(known), f"маршрут {route!r} не относится ни к одному разделу плана"

@@ -171,9 +171,10 @@ def test_feed_is_last_in_installed_apps_after_search():
     from django.apps import apps
     from django.conf import settings
 
-    assert list(settings.INSTALLED_APPS)[-7:] == feed.APPS_TAIL
-    assert list(settings.INSTALLED_APPS)[-2] == "apps.feed"
-    assert list(settings.INSTALLED_APPS)[-1] == "apps.messenger"
+    assert list(settings.INSTALLED_APPS)[-8:] == feed.APPS_TAIL
+    assert list(settings.INSTALLED_APPS)[-3] == "apps.feed"
+    assert list(settings.INSTALLED_APPS)[-2] == "apps.messenger"
+    assert list(settings.INSTALLED_APPS)[-1] == "apps.tasks"
     config = apps.get_app_config("feed")
     assert type(config).__name__ == "FeedConfig"
     assert config.label == "feed"
@@ -237,12 +238,12 @@ def test_cron_has_no_other_entry_at_23_35():
 
 
 def test_cron_module_has_twenty_register_calls():
-    """FR-618, FR-638: в `config/cron.py` двадцать один вызов `register` (восемнадцать прежних, `feed_reminders`,
-    `feed_retention` и `messenger_retention` среза 008)."""
+    """FR-618, FR-638: в `config/cron.py` двадцать четыре вызова `register` (восемнадцать прежних, `feed_reminders`,
+    `feed_retention`, `messenger_retention` среза 008 и три задания среза 009)."""
     entries = cron_registrations()
-    assert len(entries) == 21, (
-        f"вызовов register {len(entries)}, ожидается 21 (18 прежних, две записи ленты и "
-        "messenger_retention среза 008)")
+    assert len(entries) == 24, (
+        f"вызовов register {len(entries)}, ожидается 24 (18 прежних, две записи ленты, "
+        "messenger_retention среза 008 и три задания среза 009)")
     assert {"feed_reminders", "feed_retention"} <= {item["name"] for item in entries}
 
 
@@ -257,7 +258,8 @@ def test_previous_eighteen_cron_entries_keep_names_and_minutes():
             assert item["interval"] == expected and item["cron"] is None, f"{name}: интервал {item['interval']}"
         else:
             assert item["cron"] == expected and item["interval"] is None, f"{name}: cron {item['cron']!r}"
-    assert len(entries) - len(PREVIOUS_CRON) == 3, "кроме прежних: две записи ленты и одна мессенджера"
+    assert len(entries) - len(PREVIOUS_CRON) == 6, (
+        "кроме прежних: две записи ленты, одна мессенджера и три задач")
 
 
 def test_feed_urls_are_included_under_is_installed_guard():
@@ -291,7 +293,7 @@ def _check_feed_files_location(name):
         assert not re.search(pattern, other), f"{name}: {other} попал под шаблон загрузки"
     top = uncommented(deploy_text(name))
     assert re.search(r"^\s{4}client_max_body_size 6m;", top, re.M), f"{name}: общий предел 6m изменён"
-    assert len(re.findall(r"client_max_body_size\s+25m;", top)) == 2, f"{name}: location с 25m должно быть два"
+    assert len(re.findall(r"client_max_body_size\s+25m;", top)) == 3, f"{name}: location с 25m должно быть три"
 
 
 def test_nginx_dev_config_has_feed_files_location_with_25m_limit():

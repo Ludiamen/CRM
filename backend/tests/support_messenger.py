@@ -43,7 +43,7 @@ from tests.support_org import scan_clean, scan_found, scan_unavailable  # noqa: 
 # точки расширения, которые добавляет мессенджер; `unit_form_parts` — последняя (раздел 1.4)
 POINTS_008 = ("unit_form_parts",)
 # назначения файлов ядра после среза 008 (раздел 2.1): `messenger` — последнее
-PURPOSES_008 = ("photo", "attachment", "knowledge", "lists", "feed", "messenger")
+PURPOSES_008 = ("photo", "attachment", "knowledge", "lists", "feed", "messenger", "task")
 # виды чата (`Chat.Kind`, раздел 2.2)
 CHAT_KINDS = ("personal", "group", "department", "general")
 

@@ -12,6 +12,8 @@ from django.test.utils import CaptureQueriesContext
 from tests import support, support_org
 
 PERMISSIONS_009 = ("tasks.use", "tasks.assign")
+TITLES_009 = {"tasks.use": "Работа с задачами",
+               "tasks.assign": "Ставить задачи другим сотрудникам"}
 
 PAGE_PATHS = (
     "/tasks/",

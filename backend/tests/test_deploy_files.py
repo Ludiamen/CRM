@@ -370,7 +370,8 @@ def test_nginx_body_size_6m_and_protected_location_internal_with_headers():
             assert re.findall(r"client_max_body_size\s+([^;]+);", found[0]) == ["55m"], f"{name}: в location формы нужен 55m"
             text = re.sub(pattern, "", text, count=1)
         upload_patterns = (r"location\s*~\s*\^/feed/files/\$\s*\{([^{}]*)\}",
-                           r"location\s*~\s*\^/messenger/files/\$\s*\{([^{}]*)\}")  # CONTRACT-008, 15.1: второй 25m
+                           r"location\s*~\s*\^/messenger/files/\$\s*\{([^{}]*)\}",
+                           r"location\s*~\s*\^/tasks/files/\$\s*\{([^{}]*)\}")  # CONTRACT-008/009: ещё два 25m
         for pattern in upload_patterns:
             found = re.findall(pattern, text)
             assert len(found) == 1, f"{name}: нет ровно одного location {pattern}"

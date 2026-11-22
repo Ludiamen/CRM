@@ -57,9 +57,9 @@ HOLDERS_007 = {
 
 POINTS_007 = ("home_body",)
 KIND_FIELDS_007 = ("channels", "coalesce_text")
-# хвост INSTALLED_APPS: список (а не кортеж), чтобы `settings.INSTALLED_APPS[-7:] == APPS_TAIL` было верным
+# хвост INSTALLED_APPS: список (а не кортеж), чтобы `settings.INSTALLED_APPS[-8:] == APPS_TAIL` было верным
 APPS_TAIL = ["apps.servicedesk", "apps.notify", "apps.knowledge", "apps.lists", "apps.search", "apps.feed",
-             "apps.messenger"]
+             "apps.messenger", "apps.tasks"]
 
 _ALL_DEFAULT = ("portal", "email")
 # формат `TABLE` из `test_notify_catalog.py`: код, название, модуль, order, обязательность, каналы по умолчанию,

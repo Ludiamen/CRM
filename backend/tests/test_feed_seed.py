@@ -57,11 +57,12 @@ def _seeded() -> None:
 # --- права и их названия ------------------------------------------------------------------------------------
 
 def test_seed_on_slice_006_base_creates_post_all_and_moderate_permissions_with_russian_names():
-    """FR-640: на базе среза 006 (прав ленты нет, шестнадцать прав) `seed` создаёт `feed.post_all` («Писать всем») и
-    `feed.moderate` («Модерировать ленту») с русскими названиями, по одной строке каждого (раздел 2.3)."""
+    """FR-640: на базе среза 006 (прав ленты нет, восемнадцать прав — с учётом двух прав задач среза 009) `seed`
+    создаёт `feed.post_all` («Писать всем») и `feed.moderate` («Модерировать ленту») с русскими названиями, по одной
+    строке каждого (раздел 2.3)."""
     _clear()
     Permission = _model("core.Permission")
-    assert Permission.objects.count() == 16
+    assert Permission.objects.count() == 18
     fd.run_seed(using="default")
     for code in fd.PERMISSIONS_007:
         rows = list(Permission.objects.filter(code=code))
@@ -133,14 +134,15 @@ def test_seed_without_portal_admin_role_passes_without_error():
     assert _holders("feed.post_all") == set(Role.objects.values_list("name", flat=True))
 
 
-def test_portal_has_eighteen_permissions_after_seed():
-    """FR-640: до `seed` в портале шестнадцать прав, после — восемнадцать; `feed.post_all` и `feed.moderate` — два
-    последних по порядку создания (раздел 1.4 контракта; порядок между собой не проверяется)."""
+def test_portal_has_twenty_permissions_after_seed():
+    """FR-640: до `seed` в портале восемнадцать прав (шестнадцать прежних и два права задач среза 009), после —
+    двадцать; `feed.post_all` и `feed.moderate` — два последних по порядку создания (раздел 1.4 контракта; порядок
+    между собой не проверяется)."""
     _clear()
     Permission = _model("core.Permission")
-    assert Permission.objects.count() == 16
-    fd.run_seed(using="default")
     assert Permission.objects.count() == 18
+    fd.run_seed(using="default")
+    assert Permission.objects.count() == 20
     assert set(Permission.objects.order_by("-pk").values_list("code", flat=True)[:2]) == set(fd.PERMISSIONS_007)
 
 
