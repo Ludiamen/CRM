@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Карта проекта CRM</title>
+<style>
+:root { color-scheme: light; font: 16px system-ui, sans-serif; color: #17263a; background: #f3f6fa }
+body { max-width: 1100px; margin: auto; padding: 1.5rem }
+h1 { margin-bottom: .25rem } h2 { margin-top: 1.5rem }
+button, input, select { font: inherit; padding: .55rem; border: 1px solid #aab8c9; border-radius: .4rem; background: white; color: inherit }
+button { cursor: pointer } button[aria-selected="true"] { background: #174f80; color: white }
+.bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; margin: 1rem 0 }
+.bar input { flex: 1; min-width: 12rem }
+.card { background: white; border: 1px solid #d4deea; border-radius: .6rem; padding: 1rem; margin: .7rem 0; overflow-wrap: anywhere }
+.muted { color: #526579 } .warning { color: #873b08 } .status { font-weight: 700; color: #175e50 }
+details { margin-top: .7rem } summary { cursor: pointer; font-weight: 600 }
+li { margin: .3rem 0 } code { overflow-wrap: anywhere } [hidden] { display: none !important }
+</style>
+</head>
+<body>
+<header>
+  <h1>Карта проекта CRM</h1>
+  <p class="muted">Отметки задач — не оценка готовности релиза. Покрытие возможностей в спеках — план, не приёмка.</p>
+  <div class="bar"><button id="refresh" type="button">Обновить</button><span id="updated" role="status">Снимок ещё не получен</span></div>
+  <p id="error" class="warning" role="alert" hidden></p>
+  <nav class="bar" aria-label="Разделы">
+    <button id="mapTab" type="button" aria-selected="true">Карта</button>
+    <button id="historyTab" type="button" aria-selected="false">Изменения</button>
+  </nav>
+</header>
+<main>
+  <section id="map">
+    <div class="bar">
+      <label for="search">Поиск</label><input id="search" type="search" placeholder="Срез, задача или возможность">
+      <label for="filter">Статус</label><select id="filter"><option value="all">Все</option><option value="готовое">Готовое</option><option value="на приёмке">На приёмке</option><option value="предстоит">Предстоит</option></select>
+    </div>
+    <p class="muted">«Готовое» — приёмка подтверждена картой; «на приёмке» — есть отметки, но приёмка не подтверждена; «предстоит» — отметок нет или чек-лист отсутствует.</p>
+    <h2>Срезы</h2><div id="slices"></div>
+    <h2>Возможности</h2><p class="muted">Источник: <code>docs/reference/capabilities.md</code>. Решение «позже» не означает срок.</p><div id="capabilities"></div>
+    <details><summary>Предупреждения источников</summary><ul id="warnings"></ul></details>
+  </section>
+  <section id="history" hidden><h2>Изменения</h2><div id="worktree"></div><h3>История коммитов</h3><div id="commits"></div></section>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let snapshot = null, loading = false;
+function node(tag, text, cls) {
+  const el = document.createElement(tag);
+  if (text !== undefined && text !== null) el.textContent = String(text);
+  if (cls) el.className = cls;
+  return el;
+}
+function status(s) {
+  return s.acceptance.confirmed ? "готовое" : s.tasks.done > 0 ? "на приёмке" : "предстоит";
+}
+function matches(value) { return String(value).toLocaleLowerCase("ru").includes($("search").value.trim().toLocaleLowerCase("ru")); }
+function list(parent, values) {
+  const ul = node("ul");
+  values.forEach(value => ul.append(node("li", value)));
+  parent.append(ul);
+}
+function details(parent, title, values) {
+  const el = node("details"); el.append(node("summary", title)); list(el, values); parent.append(el);
+}
+function render() {
+  if (!snapshot) return;
+  const filter = $("filter").value;
+  $("slices").replaceChildren();
+  for (const s of snapshot.slices) {
+    const state = status(s);
+    if (filter !== "all" && state !== filter) continue;
+    if (!matches([s.number, s.title, ...s.tasks.items.map(t => `${t.id} ${t.title}`), ...s.caps].join(" "))) continue;
+    const card = node("article", null, "card");
+    card.append(node("h3", `${s.number} — ${s.title || "Название не найдено"}`), node("p", state, "status"));
+    card.append(node("p", s.tasks.present ? `Отметки задач: ${s.tasks.done}/${s.tasks.total} (${s.tasks.percent}%)` : "Чек-лист не найден — прогресс не определён"));
+    card.append(node("p", `Приёмка: ${s.acceptance.note}`));
+    if (s.exceptions.length) card.append(node("p", `Открытые задачи принятого среза: ${s.exceptions.join(", ")}`, "warning"));
+    details(card, `Задачи (${s.tasks.total})`, s.tasks.items.map(t => `${t.done ? "☑" : "☐"} ${t.id} ${t.title}`));
+    const sources = Object.values(s.docs).map(d => `${d.path} — ${d.exists ? (d.status || "статус не указан") : "не найден"}`);
+    sources.push(`Отчёт: ${s.acceptance.source || `docs/reviews/TASKS-${s.number}.md (не найден или приёмка не подтверждена)`}`);
+    if (s.caps.length) sources.push(`Запланированные возможности: ${s.caps.join(", ")}`);
+    details(card, "Источники — пути в репозитории", sources);
+    $("slices").append(card);
+  }
+  $("capabilities").replaceChildren();
+  for (const c of snapshot.capabilities) {
+    // Фильтр статуса среза не приписывает возможности неподтверждённую готовность.
+    if (filter !== "all" || !matches(`${c.id} ${c.title} ${c.state}`)) continue;
+    const card = node("article", null, "card");
+    card.append(node("strong", `${c.id} — ${c.title}`), node("p", `Решение: ${c.decision_raw || "не указано"}; ${c.state}`));
+    if (c.covered_by.length) card.append(node("p", `Включена в спеки срезов: ${c.covered_by.join(", ")} (не приёмка)`, "muted"));
+    $("capabilities").append(card);
+  }
+  $("warnings").replaceChildren(...snapshot.warnings.map(w => node("li", w.text)));
+  const h = snapshot.history;
+  $("worktree").replaceChildren(node("h3", "Незакоммиченные изменения"));
+  $("worktree").append(node("p", h.available ? (h.worktree.dirty ? "Источники карты изменены в рабочей копии." : "Изменений источников карты нет.") : "Git-история и состояние рабочей копии недоступны."));
+  if (h.worktree.files.length) details($("worktree"), "Изменённые пути", h.worktree.files);
+  renderDelta($("worktree"), h.worktree.tasks);
+  $("commits").replaceChildren();
+  if (!h.commits.length) $("commits").append(node("p", "Нет доступной истории."));
+  for (const commit of h.commits) {
+    const card = node("article", null, "card");
+    card.append(node("strong", `${commit.short} · ${commit.date}`), node("p", commit.message));
+    renderDelta(card, commit.tasks); $("commits").append(card);
+  }
+}
+function renderDelta(parent, tasks) {
+  const labels = {checked: "Отмечены", unchecked: "Отметки сняты", added: "Добавлены", removed: "Удалены"};
+  for (const [number, delta] of Object.entries(tasks)) {
+    const changes = Object.entries(labels).filter(([key]) => delta[key].length).map(([key, label]) => `${label}: ${delta[key].join(", ")}`);
+    if (changes.length) parent.append(node("p", `Срез ${number} — ${changes.join("; ")}`));
+  }
+}
+async function refresh() {
+  if (loading) return;
+  loading = true; $("refresh").disabled = true;
+  try {
+    const response = await fetch("/api/map", {cache: "no-store"});
+    if (!response.ok) throw new Error("snapshot unavailable");
+    const result = await response.json();
+    snapshot = result; render();
+    $("updated").textContent = `Последнее успешное чтение: ${new Date().toLocaleString("ru-RU")}`;
+    $("error").hidden = true;
+  } catch (_) {
+    $("error").textContent = snapshot ? "Не удалось обновить карту; показан последний успешный снимок." : "Не удалось получить снимок карты. Попробуйте обновить.";
+    $("error").hidden = false;
+  } finally { loading = false; $("refresh").disabled = false; }
+}
+$("search").addEventListener("input", render); $("filter").addEventListener("change", render);
+$("refresh").addEventListener("click", refresh);
+for (const [button, panel] of [["mapTab", "map"], ["historyTab", "history"]]) {
+  $(button).addEventListener("click", () => {
+    $("map").hidden = panel !== "map"; $("history").hidden = panel !== "history";
+    $("mapTab").setAttribute("aria-selected", String(panel === "map")); $("historyTab").setAttribute("aria-selected", String(panel === "history"));
+  });
+}
+refresh(); setInterval(refresh, 60000);
+</script>
+</body>
+</html>
