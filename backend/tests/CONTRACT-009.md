@@ -318,7 +318,7 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
 
 Правила: только `data-*`, `id` и классы, которых нет у прежних блоков; без `role="status"`, `role="alert"`,
 `data-error`, `data-warning` вне сообщений об отказах форм; без `style=` и `on…=`. Названы планом или задачами и
-потому обязательны: `[data-tasks-page]`, `[data-task-id]`, `[data-task-status]`, `[data-board]`, `[data-column]`,
+потому обязательны: `[data-tasks-page]`, `[data-task-id]`, `[data-task-title]`, `[data-task-status]`, `[data-board]`, `[data-column]`,
 `[data-task-card]`, `[data-move-url]`, `[data-task-field]`, `[data-error][data-code]`, `[data-tasks-preset]`,
 `[data-plan-column]`, `[data-reminder]`, `[data-task-deleted]`. Прочие — К11.
 
@@ -327,15 +327,18 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
 | `[data-tasks-page="<имя>"]` | корень содержимого: `list` (список), `card` (карточка), `board` (доска), `new` (форма создания), `settings` (настройки и категории) | T-9105…T-9125; e2e |
 | `[data-tasks-preset="mine\|authored\|subordinate\|work\|overdue"]` | кнопка-пресет в списке; выбранная — `aria-pressed="true"` | T-9107 |
 | `[data-task-id]` | строка списка, карточка, карточка на доске (номер задачи) | T-9105…T-9110 |
+| `[data-task-title]` | название задачи в строке и на карточке доски | T-9107; T-9109; e2e |
 | `[data-task-status]` | статус карточки и строки (`new`/`in_progress`/`waiting`/`done`) | T-9106 |
 | `[data-task-deleted]` | мягко удалённая задача в ленте/журнале (номер) | T-9117 |
 | `[data-board="status\|deadline\|plan\|category"]` | корень доски | T-9108; T-9109 |
-| `[data-column="<ключ>"]` | колонка доски; ключи — раздел 7; внутри — `[data-column-count]` и карточки | T-9108; T-9109 |
+| `[data-column="<ключ>"]` | колонка доски; ключи — раздел 7; внутри — `[data-column-title]`, `[data-column-count]` и карточки | T-9108; T-9109 |
+| `[data-column-title]` | название колонки доски и личного плана | T-9108; T-9110 |
 | `[data-plan-column]` | колонка личного плана с `data-plan-column="<id>"` и `data-plan-readonly="1"` у чужого плана | T-9110 |
 | `[data-task-card]` | карточка на доске (несёт `[data-task-id]`) | T-9108; T-9109 |
 | `[data-move-url]` | корень доски: адрес переноса `/tasks/<id>/move/` (шаблон с номером подставляется из `[data-task-id]`) | T-9109 |
 | `[data-task-field="title\|description\|deadline\|status\|assignee\|members\|category\|plan_column"]` | поле в форме создания, правки и в карточке (запасной путь — `select`/`input` с этим признаком) | T-9105; T-9108 |
 | `[data-error="<поле>"][data-code="<код>"]` | отказ у поля (раздел 6.1) | все тесты отказов |
+| `[data-form="task-new"]`, `[data-form="task-comment"]` | формы создания задачи и комментария (для помощников приёмки) | e2e |
 | `[data-tasks-confirm]` | второй шаг удаления задачи и уменьшения срока хранения | T-9117; T-9125 |
 | `[data-reminder]` | строка напоминания в карточке (момент в `data-reminder-at`, состояние) | T-9112 |
 | `[data-task-file="<uuid>"]` | «таблетка» загруженного файла до отправки комментария | T-9116 |
@@ -527,9 +530,9 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
 |---|---|
 | `TasksCast` | `NamedTuple` учёток `helpers.Account`: `employee` (рядовой), `peer`, `head` (руководитель узла employee), `deputy`, `outsider` (другой узел), `admin` (администратор портала), `dismissed`; узлы `it_unit`, `nested_unit` (вложен), `other_unit` — номера строкой |
 | `tasks_cast(admin_page, mailpit, new_context) -> TasksCast` | роли, узлы и учётки через интерфейс (`helpers.make_employee`, `helpers_org.create_unit`) |
-| `open_tasks(page, account, preset="mine", **params) -> Page` | вход и `/tasks/` (или `/tasks/board/…`), ждёт `[data-tasks-page]`; возвращает страницу |
+| `open_tasks(context, account, preset="mine", **params) -> Page` | сессия в `context`, вход и `/tasks/` (или `/tasks/board/…` при `preset="board:<доска>"`), ждёт `[data-tasks-page]`; возвращает страницу |
 | `create_task(page, title, *, deadline=None, assignee=None, description="", category=None) -> int` | форма «Новая задача», возвращает номер из `[data-task-id]` |
-| `open_card(page, task_id)` | `/tasks/<id>/` или клик по строке; ждёт `[data-tasks-page="card"]` |
+| `open_card(context, account, task_id) -> Page` | сессия в `context`, `/tasks/<id>/`; ждёт `[data-tasks-page="card"]` |
 | `move_card(page, task_id, board, column)` | перетаскивание карточки в колонку `[data-column="<column>"]` мышью (`drag_to`) или отправкой формы карточки (запасной путь) |
 | `board_titles(page) -> dict[str, list[str]]` | заголовки карточек по колонкам `[data-column]` |
 | `plan_columns(page) -> list[str]` | названия колонок `[data-plan-column]` по порядку |

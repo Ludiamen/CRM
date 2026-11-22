@@ -63,7 +63,7 @@ opus (архитектурные и финальные), человек (под�
   `deadline_past`, `assignee_forbidden`, `status_forbidden`, `move_forbidden`, `comment_forbidden`,
   `files_limit`, `file_type`, `file_too_big`), ответы HTMX и обычных запросов, подпись
   `tasks.reminder_failed` — `backend/tests/CONTRACT-009.md` — (все FR)
-- [ ] T-9006 [P] [opus] помощники серверных тестов: `make_task`, `add_member`, `make_column`, `make_category`,
+- [x] T-9006 [P] [opus] помощники серверных тестов: `make_task`, `add_member`, `make_column`, `make_category`,
   `move`, `board_rows`, `reminders_of`, `post_comment`, роли для прав-данных; без импорта кода приложения на
   уровне модуля — `backend/tests/support_tasks.py` — (все FR)
 - [ ] T-9007 [P] [opus] помощники e2e: `open_tasks`, `create_task`, `open_card`, `move_card`, `board_titles`,
