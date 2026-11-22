@@ -171,7 +171,7 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
 | Точка | Запись | Тесты |
 |---|---|---|
 | `menu_items` | «Задачи»: `url="/tasks/"`, `title="Задачи"`, `icon="icons/tasks.html"`, `order=2`, `permissions=("tasks.use",)`; «Настройки задач»: `url="/settings/tasks/"`, `title="Настройки задач"`, `icon="icons/gear.html"`, `order=65`, `permissions=("settings.portal",)` | T-9121; T-9123 |
-| `notification_kinds` | восемь видов раздела 9.1 (порядок 82–89) | T-9113; T-9121 |
+| `notification_kinds` | восемь видов раздела 9.1 (порядок 210–217, после видов ядра 110–130 и уведомлений 200) | T-9113; T-9121 |
 | `search_providers` | одна группа `SearchProvider(key="tasks", title="Задачи", order=62, …)`; `available(user)` — есть `tasks.use` | T-9119; T-9011 |
 | `card_sections` | `CardSection("tasks", "profile", 75, "tasks/_card_section.html", {"url": …})` (К4: после «Заявок» 60 и мессенджера 70) | T-9120 |
 | `audit_labels` | словарь `actions`/`fields`/`object_types`/`values` раздела 10.2 | T-9117; T-9121 |
