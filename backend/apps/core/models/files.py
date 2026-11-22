@@ -18,6 +18,7 @@ class StoredFile(models.Model):
         LISTS = "lists", "файл записи списка"
         FEED = "feed", "вложение ленты"
         MESSENGER = "messenger", "вложение сообщения чата"
+        TASK = "task", "вложение задачи"
 
     class Status(models.TextChoices):
         PENDING = "pending", "проверяется"

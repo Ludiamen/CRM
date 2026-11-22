@@ -48,7 +48,7 @@ opus (архитектурные и финальные), человек (под�
   `views/`, `migrations/`, `templates/tasks/`, `static/tasks/`; `"apps.tasks"` последним в `INSTALLED_APPS`;
   пустой `include("apps.tasks.urls")` под `apps.is_installed`; сбор тестов растёт без ошибок —
   `backend/apps/tasks/`, `backend/config/settings.py`, `backend/config/urls.py` — (FR-674…699)
-- [ ] T-9002 [P] [opus] `Purpose.TASK = "task"` в конце перечня и миграция `core 0012`; тест добавления значения —
+- [x] T-9002 [P] [opus] `Purpose.TASK = "task"` в конце перечня и миграция `core 0012`; тест добавления значения —
   `backend/apps/core/models/files.py`, `backend/apps/core/migrations/0012_storedfile_task_purpose.py`,
   `backend/tests/test_tasks_models.py::test_purpose_task_is_last` — (FR-693)
 - [ ] T-9003 [P] [opus] `org.services.structure.managed_units(user)` — узлы с отметкой руководителя или
