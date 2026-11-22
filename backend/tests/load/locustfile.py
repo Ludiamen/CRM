@@ -1602,3 +1602,71 @@ def _check_messenger_p95(environment, **_kwargs):
         print(f"NFR-701/707 (срез 008) не выполнено: p95 выше предела или нет замера {over}, "
               f"ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1
+
+
+class TaskUser(HttpUser):
+    """Срез 009 (T-9150, NFR-710, NFR-719): вошедший сотрудник работает с задачами — список и пресеты, карточка,
+    четыре доски, перенос, комментарий и сквозной поиск. Данные — `fill_tasks.py` (1 000 задач на 100 сотрудников).
+    Запуск только этого класса (замер NFR-710 — после отдельного решения владельца, T-9304, на свободной машине):
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+            --reset-stats --host https://127.0.0.1:8031 TaskUser
+    Номера задач берутся из разметки списка (`data-task-id`) при входе. Пределы: страницы и действия p95 не больше
+    500 мс (NFR-710), поиск — 1000 мс; слова поиска — LOAD_TASKS_QUERY (по умолчанию «задача»)."""
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        page = self.client.get("/tasks/", name="setup /tasks/").text
+        self.task_ids = sorted(set(re.findall(r'data-task-id="(\d+)"', page))) or ["1"]
+        self.query = os.environ.get("LOAD_TASKS_QUERY", "задача")
+        self.card_id = self.task_ids[0]
+
+    def _post(self, path, data, name):
+        token = self.client.cookies.get("csrftoken", "")
+        with self.client.post(path, data={**data, "csrfmiddlewaretoken": token},
+                              headers={"Referer": self.host + path, "HX-Request": "true"},
+                              name=name, allow_redirects=True, catch_response=True) as response:
+            if response.status_code >= 400:
+                response.failure(f"{path}: {response.status_code}")
+
+    @task(3)
+    def task_list(self):
+        self.client.get("/tasks/", name="/tasks/")
+
+    @task(2)
+    def task_preset(self):
+        preset = random.choice(("mine", "authored", "subordinate", "work", "overdue"))
+        self.client.get(f"/tasks/?preset={preset}", name="/tasks/?preset=<n>")
+        self.client.get(f"/tasks/list/?preset={preset}", headers={"HX-Request": "true"},
+                        name="/tasks/list/?preset=<n>")
+
+    @task(2)
+    def task_card(self):
+        task_id = random.choice(self.task_ids)
+        self.client.get(f"/tasks/{task_id}/", name="/tasks/<n>/")
+
+    @task(2)
+    def task_board(self):
+        board = random.choice(("status", "deadline", "plan", "category"))
+        self.client.get(f"/tasks/board/{board}/", name="/tasks/board/<board>/")
+
+    @task(1)
+    def task_move(self):
+        task_id = random.choice(self.task_ids)
+        self._post(f"/tasks/{task_id}/move/",
+                   {"board": "status", "value": random.choice(("new", "in_progress", "waiting", "done"))},
+                   name="POST /tasks/<n>/move/")
+
+    @task(1)
+    def task_comment(self):
+        task_id = random.choice(self.task_ids)
+        text = " ".join(random.choice(("проверка", "срок", "отчёт", "согласование")) for _ in range(5))
+        self._post(f"/tasks/{task_id}/comments/", {"text": text}, name="POST /tasks/<n>/comments/")
+
+    @task(1)
+    def task_search(self):
+        self.client.get("/search/", {"q": self.query}, name="/search/?q=<tasks>")
