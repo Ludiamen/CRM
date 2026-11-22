@@ -69,7 +69,7 @@ opus (архитектурные и финальные), человек (под�
 - [x] T-9007 [P] [opus] помощники e2e: `open_tasks`, `create_task`, `open_card`, `move_card`, `board_titles`,
   `plan_columns`, `comment`, `upload_task_file`, `check_360`; локаторы — только зацепки CONTRACT-009 —
   `backend/tests/e2e/helpers_tasks.py` — (FR-680…684, FR-699)
-- [ ] T-9008 [P] [opus] SortableJS 1.15.6 в `static/vendor` с `LICENSE-sortable` и разделом `VERSIONS.md`;
+- [x] T-9008 [P] [opus] SortableJS 1.15.6 в `static/vendor` с `LICENSE-sortable` и разделом `VERSIONS.md`;
   `tools/verify_vendor.py` — пакет `sortablejs@1.15.6`; подключение `tasks.css`, `tasks.js` и
   `vendor/Sortable-1.15.6.min.js` (defer) для `/tasks/` и `/settings/tasks/` — `backend/static/vendor/`,
   `backend/static/tasks/`, `backend/templates/_assets.html`, `tools/verify_vendor.py` — (NFR-711, NFR-716)

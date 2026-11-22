@@ -1,0 +1,12 @@
+/* Задачи (срез 009): доски и карточка. Каркас T-9008; правила 360 px дополняет T-9215. */
+
+[data-board] {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+}
+
+[data-column] {
+  flex: 0 0 18rem;
+  min-width: 18rem;
+}

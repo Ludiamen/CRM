@@ -4,7 +4,7 @@
 Что проверяется:
   1. sha256 каждого файла из таблиц VERSIONS.md равен sha256 файла в пакете
      из реестра npm и хешу файла на диске;
-  2. тексты лицензий (LICENSE-bootstrap, LICENSE-htmx, LICENSE-htmx-ext-ws) равны лицензиям пакета,
+  2. тексты лицензий (LICENSE-bootstrap, LICENSE-htmx, LICENSE-htmx-ext-ws, LICENSE-sortable) равны лицензиям пакета,
      LICENSE-alpine — лицензии репозитория alpinejs/alpine на теге версии;
   3. в Alpine нет `new Function` (это CSP-сборка), в Bootstrap и HTMX нет
      @import, url(http…) и обращений к внешним адресам из кода;
@@ -34,6 +34,7 @@ VENDOR = КОРЕНЬ / "backend" / "static" / "vendor"
     "HTMX": ("htmx.org", "LICENSE-htmx", r"^2\.\d+\.\d+$"),
     "Alpine.js CSP": ("@alpinejs/csp", "LICENSE-alpine", r"^3\.\d+\.\d+$"),
     "htmx-ext-ws": ("htmx-ext-ws", "LICENSE-htmx-ext-ws", r"^2\.\d+\.\d+$"),
+    "SortableJS": ("sortablejs", "LICENSE-sortable", r"^1\.15\.\d+$"),
 }
 
 
@@ -52,7 +53,7 @@ def разобрать_versions() -> list:
     разделы = []
     for блок in re.split(r"^## ", текст, flags=re.M)[1:]:
         заголовок = блок.split("\n", 1)[0]
-        м = re.match(r"(Bootstrap|HTMX|Alpine\.js CSP|htmx-ext-ws) (\d+\.\d+\.\d+)", заголовок)
+        м = re.match(r"(Bootstrap|HTMX|Alpine\.js CSP|htmx-ext-ws|SortableJS) (\d+\.\d+\.\d+)", заголовок)
         if not м:
             continue
         файлы = re.findall(r"^\| (\S+) \| (package/\S+) \| ([0-9a-f]{64}) \|", блок, flags=re.M)
