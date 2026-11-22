@@ -81,3 +81,13 @@ if apps.is_installed("apps.messenger"):
 
     register(messenger_retention_night, queue_name="maintenance", cron="55 23 * * *",
              name="messenger_retention", job_timeout=600)
+
+# Задачи (срез 009): напоминания и сводка — в `maintenance` по расписанию, ночная уборка — 23:42 по UTC
+# (02:42 по Москве), между `notify_retention` (23:40) и `purge_trash` (23:45). Модуль отключаемый: импорт
+# заданий и три записи — под одной проверкой `apps.is_installed` (T-9009, CONTRACT-009 1.2).
+if apps.is_installed("apps.tasks"):
+    from apps.tasks.tasks import tasks_digest, tasks_reminders, tasks_retention  # noqa: E402
+
+    register(tasks_reminders, queue_name="maintenance", cron="*/5 * * * *", name="tasks_reminders", job_timeout=300)
+    register(tasks_digest, queue_name="maintenance", cron="*/15 * * * *", name="tasks_digest", job_timeout=300)
+    register(tasks_retention, queue_name="maintenance", cron="42 23 * * *", name="tasks_retention", job_timeout=600)

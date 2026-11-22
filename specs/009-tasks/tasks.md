@@ -73,7 +73,7 @@ opus (архитектурные и финальные), человек (под�
   `tools/verify_vendor.py` — пакет `sortablejs@1.15.6`; подключение `tasks.css`, `tasks.js` и
   `vendor/Sortable-1.15.6.min.js` (defer) для `/tasks/` и `/settings/tasks/` — `backend/static/vendor/`,
   `backend/static/tasks/`, `backend/templates/_assets.html`, `tools/verify_vendor.py` — (NFR-711, NFR-716)
-- [ ] T-9009 [opus] маршруты и запуск (после T-9001): `urls.py` — адреса контракта; `config/cron.py` —
+- [x] T-9009 [opus] маршруты и запуск (после T-9001): `urls.py` — адреса контракта; `config/cron.py` —
   `tasks_reminders` (`*/5 * * * *`, 300 с), `tasks_digest` (`*/15 * * * *`, 300 с), `tasks_retention`
   (`42 23 * * *`, 600 с) под `is_installed`; страницы-заглушки списка и настроек —
   `backend/apps/tasks/urls.py`, `backend/apps/tasks/views/`, `backend/config/cron.py` — (FR-685, FR-696)

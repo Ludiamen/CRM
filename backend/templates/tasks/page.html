@@ -1,0 +1,18 @@
+{% extends layout %}
+{% block title %}Задачи{% endblock %}
+{% block content %}
+<div data-tasks-page="list">
+  <header class="page-head d-flex flex-wrap gap-2 align-items-center">
+    <h1 class="page-title">Задачи</h1>
+    <a class="btn btn-primary" href="/tasks/new/">Новая задача</a>
+  </header>
+  <nav class="d-flex flex-wrap gap-2 mb-3" aria-label="Пресеты">
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=mine" data-tasks-preset="mine"{% if preset == "mine" %} aria-pressed="true"{% endif %}>Мои</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=authored" data-tasks-preset="authored"{% if preset == "authored" %} aria-pressed="true"{% endif %}>Поставленные мной</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=subordinate" data-tasks-preset="subordinate">Задачи подчинённых</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=work" data-tasks-preset="work">В работе</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=overdue" data-tasks-preset="overdue">Просрочены</a>
+  </nav>
+  <div id="tasks-list">{% include "tasks/_list.html" %}</div>
+</div>
+{% endblock %}

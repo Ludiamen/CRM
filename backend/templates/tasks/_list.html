@@ -1,0 +1,11 @@
+{% if rows %}
+<ol class="tasks-list">
+  {% for row in rows %}
+  <li data-task-id="{{ row.pk }}" data-task-status="{{ row.status }}">
+    <a href="/tasks/{{ row.pk }}/" data-task-title>{{ row.title }}</a>
+  </li>
+  {% endfor %}
+</ol>
+{% else %}
+<p data-empty-state="tasks">Задач пока нет</p>
+{% endif %}
