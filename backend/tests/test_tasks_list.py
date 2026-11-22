@@ -148,4 +148,4 @@ def test_query_count_is_constant_and_values_are_parameters():
     support_tasks.make_task(title="С фильтром", author=viewer, assignee=string)
     queries = support_tasks.queries_with_params(
         lambda: listing().rows(viewer, preset="authored", filters={"assignee": string.pk}))
-    assert any(string.pk in str(params) for _sql, params in queries), "номер исполнителя не ушёл параметром"
+    assert any(str(string.pk) in str(params) for _sql, params in queries), "номер исполнителя не ушёл параметром"

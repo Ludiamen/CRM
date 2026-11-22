@@ -106,4 +106,6 @@ def test_dismissed_author_breaks_chain_visibility():
     task = support_tasks.make_task(author=author)
     assert access().visible(head, task)
     support.model("core.User").objects.filter(pk=author.pk).update(state="dismissed")
+    # задача читается заново: связанный автор не должен остаться в кэше объекта со старым состоянием
+    task = support.model("tasks.Task").objects.get(pk=task.pk)
     assert not access().visible(support.model("core.User").objects.get(pk=head.pk), task)

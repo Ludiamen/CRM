@@ -491,6 +491,7 @@ SPEC-009 v3 (подписана 2026-11-21, `sha256:166eed06…`) → PLAN-009 v
 | `category_title_range` | `title` | «Название категории — от 1 до 100 знаков» | T-9111 |
 | `category_title_taken` | `title` | «Категория с таким названием уже есть» | T-9111 |
 | `retention_range` | `retention_years` | «Срок хранения — от 1 до 10 лет» | T-9125 |
+| `delete_forbidden` | `confirm` | «Нет права удалять задачу» | T-9103 |
 | `delete_confirm` | `confirm` | «Удалить задачу без возможности вернуть?» | T-9117 |
 | `retention_decrease` | `confirm` | «Ближайшая уборка удалит задач: {count}» | T-9125 |
 | `category_delete_confirm` | `confirm` | «Удалить категорию? Задачи останутся без категории» | T-9111 |

@@ -142,9 +142,15 @@ def capture_sql(call):
 
 def queries_with_params(call):
     """SQL вызова с параметрами: `(sql, params)` — значения фильтров ищутся в `params` (NFR-712)."""
-    with CaptureQueriesContext(connection) as ctx:
+    pairs = []
+
+    def wrapper(execute, sql, params, many, context):
+        pairs.append((sql if isinstance(sql, str) else str(sql), params))
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(wrapper):
         call()
-    return [(query["sql"], query["params"]) for query in ctx.captured_queries]
+    return pairs
 
 
 # --- синтетические контакты и адреса страниц -----------------------------------------------------

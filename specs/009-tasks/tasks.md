@@ -206,14 +206,14 @@ opus (архитектурные и финальные), человек (под�
 ## Этап 3 — партии кода
 
 **Партия 1 — модели и настройки.**
-- [ ] T-9201 [sonnet] модели и миграция `tasks 0001`: `Task`, `TaskMember`, `TaskCategory`, `PlanColumn`,
+- [x] T-9201 [sonnet] модели и миграция `tasks 0001`: `Task`, `TaskMember`, `TaskCategory`, `PlanColumn`,
   `TaskReminder` (частичный уникальный индекс), `TaskComment`, `TaskFile`, `TaskSettings`; служба настроек —
   `backend/apps/tasks/models.py`, `migrations/0001_initial.py`, `services/settings.py` — зелёные:
   `test_tasks_models`, `test_tasks_settings` (часть; целиком — у T-9213) — (FR-674…679, FR-682, FR-683,
   FR-687…690, FR-693, FR-696)
 
 **Партия 2 — права, создание, правка.**
-- [ ] T-9202 [sonnet] `services/access.py` (+ `managed_units` из org), права ролей, видимость, права
+- [x] T-9202 [sonnet] `services/access.py` (+ `managed_units` из org), права ролей, видимость, права
   удаления — `backend/apps/tasks/services/access.py` — зелёные: `test_tasks_access`, `test_tasks_permissions`,
   `test_tasks_visibility` — (FR-676…678, FR-695)
 - [ ] T-9203 [sonnet] создание, правка полей и статусы, журнал: `services/tasks.py`, `views/actions.py`,

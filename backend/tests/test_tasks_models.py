@@ -62,8 +62,9 @@ def _index_fields(model) -> list[tuple]:
 
 
 def _unique_sets(model) -> list[tuple]:
-    """Уникальные наборы полей модели: `unique_together` и `UniqueConstraint` без условия."""
-    result = [tuple(item) for item in (model._meta.unique_together or ())]
+    """Уникальные наборы полей модели: `unique`, `unique_together` и `UniqueConstraint` без условия."""
+    result = [(field.name,) for field in model._meta.fields if field.unique and not field.primary_key]
+    result += [tuple(item) for item in (model._meta.unique_together or ())]
     for constraint in model._meta.constraints:
         fields = tuple(getattr(constraint, "fields", ()) or ())
         if fields and getattr(constraint, "condition", None) is None:

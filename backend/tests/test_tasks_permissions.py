@@ -85,8 +85,8 @@ def _member(unit, **extra):
 
 
 def _marked(unit, mark, **extra):
-    user = support.make_employee(**extra)
-    support_org.make_member(user, mark=mark, unit=unit)
+    user = support_tasks.staff_user(**extra)
+    support_org.make_member(user, unit, mark=mark)
     return user
 
 
@@ -131,7 +131,7 @@ def test_edit_fields_author_or_manager_of_assignee_not_manager_of_author():
     assignee = _member(tree["Отдел исполнителя"])
     author_head = _marked(tree["Отдел автора"], "head")
     assignee_head = _marked(tree["Отдел исполнителя"], "head")
-    task = tasks_service().create(author, title="Задача", assignee=assignee)
+    task = support_tasks.make_task(author=author, assignee=assignee)
     assert access_service().can_edit_fields(author, task)
     assert access_service().can_edit_fields(assignee, task) is False
     assert access_service().can_edit_fields(assignee_head, task)
@@ -147,7 +147,7 @@ def test_status_executor_coexecutor_author_manager_but_not_observer():
     coexecutor = support.make_employee()
     observer = support.make_employee()
     assignee_head = _marked(tree["Отдел исполнителя"], "head")
-    task = tasks_service().create(author, title="Задача", assignee=assignee)
+    task = support_tasks.make_task(author=author, assignee=assignee)
     support_tasks.add_member(task, coexecutor, role="coexecutor")
     support_tasks.add_member(task, observer, role="observer")
     for viewer in (assignee, coexecutor, author, assignee_head):
@@ -163,7 +163,7 @@ def test_delete_author_or_manager_of_assignee_and_soft_delete():
     assignee = _member(tree["Отдел исполнителя"])
     author_head = _marked(tree["Отдел автора"], "head")
     assignee_head = _marked(tree["Отдел исполнителя"], "head")
-    task = tasks_service().create(author, title="Задача", assignee=assignee)
+    task = support_tasks.make_task(author=author, assignee=assignee)
     assert access_service().can_delete(author, task) and access_service().can_delete(assignee_head, task)
     assert not access_service().can_delete(author_head, task) and not access_service().can_delete(assignee, task)
     tasks_service().soft_delete(author, task)
