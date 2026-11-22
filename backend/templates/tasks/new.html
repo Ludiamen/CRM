@@ -17,7 +17,7 @@
     </div>
     <div class="mb-3">
       <label class="form-label" for="id_deadline">Срок</label>
-      <input class="form-control" id="id_deadline" name="deadline" type="date" min="{{ today }}" value="{{ posted.deadline|default:'' }}" data-task-field="deadline">
+      <input class="form-control" id="id_deadline" name="deadline" type="text" data-datefield-input inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10" value="{{ posted.deadline|default:'' }}" data-task-field="deadline">
       {% if error.field == 'deadline' %}<div class="text-danger" data-error="deadline" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
     </div>
     <div class="mb-3">

@@ -199,9 +199,10 @@ def test_audit_labels_cover_all_actions_fields_and_object_types():
         "tasks.retention_purged": "Задачи удалены по сроку",
     }
     fields = {
-        "title": "название", "description": "описание", "deadline": "срок", "status": "статус",
-        "assignee": "исполнитель", "members": "состав", "category": "категория", "plan_column": "колонка плана",
+        "deadline": "срок", "members": "состав", "category": "категория", "plan_column": "колонка плана",
         "years": "срок хранения, лет", "tasks": "Удалено по сроку, задач",
+        "comments": "Удалено по сроку, комментариев", "files": "Удалено по сроку, файлов",
+        "reminder": "напоминание", "user": "сотрудник", "moment": "момент", "task": "задача",
     }
     object_types = {"tasks.task": "задача", "tasks.comment": "комментарий задачи",
                     "tasks.settings": "настройки задач"}
