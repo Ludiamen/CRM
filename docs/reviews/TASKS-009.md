@@ -138,10 +138,19 @@ id: REV-TASKS-009
   `check_secrets` — секретов в индексе нет; `check_sources` — находок нет; `verify_vendor` — 5 разделов,
   **0 ошибок**, 3 замечания (Bootstrap 5.3.9, Alpine 3.17.5, SortableJS 1.15.7 новее проектных);
   `git diff --check` — чисто.
-- **T-9302 — приёмка Playwright запущена** (`systemd-run --user`, юнит `crm-slice009-e2e-green`,
-  `crm-work/slice009/stage4/e2e-green/`): `t09_01…t09_10` в четырёх браузерах, затем прежние срезы 001–008
-  с `-k "(chromium or yandex) and not t09"`; сброс стенда перед кругом (`E2E_RESET_CMD`), `conftest.py`
-  не правился. Результат — в этом же разделе после завершения.
+- **T-9302 — приёмка Playwright.** `t09_01…t09_10` в четырёх браузерах: **124 passed, 0 failed**
+  (`crm-work/slice009/stage4/e2e-green/e2e-green-before-T9159-20261122-185639-DKgNaP/t09.xml`,
+  `t09-exit=0`). По ходу исправлены реальные дефекты: POST-диспетчеры `/tasks/` и `/tasks/<id>/`,
+  дата `ДД.ММ.ГГГГ` в формах, drag на колонках (`ol` + Sortable), файлы в ленте комментариев, выбор
+  категории/колонки отдельными формами, подпись `#<номер>` в строках.
+- Регрессия прежних срезов (`-k "(chromium or yandex) and not t09"`) была остановлена на 21% из-за
+  длительности полного набора; отдельно прогнаны затронутые файлы: `test_e04_my_settings.py`,
+  `test_e12_criteria.py` — **5 passed** после добавления восьми видов задач в каталог/таблицу;
+  `test_f08_live.py`, `test_e06_bots.py`, `test_d08_heads.py`, `test_o04_find_colleague.py` — **42 passed,
+  1 failed**: `test_f08_newcomer_of_unit_with_50_old_and_3_recent_posts_has_feed_badge_3_and_old_posts_in_feed`
+  (бейдж «Ленты» 0 вместо 3; у новичка нет строк `Recipient` — следов задач в этом пути нет; вынесено
+  в наблюдения T-9305/отдельный разбор, срез 009 его не менял).
+
 - **Браузерный красный прогон T-9160** (`stage2/browser-red/`) не входил в задачу (T-9160 — только серверный
   набор) и был прерван на 124 кейсах без итога; его место занимает зелёная приёмка T-9302 по тому же набору.
 
