@@ -568,8 +568,10 @@ T-9002…T-9004 и **до** T-9160 (решение 2 задач). Владеле
 (таблица прав и перечень разделов без `/tasks/` и `/settings/tasks/`), `test_messenger_boundaries.py::test_purposes_are_7_and_task_last`
 (бывшее имя `…_6_and_messenger_last`), `test_feed_deploy.py::test_previous_eighteen_cron_entries_keep_names_and_minutes`
 (3 → 6 записей сверх прежних) и два теста `test_feed_deploy.py::test_nginx_{dev,prod}_config_has_feed_files_location_with_25m_limit`
-(2 → 3 `25m`). Строки 11–16, 22–26 и 31 правятся партиями Этапа 3, когда появляется их поведение (решение 18 задач):
-до этого прежние тесты остаются зелёными.
+(2 → 3 `25m`). Строка 37 — `test_sd_access.py::test_all_tickets_and_manage_rights_only_for_portal_admin_after_install`
+(18 → 20 прав, добавлены `tasks.use`/`tasks.assign`), разрешена владельцем 2026-11-22 отдельно после полного прогона.
+Строки 11–16, 22–26 и 31 правятся партиями Этапа 3, когда появляется их поведение (решение 18 задач): до этого
+прежние тесты остаются зелёными.
 
 ## 15. Решения контракта
 

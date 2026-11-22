@@ -47,8 +47,13 @@ def stand_reset() -> None:
 
     from apps.core.models import StoredFile
     from apps.core.services import files as core_files
-    from apps.tasks.models import (PlanColumn, Task, TaskCategory, TaskComment, TaskFile, TaskMember,
-                                   TaskReminder, TaskSettings)
+
+    try:
+        from apps.tasks.models import (PlanColumn, Task, TaskCategory, TaskComment, TaskFile, TaskMember,
+                                       TaskReminder, TaskSettings)
+    except ImportError:
+        # Каркас T-9010 до моделей T-9201: таблиц задач ещё нет, стирать нечего. Ветку снимает T-9201.
+        return
 
     alias = "migrate" if "migrate" in django_settings.DATABASES else "default"
 
