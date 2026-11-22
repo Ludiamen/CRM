@@ -59,7 +59,7 @@ opus (архитектурные и финальные), человек (под�
   `core.Permission`, выданы роли «Сотрудник ИТ»; миграция `core 0013_tasks_permissions` с зависимостью от
   `0012`; тест «роль без `tasks.assign` не ставит задачу другому» — `backend/apps/core/migrations/0013_tasks_permissions.py`,
   `backend/tests/test_tasks_permissions.py` — (FR-676, FR-678)
-- [ ] T-9005 [P] [opus] `CONTRACT-009`: адреса, зацепки `data-*`, коды и тексты отказов (`title_range`,
+- [x] T-9005 [P] [opus] `CONTRACT-009`: адреса, зацепки `data-*`, коды и тексты отказов (`title_range`,
   `deadline_past`, `assignee_forbidden`, `status_forbidden`, `move_forbidden`, `comment_forbidden`,
   `files_limit`, `file_type`, `file_too_big`), ответы HTMX и обычных запросов, подпись
   `tasks.reminder_failed` — `backend/tests/CONTRACT-009.md` — (все FR)
