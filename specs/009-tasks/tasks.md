@@ -1,10 +1,11 @@
 ---
 id: TASKS-009
 вид: задачи
-статус: на-проверке
+статус: утверждён
 версия: 4
 зависит_от: PLAN-009
 основан_на: PLAN-009 sha256:9e1d9e7b218b04e99240a70b006b83c8b01c1b4c0e2c3c3c46848eafdf8bb519
+подпись: Максим | 2026-11-22T09:39+03:00 | sha256:4e3b83c223f01934bd14589c5f8dcfa1bb3cea336f8f9cfd9879272e153ac057
 ---
 
 # Задачи среза 009
@@ -42,7 +43,7 @@ opus (архитектурные и финальные), человек (под�
 
 ## Этап 1 — каркас, контракт, помощники, правки ядра
 
-- [ ] T-9001 [opus] каркас `apps.tasks` по PLAN-009 «Где живёт код»: `apps.py` (register_all пустой),
+- [x] T-9001 [opus] каркас `apps.tasks` по PLAN-009 «Где живёт код»: `apps.py` (register_all пустой),
   `extensions.py`, `models.py`, пустые `urls.py`, `notify_kinds.py`, `audit_labels.py`, пакеты `services/`,
   `views/`, `migrations/`, `templates/tasks/`, `static/tasks/`; `"apps.tasks"` последним в `INSTALLED_APPS`;
   пустой `include("apps.tasks.urls")` под `apps.is_installed`; сбор тестов растёт без ошибок —

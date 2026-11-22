@@ -1,10 +1,11 @@
 ---
 id: PLAN-009
 вид: план
-статус: на-проверке
+статус: утверждён
 версия: 4
 зависит_от: SPEC-009, CONST, ADR-0002, ADR-0004, ADR-0009, ADR-0010, ADR-0011, ADR-0017, ADR-0018, REF-MOD-TASKS, TGT-ARCH, TGT-NFR, SPEC-002, SPEC-004, SPEC-005, SPEC-007, SPEC-008
 основан_на: SPEC-009 sha256:166eed06c9d60f32a8821cc3bdcd77db2ef51d40cef5c5fe79cee25d020b386f
+подпись: Максим | 2026-11-21T23:54+03:00 | sha256:9e1d9e7b218b04e99240a70b006b83c8b01c1b4c0e2c3c3c46848eafdf8bb519
 ---
 
 # План среза 009: Задачи
