@@ -3,9 +3,25 @@
 {% block content %}
 <div data-tasks-page="settings">
   <header class="page-head"><h1 class="page-title">Настройки задач</h1></header>
-  <section class="card card-body mb-3">
-    <p class="mb-0">Срок хранения задач настраивается здесь; сейчас — 3 года.</p>
-  </section>
-  <p><a href="/settings/tasks/categories/">Категории задач</a></p>
+  {% if error %}<div class="text-danger" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+  {% if confirm %}
+  <form method="post" action="/settings/tasks/" data-form="tasks-settings-confirm">{% csrf_token %}
+    <div data-tasks-confirm>
+      <p>Ближайшая уборка удалит задач: {{ confirm.count }}</p>
+      <input type="hidden" name="retention_years" value="{{ confirm.years }}">
+      <button class="btn btn-danger" type="submit" name="confirm" value="1">Подтвердить</button>
+      <a class="btn btn-outline-secondary" href="/settings/tasks/">Отмена</a>
+    </div>
+  </form>
+  {% else %}
+  <form method="post" action="/settings/tasks/" data-form="tasks-settings">{% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label" for="id_retention_years">Хранить задачи, лет</label>
+      <input class="form-control" id="id_retention_years" name="retention_years" type="number" min="1" max="10" value="{{ row.retention_years }}" data-retention-years>
+    </div>
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+  </form>
+  {% endif %}
+  <p class="mt-3"><a href="/settings/tasks/categories/">Категории задач</a></p>
 </div>
 {% endblock %}

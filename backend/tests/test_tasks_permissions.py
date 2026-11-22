@@ -177,7 +177,8 @@ def test_foreign_and_deleted_task_answer_404(client):
     """FR-677, FR-695: чужая и удалённая задача отвечают 404 одинаково (страница «Не найдено»), без подробностей;
     администратор портала чужих задач не видит."""
     tree = support_org.make_tree({"Отдел": {}})
-    outsider = _member(tree["Отдел"])
+    outsider = support_tasks.staff_user(full_name="Посторонний Задач")
+    support_org.make_member(outsider, tree["Отдел"])
     task = support_tasks.make_task()
     for viewer in (outsider, support.make_admin()):
         page = support.logged_in(viewer).get(f"/tasks/{task.pk}/")

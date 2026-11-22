@@ -3,7 +3,31 @@
 {% block content %}
 <div data-tasks-page="settings">
   <header class="page-head"><h1 class="page-title">Категории задач</h1></header>
-  <p data-empty-state="categories">Категорий пока нет</p>
+  {% if error %}<div class="text-danger" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+  {% if confirm %}
+  <form method="post" action="/settings/tasks/categories/{{ confirm.category.pk }}/delete/" data-tasks-confirm>{% csrf_token %}
+    <p>Удалить категорию? Задачи останутся без категории</p>
+    <button class="btn btn-danger" type="submit" name="confirm" value="1">Подтвердить</button>
+  </form>
+  {% else %}
+  <form method="post" action="/settings/tasks/categories/" class="d-flex gap-2 mb-3">{% csrf_token %}
+    <input class="form-control" name="title" placeholder="Название категории">
+    <button class="btn btn-primary" type="submit">Добавить</button>
+  </form>
+  <ol>
+    {% for category in categories %}
+    <li data-category-id="{{ category.pk }}">
+      <form method="post" action="/settings/tasks/categories/{{ category.pk }}/" class="d-inline-flex gap-2">{% csrf_token %}
+        <input class="form-control" name="title" value="{{ category.title }}">
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Переименовать</button>
+      </form>
+      <form method="post" action="/settings/tasks/categories/{{ category.pk }}/delete/" class="d-inline">{% csrf_token %}
+        <button class="btn btn-sm btn-outline-danger" type="submit">Удалить</button>
+      </form>
+    </li>
+    {% empty %}<li data-empty-state="categories">Категорий пока нет</li>{% endfor %}
+  </ol>
   <p><a href="/settings/tasks/">Назад к настройкам задач</a></p>
+  {% endif %}
 </div>
 {% endblock %}

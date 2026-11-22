@@ -169,7 +169,7 @@ def test_page_requires_settings_portal_403(monkeypatch):
     calls = _spy_settings_service(monkeypatch)
     others = [support.logged_in(support.make_with_permissions("settings.security")),
               support.logged_in(support.make_with_permissions("tasks.use")),
-              support_tasks.staff_user().client]
+              support.logged_in(support_tasks.staff_user())]
     for client in others:
         assert client.get(URL).status_code == 403
         assert client.post(URL, {"retention_years": "1", "confirm": "1"}).status_code == 403

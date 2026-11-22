@@ -1,0 +1,5 @@
+{% extends layout %}
+{% block title %}Задача №{{ task.pk }}{% endblock %}
+{% block content %}
+<div data-tasks-page="card">{% include "tasks/_card.html" %}</div>
+{% endblock %}

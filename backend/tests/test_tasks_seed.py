@@ -183,10 +183,11 @@ def test_e2e_tasks_seed_checks_stand_first_in_handle():
     до импорта моделей и любых чтений базы; `REFUSAL` команды — копия текста контракта, а не импорт чужого."""
     import ast
     import inspect
+    import textwrap
 
     from apps.tasks.management.commands import e2e_tasks_seed
 
-    source = inspect.getsource(e2e_tasks_seed.Command.handle)
+    source = textwrap.dedent(inspect.getsource(e2e_tasks_seed.Command.handle))
     tree = ast.parse(source)
     body = [node for node in tree.body[0].body if not (isinstance(node, ast.Expr)
             and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str))]

@@ -249,7 +249,7 @@ def test_without_tasks_menu_search_card_and_file_purpose_have_no_trace():
     task = support_tasks.make_task("Задача границ", author=person, assignee=person)
 
     assert registry.is_installed(APP)
-    full_menu = permissions.menu_for(admin.user)
+    full_menu = permissions.menu_for(admin)
     assert [item for item in full_menu if item["title"] in MENU_TITLES or item["url"] in MENU_URLS]
     assert "tasks" in [provider.key for func in extensions.registered("search_providers")
                        for provider in func()]
@@ -257,7 +257,7 @@ def test_without_tasks_menu_search_card_and_file_purpose_have_no_trace():
     assert _own("card_sections")
 
     with _without_tasks():
-        menu = permissions.menu_for(admin.user)
+        menu = permissions.menu_for(admin)
         providers = [provider.key for func in extensions.registered("search_providers") for provider in func()]
         purposes = [purpose.purpose for func in _own("file_purposes") for purpose in func()]
         sections = [section for func in _own("card_sections") for section in func(person, person)]
@@ -284,7 +284,7 @@ def test_search_and_card_pages_open_without_tasks():
     client = support.logged_in(admin)
 
     with _without_tasks():
-        search = client.get("/search/", {"q": "След"})
+        search = client.get("/search/", {"q": "Запись"})
         card = client.get(f"/staff/{author.pk}/")
 
     assert search.status_code == 200 and card.status_code == 200

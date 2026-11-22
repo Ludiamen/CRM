@@ -1,0 +1,2 @@
+<li data-task-id="{{ task.pk }}"><a href="/tasks/{{ task.pk }}/">№{{ task.pk }} {{ task.title }}</a>
+  <span class="text-muted">{{ task.get_status_display }}{% if task.deadline %} · {{ task.deadline|date:"d.m.Y" }}{% endif %}</span></li>

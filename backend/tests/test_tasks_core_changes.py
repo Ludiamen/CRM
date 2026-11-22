@@ -288,12 +288,12 @@ def test_previous_menu_search_card_and_file_purposes_without_tasks():
     person = support_tasks.staff_user(full_name="Сотрудник Прежнего")
     support_tasks.make_task("Задача прежнего поведения", author=person, assignee=person)
 
-    full_menu = permissions.menu_for(admin.user)
+    full_menu = permissions.menu_for(admin)
     assert len(full_menu) == 18, f"пунктов меню с задачами: {len(full_menu)}"
     assert "tasks" in [provider.key for func in extensions.registered("search_providers") for provider in func()]
 
     with _without_tasks():
-        menu = permissions.menu_for(admin.user)
+        menu = permissions.menu_for(admin)
         providers = [provider.key for func in extensions.registered("search_providers") for provider in func()]
         purposes = [purpose.purpose for func in _own("file_purposes") for purpose in func()]
         sections = [section for func in _own("card_sections") for section in func(person, person)]

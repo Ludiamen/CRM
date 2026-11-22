@@ -1,14 +1,37 @@
 """Регистрации задач в точках расширения ядра (срез 009; PLAN-009 «Точки расширения ядра»).
 
-T-9010: первая и пока единственная регистрация — `stand_reset` (последней записью, чтобы общий сброс стенда
-вызывал её первой). Остальные точки (меню, виды уведомлений, поиск, раздел карточки сотрудника, подписи журнала,
-назначение файла) добавляют задачи Этапа 3; порядок сохраняется: `stand_reset` — всегда последняя.
+Меню, виды уведомлений, поиск, раздел карточки сотрудника, подписи журнала, назначение файла и сброс стенда.
+`stand_reset` — всегда последняя запись, чтобы общий сброс вызывал её первой. `role_sources` приложение не
+регистрирует: права выданы ролям данными (`core 0013`).
 """
 
 
-def register_all() -> None:
-    """Зарегистрировать точки задач (T-9010: сброс стенда; прочие — Этап 3)."""
-    from apps.core import extensions
-    from apps.tasks import stand
+def menu_items() -> list[dict]:
+    """Пункты меню: «Задачи» (order 2, `tasks.use`) и «Настройки задач» (order 65, `settings.portal`)."""
+    return [
+        {"permissions": ("tasks.use",), "url": "/tasks/", "title": "Задачи", "icon": "icons/tasks.html", "order": 2},
+        {"permissions": ("settings.portal",), "url": "/settings/tasks/", "title": "Настройки задач",
+         "icon": "icons/gear.html", "order": 65},
+    ]
 
+
+def card_sections(viewer, person) -> list:
+    """Раздел «Задачи» карточки сотрудника (делегат службы поиска)."""
+    from apps.tasks.services import search
+
+    return search.card_section(viewer, person)
+
+
+def register_all() -> None:
+    """Зарегистрировать точки задач (T-9214/T-9217; сброс стенда — последним)."""
+    from apps.core import extensions
+    from apps.tasks import audit_labels, notify_kinds, stand
+    from apps.tasks.services import files, search
+
+    extensions.register("menu_items", menu_items)
+    extensions.register("notification_kinds", notify_kinds.notification_kinds)
+    extensions.register("search_providers", search.search_providers)
+    extensions.register("card_sections", card_sections)
+    extensions.register("audit_labels", audit_labels.audit_labels)
+    extensions.register("file_purposes", files.file_purposes)
     extensions.register("stand_reset", stand.stand_reset)

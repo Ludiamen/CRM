@@ -136,8 +136,10 @@ def _audit(action: str) -> list:
     return list(support.model("core.AuditEvent").objects.filter(action=action).order_by("id"))
 
 
-def _notes(kind: str | None = None):
+def _notes(user=None, kind: str | None = None):
     rows = support.model("notify.Notification").objects.filter(kind__startswith="tasks.")
+    if user is not None:
+        rows = rows.filter(user=getattr(user, "user", user))
     if kind is not None:
         rows = rows.filter(kind=kind)
     return rows
@@ -451,11 +453,11 @@ def test_job_is_idempotent_and_marks_sent():
 
     first = _job(now)
     assert first >= 1
-    created = _notes().count()
-    assert created == 3, f"уведомлений после первого запуска: {created}"
+    created = _notes(user=assignee).count()
+    assert created == 3, f"уведомлений исполнителю после первого запуска: {created}"
     assert not _pending(task)
     assert {row.state for row in _rows(task)} == {"sent"}
 
     second = _job(now)
     assert second == 0, f"повторный запуск вернул {second}"
-    assert _notes().count() == created, "повторный запуск задвоил уведомления"
+    assert _notes(user=assignee).count() == created, "повторный запуск задвоил уведомления"

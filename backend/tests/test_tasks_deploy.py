@@ -289,7 +289,7 @@ def test_menu_items_tasks_order_2_and_settings_order_65_before_servicedesk():
         "Настройки задач", "icons/gear.html", 65, ("settings.portal",))
 
     admin = support.make_admin(full_name="Администратор Меню")
-    menu = permissions.menu_for(admin.user)
+    menu = permissions.menu_for(admin)
     titles = [item["title"] for item in menu]
     assert len(menu) == 18, f"пунктов меню у администратора: {len(menu)} — {titles}"
     assert titles[:3] == ["Лента", "Мессенджер", "Задачи"], titles[:3]
@@ -298,7 +298,7 @@ def test_menu_items_tasks_order_2_and_settings_order_65_before_servicedesk():
         "при порядке 65 «Настройки задач» должны идти перед «Сервис-деском»")
 
     employee = support_tasks.staff_user(full_name="Сотрудник Меню")
-    employee_titles = [item["title"] for item in permissions.menu_for(employee.user)]
+    employee_titles = [item["title"] for item in permissions.menu_for(employee)]
     assert "Задачи" in employee_titles, "«Задачи» не видны держателю tasks.use"
     assert "Настройки задач" not in employee_titles, "настройки задач видны без settings.portal"
 

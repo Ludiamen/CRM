@@ -1,0 +1,7 @@
+<section data-card-section="tasks">
+  <h3 class="h6">Задачи</h3>
+  <ul class="list-unstyled">
+    {% if ctx.tasks %}{% for task in ctx.tasks %}{% include "tasks/_card_task_row.html" %}{% endfor %}
+    {% else %}{% for task in tasks %}{% include "tasks/_card_task_row.html" %}{% endfor %}{% endif %}
+  </ul>
+</section>

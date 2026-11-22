@@ -1,0 +1,37 @@
+{% if error %}<div class="text-danger" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+<div data-board="{{ board }}" data-move-url="/tasks/{id}/move/"{% if plan_readonly %} data-plan-readonly="1"{% endif %}>
+  {% for column in columns %}
+  <section data-column="{{ column.key }}"{% if move %} hx-swap-oob="true"{% endif %}{% if board == "plan" %} data-plan-column="{{ column.key }}"{% endif %} class="tasks-column">
+    <header class="d-flex justify-content-between align-items-center">
+      <h2 class="h6 mb-0" data-column-title>{{ column.title }}</h2>
+      <span data-column-count>{{ column.count }}</span>
+    </header>
+    <ol class="list-unstyled">
+      {% for task in column.tasks %}
+      <li data-task-card data-task-id="{{ task.pk }}" data-task-status="{{ task.status }}" draggable="true">
+        <a href="/tasks/{{ task.pk }}/" data-task-title>№{{ task.pk }} {{ task.title }}</a>
+        <div class="text-muted small">{{ task.assignee.full_name }} · {{ task.deadline|date:"d.m.Y"|default:"без срока" }}</div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% if board == "plan" and not plan_readonly %}
+    <form method="post" action="/tasks/plan/columns/" class="d-flex gap-1">{% csrf_token %}
+      <input class="form-control form-control-sm" name="title" placeholder="Новая колонка">
+      <button class="btn btn-sm btn-outline-secondary" type="submit">+</button>
+    </form>
+    {% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% if board == "plan" and not plan_readonly %}
+<form method="post" action="/tasks/plan/columns/" class="d-flex gap-2 mt-3">{% csrf_token %}
+  <input class="form-control" name="title" placeholder="Название колонки">
+  <button class="btn btn-primary" type="submit">Добавить колонку</button>
+</form>
+{% endif %}
+{% if confirm_column %}
+<form method="post" action="/tasks/plan/columns/{{ confirm_column.pk }}/delete/" data-tasks-confirm>{% csrf_token %}
+  <p>Удалить колонку «{{ confirm_column.title }}»? Задачи перейдут в первую.</p>
+  <button class="btn btn-danger" type="submit" name="confirm" value="1">Подтвердить</button>
+</form>
+{% endif %}

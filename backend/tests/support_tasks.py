@@ -4,6 +4,7 @@
 видны поимённо при вызове. Модели берутся лениво через `support.model(...)`; службы — внутри функций.
 Пароли и секреты — только из `tests.factories`; настоящих ПДн в помощниках нет.
 """
+import contextlib
 from html.parser import HTMLParser
 
 from django.db import connection
@@ -140,8 +141,7 @@ def capture_sql(call):
     return [query["sql"] for query in ctx.captured_queries]
 
 
-def queries_with_params(call):
-    """SQL вызова с параметрами: `(sql, params)` — значения фильтров ищутся в `params` (NFR-712)."""
+def _pairs(call):
     pairs = []
 
     def wrapper(execute, sql, params, many, context):
@@ -151,6 +151,23 @@ def queries_with_params(call):
     with connection.execute_wrapper(wrapper):
         call()
     return pairs
+
+
+@contextlib.contextmanager
+def _queries_ctx():
+    holder = {}
+
+    def wrapper(execute, sql, params, many, context):
+        holder.setdefault("pairs", []).append((sql if isinstance(sql, str) else str(sql), params))
+        return execute(sql, params, many, context)
+
+    with connection.execute_wrapper(wrapper):
+        yield holder.setdefault("pairs", [])
+
+
+def queries_with_params(call=None):
+    """SQL вызова с параметрами: список пар или контекст, если `call` не передан (NFR-712)."""
+    return _queries_ctx() if call is None else _pairs(call)
 
 
 # --- синтетические контакты и адреса страниц -----------------------------------------------------

@@ -55,14 +55,27 @@ def add_column(user, title) -> PlanColumn:
 
 
 @transaction.atomic
-def rename_column(user, column, title) -> PlanColumn:
-    """Переименовать свою колонку."""
+def rename_column(user, column, title, position=None) -> PlanColumn:
+    """Переименовать свою колонку и при желании задать её место в порядке."""
     _own(user, column)
     title = _clean_title(title)
     if PlanColumn.objects.filter(user=user, title=title).exclude(pk=column.pk).exists():
         raise TasksError("column_title_taken", "title")
     column.title = title
     column.save(update_fields=["title"])
+    if position is not None:
+        try:
+            position = max(0, int(position))
+        except (TypeError, ValueError):
+            position = None
+    if position is not None:
+        columns = [item for item in columns_of(user) if item.pk != column.pk]
+        position = min(position, len(columns))
+        columns.insert(position, column)
+        for index, item in enumerate(columns):
+            if item.position != index:
+                item.position = index
+                item.save(update_fields=["position"])
     return column
 
 

@@ -1,0 +1,16 @@
+{% extends layout %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div data-tasks-page="board">
+  <header class="page-head d-flex flex-wrap gap-2 align-items-center">
+    <h1 class="page-title">{{ title }}</h1>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/">Список</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/board/status/">Стадии</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/board/deadline/">Сроки</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/board/plan/">Мой план</a>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/board/category/">Категории</a>
+  </header>
+  {% if error %}<div class="text-danger" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+  {% include "tasks/_board.html" %}
+</div>
+{% endblock %}

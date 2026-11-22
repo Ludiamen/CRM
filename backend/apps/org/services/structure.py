@@ -342,6 +342,22 @@ def work_units_of(user) -> frozenset[int]:
     return frozenset(result)
 
 
+def managers_of(user) -> list:
+    """Руководители и заместители цепочки узлов `user` (без него и без уволенных), по ФИО, затем `id`.
+
+    Цепочка — узлы, где человек состоит, и все их предки; отметки `head`/`deputy` берутся на любом уровне.
+    """
+    paths = list(Unit.objects.filter(memberships__user=user).values_list("path", flat=True).distinct())
+    if not paths:
+        return []
+    unit_ids = sorted({int(part) for path in paths for part in path.split("/") if part})
+    found = Membership.objects.filter(
+        unit_id__in=unit_ids, mark__in=[Membership.Mark.HEAD, Membership.Mark.DEPUTY]
+    ).exclude(user=user).exclude(user__state="dismissed").select_related("user")
+    people = {row.user_id: row.user for row in found}
+    return sorted(people.values(), key=lambda person: (person.full_name, person.pk))
+
+
 def managed_units(user) -> frozenset[int]:
     """Узлы, которыми `user` управляет: с отметкой руководителя или заместителя и все вложенные.
 

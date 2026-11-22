@@ -2,8 +2,10 @@
 
 Права — данные, а не код (ADR-0018 п. 13): «Задачи» открывает `tasks.use`, ставить задачу другому в
 управляемых узлах — `tasks.assign`. Оба права выданы встроенным ролям «Администратор портала» и
-«Сотрудник ИТ»; дальше состав меняет администратор в разделе ролей. Функция `seed` идемпотентна: повторный
-запуск (в том числе со стенда) не дублирует права и не трогает уже настроенные роли.
+«Сотрудник ИТ»; дальше состав меняет администратор в разделе ролей. Функция `seed` идемпотентна.
+
+Списки `PERMISSIONS`, `GRANTS` и `operations` — на уровне модуля: класс `Migration` берёт их как есть, а тесты
+среза сверяют состав по модулю (CONTRACT-009, 2.2).
 """
 from django.db import migrations
 
@@ -34,15 +36,14 @@ def seed(apps, schema_editor):
 def unseed(apps, schema_editor):
     db = schema_editor.connection.alias
     apps.get_model("core", "Permission").objects.using(db).filter(
-        code__in=[code for code, _ in PERMISSIONS]).delete()  # связи с ролями уйдут с правом
+        code__in=[code for code, _ in PERMISSIONS]).delete()
+
+
+dependencies = [("core", "0012_storedfile_task_purpose")]
+operations = [migrations.RunPython(seed, unseed)]
 
 
 class Migration(migrations.Migration):
 
-    dependencies = [
-        ("core", "0012_storedfile_task_purpose"),
-    ]
-
-    operations = [
-        migrations.RunPython(seed, unseed),
-    ]
+    dependencies = [("core", "0012_storedfile_task_purpose")]
+    operations = operations

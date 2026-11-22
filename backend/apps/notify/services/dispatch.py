@@ -204,6 +204,12 @@ def _after_commit(recipients: list, toasts: dict, immediate: list) -> None:
         delivery.enqueue(immediate)
 
 
+def user_prefs(user_id: int):
+    """Личные настройки уведомлений сотрудника (строка создаётся при первом обращении)."""
+    row, _ = UserNotifySettings.objects.get_or_create(user_id=user_id)
+    return row
+
+
 def plan_digest(user_id: int):
     """Срок сводки — меньшее из прежнего и ближайшего начала рабочего времени; `None` — планировать некуда."""
     row, _ = UserNotifySettings.objects.get_or_create(user_id=user_id)

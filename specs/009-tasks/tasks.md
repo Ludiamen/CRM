@@ -216,54 +216,54 @@ opus (архитектурные и финальные), человек (под�
 - [x] T-9202 [sonnet] `services/access.py` (+ `managed_units` из org), права ролей, видимость, права
   удаления — `backend/apps/tasks/services/access.py` — зелёные: `test_tasks_access`, `test_tasks_permissions`,
   `test_tasks_visibility` — (FR-676…678, FR-695)
-- [ ] T-9203 [sonnet] создание, правка полей и статусы, журнал: `services/tasks.py`, `views/actions.py`,
+- [x] T-9203 [sonnet] создание, правка полей и статусы, журнал: `services/tasks.py`, `views/actions.py`,
   формы и шаблоны — `backend/apps/tasks/services/tasks.py`, `views/actions.py`, `templates/tasks/` — зелёные:
   `test_tasks_create`, `test_tasks_edit`, `test_tasks_audit` (часть) — (FR-674, FR-675, FR-678, FR-679, FR-694)
 
 **Партия 3 — список и доски.**
-- [ ] T-9204 [sonnet] список: пресеты, фильтры, сортировки, страницы, SQL параметрами —
+- [x] T-9204 [sonnet] список: пресеты, фильтры, сортировки, страницы, SQL параметрами —
   `services/list.py`, `views/pages.py`, `templates/tasks/_list.html`, `_row.html` — зелёный:
   `test_tasks_list` — (FR-685, FR-686, NFR-712)
-- [ ] T-9205 [sonnet] доска «Стадии»: колонки, числа, `[data-board]`, SortableJS, перенос статуса —
+- [x] T-9205 [sonnet] доска «Стадии»: колонки, числа, `[data-board]`, SortableJS, перенос статуса —
   `views/pages.py`, `services/boards.py`, `static/tasks/tasks.js`, `templates/tasks/_board.html` — зелёные
   (части): `test_tasks_boards`, `test_tasks_move` — (FR-679, FR-680, NFR-711)
-- [ ] T-9206 [sonnet] доска «Сроки»: группы, пятница, запрет «Просрочены», «Готово» и дальше 7 дней нет —
+- [x] T-9206 [sonnet] доска «Сроки»: группы, пятница, запрет «Просрочены», «Готово» и дальше 7 дней нет —
   `services/boards.py`, `views/pages.py` — зелёные (части): `test_tasks_boards`, `test_tasks_move` — (FR-681)
-- [ ] T-9207 [sonnet] «Мой план»: колонки (ленивые три), CRUD, перенос только владельцем, чужой план для
+- [x] T-9207 [sonnet] «Мой план»: колонки (ленивые три), CRUD, перенос только владельцем, чужой план для
   чтения — `services/plan.py`, `views/plan.py`, `templates/tasks/_plan.html` — зелёный: `test_tasks_plan` —
   (FR-682)
-- [ ] T-9208 [sonnet] категории и доска категорий: справочник, перенос, «Без категории» —
+- [x] T-9208 [sonnet] категории и доска категорий: справочник, перенос, «Без категории» —
   `services/categories.py`, `views/settings.py`, `templates/tasks/settings.html` — **зелёные целиком**:
   `test_tasks_boards`, `test_tasks_move`, `test_tasks_categories` — (FR-681…683)
 
 **Партия 4 — карточка, комментарии, файлы.**
-- [ ] T-9209 [sonnet] карточка задачи: лента (журнал + комментарии), файлы, напоминания, выбор полей
+- [x] T-9209 [sonnet] карточка задачи: лента (журнал + комментарии), файлы, напоминания, выбор полей
   (запасной путь), права — `views/pages.py`, `templates/tasks/_card.html`, `_comment.html` — зелёные (части):
   `test_tasks_comments`, `test_tasks_edit` — (FR-674…678, FR-684)
-- [ ] T-9210 [sonnet] комментарии и файлы: `services/comments.py`, `services/files.py`, `views/files.py`,
+- [x] T-9210 [sonnet] комментарии и файлы: `services/comments.py`, `services/files.py`, `views/files.py`,
   `Purpose.TASK`, ClamAV, X-Accel — `backend/apps/tasks/services/comments.py`, `files.py`, `views/files.py` —
   зелёные: `test_tasks_comments`, `test_tasks_files` — (FR-693, NFR-713)
 
 **Партия 5 — напоминания, уведомления, сводка.**
-- [ ] T-9211 [sonnet] напоминания: `services/reminders.py`, личные тихие часы, задание, пересчёт, отложить,
+- [x] T-9211 [sonnet] напоминания: `services/reminders.py`, личные тихие часы, задание, пересчёт, отложить,
   подпись `tasks.reminder_failed` — `backend/apps/tasks/services/reminders.py`, `tasks.py` — зелёный:
   `test_tasks_reminders` — (FR-687…690, NFR-715)
-- [ ] T-9212 [sonnet] виды уведомлений и получатели: `notify_kinds.py`, `services/notify_rules.py`,
+- [x] T-9212 [sonnet] виды уведомлений и получатели: `notify_kinds.py`, `services/notify_rules.py`,
   `services/digest.py`, задание сводки — `backend/apps/tasks/notify_kinds.py`, `services/notify_rules.py`,
   `services/digest.py` — зелёные: `test_tasks_notify`, `test_tasks_digest` — (FR-691, FR-692, NFR-714)
 
 **Партия 6 — удаление, хранение, поиск, карточка сотрудника, 360.**
-- [ ] T-9213 [sonnet] удаление и срок хранения: `services/retention.py`, задание, настройки срока с журналом,
+- [x] T-9213 [sonnet] удаление и срок хранения: `services/retention.py`, задание, настройки срока с журналом,
   файлы и комментарии, непривязанные — `backend/apps/tasks/services/retention.py`, `views/settings.py` —
   **зелёные целиком**: `test_tasks_retention`, `test_tasks_settings`, `test_tasks_audit` — (FR-694…696, NFR-715)
-- [ ] T-9214 [sonnet] поиск и карточка сотрудника: поставщик «Задачи», раздел карточки —
+- [x] T-9214 [sonnet] поиск и карточка сотрудника: поставщик «Задачи», раздел карточки —
   `backend/apps/tasks/services/search.py`, `extensions.py` — зелёные: `test_tasks_search`,
   `test_tasks_card_section` — (FR-697, FR-698, NFR-712)
 - [ ] T-9215 [sonnet] 360 px и запасной путь: `tasks.css`, поведение доски и карточки —
   `backend/static/tasks/tasks.css` — зелёный: e2e `t10` — (FR-699, NFR-716)
-- [ ] T-9216 [sonnet] установка и стенд: данные установки, `stand_reset`, `e2e_tasks_seed` —
+- [x] T-9216 [sonnet] установка и стенд: данные установки, `stand_reset`, `e2e_tasks_seed` —
   `backend/apps/tasks/stand.py` — зелёные: `test_tasks_seed`, `test_tasks_stand` — (все FR)
-- [ ] T-9217 [sonnet] развёртывание и границы: маршруты, cron, меню, статика, CSP, nginx, границы импорта —
+- [x] T-9217 [sonnet] развёртывание и границы: маршруты, cron, меню, статика, CSP, nginx, границы импорта —
   `backend/apps/tasks/{urls,extensions}.py`, `config/cron.py` — зелёные: `test_tasks_deploy`,
   `test_tasks_boundaries`, `test_tasks_core_changes` — (NFR-713, NFR-717, NFR-719)
 - [ ] T-9260 [opus] зелёная сборка: весь серверный набор зелёный, ни один тест не ослаблен; правки прежних

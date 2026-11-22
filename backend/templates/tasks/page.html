@@ -6,13 +6,45 @@
     <h1 class="page-title">Задачи</h1>
     <a class="btn btn-primary" href="/tasks/new/">Новая задача</a>
   </header>
-  <nav class="d-flex flex-wrap gap-2 mb-3" aria-label="Пресеты">
-    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=mine" data-tasks-preset="mine"{% if preset == "mine" %} aria-pressed="true"{% endif %}>Мои</a>
-    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=authored" data-tasks-preset="authored"{% if preset == "authored" %} aria-pressed="true"{% endif %}>Поставленные мной</a>
-    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=subordinate" data-tasks-preset="subordinate">Задачи подчинённых</a>
-    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=work" data-tasks-preset="work">В работе</a>
-    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset=overdue" data-tasks-preset="overdue">Просрочены</a>
+  <nav class="d-flex flex-wrap gap-2 mb-2" aria-label="Пресеты">
+    {% for key, title in presets %}
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/?preset={{ key }}" data-tasks-preset="{{ key }}"{% if preset == key %} aria-pressed="true"{% endif %}>{{ title }}</a>
+    {% endfor %}
   </nav>
-  <div id="tasks-list">{% include "tasks/_list.html" %}</div>
+  <form method="get" action="/tasks/" class="d-flex flex-wrap gap-2 mb-3" data-tasks-filters>
+    <input type="hidden" name="preset" value="{{ preset }}">
+    <select name="status" class="form-select" data-task-filter="status">
+      <option value="">Любой статус</option>
+      <option value="new"{% if filters.status == "new" %} selected{% endif %}>Новая</option>
+      <option value="in_progress"{% if filters.status == "in_progress" %} selected{% endif %}>В работе</option>
+      <option value="waiting"{% if filters.status == "waiting" %} selected{% endif %}>Ждёт</option>
+      <option value="done"{% if filters.status == "done" %} selected{% endif %}>Готово</option>
+    </select>
+    <select name="deadline" class="form-select" data-task-filter="deadline">
+      <option value="">Любой срок</option>
+      <option value="today"{% if filters.deadline == "today" %} selected{% endif %}>Сегодня</option>
+      <option value="week"{% if filters.deadline == "week" %} selected{% endif %}>На неделе</option>
+      <option value="overdue"{% if filters.deadline == "overdue" %} selected{% endif %}>Просрочены</option>
+      <option value="none"{% if filters.deadline == "none" %} selected{% endif %}>Без срока</option>
+    </select>
+    <select name="category" class="form-select" data-task-filter="category">
+      <option value="">Любая категория</option>
+      {% for category in categories %}<option value="{{ category.pk }}"{% if filters.category == category.pk|stringformat:"s" %} selected{% endif %}>{{ category.title }}</option>{% endfor %}
+      <option value="none"{% if filters.category == "none" %} selected{% endif %}>Без категории</option>
+    </select>
+    <select name="sort" class="form-select" data-task-filter="sort">
+      <option value="">По сроку</option>
+      <option value="updated"{% if sort == "updated" %} selected{% endif %}>По изменению</option>
+    </select>
+    <select name="per_page" class="form-select" data-task-filter="per_page">
+      <option value="20">20</option><option value="50"{% if data.per_page == 50 %} selected{% endif %}>50</option>
+    </select>
+    <button type="submit" class="btn btn-outline-primary">Показать</button>
+    <a href="/tasks/?preset={{ preset }}">Сбросить</a>
+  </form>
+  <div class="d-flex gap-3">
+    <div id="tasks-list" class="flex-grow-1">{% include "tasks/_list.html" %}</div>
+    {% if card %}<aside class="tasks-card-pane">{% include "tasks/_card.html" %}</aside>{% endif %}
+  </div>
 </div>
 {% endblock %}

@@ -55,7 +55,7 @@ def test_card_section_registered_with_key_profile_order_75_and_template():
     """FR-698: `apps.tasks` регистрирует в `card_sections` одну функцию; для сотрудника с видимой задачей она
     отдаёт ровно `CardSection("tasks", "profile", 75, "tasks/_card_section.html", {"url": …})` (К4): вкладка
     `profile`, порядок 75 — после «Заявок» 60 и мессенджера 70; в контексте есть адрес раздела `/tasks/…`."""
-    from apps.core import extensions
+    from apps.tasks import extensions
 
     owner = support_tasks.staff_user(full_name="Смотрящий Раздела")
     support_tasks.make_task("Задача раздела", author=owner, assignee=owner)
@@ -67,7 +67,9 @@ def test_card_section_registered_with_key_profile_order_75_and_template():
     url = section.context.get("url")
     assert isinstance(url, str) and url.startswith("/tasks/"), f"адрес раздела: {url!r}"
 
-    core_sections = extensions.card_sections(owner, owner)["profile"]
+    from apps.core.views import me
+
+    core_sections = me.card_sections(owner, owner)["profile"]
     assert section in core_sections
     orders = [item.order for item in core_sections]
     assert orders == sorted(orders), f"ядро не отсортировало разделы: {orders}"

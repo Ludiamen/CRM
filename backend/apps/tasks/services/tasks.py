@@ -89,6 +89,15 @@ def create(actor, *, title, description="", deadline=None, assignee, members=(),
     TaskMember.objects.bulk_create(_members(task, members, assignee=assignee))
     audit.record("tasks.created", actor=actor, object_type="tasks.task", object_id=task.pk,
                  after={"title": task.title, "assignee": assignee.full_name, "deadline": _iso(task.deadline)})
+    if task.deadline is not None:
+        from apps.tasks.services import reminders
+
+        reminders.plan(task)
+    from apps.tasks.services import notify_rules
+    from apps.tasks import tasks as jobs
+
+    jobs.notify(task, "tasks.assigned", [user for user in notify_rules.targets(task, "assigned")
+                                         if user.pk != actor.pk])
     return task
 
 
@@ -152,6 +161,10 @@ def update(actor, task, **fields) -> Task:
         task.save()
         audit.record("tasks.changed", actor=actor, object_type="tasks.task", object_id=task.pk,
                      before=before, after=after)
+    if {"deadline", "assignee", "members"} & set(after):
+        from apps.tasks.services import reminders
+
+        reminders.plan(task)
     return task
 
 

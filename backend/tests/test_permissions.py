@@ -122,7 +122,11 @@ def protected_table(victim, role):
         ("get", "/settings/mail-log/", "settings.portal"),
         ("get", "/settings/security/", "settings.security"), ("post", "/settings/security/", "settings.security"),
         ("get", "/settings/notifications/", "notify.manage"), ("post", "/settings/notifications/", "notify.manage"),
-        ("get", "/settings/tasks/", "settings.portal"), ("get", "/settings/tasks/categories/", "settings.portal"),
+        ("get", "/settings/tasks/", "settings.portal"), ("post", "/settings/tasks/", "settings.portal"),
+        ("get", "/settings/tasks/categories/", "settings.portal"),
+        ("post", "/settings/tasks/categories/", "settings.portal"),
+        ("post", "/settings/tasks/categories/1/", "settings.portal"),
+        ("post", "/settings/tasks/categories/1/delete/", "settings.portal"),
     ]
 
 

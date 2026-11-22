@@ -45,8 +45,8 @@ MESSENGER_PAGE = "/messenger/notifications/"
 MY_PAGE = "/me/notifications/"
 EXTERNAL_CHANNELS = ("email", "push", "telegram", "max")
 # таблица «код вида → модуль» (CONTRACT-008, 7.4): двадцать два вида семи модулей
-MODULE_COUNTS = {"Сервис-деск": 4, "База знаний": 3, "Списки": 1, "Лента": 8, "Мессенджер": 2, "Ядро": 3,
-                 "Уведомления": 1}
+MODULE_COUNTS = {"Сервис-деск": 4, "База знаний": 3, "Списки": 1, "Лента": 8, "Мессенджер": 2, "Задачи": 8,
+                 "Ядро": 3, "Уведомления": 1}
 
 _VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 
@@ -236,7 +236,7 @@ def _settings(**fields):
 # --- каталог (FR-663, 664, NFR-705) -----------------------------------------------------------------------------
 
 def test_catalog_has_22_kinds_and_two_messenger_rows():
-    """FR-663, 664: каталог собран из двадцати двух видов семи модулей (сервис-деск 4, база знаний 3, списки 1,
+    """FR-663, 664: каталог собран из тридцати видов восьми модулей (сервис-деск 4, база знаний 3, списки 1,
     лента 8, мессенджер 2, ядро 3, уведомления 1); две строки «Мессенджер» — `messenger.message` (order 80) и
     `messenger.mention` (order 81) сразу после видов ленты (77), с названиями, каналами по умолчанию «портал» и
     «почта», без обязательности и событий шины и с постоянным внешним текстом; каталог отсортирован по `order`."""
@@ -245,8 +245,8 @@ def test_catalog_has_22_kinds_and_two_messenger_rows():
     catalog = notify_kinds.catalog()
     employee = _employee("Проверяющий Каталог")
 
-    assert len(catalog) == 22, f"видов в каталоге: {len(catalog)}"
-    assert len({kind.code for kind in catalog}) == 22, "коды видов в каталоге повторяются"
+    assert len(catalog) == 30, f"видов в каталоге: {len(catalog)}"
+    assert len({kind.code for kind in catalog}) == 30, "коды видов в каталоге повторяются"
     modules = [kind.module for kind in catalog]
     for module, count in MODULE_COUNTS.items():
         assert modules.count(module) == count, f"видов модуля «{module}»: {modules.count(module)}"

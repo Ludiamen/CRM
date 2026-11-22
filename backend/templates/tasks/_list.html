@@ -1,11 +1,22 @@
 {% if rows %}
-<ol class="tasks-list">
-  {% for row in rows %}
-  <li data-task-id="{{ row.pk }}" data-task-status="{{ row.status }}">
-    <a href="/tasks/{{ row.pk }}/" data-task-title>{{ row.title }}</a>
+<ol class="tasks-list" data-tasks-list>
+  {% for task in rows %}
+  <li data-task-id="{{ task.pk }}" data-task-status="{{ task.status }}">
+    <a href="/tasks/{{ task.pk }}/" data-task-title>№{{ task.pk }} {{ task.title }}</a>
+    <span data-task-assignee>{{ task.assignee.full_name }}</span>
+    <span data-deadline="{{ task.deadline|date:'Y-m-d' }}">{{ task.deadline|date:"d.m.Y"|default:"без срока" }}</span>
+    <span data-status>{{ task.get_status_display }}</span>
   </li>
   {% endfor %}
 </ol>
+{% if data.pages > 1 %}
+<nav class="d-flex gap-2" data-tasks-pages>
+  {% for number in "123456789"|make_list %}{% endfor %}
+  <a href="?page={{ data.page|add:"-1" }}"{% if data.page <= 1 %} aria-disabled="true"{% endif %}>Назад</a>
+  <span>Страница {{ data.page }} из {{ data.pages }}</span>
+  <a href="?page={{ data.page|add:"1" }}"{% if data.page >= data.pages %} aria-disabled="true"{% endif %}>Вперёд</a>
+</nav>
+{% endif %}
 {% else %}
 <p data-empty-state="tasks">Задач пока нет</p>
 {% endif %}

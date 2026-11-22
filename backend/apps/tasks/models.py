@@ -4,6 +4,8 @@
 Внешние ключи — только на `core.User` и `core.StoredFile`; узлы структуры и уведомления приходят службами.
 Имена ограничений и индексов — CONTRACT-009, 2.1. Номер задачи — `pk`.
 """
+import uuid
+
 from django.db import models
 from django.db.models import Q
 
@@ -116,6 +118,7 @@ class TaskReminder(models.Model):
     user = models.ForeignKey("core.User", on_delete=models.CASCADE, related_name="task_reminders")
     kind = models.CharField("вид", max_length=16, choices=Kind.choices)
     moment = models.DateTimeField("момент")
+    days = models.PositiveSmallIntegerField("за N рабочих дней", null=True, blank=True)
     state = models.CharField("состояние", max_length=16, choices=State.choices, default=State.PENDING)
     postponed_to = models.DateTimeField("отложено до", null=True, blank=True)
     created_at = models.DateTimeField(default=now)
@@ -149,8 +152,9 @@ class TaskComment(models.Model):
 
 
 class TaskFile(models.Model):
-    """Вложение задачи или комментария; строка `core.StoredFile` — назначение `task`."""
+    """Вложение задачи или комментария; строка `core.StoredFile` — назначение `task`. Номер — UUID."""
 
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="files")
     comment = models.ForeignKey(TaskComment, on_delete=models.SET_NULL, null=True, blank=True,
                                 related_name="files")
@@ -171,7 +175,7 @@ class TaskSettings(models.Model):
     """Настройки задач: срок хранения (одна строка `pk=1`)."""
 
     retention_years = models.PositiveSmallIntegerField("срок хранения, лет", default=3)
-    updated_at = models.DateTimeField(default=now)
+    updated_at = models.DateTimeField(null=True, blank=True)
     updated_by = models.ForeignKey("core.User", on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name="+")
 

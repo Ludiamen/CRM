@@ -1,6 +1,6 @@
 """T-4101: каталог видов уведомлений и пять каналов (FR-301…FR-306, FR-321, FR-344). Сценарии 1, 3 и 4 спеки среза 004.
 
-Двадцать два вида семи модулей (таблица контракта § 3.2, CONTRACT-005, раздел 7.2, CONTRACT-006, раздел 7.3, CONTRACT-007, раздел 7.1 и CONTRACT-008, раздел 7.4), сборка каталога из точки `notification_kinds` при каждом вызове,
+Тридцать видов восьми модулей (таблица контракта § 3.2, CONTRACT-005, раздел 7.2, CONTRACT-006, раздел 7.3, CONTRACT-007, раздел 7.1 и CONTRACT-008, раздел 7.4), сборка каталога из точки `notification_kinds` при каждом вызове,
 повтор кода как отказ запуска, пять каналов и один столбец push, портал всегда включён, обязательные виды, запись
 `Notification`. Код среза на уровне модуля не импортируется: имена берутся внутри тестов (CONTRACT-004, шапка).
 """
@@ -53,6 +53,19 @@ TABLE = [
     ("core.second_factor_reset", "Второй фактор сброшен", "Ядро", 130, True, ("portal",),
      ("core.second_factor_reset",), ""),
     ("notify.channel_unbound", "Канал отвязан", "Уведомления", 200, True, ("portal",), (), ""),
+    # восемь видов модуля «Задачи» (CONTRACT-009, раздел 9.1): order 210–217, каналы «На портале» и «Почта»
+    ("tasks.assigned", "Назначена задача", "Задачи", 210, False, ("portal", "email"), (), "Вам назначена задача"),
+    ("tasks.due_soon", "Задача скоро просрочена", "Задачи", 211, False, ("portal", "email"), (),
+     "Срок задачи приближается"),
+    ("tasks.due", "Срок наступил", "Задачи", 212, False, ("portal", "email"), (), "Срок задачи наступил"),
+    ("tasks.overdue", "Задача просрочена", "Задачи", 213, False, ("portal", "email"), (), "Задача просрочена"),
+    ("tasks.subordinate_overdue", "Задача подчинённого просрочена", "Задачи", 214, False, ("portal", "email"), (),
+     "Задача подчинённого просрочена"),
+    ("tasks.reminder", "Вы просили напомнить", "Задачи", 215, False, ("portal", "email"), (), "Напоминание о задаче"),
+    ("tasks.comment", "Новый комментарий", "Задачи", 216, False, ("portal", "email"), (),
+     "Новый комментарий к задаче"),
+    ("tasks.subordinate_digest", "Сводка по задачам подчинённых", "Задачи", 217, False, ("portal", "email"), (),
+     "Сводка по задачам подчинённых"),
 ]
 MANDATORY_CODES = {row[0] for row in TABLE if row[4]}
 
@@ -110,13 +123,13 @@ def _register_core_and_notify():
 # --- каталог: состав ---------------------------------------------------------------------------------
 
 def test_catalog_contains_eight_kinds_from_three_modules():
-    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно двадцать два вида, по `order` (сервис-деск 10–40, база знаний
+    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно тридцать видов, по `order` (сервис-деск 10–40, база знаний
     50–52, списки 60, лента 70–77, мессенджер 80–81, ядро 110–130, уведомления 200), из модулей «Сервис-деск», «База
     знаний», «Списки», «Лента», «Мессенджер», «Ядро» и «Уведомления»."""
     catalog = _kinds().catalog()
     assert [kind.code for kind in catalog] == [row[0] for row in TABLE]
     assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления", "База знаний", "Списки", "Лента",
-                                                 "Мессенджер"}
+                                                 "Мессенджер", "Задачи"}
     assert [kind.module for kind in catalog].count("Сервис-деск") == 4
     assert [kind.module for kind in catalog].count("Ядро") == 3
     assert [kind.module for kind in catalog].count("Уведомления") == 1
@@ -124,6 +137,7 @@ def test_catalog_contains_eight_kinds_from_three_modules():
     assert [kind.module for kind in catalog].count("Списки") == 1
     assert [kind.module for kind in catalog].count("Лента") == 8
     assert [kind.module for kind in catalog].count("Мессенджер") == 2
+    assert [kind.module for kind in catalog].count("Задачи") == 8
 
 
 def test_catalog_kind_codes_titles_and_modules_match_plan_table():

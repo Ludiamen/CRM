@@ -46,16 +46,17 @@ class TasksCast(NamedTuple):
 
 
 def _dismiss(page, user_id) -> None:
-    """Увольняет сотрудника из карточки `/staff/<id>/` (прежние зацепки CONTRACT-002/003)."""
+    """Увольняет сотрудника из карточки `/staff/<id>/` (зацепки CONTRACT-002/003: `[data-card]`,
+    `[data-action="dismiss"]`, диалог `#dialog-root [data-dialog="dismiss"]`, `form[data-form="dismiss"]`,
+    `[data-dismissed-badge]`; образец — `helpers_messenger._dismiss`)."""
     page.goto(f"/staff/{user_id}/")
-    card = page.locator("#staff-card")
+    card = page.locator(f'[data-card][data-user-id="{user_id}"]')
     expect(card).to_be_visible()
     card.locator('[data-action="dismiss"]').click()
     dialog = page.locator('#dialog-root [data-dialog="dismiss"]')
     expect(dialog).to_be_visible()
-    with page.expect_navigation():
-        dialog.locator('form[data-form="dismiss"] button[type=submit]').click()
-    expect(page.locator("[data-dismissed-badge]")).to_be_visible()
+    helpers.submit(dialog.locator('form[data-form="dismiss"]'))
+    expect(card.locator("[data-dismissed-badge]")).to_be_visible()
 
 
 def tasks_cast(admin_page, mailpit, new_context) -> TasksCast:

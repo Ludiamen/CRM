@@ -1,0 +1,104 @@
+<article class="card card-body tasks-card" data-task-id="{{ task.pk }}" data-task-status="{{ task.status }}">
+  <header class="d-flex flex-wrap gap-2 align-items-center">
+    <h1 class="h4 mb-0">№{{ task.pk }} <span data-task-title>{{ task.title }}</span></h1>
+    <span class="badge" data-status>{{ task.get_status_display }}</span>
+    <a class="btn btn-sm btn-outline-secondary" href="/tasks/">Назад</a>
+  </header>
+  <p class="text-muted mt-2 mb-2">Постановщик: {{ task.author.full_name }} · Исполнитель: <span data-task-assignee>{{ task.assignee.full_name }}</span> · Срок: <span data-deadline="{{ task.deadline|date:'Y-m-d' }}">{{ task.deadline|date:"d.m.Y"|default:"без срока" }}</span></p>
+  {% if error %}<div class="text-danger" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+
+  {% if can_status %}
+  <form method="post" action="/tasks/{{ task.pk }}/status/" class="d-flex gap-2 mb-3" data-form="task-status">
+    {% csrf_token %}
+    <select name="status" class="form-select" data-task-field="status">
+      <option value="new"{% if task.status == "new" %} selected{% endif %}>Новая</option>
+      <option value="in_progress"{% if task.status == "in_progress" %} selected{% endif %}>В работе</option>
+      <option value="waiting"{% if task.status == "waiting" %} selected{% endif %}>Ждёт</option>
+      <option value="done"{% if task.status == "done" %} selected{% endif %}>Готово</option>
+    </select>
+    <button class="btn btn-outline-primary" type="submit">Сохранить статус</button>
+  </form>
+  {% endif %}
+
+  {% if can_edit %}
+  <form method="post" action="/tasks/{{ task.pk }}/" data-form="task-edit" novalidate>
+    {% csrf_token %}
+    <div class="mb-2"><label class="form-label">Название</label>
+      <input class="form-control" name="title" value="{{ task.title }}" maxlength="300" data-task-field="title"></div>
+    <div class="mb-2"><label class="form-label">Описание</label>
+      <textarea class="form-control" name="description" rows="3" data-task-field="description">{{ task.description }}</textarea></div>
+    <div class="mb-2"><label class="form-label">Срок</label>
+      <input class="form-control" type="date" name="deadline" value="{{ task.deadline|date:'Y-m-d' }}" data-task-field="deadline"></div>
+    <div class="mb-2"><label class="form-label">Категория</label>
+      <select class="form-select" name="category" data-task-field="category">
+        <option value="">Без категории</option>
+        {% for category in categories %}<option value="{{ category.pk }}"{% if task.category_id == category.pk %} selected{% endif %}>{{ category.title }}</option>{% endfor %}
+      </select></div>
+    {% if request.user.pk == task.assignee_id %}
+    <div class="mb-2"><label class="form-label">Колонка плана</label>
+      <select class="form-select" name="plan_column" data-task-field="plan_column">
+        <option value="">Без колонки</option>
+        {% for column in columns %}<option value="{{ column.pk }}"{% if task.plan_column_id == column.pk %} selected{% endif %}>{{ column.title }}</option>{% endfor %}
+      </select></div>
+    {% endif %}
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+  </form>
+  {% else %}
+  <p data-task-field="description">{{ task.description }}</p>
+  {% endif %}
+
+  <section class="mt-3" aria-label="Напоминания">
+    <h2 class="h6">Напоминания</h2>
+    <ul class="list-unstyled">
+      {% for reminder in reminders %}
+      <li data-reminder="{{ reminder.pk }}" data-reminder-at="{{ reminder.moment|date:'c' }}">
+        {{ reminder.moment|date:"d.m.Y H:i" }} — {{ reminder.get_kind_display }}
+        <form method="post" action="/tasks/reminders/{{ reminder.pk }}/postpone/" class="d-inline">{% csrf_token %}
+          <button class="btn btn-sm btn-outline-secondary" type="submit">Отложить</button></form>
+      </li>
+      {% empty %}<li data-empty-state="reminders">Напоминаний нет</li>{% endfor %}
+    </ul>
+    <form method="post" action="/tasks/{{ task.pk }}/remind/" class="d-flex gap-2" data-form="task-remind">
+      {% csrf_token %}
+      <input class="form-control" name="days" type="number" min="1" max="30" placeholder="за N рабочих дней">
+      <input class="form-control" name="on" type="date">
+      <button class="btn btn-outline-primary" type="submit">Напомнить</button>
+    </form>
+    {% if error.field == 'reminder' %}<div class="text-danger" data-error="reminder" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+  </section>
+
+  <section class="mt-3" aria-label="Комментарии">
+    <h2 class="h6">Комментарии и лента</h2>
+    <ol class="list-unstyled" data-comments>
+      {% for item in feed %}
+      <li{% if item.kind == "comment" %} data-comment-id="{{ item.comment.pk }}"{% endif %}>
+        {% if item.kind == "event" %}<span class="text-muted">{% if item.event.action == "tasks.created" %}Создал задачу{% else %}{{ item.event.action }}{% endif %}: {{ item.event.at|date:"d.m.Y H:i" }}</span>
+        {% else %}{% if item.comment.deleted_at %}<span class="text-muted">Комментарий удалён</span>
+        {% else %}<strong>{{ item.comment.author.full_name }}</strong> {{ item.comment.text }}{% if item.comment.edited_at %} <span data-comment-edited>изменено</span>{% endif %}{% endif %}{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    {% if can_comment %}
+    <form method="post" action="/tasks/{{ task.pk }}/comments/" data-form="task-comment" enctype="multipart/form-data">
+      {% csrf_token %}
+      <textarea class="form-control mb-2" name="text" data-task-field="text" rows="3"></textarea>
+      <input class="form-control mb-2" type="file" name="file">
+      <button class="btn btn-primary" type="submit">Отправить</button>
+    </form>
+    {% endif %}
+  </section>
+
+  {% if can_delete %}
+  <form method="post" action="/tasks/{{ task.pk }}/delete/" class="mt-3" data-form="task-delete">
+    {% csrf_token %}
+    {% if error.field == "confirm" %}
+    <div data-tasks-confirm>
+      <p>Удалить задачу без возможности вернуть?</p>
+      <button class="btn btn-danger" type="submit" name="confirm" value="1">Подтвердить</button>
+    </div>
+    {% else %}
+    <button class="btn btn-outline-danger" type="submit">Удалить</button>
+    {% endif %}
+  </form>
+  {% endif %}
+</article>
