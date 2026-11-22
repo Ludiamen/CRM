@@ -342,6 +342,26 @@ def work_units_of(user) -> frozenset[int]:
     return frozenset(result)
 
 
+def managed_units(user) -> frozenset[int]:
+    """Узлы, которыми `user` управляет: с отметкой руководителя или заместителя и все вложенные.
+
+    Обычное членство управления не даёт: узел, где человек просто состоит, в набор не входит, как и его
+    вложенные. Заместитель равен руководителю. Уволенный — `frozenset()`. Два запроса, без кэша.
+    """
+    if getattr(user, "state", None) == "dismissed":
+        return frozenset()
+    paths = list(
+        Unit.objects.filter(
+            memberships__user=user, memberships__mark__in=[Membership.Mark.HEAD, Membership.Mark.DEPUTY])
+        .values_list("path", flat=True).distinct())
+    if not paths:
+        return frozenset()
+    condition = Q()
+    for path in paths:
+        condition |= Q(path__startswith=path)
+    return frozenset(Unit.objects.filter(condition).values_list("pk", flat=True))
+
+
 def queue_people(unit_id: int) -> list[PersonRef]:
     """Участники очереди узла: его прямые участники и руководители и заместители всех вышестоящих узлов.
 

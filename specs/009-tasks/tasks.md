@@ -51,7 +51,7 @@ opus (архитектурные и финальные), человек (под�
 - [x] T-9002 [P] [opus] `Purpose.TASK = "task"` в конце перечня и миграция `core 0012`; тест добавления значения —
   `backend/apps/core/models/files.py`, `backend/apps/core/migrations/0012_storedfile_task_purpose.py`,
   `backend/tests/test_tasks_models.py::test_purpose_task_is_last` — (FR-693)
-- [ ] T-9003 [P] [opus] `org.services.structure.managed_units(user)` — узлы с отметкой руководителя или
+- [x] T-9003 [P] [opus] `org.services.structure.managed_units(user)` — узлы с отметкой руководителя или
   заместителя и все вложенные, **без обычных членств**; тесты «рядовой участник вышестоящего узла не
   управляет вложенными», «заместитель управляет как руководитель», «уволенный — пусто» —
   `backend/apps/org/services/structure.py`, `backend/tests/test_org_structure.py` (добавление) — (FR-677, FR-678)

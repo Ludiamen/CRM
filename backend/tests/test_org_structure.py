@@ -742,3 +742,45 @@ def test_unknown_kind_refused_even_direct():
     error = expect_code("kind_rules", structure().create_unit, kind="box", name="Ящик", parent=root, actor=manager)
     assert "Неизвестный вид узла" in str(error)
     assert model("org.Unit").objects.count() == units_before and events("unit.created") == []
+
+
+# --- управляемые узлы (срез 009, T-9003; FR-677, FR-678) ------------------------------------------
+
+def test_managed_units_of_ordinary_member_are_empty():
+    """FR-677, FR-678: обычное членство управления не даёт — рядовой участник вышестоящего узла не управляет
+    ни своим узлом, ни вложенными; участник вложенного узла не получает и вышестоящий."""
+    tree = support_org.make_tree({"Сеть": {"Серверы": {"Стойки": {}}}, "Поддержка": {}})
+    above = support.make_employee()
+    nested = support.make_employee()
+    support_org.make_member(above, tree["Сеть"])
+    support_org.make_member(nested, tree["Серверы"])
+    assert structure().managed_units(above) == frozenset()
+    assert structure().managed_units(nested) == frozenset()
+
+
+def test_managed_units_of_deputy_equal_head_and_include_all_nested():
+    """FR-677: руководитель и заместитель управляют своим узлом и всеми вложенными (на любую глубину, команды
+    тоже); чужие узлы и вышестоящие не входят. Заместитель равен руководителю."""
+    tree = support_org.make_tree({"Сеть": {"Серверы": {"team:Дежурные": {}}, "Связь": {}},
+                                  "Поддержка": {"Линия": {}}, "Чужой": {"Вложенный": {}}})
+    head, deputy = support.make_employee(), support.make_employee()
+    support_org.make_member(head, tree["Сеть"], mark="head")
+    support_org.make_member(deputy, tree["Поддержка"], mark="deputy")
+    assert structure().managed_units(head) == frozenset(
+        {tree["Сеть"].pk, tree["Серверы"].pk, tree["Дежурные"].pk, tree["Связь"].pk})
+    assert structure().managed_units(deputy) == frozenset({tree["Поддержка"].pk, tree["Линия"].pk})
+    # заместитель узла получает ровно то же, что руководитель того же узла
+    head_too = support.make_employee()
+    support_org.make_member(head_too, tree["Поддержка"], mark="head")
+    assert structure().managed_units(head_too) == structure().managed_units(deputy)
+
+
+def test_managed_units_of_dismissed_user_are_empty():
+    """FR-677, FR-678: уволенный не управляет ничем, даже если отметка руководителя осталась."""
+    tree = support_org.make_tree({"Сеть": {"Серверы": {}}})
+    head = support.make_employee(state="dismissed")
+    support_org.make_member(head, tree["Сеть"], mark="head")
+    assert structure().managed_units(head) == frozenset()
+    support.model("core.User").objects.filter(pk=head.pk).update(state="active")
+    assert structure().managed_units(support.model("core.User").objects.get(pk=head.pk)) == frozenset(
+        {tree["Сеть"].pk, tree["Серверы"].pk})
