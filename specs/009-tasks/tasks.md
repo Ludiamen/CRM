@@ -55,7 +55,7 @@ opus (архитектурные и финальные), человек (под�
   заместителя и все вложенные, **без обычных членств**; тесты «рядовой участник вышестоящего узла не
   управляет вложенными», «заместитель управляет как руководитель», «уволенный — пусто» —
   `backend/apps/org/services/structure.py`, `backend/tests/test_org_structure.py` (добавление) — (FR-677, FR-678)
-- [ ] T-9004 [opus] данные установки (после T-9002): права `tasks.use`, `tasks.assign` — строки
+- [x] T-9004 [opus] данные установки (после T-9002): права `tasks.use`, `tasks.assign` — строки
   `core.Permission`, выданы роли «Сотрудник ИТ»; миграция `core 0013_tasks_permissions` с зависимостью от
   `0012`; тест «роль без `tasks.assign` не ставит задачу другому» — `backend/apps/core/migrations/0013_tasks_permissions.py`,
   `backend/tests/test_tasks_permissions.py` — (FR-676, FR-678)
