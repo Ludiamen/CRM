@@ -121,7 +121,7 @@ opus (архитектурные и финальные), человек (под�
   | 30 | `test_pages_stage3b.py` — если при исполнении найдётся проверка перечня статики срезов | без задач | +`tasks.js`, `tasks.css` | T-9008; если теста нет — строку снять |
   | 31 | e2e `test_e04_my_settings.py` (строки каталога `SD_KINDS + … + MESSENGER_KINDS_E2E`), `test_e12_criteria.py` (разделы каталога), меню в `test_d08_heads.py`, `test_o04_find_colleague.py` | без видов задач и пунктов «Задачи» | +виды задач и «Задачи»/«Настройки задач» | T-9212 (виды), T-9217 (меню); проверить при исполнении |
   — `backend/tests/` — (FR-674…699)
-- [ ] T-9012 [P] [opus] nginx: `location ~ ^/tasks/files/$` с `client_max_body_size 25m` и повтором
+- [x] T-9012 [P] [opus] nginx: `location ~ ^/tasks/files/$` с `client_max_body_size 25m` и повтором
   `proxy_*` (образец мессенджера) в `deploy/nginx.conf` и `deploy/nginx.prod.conf`; проверка — строка 27–28
   T-9011 — `deploy/nginx.conf`, `deploy/nginx.prod.conf` — (NFR-713)
 
