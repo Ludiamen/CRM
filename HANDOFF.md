@@ -1,5 +1,24 @@
 # Передача между сессиями — портал ИТ-отдела (CRM)
 
+> **2026-11-22: срез 009 «Задачи», Этап 1 почти закрыт.** Документы среза подписаны владельцем:
+> REF-MOD-TASKS v4, REF-SRC (SRC-370/371), ADR-0018 v4, SPEC-009 v3, PLAN-009 v4 (`9e1d9e7b…`),
+> TASKS-009 v4 (`4e3b83c2…`, 68 задач, 20 решений, 35 строк покрытия). Выполнены и закоммичены:
+> T-9001 (каркас `apps.tasks`, `INSTALLED_APPS`, include), T-9002 (`Purpose.TASK`, `core 0012`),
+> T-9003 (`managed_units` + 3 теста), T-9004 (права `tasks.use`/`tasks.assign`, `core 0013`, 2 теста),
+> T-9005 (`backend/tests/CONTRACT-009.md`), T-9006 (`tests/support_tasks.py`), T-9007
+> (`tests/e2e/helpers_tasks.py`), T-9008 (SortableJS 1.15.6, `_assets.html`, `verify_vendor`),
+> T-9009 (адреса, три задания cron, страницы-заглушки), T-9010 (сброс стенда `tasks`,
+> `e2e_tasks_seed`), T-9012 (nginx `/tasks/files/` 25m). Сбор: **4405 тестов**, `manage.py check` — 0.
+> **Осталась T-9011 — правки прежних тестов, ждёт разрешения владельца.** Замер до правок
+> (`crm-work/slice009/stage1/T-9011/before-edits.log`): 32 падения ровно в темах таблицы T-9011
+> (Purpose, число прав, хвост `INSTALLED_APPS`, cron 24, порядок `stand_reset`, nginx три 25m).
+> Сверх таблицы найдены 5 тестов той же природы, их тоже нужно править и владельцу подтвердить:
+> `test_permissions.py::test_every_protected_view_requires_permission_403` (таблица прав без
+> `/settings/tasks/`), `test_messenger_boundaries.py::test_purposes_are_6_and_messenger_last`,
+> `test_feed_deploy.py::test_previous_eighteen_cron_entries_keep_names_and_minutes`,
+> `test_feed_deploy.py::test_nginx_dev_config_has_feed_files_location_with_25m_limit` и `…prod…`.
+> После разрешения — правки по одной с диффом «было / стало», затем полный серверный прогон и Этап 2.
+
 > **2026-11-16: срез 007 закрыт полностью — владелец выполнил `git push`.** Ветка `main` = `origin/main`
 > (`ca62fc6`, «T-7309/T-7310»), коммитов впереди нет. `python3 tools/sdd.py проверить`: 105 документов,
 > 0 ошибок/предупреждений; MVP покрыто **36 из 38** — не покрыты только **CAP-52 (мессенджер)** и
