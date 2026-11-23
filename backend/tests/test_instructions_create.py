@@ -264,5 +264,6 @@ def test_texts_contain_every_contract_refusal():
         "basis_delete_confirm": "Удалить вид основания?",
         "task_forbidden": "Создать задачу можно с правом работы с задачами",
         "task_missing": "Задача не найдена или недоступна",
+        "discipline_forbidden": "Отчёт по дисциплине доступен руководителям подразделений",
     }
     assert expected.items() <= TEXTS.items()

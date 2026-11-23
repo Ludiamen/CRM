@@ -223,7 +223,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 |---|---|---|
 | `services.access` | раздел 4 | T-10102…T-10107, T-10110 |
 | `services.basis` | `all()`, `active()`, `add(actor, title)`, `rename(actor, kind, title)`, `delete(actor, kind)` | T-10103; T-10115 |
-| `services.instructions` | `create(actor, *, title, text="", basis_kind, basis_number, basis_date, assignee, deadline, members=(), controller=None, periodicity="", dates=()) -> Instruction`, `update(actor, instruction, **fields) -> Instruction`, `close(actor, instruction) -> Instruction`, `link_task(actor, instruction, *, title, assignee=None, deadline=None) -> Task`, `reassign(user) -> int` | T-10103; T-10106; T-10112; T-10117 |
+| `services.instructions` | `create(actor, *, title, text="", basis_kind, basis_number, basis_date, assignee, deadline, members=(), controller=None, periodicity="", dates=()) -> Instruction`, `update(actor, instruction, **fields) -> Instruction`, `close(actor, instruction) -> Instruction`, `link_task(actor, instruction, *, title=None, task=None, assignee=None, deadline=None) -> Task`, `reassign(user) -> int` | T-10103; T-10106; T-10112; T-10117 |
 | `services.dates` | `build(instruction, *, periodicity="", dates=()) -> list[InstructionReportDate]`, `rebuild(instruction, *, deadline=None, periodicity=None, dates=None) -> list`, `next_open(instruction) -> InstructionReportDate | None`, `state_of(instruction) -> str` | T-10104; T-10109 |
 | `services.reports` | `submit(actor, instruction, *, date=None, text, files=()) -> InstructionReport`, `add_part(actor, instruction, report_date, *, text, files=()) -> InstructionReportPart`, `decide(actor, report, *, accept, comment="") -> InstructionReport` | T-10105; T-10106 |
 | `services.transfers` | `request(actor, instruction, *, new_deadline, reason) -> InstructionTransfer`, `decide(actor, transfer, *, approve, comment="") -> InstructionTransfer` | T-10107 |
@@ -231,7 +231,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | `services.notify_rules` | `recipients(instruction, event, *, actor=None) -> dict[user_id, str]` (при совмещении — один вид с приоритетом), `texts(instruction, kind, **data) -> dict[user_id, str]` | T-10113 |
 | `services.digest` | `send(now) -> int` (число уведомлений) | T-10114 |
 | `services.registry` | `rows(viewer, *, preset="mine", filters=None, sort="", page=1, per_page=20) -> dict` (ключи `rows`, `total`, `pages`, `page`, `per_page`); `state_of(instruction) -> str` | T-10109 |
-| `services.discipline` | `rows(viewer, *, date_from, date_to, unit=None) -> dict` (ключи `rows`, `open_rows`, `totals`); `main_unit(person)` | T-10110 |
+| `services.discipline` | `rows(viewer, *, date_from, date_to, unit=None) -> dict` (ключи `rows`, `closed`, `open_rows`, `totals`); `main_unit(person)` | T-10110 |
 | `services.excel` | `build(data) -> bytes` (`.xlsx`, лист «Дисциплина») | T-10110 |
 | `services.files` | `store(actor, instruction, upload, *, kind, report=None, part=None) -> InstructionFile`, `bind(report=None, part=None, file_ids=())`, `content(instruction, file, viewer)`, `file_purposes() -> FilePurpose` | T-10116 |
 | `services.retention` | `purge(now) -> dict` (ключи `instructions`, `reports`, `parts`, `files`, `transfers`) | T-10118 |
@@ -357,8 +357,9 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | `[data-history]` | корень истории карточки; записи — строки журнала и переносы | T-10117; e2e |
 | `[data-instruction-file="<uuid>"]` | «таблетка» загруженного файла; `data-file-state` ∈ `pending`/`clean`/`quarantine` | T-10116 |
 | `[data-instructions-confirm]` | второй шаг снятия с контроля, удаления вида, уменьшения срока хранения | T-10106; T-10115 |
-| `[data-ladder]` | блок лестницы; `[data-ladder-offset]` — порог в рабочих днях | T-10108 |
+| `[data-ladder]` | блок лестницы; `[data-ladder-offset]` — порог в рабочих днях; форма `data-form="instruction-ladder"` | T-10108; e2e |
 | `[data-discipline-table]` / `[data-discipline-row]` | таблица отчёта и её строка (`data-unit`, `data-person`, `data-in-time`, `data-with-transfer`, `data-overdue`) | T-10110; e2e |
+| `[data-instruction-tasks]` | блок связанных задач карточки; форма `data-form="instruction-task"` — создание задачи из поручения (только исполнителю) | e2e `t10_08` |
 | `[data-form="instruction-new\|instruction-edit\|instruction-report\|instruction-part\|instruction-transfer\|instruction-close\|instructions-filters\|discipline-form\|basis-form"]` | формы среза (для помощников приёмки) | e2e |
 | `[data-instruction-field="title\|text\|basis_kind\|basis_number\|basis_date\|assignee\|members\|deadline\|controller\|periodicity\|dates\|date\|new_deadline\|reason\|comment\|ladder\|retention_years"]` | поле формы и карточки (запасной путь без JS) | T-10103…T-10115; e2e |
 | `[data-decide="accept\|return"]` | кнопка решения по отчёту | T-10105; e2e |
@@ -426,8 +427,8 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | `overdue` | исполнитель, соисполнители, контролёр, автор | T-10113 |
 | `report_submitted` | контролёр и автор, кроме отправителя | T-10113 |
 | `report_accepted`, `report_returned` | исполнитель и соисполнители, кроме решившего | T-10113 |
-| `transfer` (запрос) | контролёр и автор, кроме запросившего | T-10113 |
-| `transfer` (решение) | исполнитель, кроме решившего | T-10113 |
+| `transfer_requested` | контролёр и автор, кроме запросившего; вид `instructions.transfer` | T-10113 |
+| `transfer_decided` | исполнитель, кроме решившего; вид `instructions.transfer` | T-10113 |
 | `digest` | контролёр и автор | T-10114 |
 | Совмещение ролей | человек получает **одно** сообщение с приоритетом: `overdue` → `report_overdue` → `report_submitted` → `report_accepted` → `report_returned` → `transfer` → `digest` | T-10113 |
 | Свои действия | назначил себе — уведомления нет; перенос себе — нет; сводка о своих — есть | T-10113 |
@@ -478,11 +479,13 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | Что | Требование | Тесты |
 |---|---|---|
 | Видимость реестра | `author`/`controller`/`assignee`/соисполнитель или `manages(viewer, assignee)` или `manages(viewer, author)`; администратор чужих не видит | T-10109 |
+| Форма строки реестра | `rows` — список `Instruction` с вычисленным атрибутом `.state` (код раздела 7, К23); `total`/`pages`/`page`/`per_page` — числа | T-10109 |
 | Пресеты | `mine` (исполнитель или соисполнитель), `control` (контролёр), `subordinate` (ответственный в управляемых узлах, **кроме собственных**), `overdue` (статус «Просрочено»); неизвестный — `mine` | T-10109 |
 | Фильтры | `basis` (номер вида), `assignee`, `deadline` (`overdue`/`today`/`week`/`month`/`none`), `state` (`control`/`waiting`/`review`/`returned`/`overdue`/`done`), `q` (название и номер); «Сбросить» возвращает пресет | T-10109 |
 | Порядок и страницы | по умолчанию срок, затем изменение (оба по возрастанию, пустой срок — в конце); `sort=updated` — изменение; страницы 20/50, `total`/`pages`/`page` | T-10109 |
 | SQL | фильтры словарём, значения — параметрами; сортировки — из белого списка; поиск — `ILIKE` по названию и номеру; цепочка узлов — массивом `= ANY(%s)` (NFR-721) | T-10109 |
 | Дисциплина: население | поручения, снятые с контроля (`closed_at`) в периоде `from…to` включительно, по подразделению (`unit` — узел и вложенные) | T-10110 |
+| Форма строк дисциплины | `rows` — словари `{"kind": "person"\|"unit", "unit", "person", "in_time", "with_transfer", "overdue", "total", "final_in_time", "final_overdue"}` (две шкалы); `open_rows` — те же поля для поручений на контроле с истёкшим сроком; `totals` — суммы по обеим шкалам | T-10110 |
 | Дисциплина: шкалы | по исходному сроку: «в срок», «с переносом» (был согласованный перенос и исполнено не позже срока с переносами), «просрочено»; по сроку с переносами: «в срок», «просрочено»; категории внутри разреза взаимоисключающие | T-10110 |
 | Последний перенос | срок с переносами — последний согласованный (`approved`) перенос с `decided_at <= closed_at`, иначе `deadline` | T-10110 |
 | Открытые просроченные | отдельной строкой, в три категории не входят | T-10110 |
@@ -551,6 +554,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | `basis_delete_confirm` | `confirm` | «Удалить вид основания?» | T-10115 |
 | `task_forbidden` | `task` | «Создать задачу можно с правом работы с задачами» | T-10112 |
 | `task_missing` | `task` | «Задача не найдена или недоступна» | T-10112 |
+| `discipline_forbidden` | `unit` | «Отчёт по дисциплине доступен руководителям подразделений» | T-10110 |
 
 Отказы службы `tasks` при создании задачи из поручения (срок в прошлом, чужой исполнитель и т. п.) приходят
 своими кодами `tasks` и показываются у поля задачи; контракт их не дублирует.
@@ -658,3 +662,4 @@ T-10003, T-10007 и **до** T-10160 (решение 2 задач). Строки
 | К20 | `ladder` JSON — `{"offsets": [...], "due": bool, "overdue": bool}`; пустой объект — умолчание настроек | план, «Модель данных»; FR-709 |
 | К21 | Периодичность отчётных дат не хранится в модели: `build`/`rebuild` получают её из формы; ряд строится заново, даты с отчётами сохраняются, смена периодичности при таких датах — `dates_locked` | план не перечисляет поле `periodicity`; FR-705, FR-717 |
 | К22 | `stage` напоминания — `due`, `overdue`, `r3`, `r1` или `d<offset>` (1–60); перечень плана (`d30`…`d1`) — стандартные пороги умолчания, а не замкнутый набор | план разрешает свою лестницу 1–60 (FR-709); фиксированный `choices` не дал бы её сохранить |
+| К23 | `registry.rows` отдаёт `Instruction` с атрибутом `.state`; `discipline.rows` — словари с `kind` (`person`/`unit`), `unit`, `person`, `in_time`, `with_transfer`, `overdue`, `total`, `final_in_time`, `final_overdue`; `open_rows` — те же поля, `totals` — суммы | план не задаёт форму строк; тестам нужны стабильные имена, а «две шкалы» — отдельные поля |

@@ -255,3 +255,15 @@ def check_360(page):
     table = page.locator("[data-discipline-table]")
     if table.count():
         assert table.first.evaluate("node => node.scrollWidth >= node.clientWidth")
+
+# --- кэш учёток круга (для десяти файлов T-10124) -------------------------------------------------
+
+_CASTS: dict = {}
+
+
+def cast_for(browser, admin_page, mailpit, new_context):
+    """Учётки сценариев поручений один раз на круг браузера (ключ — `browser.e2e_project`)."""
+    key = browser.e2e_project
+    if key not in _CASTS:
+        _CASTS[key] = instructions_cast(admin_page, mailpit, new_context)
+    return _CASTS[key]

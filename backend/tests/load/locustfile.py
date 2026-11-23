@@ -1670,3 +1670,76 @@ class TaskUser(HttpUser):
     @task(1)
     def task_search(self):
         self.client.get("/search/", {"q": self.query}, name="/search/?q=<tasks>")
+
+
+class InstructionUser(HttpUser):
+    """Срез 010 (T-10150, NFR-720, NFR-728): сотрудник работает с поручениями — реестр и пресеты, карточка,
+    отчёт по отчётной дате, дисциплина и Excel. Данные — `fill_instructions.py` (1 000 поручений на 100
+    сотрудников). Запуск только этого класса (замер NFR-720 — после отдельного решения владельца, T-10304):
+
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \\
+            --reset-stats --host https://127.0.0.1:8031 InstructionUser
+
+    Номера поручений и отчётных дат берутся из разметки списка и карточки (`data-instruction-id`,
+    `data-report-date`) при входе. Пределы: страницы p95 не больше 500 мс (NFR-720)."""
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        page = self.client.get("/instructions/?preset=mine", name="setup /instructions/").text
+        self.instruction_ids = sorted(set(re.findall(r'data-instruction-id="(\d+)"', page))) or ["1"]
+        self.card_id = self.instruction_ids[0]
+        card = self.client.get(f"/instructions/{self.card_id}/", name="setup /instructions/<n>/").text
+        self.date_ids = sorted(set(re.findall(r'data-report-date="(\d+)"', card)))
+        self.text = " ".join(random.choice(("проверка", "отчёт", "срок", "согласование")) for _ in range(5))
+
+    def _post(self, path, data, name):
+        token = self.client.cookies.get("csrftoken", "")
+        with self.client.post(path, data={**data, "csrfmiddlewaretoken": token},
+                              headers={"Referer": self.host + path, "HX-Request": "true"},
+                              name=name, allow_redirects=True, catch_response=True) as response:
+            if response.status_code >= 400:
+                response.failure(f"{path}: {response.status_code}")
+
+    @task(3)
+    def registry(self):
+        self.client.get("/instructions/", name="/instructions/")
+
+    @task(2)
+    def registry_preset(self):
+        preset = random.choice(("mine", "control", "subordinate", "overdue"))
+        self.client.get(f"/instructions/?preset={preset}", name="/instructions/?preset=<n>")
+        self.client.get(f"/instructions/list/?preset={preset}", headers={"HX-Request": "true"},
+                        name="/instructions/list/?preset=<n>")
+
+    @task(2)
+    def card(self):
+        instruction_id = random.choice(self.instruction_ids)
+        self.client.get(f"/instructions/{instruction_id}/", name="/instructions/<n>/")
+
+    @task(1)
+    def submit_report(self):
+        if not self.date_ids:
+            return
+        instruction_id = random.choice(self.instruction_ids)
+        self._post(f"/instructions/{instruction_id}/reports/",
+                   {"date": random.choice(self.date_ids), "text": self.text},
+                   name="POST /instructions/<n>/reports/")
+
+    @task(1)
+    def discipline(self):
+        with self.client.get("/instructions/discipline/", name="/instructions/discipline/",
+                             catch_response=True) as response:
+            if response.status_code not in (200, 302, 403):
+                response.failure(f"дисциплина: {response.status_code}")
+
+    @task(1)
+    def discipline_excel(self):
+        with self.client.get("/instructions/discipline.xlsx", name="/instructions/discipline.xlsx",
+                             catch_response=True) as response:
+            if response.status_code not in (200, 302, 403):
+                response.failure(f"Excel: {response.status_code}")
