@@ -23,10 +23,11 @@ def test_seven_permissions_created_by_migration():
 
 
 def test_three_builtin_roles_with_initial_permissions():
-    """FR-015, FR-020, FR-118: три начальные роли; у администратора все двадцать прав (срезы 001–009), у «Руководителя» ровно `staff.view` и `feed.post_all`, у «Сотрудника ИТ» `staff.view`, `knowledge.edit`, `feed.post_all`, `tasks.use` и `tasks.assign`."""
+    """FR-015, FR-020, FR-118: три начальные роли; у администратора все двадцать два права (срезы 001–010), у «Руководителя» ровно `staff.view` и `feed.post_all`, у «Сотрудника ИТ» `staff.view`, `knowledge.edit`, `feed.post_all`, `tasks.use`, `tasks.assign`, `instructions.use` и `instructions.assign`."""
     from tests.support_feed import PERMISSIONS_007
     from tests.support_kb import PERMISSIONS_005
     from tests.support_lists import PERMISSIONS_006
+    from tests.support_instructions import PERMISSIONS_010
     from tests.support_notify import PERMISSIONS_004
     from tests.support_tasks import PERMISSIONS_009
 
@@ -35,10 +36,10 @@ def test_three_builtin_roles_with_initial_permissions():
     assert set(builtin) == {support.ADMIN_ROLE, support.MANAGER_ROLE, support.STAFF_ROLE}
     assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(
         PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003 + PERMISSIONS_004 + PERMISSIONS_005 + PERMISSIONS_006
-        + PERMISSIONS_007 + PERMISSIONS_009)
+        + PERMISSIONS_007 + PERMISSIONS_009 + PERMISSIONS_010)
     assert set(builtin[support.MANAGER_ROLE].permissions.values_list("code", flat=True)) == {"staff.view", "feed.post_all"}
     assert set(builtin[support.STAFF_ROLE].permissions.values_list("code", flat=True)) == {
-        "staff.view", "knowledge.edit", "feed.post_all", *PERMISSIONS_009}
+        "staff.view", "knowledge.edit", "feed.post_all", *PERMISSIONS_009, *PERMISSIONS_010}
     employee = support.logged_in(support.make_employee(roles=[builtin[support.STAFF_ROLE]]))
     assert employee.get("/me/").status_code == 200 and employee.get("/me/security/").status_code == 200
     assert employee.get("/staff/").status_code == 200, "сотрудник со `staff.view` открывает список"
@@ -122,6 +123,8 @@ def protected_table(victim, role):
         ("get", "/settings/mail-log/", "settings.portal"),
         ("get", "/settings/security/", "settings.security"), ("post", "/settings/security/", "settings.security"),
         ("get", "/settings/notifications/", "notify.manage"), ("post", "/settings/notifications/", "notify.manage"),
+        ("get", "/instructions/", "instructions.use"), ("get", "/instructions/list/", "instructions.use"),
+        ("get", "/settings/instructions/", "settings.portal"),
         ("get", "/settings/tasks/", "settings.portal"), ("post", "/settings/tasks/", "settings.portal"),
         ("get", "/settings/tasks/categories/", "settings.portal"),
         ("post", "/settings/tasks/categories/", "settings.portal"),
@@ -132,13 +135,14 @@ def protected_table(victim, role):
 
 def test_every_protected_view_requires_permission_403():
     """FR-018: право проверяется на каждом представлении независимо от меню; без входа — на вход, без права — 403."""
+    from tests.support_instructions import PERMISSIONS_010
     from tests.support_notify import PERMISSIONS_004
 
     victim, spare_role = support.make_employee(), factories.make_role(name="Запасная")
     table = protected_table(victim, spare_role)
     anonymous = support.make_client(ip="198.51.100.140")
     # `PERMISSIONS` — права среза 001; страница настроек уведомлений среза 004 стоит под `notify.manage`
-    permissions = PERMISSIONS + PERMISSIONS_004
+    permissions = PERMISSIONS + PERMISSIONS_004 + PERMISSIONS_010
     rest = {p: support.logged_in(make_with_permissions(*[q for q in permissions if q != p]), ip="198.51.100.141")
             for p in permissions}
     only = {p: support.logged_in(make_with_permissions(p), ip="198.51.100.142") for p in permissions}
@@ -154,7 +158,7 @@ def test_every_protected_view_requires_permission_403():
     from tests.support_org import SLICE_002_STAFF_ROUTES, route_path
 
     known = ("login/", "logout/", "password/", "activate/", "me/", "staff/", "structure/", "calendar/", "ui/",
-             "roles/", "audit/", "settings/", "tasks/", "health/", "media/", "static/", "")
+             "roles/", "audit/", "settings/", "tasks/", "instructions/", "health/", "media/", "static/", "")
     paths = [path for _, path, _ in table] + [route_path(t, 1) for _, t, _ in SLICE_002_STAFF_ROUTES]
     for route, _ in support.all_routes():
         assert route.startswith(known), f"маршрут {route!r} не относится ни к одному разделу плана"

@@ -225,19 +225,22 @@ def test_stand_reset_runs_in_migration_transaction(protected_root, django_captur
 
 def test_tasks_stand_reset_is_registered_last_and_runs_first():
     """FR-643 (CONTRACT-009, 1.3, 15): в точке `stand_reset` функция `apps.tasks.stand.stand_reset`
-    зарегистрирована ровно один раз и последней — сразу после `apps.messenger.stand.stand_reset`; в обратном порядке
-    (как зовёт `e2e_reset_stand`) задачи идут первыми, затем мессенджер и лента."""
+    зарегистрирована ровно один раз, предпоследней — сразу после `apps.messenger.stand.stand_reset`; последняя —
+    `apps.instructions.stand` среза 010; в обратном порядке (как зовёт `e2e_reset_stand`) поручения идут первыми,
+    затем задачи, мессенджер и лента."""
     from apps.core import extensions
     from apps.tasks.stand import stand_reset
 
     registered = list(extensions.registered("stand_reset"))
     names = [func.__module__ for func in registered]
     assert registered.count(stand_reset) == 1, "stand_reset задач не зарегистрирован ровно один раз"
-    assert names[-1] == "apps.tasks.stand", f"последняя запись точки: {names[-1]}"
-    assert names[-2] == "apps.messenger.stand", f"перед задачами стоит {names[-2]}, а не messenger"
+    assert names[-2] == "apps.tasks.stand", f"предпоследняя запись точки: {names[-2]}"
+    assert names[-1] == "apps.instructions.stand", f"последняя запись точки: {names[-1]}"
+    assert names[-3] == "apps.messenger.stand", f"перед задачами стоит {names[-3]}, а не messenger"
     call_order = [func.__module__ for func in reversed(registered)]
-    assert call_order[0] == "apps.tasks.stand", "tasks вызывается не первым"
-    assert call_order[1] == "apps.messenger.stand", "messenger вызывается не вторым"
+    assert call_order[0] == "apps.instructions.stand", "instructions вызывается не первым"
+    assert call_order[1] == "apps.tasks.stand", "tasks вызывается не вторым"
+    assert call_order[2] == "apps.messenger.stand", "messenger вызывается не третьим"
 
 
 # --- проверка стенда -------------------------------------------------------------------------------------

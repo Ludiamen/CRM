@@ -26,6 +26,20 @@
 - ожидаемые падения прежних тестов из-за `stand_reset`/cron/`APPS_TAIL` — **7**, все в таблице T-10111
   (`crm-work/slice010/stage1/T-10111-before.log`).
 
+## T-10111 — правки прежних тестов (разрешены владельцем 2026-11-23)
+
+Владелец разрешил **все строки** таблицы T-10111 и обновление стенда T-10159. Применены строки, чьё поведение
+уже есть: 1 (cron 24→27 в семи deploy-файлах), 2 (хвост `INSTALLED_APPS` 8→9, `support_feed.APPS_TAIL`),
+5 (права 20→22: `test_permissions`, `test_org_permissions`, `test_sd_access`, `test_feed_seed`,
+`test_lists_seed`), 6 (Purpose 7→8: feed/messenger/tasks core_changes, boundaries, tasks_models), 8/19 (порядок
+`stand_reset`: пять тестов стенда + `test_kb_deploy` + `test_messenger_boundaries` + `test_tasks_core_changes`),
+9 (nginx 3→4 `25m`), 10 (хвост приложений в `test_tasks_core_changes`). Проверка — **353 passed**
+(`crm-work/slice010/stage1/T-10111-after-final.log`), замер до правок — `T-10111-measure.log` (37 failed).
+
+Остались на Этап 3 (поведение появляется позже): строки 11–16 (меню, поиск, карточка), 18 и 18а (каталог
+видов 30→40; в `test_messenger_deploy` уже поправлено «семь»→«восемь» назначений, счётчик видов — 30),
+22 (e2e). T-10111 в `tasks.md` остаётся `[ ]` до этих правок, как T-9011 среза 009.
+
 ## Этап 2 — начало (2026-11-23)
 
 | Задача | Результат |
@@ -37,9 +51,8 @@
 
 ## Точный следующий шаг
 
-1. **T-10111 — только после разрешения владельца.** Показать владельцу таблицу TASKS-010 (22 строки с 18а) и
-   замер: падают `test_tasks_stand`, `test_feed_stand`, `test_lists_stand`, `test_messenger_stand`,
-   `test_kb_deploy` (порядок `stand_reset`, `APPS_TAIL`, cron 24→27). Без разрешения не править.
+1. **T-10111 — правки, доступные сейчас, сделаны** (см. раздел выше); остаток — в партиях Этапа 3. Разрешение
+   владельца на все строки получено; повторно не спрашивать.
 2. **Этап 2 — продолжить красные тесты** (T-10101/T-10102 сделаны): следующий файл — **T-10103**
    `tests/test_instructions_create.py` + `test_instructions_basis.py` (создание, основание, журнал, состав),
    затем T-10104 dates, T-10105 reports, T-10106 close, T-10107 transfers, T-10108 reminders, T-10109 registry,

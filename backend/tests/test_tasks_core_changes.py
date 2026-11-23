@@ -106,13 +106,13 @@ def _without_tasks():
 # --- Purpose.TASK и миграция core 0012 --------------------------------------------------------------------
 
 def test_purpose_task_is_last_and_migration_0012_alters_purpose():
-    """FR-662, FR-693 (CONTRACT-009, 2.2): `StoredFile.Purpose` — семь значений, `TASK = "task"` («вложение
-    задачи») последним; `max_length` 16 и умолчание `photo` не менялись; миграция
+    """FR-662, FR-693 (CONTRACT-009, 2.2): `StoredFile.Purpose` — восемь значений, `TASK = "task"` («вложение
+    задачи») перед `instruction` среза 010; `max_length` 16 и умолчание `photo` не менялись; миграция
     `core 0012_storedfile_task_purpose` — один `AlterField` поля `purpose`, зависит от `0011`; строку с назначением
     `task` можно создать."""
     StoredFile = support.model("core.StoredFile")
     assert tuple(StoredFile.Purpose.values) == ("photo", "attachment", "knowledge", "lists", "feed", "messenger",
-                                                "task")
+                                                "task", "instruction")
     assert StoredFile.Purpose.TASK == "task" and StoredFile.Purpose.TASK.label == "вложение задачи"
     field = StoredFile._meta.get_field("purpose")
     assert field.max_length == 16 and field.default == "photo"
@@ -202,7 +202,7 @@ def test_settings_tail_and_tasks_urls_are_guarded():
     from django.conf import settings
 
     installed = list(settings.INSTALLED_APPS)
-    assert installed[-1] == "apps.tasks" and installed[-2] == "apps.messenger"
+    assert installed[-1] == "apps.instructions" and installed[-2] == "apps.tasks" and installed[-3] == "apps.messenger"
 
     path = support.BACKEND_DIR / "config" / "urls.py"
     source = path.read_text(encoding="utf-8")
@@ -222,10 +222,10 @@ def test_settings_tail_and_tasks_urls_are_guarded():
     assert "handler404" in source and "handler500" in source, "обработчики ошибок пропали"
 
 
-def test_cron_has_24_registers_and_three_guarded_tasks_jobs():
-    """FR-670 (CONTRACT-009, 1.2, 1.4): в `config/cron.py` двадцать четыре вызова `register`; три задания задач —
+def test_cron_has_27_registers_and_three_guarded_tasks_jobs():
+    """FR-670 (CONTRACT-009, 1.2, 1.4): в `config/cron.py` двадцать семь вызовов `register`; три задания задач —
     `tasks_reminders` `*/5` (300 с), `tasks_digest` `*/15` (300 с), `tasks_retention` `42 23` (600 с) в очереди
-    `maintenance`, каждое под `apps.is_installed("apps.tasks")`; прежние двадцать одна запись та же."""
+    `maintenance`, каждое под `apps.is_installed("apps.tasks")`; прежние записи те же, срез 010 добавил три."""
     source = (support.BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
@@ -236,7 +236,7 @@ def test_cron_has_24_registers_and_three_guarded_tasks_jobs():
                 aliases[alias.asname or alias.name] = f"{node.module}.{alias.name}"
     calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
              and isinstance(node.func, ast.Name) and node.func.id == "register"]
-    assert len(calls) == 24, f"вызовов register {len(calls)}, ожидается 24"
+    assert len(calls) == 27, f"вызовов register {len(calls)}, ожидается 27"
     found = {}
     for node in calls:
         options = {kw.arg: (ast.literal_eval(kw.value) if isinstance(kw.value, ast.Constant) else None)
@@ -267,8 +267,9 @@ def test_points_stay_19_and_tasks_registers_seven_points_with_stand_reset_last()
         own = _own(point)
         assert [(func.__module__, func.__name__) for func in own] == [(module, name)], f"точка {point}: {own}"
     assert _own("role_sources") == [], "tasks регистрирует role_sources"
-    assert extensions.registered("stand_reset")[-1].__module__ == "apps.tasks.stand"
-    assert extensions.registered("stand_reset")[-1].__name__ == "stand_reset"
+    assert extensions.registered("stand_reset")[-2].__module__ == "apps.tasks.stand"
+    assert extensions.registered("stand_reset")[-2].__name__ == "stand_reset"
+    assert extensions.registered("stand_reset")[-1].__module__ == "apps.instructions.stand"
 
     own_bus = [handler for handlers in events._registry.values() for handler in handlers
                if getattr(handler, "__module__", "").startswith(APP)]

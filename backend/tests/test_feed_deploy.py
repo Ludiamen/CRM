@@ -164,17 +164,18 @@ def by_name() -> dict[str, dict]:
 
 # --- приложение и расписание ------------------------------------------------------------------------------------------
 
-def test_feed_is_last_in_installed_apps_after_search():
+def test_feed_is_in_installed_apps_tail_after_search():
     """FR-641: в конце `INSTALLED_APPS` — `apps.servicedesk`, `apps.notify`, `apps.knowledge`, `apps.lists`,
-    `apps.search`, `apps.feed`, `apps.messenger` (срез 008); метка `feed`, класс `FeedConfig`, `verbose_name` «Лента»
-    (раздел 1.1)."""
+    `apps.search`, `apps.feed`, `apps.messenger`, `apps.tasks` (срез 009), `apps.instructions` (срез 010); метка
+    `feed`, класс `FeedConfig`, `verbose_name` «Лента» (раздел 1.1)."""
     from django.apps import apps
     from django.conf import settings
 
-    assert list(settings.INSTALLED_APPS)[-8:] == feed.APPS_TAIL
-    assert list(settings.INSTALLED_APPS)[-3] == "apps.feed"
-    assert list(settings.INSTALLED_APPS)[-2] == "apps.messenger"
-    assert list(settings.INSTALLED_APPS)[-1] == "apps.tasks"
+    assert list(settings.INSTALLED_APPS)[-9:] == feed.APPS_TAIL
+    assert list(settings.INSTALLED_APPS)[-4] == "apps.feed"
+    assert list(settings.INSTALLED_APPS)[-3] == "apps.messenger"
+    assert list(settings.INSTALLED_APPS)[-2] == "apps.tasks"
+    assert list(settings.INSTALLED_APPS)[-1] == "apps.instructions"
     config = apps.get_app_config("feed")
     assert type(config).__name__ == "FeedConfig"
     assert config.label == "feed"
@@ -237,13 +238,13 @@ def test_cron_has_no_other_entry_at_23_35():
     assert len(own) == 1 and own[0]["cron"] == "35 23 * * *" and own[0]["queue"] == "maintenance"
 
 
-def test_cron_module_has_twenty_register_calls():
-    """FR-618, FR-638: в `config/cron.py` двадцать четыре вызова `register` (восемнадцать прежних, `feed_reminders`,
-    `feed_retention`, `messenger_retention` среза 008 и три задания среза 009)."""
+def test_cron_module_has_twenty_seven_register_calls():
+    """FR-618, FR-638: в `config/cron.py` двадцать семь вызовов `register` (восемнадцать прежних, `feed_reminders`,
+    `feed_retention`, `messenger_retention` среза 008, три задания среза 009 и три задания среза 010)."""
     entries = cron_registrations()
-    assert len(entries) == 24, (
-        f"вызовов register {len(entries)}, ожидается 24 (18 прежних, две записи ленты, "
-        "messenger_retention среза 008 и три задания среза 009)")
+    assert len(entries) == 27, (
+        f"вызовов register {len(entries)}, ожидается 27 (18 прежних, две записи ленты, "
+        "messenger_retention среза 008, три задания срезов 009 и 010)")
     assert {"feed_reminders", "feed_retention"} <= {item["name"] for item in entries}
 
 
@@ -258,8 +259,8 @@ def test_previous_eighteen_cron_entries_keep_names_and_minutes():
             assert item["interval"] == expected and item["cron"] is None, f"{name}: интервал {item['interval']}"
         else:
             assert item["cron"] == expected and item["interval"] is None, f"{name}: cron {item['cron']!r}"
-    assert len(entries) - len(PREVIOUS_CRON) == 6, (
-        "кроме прежних: две записи ленты, одна мессенджера и три задач")
+    assert len(entries) - len(PREVIOUS_CRON) == 9, (
+        "кроме прежних: две записи ленты, одна мессенджера, три задач и три поручений")
 
 
 def test_feed_urls_are_included_under_is_installed_guard():
@@ -293,7 +294,7 @@ def _check_feed_files_location(name):
         assert not re.search(pattern, other), f"{name}: {other} попал под шаблон загрузки"
     top = uncommented(deploy_text(name))
     assert re.search(r"^\s{4}client_max_body_size 6m;", top, re.M), f"{name}: общий предел 6m изменён"
-    assert len(re.findall(r"client_max_body_size\s+25m;", top)) == 3, f"{name}: location с 25m должно быть три"
+    assert len(re.findall(r"client_max_body_size\s+25m;", top)) == 4, f"{name}: location с 25m должно быть четыре"
 
 
 def test_nginx_dev_config_has_feed_files_location_with_25m_limit():

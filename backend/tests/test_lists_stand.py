@@ -349,25 +349,27 @@ def test_lists_stand_reset_keeps_ticket_and_article_files(protected_root, django
 
 def test_lists_stand_reset_is_registered_after_knowledge_and_runs_before_it():
     """FR-545, CONTRACT-007 (раздел 15), CONTRACT-008 (15.1): в точке `stand_reset` функция
-    `apps.lists.stand.stand_reset` зарегистрирована четвёртой с конца, сразу после `apps.knowledge.stand.stand_reset`;
-    после неё стоят `apps.feed.stand` среза 007, `apps.messenger.stand` среза 008 и `apps.tasks.stand` среза 009;
-    команда зовёт функции в обратном порядке, поэтому `tasks` стирается первым, `messenger` — вторым, `feed` —
-    третьим, `lists` — четвёртым, раньше `knowledge` (раздел 1.3; CONTRACT-009, 1.3)."""
+    `apps.lists.stand.stand_reset` зарегистрирована пятой с конца, сразу после `apps.knowledge.stand.stand_reset`;
+    после неё стоят `apps.feed.stand` среза 007, `apps.messenger.stand` среза 008, `apps.tasks.stand` среза 009 и
+    `apps.instructions.stand` среза 010; команда зовёт функции в обратном порядке, поэтому `instructions` стирается
+    первым, `tasks` — вторым, `messenger` — третьим, `feed` — четвёртым, `lists` — пятым, раньше `knowledge`
+    (раздел 1.3; CONTRACT-009/010, 1.3)."""
     from apps.core import extensions
     from apps.lists.stand import stand_reset
 
     registered = list(extensions.registered("stand_reset"))
     names = [func.__module__ for func in registered]
     assert registered.count(stand_reset) == 1, "stand_reset модуля lists не зарегистрирован ровно один раз"
-    assert registered[-4] is stand_reset, "stand_reset модуля lists не четвёртый с конца"
-    assert names[-3] == "apps.feed.stand", f"после lists стоит {names[-3]}, а не feed"
-    assert names[-5] == "apps.knowledge.stand", f"перед lists стоит {names[-5]}, а не knowledge"
+    assert registered[-5] is stand_reset, "stand_reset модуля lists не пятый с конца"
+    assert names[-4] == "apps.feed.stand", f"после lists стоит {names[-4]}, а не feed"
+    assert names[-6] == "apps.knowledge.stand", f"перед lists стоит {names[-6]}, а не knowledge"
     call_order = [func.__module__ for func in reversed(registered)]
     assert call_order.index("apps.lists.stand") < call_order.index("apps.knowledge.stand")
-    assert call_order[0] == "apps.tasks.stand", "tasks вызывается не первым"
-    assert call_order[1] == "apps.messenger.stand", "messenger вызывается не вторым"
-    assert call_order[2] == "apps.feed.stand", "feed вызывается не третьим"
-    assert call_order[3] == "apps.lists.stand", "lists вызывается не четвёртым"
+    assert call_order[0] == "apps.instructions.stand", "instructions вызывается не первым"
+    assert call_order[1] == "apps.tasks.stand", "tasks вызывается не вторым"
+    assert call_order[2] == "apps.messenger.stand", "messenger вызывается не третьим"
+    assert call_order[3] == "apps.feed.stand", "feed вызывается не четвёртым"
+    assert call_order[4] == "apps.lists.stand", "lists вызывается не пятым"
 
 
 @PLAIN

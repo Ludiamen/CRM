@@ -142,7 +142,7 @@ def test_point_unit_form_parts_is_nineteenth_and_dataclass_fields():
 # --- core/models/files.py и миграция 0011 --------------------------------------------------------------------------
 
 def test_purpose_messenger_choice_last_and_migration_0011_depends_on_0010():
-    """FR-662, FR-693: `StoredFile.Purpose` — семь значений, последнее `task` среза 009 (T-9011); `MESSENGER`
+    """FR-662, FR-693: `StoredFile.Purpose` — восемь значений, последнее `instruction` среза 010 (T-10111); `MESSENGER`
     («вложение сообщения чата») на прежнем месте, подписи прежние; `max_length` 16 и значение по умолчанию `photo`
     не менялись; миграция `core 0011_storedfile_messenger_purpose` — одна операция `AlterField` поля `purpose`,
     зависит от `0010`; строку с назначением `messenger` можно создать (CONTRACT-008, 2.1)."""
@@ -152,9 +152,9 @@ def test_purpose_messenger_choice_last_and_migration_0011_depends_on_0010():
     assert StoredFile.Purpose.choices == [
         ("photo", "фото"), ("attachment", "вложение"), ("knowledge", "файл статьи"),
         ("lists", "файл записи списка"), ("feed", "вложение ленты"), ("messenger", "вложение сообщения чата"),
-        ("task", "вложение задачи")]
+        ("task", "вложение задачи"), ("instruction", "вложение поручения")]
     assert tuple(StoredFile.Purpose.values) == PURPOSES_008
-    assert StoredFile.Purpose.MESSENGER == "messenger" and list(StoredFile.Purpose.values)[-1] == "task"
+    assert StoredFile.Purpose.MESSENGER == "messenger" and list(StoredFile.Purpose.values)[-1] == "instruction"
     field = StoredFile._meta.get_field("purpose")
     assert field.max_length == 16 and field.default == "photo"
     assert len(StoredFile.Purpose.MESSENGER) <= field.max_length

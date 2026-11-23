@@ -164,7 +164,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | Что | Требование | Тесты |
 |---|---|---|
 | `StoredFile.Purpose.INSTRUCTION` | `"instruction"`, «вложение поручения», последним; `max_length` 16, значение по умолчанию `photo` не менялись; миграция `core 0014_storedfile_instruction_purpose` — один `AlterField`, зависит от `0013_tasks_permissions` | T-10002 test_purpose_instruction_is_last; T-10122 |
-| Права (T-10003) | строки `core.Permission`: `instructions.use` — «Работа с поручениями», `instructions.assign` — «Ставить поручения сотрудникам»; выданы «Администратору портала» и «Сотруднику ИТ»; миграция `core 0015_instructions_permissions` зависит от `0014`, идемпотентна | T-10003; T-10122 |
+| Права (T-10003) | строки `core.Permission`: `instructions.use` — «Работа с поручениями», `instructions.assign` — «Ставить поручения подчинённым»; выданы «Администратору портала» и «Сотруднику ИТ»; миграция `core 0015_instructions_permissions` зависит от `0014`, идемпотентна | T-10003; T-10122 |
 | `org.services.structure.managed_units(user)` | узлы с отметкой `head`/`deputy` и все вложенные по `path`, **без обычных членств**; уволенный — `frozenset()` (прежняя функция, срез 009) | T-10102 |
 | `org.services.structure.managers_of(user)` | руководители и заместители цепочки узлов (без него, без уволенных), по ФИО (прежняя функция) | T-10102; T-10109 |
 | Прежнее поведение | без `apps.instructions` портал работает: меню прежние, поиск без поручений, карточка без раздела, файлы без `instruction`; без `apps.tasks` нет и поручений (решение 4 задач) | T-10122; T-10119 |

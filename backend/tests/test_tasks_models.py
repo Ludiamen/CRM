@@ -17,7 +17,7 @@ pytestmark = pytest.mark.django_db
 # --- core/models/files.py и миграция 0012 --------------------------------------------------------------------------
 
 def test_purpose_task_is_last():
-    """FR-693: `StoredFile.Purpose.TASK = "task"` («вложение задачи») — последним; прежние шесть значений и
+    """FR-693: `StoredFile.Purpose.TASK = "task"` («вложение задачи») — перед `instruction` среза 010; прежние значения и
     подписи те же, `max_length` 16 и значение по умолчанию `photo` не менялись; миграция
     `core 0012_storedfile_task_purpose` — одна операция `AlterField` поля `purpose`, зависит от `0011`; строку
     с назначением `task` можно создать (CONTRACT-009, 2.1)."""
@@ -25,10 +25,10 @@ def test_purpose_task_is_last():
     assert StoredFile.Purpose.choices == [
         ("photo", "фото"), ("attachment", "вложение"), ("knowledge", "файл статьи"),
         ("lists", "файл записи списка"), ("feed", "вложение ленты"), ("messenger", "вложение сообщения чата"),
-        ("task", "вложение задачи")]
+        ("task", "вложение задачи"), ("instruction", "вложение поручения")]
     assert tuple(StoredFile.Purpose.values) == (
-        "photo", "attachment", "knowledge", "lists", "feed", "messenger", "task")
-    assert StoredFile.Purpose.TASK == "task" and list(StoredFile.Purpose.values)[-1] == "task"
+        "photo", "attachment", "knowledge", "lists", "feed", "messenger", "task", "instruction")
+    assert StoredFile.Purpose.TASK == "task" and list(StoredFile.Purpose.values)[-1] == "instruction"
     field = StoredFile._meta.get_field("purpose")
     assert field.max_length == 16 and field.default == "photo"
     assert len(StoredFile.Purpose.TASK) <= field.max_length

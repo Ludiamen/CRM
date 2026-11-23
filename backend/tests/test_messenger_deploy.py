@@ -30,13 +30,14 @@ NGINX_FILES = ("nginx.conf", "nginx.prod.conf")
 PROTO = {"nginx.conf": "$scheme", "nginx.prod.conf": "$portal_proto"}
 MESSENGER_FILES_PATTERN = "^/messenger/files/$"
 TASKS_FILES_PATTERN = "^/tasks/files/$"
+INSTRUCTIONS_FILES_PATTERN = "^/instructions/files/$"
 FEED_FILES_PATTERN = "^/feed/files/$"
 ENGLISH_WORDS = ("Save", "Delete", "Cancel", "Search", "Submit", "Edit", "Back")
 REFUSAL_LOAD = "Скрипт работает только на стенде приёмочных проходов (E2E_STAND=1); ничего не изменено."
 
 # хвост `INSTALLED_APPS` среза 008 (CONTRACT-008, 1.1)
 APPS_TAIL = ("apps.servicedesk", "apps.notify", "apps.knowledge", "apps.lists", "apps.search", "apps.feed",
-             "apps.messenger", "apps.tasks")
+             "apps.messenger", "apps.tasks", "apps.instructions")
 
 # двадцать прежних записей `config/cron.py`: имя -> ("cron", строка) или ("interval", секунды); девятнадцатая и
 # двадцатая — записи ленты среза 007, двадцать первая (мессенджер) в перечень не входит
@@ -267,15 +268,16 @@ def _messenger_session():
 
 def test_messenger_is_last_in_installed_apps():
     """FR-643: в конце `INSTALLED_APPS` — `apps.servicedesk`, `apps.notify`, `apps.knowledge`, `apps.lists`,
-    `apps.search`, `apps.feed`, `apps.messenger`; метка `messenger`, класс `MessengerConfig`, `verbose_name`
-    «Мессенджер» (CONTRACT-008, 1.1). Прежние имена на месте, лишних после мессенджера нет."""
+    `apps.search`, `apps.feed`, `apps.messenger`, `apps.tasks`, `apps.instructions`; метка `messenger`, класс
+    `MessengerConfig`, `verbose_name` «Мессенджер» (CONTRACT-008, 1.1; CONTRACT-009/010). Прежние имена на месте."""
     from django.apps import apps
     from django.conf import settings
 
     installed = list(settings.INSTALLED_APPS)
-    assert tuple(installed[-8:]) == APPS_TAIL, f"хвост INSTALLED_APPS: {installed[-8:]}"
-    assert installed[-3] == "apps.feed" and installed[-2] == APP and installed[-1] == "apps.tasks"
-    assert len(installed) == installed.index("apps.messenger") + 2, "после apps.messenger ровно apps.tasks"
+    assert tuple(installed[-9:]) == APPS_TAIL, f"хвост INSTALLED_APPS: {installed[-9:]}"
+    assert (installed[-4] == "apps.feed" and installed[-3] == APP and installed[-2] == "apps.tasks"
+            and installed[-1] == "apps.instructions")
+    assert len(installed) == installed.index("apps.messenger") + 3, "после apps.messenger ровно tasks и instructions"
     config = apps.get_app_config("messenger")
     assert type(config).__name__ == "MessengerConfig"
     assert config.label == "messenger"
@@ -328,16 +330,16 @@ def test_messenger_urls_and_asgi_routes_are_under_is_installed_guard():
 
 # --- расписание (CONTRACT-008, 1.2, 1.4) ---------------------------------------------------------------------------
 
-def test_cron_has_24_registers_and_messenger_retention_55_23_maintenance():
-    """FR-670: в `config/cron.py` двадцать четыре вызова `register`; запись `messenger_retention` —
+def test_cron_has_27_registers_and_messenger_retention_55_23_maintenance():
+    """FR-670: в `config/cron.py` двадцать семь вызовов `register`; запись `messenger_retention` —
     `apps.messenger.tasks.retention_night`, очередь `maintenance`, `cron="55 23 * * *"`, `job_timeout=600`, под
     `apps.is_installed("apps.messenger")` вместе со своим импортом; других записей на `55 23 * * *` нет; двадцать
     прежних записей, одна мессенджера и три задач среза 009 — те же имена и минуты (CONTRACT-008, 1.2, 1.4;
     CONTRACT-009, 1.2)."""
     entries = cron_registrations()
-    assert len(entries) == 24, (
-        f"вызовов register {len(entries)}, ожидается 24 (двадцать прежних, messenger_retention среза 008 и три "
-        "задания среза 009)")
+    assert len(entries) == 27, (
+        f"вызовов register {len(entries)}, ожидается 27 (двадцать прежних, messenger_retention среза 008, три "
+        "задания среза 009 и три задания среза 010)")
     function, queue, interval, cron, timeout = messenger.JOBS_008["messenger_retention"]
     item = cron_by_name().get("messenger_retention")
     assert item, "нет задания messenger_retention"
@@ -368,24 +370,24 @@ def test_cron_has_24_registers_and_messenger_retention_55_23_maintenance():
         else:
             assert row["cron"] == expected and row["interval"] is None, f"{name}: cron {row['cron']!r}"
         assert not row["guarded"], f"прежняя запись {name} оказалась под проверкой apps.messenger"
-    assert len(entries) - len(PREVIOUS_CRON) == 4, (
-        "кроме прежних: одна запись мессенджера и три задач среза 009")
+    assert len(entries) - len(PREVIOUS_CRON) == 7, (
+        "кроме прежних: одна запись мессенджера, три задач среза 009 и три поручений среза 010")
 
 
 # --- nginx (CONTRACT-008, 1.2, 1.4) --------------------------------------------------------------------------------
 
-def test_nginx_has_three_25m_locations_and_repeated_proxy_directives():
-    """FR-662, NFR-704, NFR-713: в обоих конфигах nginx ровно три `location` с `client_max_body_size 25m` —
-    `^/feed/files/$`, `^/messenger/files/$` и `^/tasks/files/$` среза 009; в новых повторены директивы `proxy_*`
-    из `location /`, набор имён директив тот же, что у блока `tickets`; четыре `55m` и общий предел `6m` не менялись
-    (CONTRACT-008, 1.2, 1.4; CONTRACT-009, 1.2)."""
-    expected = [FEED_FILES_PATTERN, MESSENGER_FILES_PATTERN, TASKS_FILES_PATTERN]
+def test_nginx_has_four_25m_locations_and_repeated_proxy_directives():
+    """FR-662, NFR-704, NFR-713: в обоих конфигах nginx ровно четыре `location` с `client_max_body_size 25m` —
+    `^/feed/files/$`, `^/messenger/files/$`, `^/tasks/files/$` (срез 009) и `^/instructions/files/$` (срез 010);
+    в новых повторены директивы `proxy_*` из `location /`, набор имён директив тот же, что у блока `tickets`;
+    четыре `55m` и общий предел `6m` не менялись (CONTRACT-008, 1.2, 1.4; CONTRACT-009/010, 1.2)."""
+    expected = [FEED_FILES_PATTERN, MESSENGER_FILES_PATTERN, TASKS_FILES_PATTERN, INSTRUCTIONS_FILES_PATTERN]
     for name in NGINX_FILES:
         found = locations_with_limit(name, "25m")
         patterns = [pattern for pattern, _body in found]
         assert sorted(patterns) == sorted(expected), f"{name}: location с 25m — {patterns}"
         text = uncommented(deploy_text(name))
-        assert len(re.findall(r"client_max_body_size\s+25m;", text)) == 3, f"{name}: 25m должно быть три"
+        assert len(re.findall(r"client_max_body_size\s+25m;", text)) == 4, f"{name}: 25m должно быть четыре"
         own = directives(dict(found)[MESSENGER_FILES_PATTERN])
         for wanted in ("client_max_body_size 25m", "proxy_pass http://portal_web", "proxy_http_version 1.1",
                        "proxy_set_header Host $http_host", "proxy_set_header X-Forwarded-For $remote_addr",
@@ -467,9 +469,9 @@ def test_channel_layers_keep_two_keys_with_default_30_and_publish_2_seconds():
     assert default["CONFIG"]["prefix"] == publish["CONFIG"]["prefix"] == "crm-asgi"
 
 
-def test_slice_numbers_nineteen_points_thirty_kinds_seven_purposes_and_order_61():
+def test_slice_numbers_nineteen_points_thirty_kinds_eight_purposes_and_order_61():
     """FR-649, FR-662, FR-668: числа среза — девятнадцать точек расширения (`unit_form_parts` последняя), тридцать
-    видов уведомлений (два `messenger.*` с `order` 80 и 81), семь значений `StoredFile.Purpose` (`messenger`
+    видов уведомлений (два `messenger.*` с `order` 80 и 81), восемь значений `StoredFile.Purpose` (`instruction`
     последнее), порядок группы поиска «Мессенджер» 61 сразу после «Ленты» 60 (CONTRACT-008, 1.4)."""
     from apps.core import extensions
     from apps.core.models.files import StoredFile

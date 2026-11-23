@@ -360,7 +360,7 @@ def test_base_htmx_config_unchanged_with_default_allow_script_tags():
 # --- core/models/files.py и миграция 0010 ------------------------------------------------------------------------------
 
 def test_stored_file_purpose_feed_is_last_and_previous_values_unchanged():
-    """FR-633, FR-693: `StoredFile.Purpose` — семь значений, последнее `task` среза 009; `feed` («вложение ленты»)
+    """FR-633, FR-693: `StoredFile.Purpose` — восемь значений, последнее `instruction` среза 010; `feed` («вложение ленты»)
     на прежнем месте; `max_length` 16 и значение по умолчанию `photo` не менялись; миграция
     `core 0010_storedfile_feed_purpose` — одна операция `AlterField` поля `purpose` (зависит от `0009`); строку с
     назначением `feed` можно создать. Имя теста прежнее (TASKS-007); перечень вырос срезом 009 (T-9011)."""
@@ -368,8 +368,8 @@ def test_stored_file_purpose_feed_is_last_and_previous_values_unchanged():
     assert StoredFile.Purpose.choices == [
         ("photo", "фото"), ("attachment", "вложение"), ("knowledge", "файл статьи"),
         ("lists", "файл записи списка"), ("feed", "вложение ленты"), ("messenger", "вложение сообщения чата"),
-        ("task", "вложение задачи")]
-    assert StoredFile.Purpose.FEED == "feed" and list(StoredFile.Purpose.values)[-1] == "task"
+        ("task", "вложение задачи"), ("instruction", "вложение поручения")]
+    assert StoredFile.Purpose.FEED == "feed" and list(StoredFile.Purpose.values)[-1] == "instruction"
     field = StoredFile._meta.get_field("purpose")
     assert field.max_length == 16 and field.default == "photo"
     path = support.BACKEND_DIR / "apps" / "core" / "migrations" / "0010_storedfile_feed_purpose.py"

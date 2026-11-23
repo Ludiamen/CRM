@@ -25,6 +25,7 @@ APP = "apps.tasks"
 NGINX_FILES = ("nginx.conf", "nginx.prod.conf")
 PROTO = {"nginx.conf": "$scheme", "nginx.prod.conf": "$portal_proto"}
 TASKS_FILES_PATTERN = "^/tasks/files/$"
+INSTRUCTIONS_FILES_PATTERN = "^/instructions/files/$"
 FEED_FILES_PATTERN = "^/feed/files/$"
 MESSENGER_FILES_PATTERN = "^/messenger/files/$"
 ENGLISH_WORDS = ("Save", "Delete", "Cancel", "Search", "Submit", "Edit", "Back")
@@ -190,14 +191,14 @@ def _tasks_menu():
 
 # --- приложение и адреса (CONTRACT-009, 1.1, 1.2, 6.2) -----------------------------------------------------
 
-def test_tasks_is_last_in_installed_apps_with_config_label_and_name():
-    """FR-643: `apps.tasks` — последний в `INSTALLED_APPS` (сразу после `apps.messenger`); метка `tasks`, класс
-    `TasksConfig`, `verbose_name` «Задачи» (К1); прежние приложения на месте."""
+def test_tasks_is_in_installed_apps_tail_with_config_label_and_name():
+    """FR-643: `apps.tasks` — в хвосте `INSTALLED_APPS` (сразу после `apps.messenger`), последняя — `apps.instructions`
+    среза 010; метка `tasks`, класс `TasksConfig`, `verbose_name` «Задачи» (К1); прежние приложения на месте."""
     from django.apps import apps as registry
 
     installed = list(django_settings.INSTALLED_APPS)
-    assert installed[-3:] == ["apps.feed", "apps.messenger", "apps.tasks"], f"хвост INSTALLED_APPS: {installed[-3:]}"
-    assert installed.count("apps.tasks") == 1 and installed.index("apps.tasks") == len(installed) - 1
+    assert installed[-4:] == ["apps.feed", "apps.messenger", "apps.tasks", "apps.instructions"], f"хвост INSTALLED_APPS: {installed[-4:]}"
+    assert installed.count("apps.tasks") == 1 and installed.index("apps.tasks") == len(installed) - 2
     config = registry.get_app_config("tasks")
     assert type(config).__name__ == "TasksConfig"
     assert (config.label, config.verbose_name) == ("tasks", "Задачи")
@@ -233,13 +234,13 @@ def test_post_only_routes_reject_get_with_405():
 
 # --- cron (CONTRACT-009, 1.2, 1.4) ------------------------------------------------------------------------
 
-def test_cron_has_24_registers_and_three_tasks_jobs_under_is_installed():
-    """FR-670 (CONTRACT-009, 1.2): в `config/cron.py` двадцать четыре вызова `register`; три задания задач —
+def test_cron_has_27_registers_and_three_tasks_jobs_under_is_installed():
+    """FR-670 (CONTRACT-009, 1.2): в `config/cron.py` двадцать семь вызовов `register`; три задания задач —
     `tasks_reminders` (`*/5`, 300 с), `tasks_digest` (`*/15`, 300 с), `tasks_retention` (`42 23`, 600 с), все в
     очереди `maintenance`, под `apps.is_installed("apps.tasks")` вместе со своим импортом; `42 23` ни у кого
     больше нет; прежние двадцать одна запись та же."""
     entries = cron_registrations()
-    assert len(entries) == 24, f"вызовов register {len(entries)}, ожидается 24"
+    assert len(entries) == 27, f"вызовов register {len(entries)}, ожидается 27"
     by_name = cron_by_name()
     for name, (function, queue, cron, timeout) in TASKS_JOBS.items():
         item = by_name.get(name)
@@ -387,17 +388,18 @@ def test_tasks_pages_are_russian_with_expected_titles():
 
 # --- nginx (CONTRACT-009, 1.2, 1.4) -----------------------------------------------------------------------
 
-def test_nginx_has_three_25m_locations_and_tasks_proxy_directives():
-    """NFR-713 (CONTRACT-009, 1.2, 1.4): в `deploy/nginx.conf` и `nginx.prod.conf` ровно три `location` с
-    `client_max_body_size 25m` — `^/feed/files/$`, `^/messenger/files/$`, `^/tasks/files/$`; у задач тот же набор
-    директив `proxy_*`, что у `tickets`; общий предел `6m` и четыре `55m` не менялись."""
-    expected = [FEED_FILES_PATTERN, MESSENGER_FILES_PATTERN, TASKS_FILES_PATTERN]
+def test_nginx_has_four_25m_locations_and_tasks_proxy_directives():
+    """NFR-713 (CONTRACT-009, 1.2, 1.4; CONTRACT-010, 1.2): в `deploy/nginx.conf` и `nginx.prod.conf` ровно четыре
+    `location` с `client_max_body_size 25m` — `^/feed/files/$`, `^/messenger/files/$`, `^/tasks/files/$`,
+    `^/instructions/files/$`; у задач тот же набор директив `proxy_*`, что у `tickets`; общий предел `6m` и четыре
+    `55m` не менялись."""
+    expected = [FEED_FILES_PATTERN, MESSENGER_FILES_PATTERN, TASKS_FILES_PATTERN, INSTRUCTIONS_FILES_PATTERN]
     for name in NGINX_FILES:
         found = locations_with_limit(name, "25m")
         patterns = [pattern for pattern, _body in found]
         assert sorted(patterns) == sorted(expected), f"{name}: location с 25m — {patterns}"
         text = uncommented(deploy_text(name))
-        assert len(re.findall(r"client_max_body_size\s+25m;", text)) == 3, f"{name}: 25m должно быть три"
+        assert len(re.findall(r"client_max_body_size\s+25m;", text)) == 4, f"{name}: 25m должно быть четыре"
         own = directives(dict(found)[TASKS_FILES_PATTERN])
         for wanted in ("client_max_body_size 25m", "proxy_pass http://portal_web", "proxy_http_version 1.1",
                        "proxy_set_header Host $http_host", "proxy_set_header X-Forwarded-For $remote_addr",

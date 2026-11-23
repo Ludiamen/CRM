@@ -373,7 +373,7 @@ def test_messenger_registers_points_and_no_top_bar_items(monkeypatch):
     assert extensions.registered("unit_form_parts")[-1] is parts[0], "поле формы узла не последнее в точке"
 
     stand = _own("stand_reset")
-    assert extensions.registered("stand_reset")[-2] is stand[0], "stand_reset мессенджера не предпоследняя запись точки"
+    assert extensions.registered("stand_reset")[-3] is stand[0], "stand_reset мессенджера не третья с конца запись точки"
     assert (stand[0].__module__, stand[0].__name__) == ("apps.messenger.stand", "stand_reset")
 
     for point in UNUSED_POINTS:
@@ -535,19 +535,20 @@ def test_points_are_19_and_unit_form_parts_last():
 
 # --- FR-662: назначения файлов (CONTRACT-008, 1.4, 2.1) --------------------------------------------------------
 
-def test_purposes_are_7_and_task_last():
-    """FR-662, FR-693: у `StoredFile.Purpose` семь значений (`support_messenger.PURPOSES_008`), `task` — последнее,
+def test_purposes_are_8_and_instruction_last():
+    """FR-662, FR-693: у `StoredFile.Purpose` восемь значений (`support_messenger.PURPOSES_008`), `instruction` — последнее,
     с подписью «вложение задачи»; `messenger` («вложение сообщения чата») на прежнем месте, `max_length` (16) не
     меняется (T-9011, CONTRACT-009 1.4)."""
     stored = support.model("core.StoredFile")
     purpose = stored.Purpose
 
     assert tuple(purpose.values) == sm.PURPOSES_008
-    assert len(purpose.values) == 7 and purpose.values[-1] == "task"
+    assert len(purpose.values) == 8 and purpose.values[-1] == "instruction"
     assert purpose.MESSENGER == "messenger" and purpose.MESSENGER.label == "вложение сообщения чата"
     assert purpose.TASK == "task" and purpose.TASK.label == "вложение задачи"
+    assert purpose.INSTRUCTION == "instruction" and purpose.INSTRUCTION.label == "вложение поручения"
     assert tuple(purpose.labels) == ("фото", "вложение", "файл статьи", "файл записи списка", "вложение ленты",
-                                    "вложение сообщения чата", "вложение задачи")
+                                    "вложение сообщения чата", "вложение задачи", "вложение поручения")
     field = stored._meta.get_field("purpose")
     assert field.max_length == 16, "длина поля назначения изменилась"
     assert dict(field.choices)["messenger"] == "вложение сообщения чата"

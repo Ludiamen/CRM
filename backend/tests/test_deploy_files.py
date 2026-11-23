@@ -354,8 +354,8 @@ def test_test_service_waits_for_healthy_clamav():
 
 def test_nginx_body_size_6m_and_protected_location_internal_with_headers():
     """FR-132, NFR-108: в nginx.conf и nginx.prod.conf лимит тела запроса 6m в `http` (фото до 5 МБ в форме), 55m — только
-    в четырёх `location` формы, ответа, загрузки файлов статьи и файлов записи списка (срезы 003, 005 и 006), 25m — в двух
-    `location` загрузки файлов ленты (срез 007) и мессенджера (срез 008), а /protected/ — внутреннее расположение с alias
+    в четырёх `location` формы, ответа, загрузки файлов статьи и файлов записи списка (срезы 003, 005 и 006), 25m — в четырёх
+    `location` загрузки файлов ленты (срез 007), мессенджера (срез 008), задач (срез 009) и поручений (срез 010), а /protected/ — внутреннее расположение с alias
     на том, nosniff, типом image/jpeg и Cache-Control private, max-age=86400 (общий /protected/ для фото срезом 003 не
     меняется)."""
     form_locations = (r"location\s*=\s*/request/\s*\{([^{}]*)\}",
@@ -371,7 +371,8 @@ def test_nginx_body_size_6m_and_protected_location_internal_with_headers():
             text = re.sub(pattern, "", text, count=1)
         upload_patterns = (r"location\s*~\s*\^/feed/files/\$\s*\{([^{}]*)\}",
                            r"location\s*~\s*\^/messenger/files/\$\s*\{([^{}]*)\}",
-                           r"location\s*~\s*\^/tasks/files/\$\s*\{([^{}]*)\}")  # CONTRACT-008/009: ещё два 25m
+                           r"location\s*~\s*\^/tasks/files/\$\s*\{([^{}]*)\}",
+                           r"location\s*~\s*\^/instructions/files/\$\s*\{([^{}]*)\}")  # CONTRACT-008/009/010: 25m
         for pattern in upload_patterns:
             found = re.findall(pattern, text)
             assert len(found) == 1, f"{name}: нет ровно одного location {pattern}"

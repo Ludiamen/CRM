@@ -267,22 +267,24 @@ def test_stand_reset_runs_in_migration_transaction(protected_root, django_captur
 
 def test_stand_reset_runs_last_and_before_feed():
     """FR-651: в точке `stand_reset` функция `apps.messenger.stand.stand_reset` зарегистрирована ровно один раз,
-    предпоследней — сразу после `apps.feed.stand.stand_reset`; последняя — `apps.tasks.stand` среза 009
-    (CONTRACT-009, 1.3); команда `e2e_reset_stand` зовёт функции в обратном порядке, поэтому задачи стираются
-    первыми, мессенджер — вторым, лента — третьей (К8; раздел 1.3)."""
+    третьей с конца — сразу после `apps.feed.stand.stand_reset`; за ней — `apps.tasks.stand` среза 009 и
+    `apps.instructions.stand` среза 010 (CONTRACT-009/010, 1.3); команда `e2e_reset_stand` зовёт функции в обратном
+    порядке, поэтому поручения стираются первыми, задачи — вторыми, мессенджер — третьим, лента — четвёртой
+    (К8; раздел 1.3)."""
     from apps.core import extensions
     from apps.messenger.stand import stand_reset
 
     registered = list(extensions.registered("stand_reset"))
     names = [func.__module__ for func in registered]
     assert registered.count(stand_reset) == 1, "stand_reset модуля messenger не зарегистрирован ровно один раз"
-    assert registered[-2] is stand_reset, "stand_reset модуля messenger не предпоследний"
-    assert names[-3] == "apps.feed.stand", f"перед messenger стоит {names[-3]}, а не feed"
-    assert names[-1] == "apps.tasks.stand", f"после messenger стоит {names[-1]}, а не tasks"
+    assert registered[-3] is stand_reset, "stand_reset модуля messenger не третий с конца"
+    assert names[-4] == "apps.feed.stand", f"перед messenger стоит {names[-4]}, а не feed"
+    assert names[-2:] == ["apps.tasks.stand", "apps.instructions.stand"], f"после messenger: {names[-2:]}"
     call_order = [func.__module__ for func in reversed(registered)]
-    assert call_order[0] == "apps.tasks.stand", "tasks вызывается не первым"
-    assert call_order[1] == "apps.messenger.stand", "messenger вызывается не вторым"
-    assert call_order[2] == "apps.feed.stand", "feed вызывается не третьим"
+    assert call_order[0] == "apps.instructions.stand", "instructions вызывается не первым"
+    assert call_order[1] == "apps.tasks.stand", "tasks вызывается не вторым"
+    assert call_order[2] == "apps.messenger.stand", "messenger вызывается не третьим"
+    assert call_order[3] == "apps.feed.stand", "feed вызывается не четвёртым"
 
 
 # --- команда e2e_messenger_age (контракт 14.1) --------------------------------------------------------------------

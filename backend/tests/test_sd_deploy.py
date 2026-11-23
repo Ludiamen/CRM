@@ -388,7 +388,8 @@ def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_min
     """FR-210, NFR-206: `config/cron.py` регистрирует восемь новых заданий (имя = функция из
     `apps.servicedesk.tasks`) в очередях `inbox` и `maintenance`, не в `mail`; опрос ящика — каждую минуту; два задания
     среза 004 — `notify_tick` (очередь `notify`, `interval=30`, `job_timeout=120`) и `notify_retention` (`maintenance`,
-    `40 23 * * *`, 600); задание среза 005 — `purge_trash` (`maintenance`, `45 23 * * *`, 600); задание среза 006 — `lists_reminders` (функция `remind_deadlines`, `maintenance`, `0 5 * * *`, 600); два задания среза 007 — `feed_reminders` (функция `remind_events`, `notify`, `* * * * *`, 120) и `feed_retention` (функция `retention_night`, `maintenance`, `35 23 * * *`, 600); всего двадцать вызовов `register`; `scheduler` — одна копия с `rq cron`."""
+    `40 23 * * *`, 600); задание среза 005 — `purge_trash` (`maintenance`, `45 23 * * *`, 600); задание среза 006 — `lists_reminders` (функция `remind_deadlines`, `maintenance`, `0 5 * * *`, 600); два задания среза 007 — `feed_reminders` (функция `remind_events`, `notify`, `* * * * *`, 120) и `feed_retention` (функция `retention_night`, `maintenance`, `35 23 * * *`, 600); три задания среза 009 и три среза 010; всего двадцать семь вызовов `register`; `scheduler` —
+    одна копия с `rq cron`."""
     registered = cron_by_name()
     for name, (queue, cron, _timeout) in NEW_JOBS.items():
         assert name in registered, f"в cron.py нет задания {name}"
@@ -420,9 +421,9 @@ def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_min
         assert registered[name]["interval"] == interval, f"{name}: interval={registered[name]['interval']!r}"
         assert registered[name]["cron"] == cron, f"{name}: cron={registered[name]['cron']!r}"
         assert registered[name]["job_timeout"] == timeout, f"{name}: job_timeout={registered[name]['job_timeout']!r}"
-    assert len(cron_registrations()) == 24, (
-        "шесть прежних, восемь среза 003, два среза 004, один среза 005, один среза 006, два среза 007, один среза 008 "
-        "и три среза 009")
+    assert len(cron_registrations()) == 27, (
+        "шесть прежних, восемь среза 003, два среза 004, один среза 005, один среза 006, два среза 007, один среза 008, "
+        "три среза 009 и три среза 010")
     source = (BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8")
     assert re.search(r"from apps\.servicedesk\.tasks import", source)
     scheduler = block("scheduler")

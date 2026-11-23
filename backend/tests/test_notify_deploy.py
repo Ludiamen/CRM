@@ -316,11 +316,11 @@ def test_rq_queues_include_notify():
 
 def test_cron_notify_tick_interval_30_queue_notify_timeout_120():
     """FR-333: `config/cron.py` регистрирует `notify_tick` (функция `apps.notify.tasks.notify_tick`): очередь `notify`,
-    `interval=30` без строки `cron`, `job_timeout=120`; всего в файле двадцать четыре вызова `register` (§ 1.3, § 12.3; `purge_trash` среза 005 — семнадцатый, `lists_reminders` среза 006 — восемнадцатый, два задания среза 007 — девятнадцатый и двадцатый, `messenger_retention` среза 008 — двадцать первый, три задания среза 009 — двадцать второй…двадцать четвёртый)."""
+    `interval=30` без строки `cron`, `job_timeout=120`; всего в файле двадцать семь вызовов `register` (§ 1.3, § 12.3; `purge_trash` среза 005 — семнадцатый, `lists_reminders` среза 006 — восемнадцатый, два задания среза 007 — девятнадцатый и двадцатый, `messenger_retention` среза 008 — двадцать первый, три задания среза 009 — двадцать второй…двадцать четвёртый, три задания среза 010 — двадцать пятый…двадцать седьмой)."""
     registrations = cron_registrations()
-    assert len(registrations) == 24, (
-        f"вызовов register {len(registrations)}, ожидается 24 (14 прежних, 2 среза 004, 1 среза 005, 1 среза 006, "
-        "2 среза 007, 1 среза 008 и 3 среза 009)")
+    assert len(registrations) == 27, (
+        f"вызовов register {len(registrations)}, ожидается 27 (14 прежних, 2 среза 004, 1 среза 005, 1 среза 006, "
+        "2 среза 007, 1 среза 008, 3 среза 009 и 3 среза 010)")
     assert "lists_reminders" in cron_by_name(), "нет задания lists_reminders среза 006"
     item = cron_by_name().get("notify_tick")
     assert item, "нет задания notify_tick"
@@ -350,13 +350,13 @@ def test_cron_notify_retention_at_23_40_utc_queue_maintenance_timeout_600():
 
 def test_notify_is_last_in_installed_apps():
     """FR-301, CONTRACT-005 (решение 3), CONTRACT-006 (раздел 1.1): `apps.notify` стоит сразу после `apps.servicedesk`;
-    за ним — `apps.knowledge`, `apps.lists`, `apps.search`, `apps.feed`; последний элемент `INSTALLED_APPS` — `apps.messenger`
-    (CONTRACT-007, CONTRACT-008, раздел 1.1). Имя теста прежнее (TASKS-004, T-4130)."""
+    за ним — `apps.knowledge`, `apps.lists`, `apps.search`, `apps.feed`, `apps.messenger`, `apps.tasks` и `apps.instructions`
+    (CONTRACT-007…010, раздел 1.1). Имя теста прежнее (TASKS-004, T-4130)."""
     from django.conf import settings
     from tests.support_feed import APPS_TAIL
 
     apps = list(settings.INSTALLED_APPS)
-    assert apps[-8:] == APPS_TAIL
+    assert apps[-9:] == APPS_TAIL
 
 
 def test_asgi_has_protocol_type_router_origin_validator_and_session_auth():

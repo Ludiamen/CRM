@@ -119,13 +119,14 @@ def _world():
 
 def test_lists_is_in_installed_apps_after_knowledge_and_before_search():
     """FR-543: в конце `INSTALLED_APPS` — `apps.servicedesk`, `apps.notify`, `apps.knowledge`, `apps.lists`,
-    `apps.search`, `apps.feed` (срез 007), `apps.messenger` (срез 008); метка `lists`, класс `ListsConfig`,
+    `apps.search`, `apps.feed` (срез 007), `apps.messenger` (срез 008), `apps.tasks` (срез 009), `apps.instructions`
+    (срез 010); метка `lists`, класс `ListsConfig`,
     `verbose_name` «Списки» (раздел 1.1)."""
     from django.apps import apps
     from django.conf import settings
     from tests.support_feed import APPS_TAIL
 
-    assert list(settings.INSTALLED_APPS)[-8:] == APPS_TAIL
+    assert list(settings.INSTALLED_APPS)[-9:] == APPS_TAIL
     config = apps.get_app_config("lists")
     assert type(config).__name__ == "ListsConfig"
     assert config.label == "lists"
@@ -161,13 +162,13 @@ def test_cron_has_no_other_maintenance_entry_at_0_5():
     assert len(own) == 1 and own[0]["cron"] == "0 5 * * *" and own[0]["queue"] == "maintenance"
 
 
-def test_cron_module_has_eighteen_register_calls():
-    """FR-530: в `config/cron.py` двадцать четыре вызова `register` (семнадцать прежних, `lists_reminders`, два
-    задания среза 007, `messenger_retention` среза 008 и три задания среза 009)."""
+def test_cron_module_has_twenty_seven_register_calls():
+    """FR-530: в `config/cron.py` двадцать семь вызовов `register` (семнадцать прежних, `lists_reminders`, два
+    задания среза 007, `messenger_retention` среза 008, три задания среза 009 и три задания среза 010)."""
     entries = cron_registrations()
-    assert len(entries) == 24, (
-        f"вызовов register {len(entries)}, ожидается 24 (17 прежних, lists_reminders, два задания среза 007, "
-        "messenger_retention среза 008 и три задания среза 009)")
+    assert len(entries) == 27, (
+        f"вызовов register {len(entries)}, ожидается 27 (17 прежних, lists_reminders, два задания среза 007, "
+        "messenger_retention среза 008, три задания срезов 009 и 010)")
     assert "lists_reminders" in {item["name"] for item in entries}
 
 
