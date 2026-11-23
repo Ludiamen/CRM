@@ -278,7 +278,7 @@ def test_notification_catalog_without_knowledge_has_no_knowledge_kinds():
     assert [k.code for k in rest if k.code.startswith("knowledge.") or k.module == "База знаний"] == []
     assert {k.code for k in rest} == set(full) - added
     assert "lists.deadline" in {k.code for k in rest}, "вид среза 006 не зависит от knowledge"
-    assert len(rest) == 27, "прежних видов 19 и восемь видов задач среза 009"
+    assert len(rest) == 37, "прежних видов 19, восемь задач среза 009 и десять поручений среза 010"
 
 
 def test_search_without_knowledge_has_no_articles_group():

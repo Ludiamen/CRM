@@ -19,7 +19,7 @@
     <div class="mb-2"><label class="form-label">Название</label>
       <input class="form-control" name="title" value="{{ row.title }}" data-instruction-field="title"></div>
     <div class="mb-2"><label class="form-label">Срок</label>
-      <input class="form-control" type="date" name="deadline" value="{{ row.deadline|date:'Y-m-d' }}" data-instruction-field="deadline"></div>
+      <input class="form-control" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10" data-datefield-input name="deadline" value="{{ row.deadline|date:'d.m.Y' }}" data-instruction-field="deadline"></div>
     <button class="btn btn-outline-primary" type="submit">Сохранить</button>
   </form>
   {% endif %}
@@ -58,7 +58,7 @@
     {% if can_request_transfer %}
     <form method="post" action="/instructions/{{ row.pk }}/transfers/" data-form="instruction-transfer" class="mt-2">
       {% csrf_token %}
-      <input class="form-control" type="date" name="new_deadline" data-instruction-field="new_deadline">
+      <input class="form-control" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10" data-datefield-input name="new_deadline" data-instruction-field="new_deadline">
       <input class="form-control" name="reason" data-instruction-field="reason" placeholder="Причина">
       <button class="btn btn-sm btn-outline-primary" type="submit">Просить перенос</button>
     </form>

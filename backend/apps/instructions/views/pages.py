@@ -56,8 +56,13 @@ def discipline(request):
     date_to = request.GET.get("to") or today.isoformat()
     unit = structure.Unit.objects.filter(pk=request.GET.get("unit") or 0).first()
     data = discipline_service.rows(request.user, date_from=date_from, date_to=date_to, unit=unit)
+    import datetime as _datetime
+
+    display_from = _datetime.date.fromisoformat(date_from).strftime("%d.%m.%Y")
+    display_to = _datetime.date.fromisoformat(date_to).strftime("%d.%m.%Y")
     return render_page(request, "instructions/discipline.html", {
         **data, "date_from": date_from, "date_to": date_to,
+        "date_from_display": display_from, "date_to_display": display_to,
         "unit": unit, "export_url": f"/instructions/discipline.xlsx?from={date_from}&to={date_to}"
         + (f"&unit={unit.pk}" if unit else "")})
 

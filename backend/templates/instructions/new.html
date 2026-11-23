@@ -18,7 +18,7 @@
     <div class="mb-2"><label class="form-label">Номер основания</label>
       <input class="form-control" name="basis_number" maxlength="100" value="{{ values.basis_number }}" data-instruction-field="basis_number"></div>
     <div class="mb-2"><label class="form-label">Дата основания</label>
-      <input class="form-control" type="date" name="basis_date" value="{{ values.basis_date }}" data-instruction-field="basis_date"></div>
+      <input class="form-control" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10" data-datefield-input name="basis_date" value="{{ values.basis_date }}" data-instruction-field="basis_date"></div>
     <div class="mb-2"><label class="form-label">Исполнитель</label>
       <select class="form-select" name="assignee" data-instruction-field="assignee">
         <option value="">—</option>
@@ -29,7 +29,7 @@
         {% for person in people %}<option value="{{ person.pk }}">{{ person.full_name }}</option>{% endfor %}
       </select></div>
     <div class="mb-2"><label class="form-label">Срок</label>
-      <input class="form-control" type="date" name="deadline" value="{{ values.deadline }}" data-instruction-field="deadline"></div>
+      <input class="form-control" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10" data-datefield-input name="deadline" value="{{ values.deadline }}" data-instruction-field="deadline"></div>
     <div class="mb-2"><label class="form-label">Контролёр (по умолчанию — вы)</label>
       <select class="form-select" name="controller" data-instruction-field="controller">
         <option value="">Я</option>

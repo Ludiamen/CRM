@@ -17,10 +17,14 @@ ACTIONS = {
 }
 
 FIELDS = {
-    "title": "название", "text": "текст", "basis": "основание", "deadline": "срок",
-    "controller": "контролёр", "assignee": "исполнитель", "members": "соисполнители",
+    "title": "заголовок", "text": "текст", "basis": "основание", "deadline": "срок",
+    "controller": "контролёр", "assignee": "ответственный", "members": "состав",
     "periodicity": "периодичность", "years": "срок хранения, лет",
-    "instructions": "Удалено по сроку, поручений",
+    "instructions": "Удалено по сроку, поручений", "reports": "отчётов", "files": "файлов",
+    "closed_at": "снято с контроля", "report": "отчёт", "date": "отчётная дата",
+    "reason": "причина", "old": "прежний срок", "new": "новый срок", "transfer": "перенос",
+    "state": "состояние", "comment": "комментарий", "author": "автор", "reminder": "напоминание",
+    "user": "получатель", "ladder": "лестница",
 }
 
 OBJECT_TYPES = {

@@ -7,8 +7,8 @@
     <a class="btn btn-sm btn-outline-secondary" href="{{ export_url }}">Excel</a>
   </header>
   <form method="get" action="/instructions/discipline/" class="d-flex flex-wrap gap-2 mb-2">
-    <input class="form-control w-auto" type="date" name="from" value="{{ date_from }}">
-    <input class="form-control w-auto" type="date" name="to" value="{{ date_to }}">
+    <input class="form-control w-auto" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10" data-datefield-input name="from" value="{{ date_from_display }}">
+    <input class="form-control w-auto" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="10" data-datefield-input name="to" value="{{ date_to_display }}">
     <button class="btn btn-outline-secondary" type="submit">Показать</button>
   </form>
   {% include "instructions/_discipline.html" %}

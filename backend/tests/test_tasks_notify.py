@@ -113,8 +113,10 @@ def test_eight_kinds_titles_orders_channels_and_external_text():
         f"виды задач в каталоге: {[kind.code for kind in module_kinds]}")
     assert [kind.order for kind in module_kinds] == list(range(210, 218))
 
-    previous_orders = [kind.order for kind in catalog if kind.module != MODULE]
-    assert min(kind.order for kind in module_kinds) > max(previous_orders), "виды задач не последние в каталоге"
+    previous_orders = [kind.order for kind in catalog if kind.module not in (MODULE, "Поручения")]
+    assert min(kind.order for kind in module_kinds) > max(previous_orders), "виды задач не после прежних модулей"
+    assert min(kind.order for kind in module_kinds) < max(
+        kind.order for kind in catalog if kind.module == "Поручения"), "поручения должны идти после задач"
 
     user = tasks_helpers.staff_user(full_name="Читатель Видов")
     for code, title, order, external in KINDS:
