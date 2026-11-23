@@ -2,7 +2,7 @@
 id: TASKS-010
 вид: задачи
 статус: черновик
-версия: 1
+версия: 2
 зависит_от: PLAN-010
 основан_на: PLAN-010 sha256:0c1d373ab12e0af6dfe439b793dd568d27ab97b33e527193307a0dee2083893e
 ---
@@ -59,7 +59,7 @@ id: TASKS-010
   `decide_transfer`, `reminders_of`, `registry_rows`, `discipline_rows`, роли прав-данных; без импорта кода
   приложения на уровне модуля — `backend/tests/support_instructions.py` — (все FR)
 - [ ] T-10006 [arch] помощники e2e: `open_instructions`, `create_instruction`, `open_card`, `submit_report`,
-  `accept_report`, `return_report`, `request_transfer`, `open_discipline`, `export_excel`, `check_360`;
+  `accept_report`, `return_report`, `request_transfer`, `decide_transfer`, `close_instruction`, `open_discipline`, `export_excel`, `check_360`;
   локаторы — только зацепки CONTRACT-010 — `backend/tests/e2e/helpers_instructions.py` — (FR-700…723)
 - [ ] T-10007 [arch] маршруты и задания (после T-10001): `urls.py` — адреса контракта; `config/cron.py` —
   `instructions_reminders` (`*/5 * * * *`, 300), `instructions_digest` (`*/15 * * * *`, 300),
@@ -85,22 +85,22 @@ id: TASKS-010
   увольнение/блокировка, смена контролёра, увольнение исполнителя и назначение нового — `test_instructions_access.py` — (FR-702, 703, 719, 721, 722)
 - [ ] T-10103 [code] создание: название, текст, основание, срок, состав, журнал, виды основания — `test_instructions_create.py`, `test_instructions_basis.py` — (FR-700…704)
 - [ ] T-10104 [code] отчётные даты: неделя/месяц/квартал, 31-е, 29.02, начало ряда, дата = срок, обрезка,
-  ранний отчёт и пересборка, схлопывание совпадающих и отказ прошедших дат — `test_instructions_dates.py` — (FR-705)
+  ранний отчёт и пересборка, схлопывание совпадающих, отказ прошедших дат — `test_instructions_dates.py` — (FR-705)
 - [ ] T-10105 [code] отчёты и части: часть к дате до сводного отчёта, сохранение при возврате, приёмка/возврат,
-  итоговый отчёт, отмена напоминаний — `test_instructions_reports.py` — (FR-706, 707, 723)
+  итоговый отчёт, отмена напоминаний, обязательный текст и до 10 файлов — `test_instructions_reports.py` — (FR-706, 707, 723)
 - [ ] T-10106 [code] снятие с контроля: только контролёр, только с принятым итоговым отчётом, pending-перенос —
-  `test_instructions_close.py` — (FR-707)
+  `test_instructions_close.py`, после снятия отчёты не принимаются — (FR-707)
 - [ ] T-10107 [code] переносы: запрос, один pending, согласование/отказ, история, исходный срок, пересчёт —
-  `test_instructions_transfers.py` — (FR-708)
+  `test_instructions_transfers.py` — после `closed_at` запросы не принимаются, уведомление о решении — (FR-708)
 - [ ] T-10108 [code] напоминания: семь порогов, границы длины, прошлые, `None`, проверка тихих часов перед
   отправкой, идемпотентность, отмена при отправке/закрытии; напоминания об отчётных датах r3/r1 и
-  просрочка отчёта со следующего рабочего дня; правка лестницы — только будущие `pending`, `sent` не трогаются —
-  `test_instructions_reminders.py` — (FR-709, 710, 711, NFR-724)
+  просрочка отчёта со следующего рабочего дня; правка лестницы по маршруту `/instructions/<id>/ladder/` (право постановщика/контролёра) — только будущие
+  `pending`, `sent` не трогаются — `test_instructions_reminders.py` — (FR-709, 710, 711, NFR-724)
 - [ ] T-10109 [code] реестр: пресеты, «кроме собственных», фильтры, поиск, сортировки, страницы, SQL —
   `test_instructions_registry.py` — статус по ближайшей незакрытой дате/сроку, приоритет «Просрочено», нет
-  ручной установки — (FR-713, 717, NFR-721)
+  ручной установки, страницы 20/50, порядок «срок, затем изменение» — (FR-713, 717, NFR-721)
 - [ ] T-10110 [code] дисциплина и Excel: период, подразделение, две шкалы, последний перенос, открытые
-  просроченные, «основной узел», администратор, `.xlsx` — `test_instructions_discipline.py` — (FR-714, 715)
+  просроченные, «основной узел», администратор, `.xlsx` — `test_instructions_discipline.py` — те же числа в Excel, SQL параметрами — (FR-714, 715, NFR-721)
 - [ ] T-10111 [arch] **правки прежних тестов — только с разрешения владельца**, по одной строке таблицы
   PLAN-010 «Прежние тесты, которые придётся поправить» (cron 24→27, `APPS_TAIL`, меню 18→20, права 20→22,
   Purpose 7→8, каталог 30→40, `stand_reset`, nginx 3→4, «без задач», e2e каталога и меню): каждая с диффом
@@ -128,6 +128,7 @@ id: TASKS-010
   | 16 | `test_lists_seed.py::test_portal_has_twenty_permissions_after_seed` | 19/20 | 21/22 | права |
   | 17 | `test_feed_core_changes.py`, `test_messenger_core_changes.py`, `test_messenger_boundaries.py`, `test_messenger_deploy.py`, `test_tasks_core_changes.py`, `test_tasks_models.py` (Purpose) | 7, последнее `task` | 8, последнее `instruction` | Purpose |
   | 18 | `test_notify_catalog.py` (TABLE/счётчики), `test_notify_catalog_2.py`, `test_notify_prefs.py`, `test_messenger_notify_2.py` | 30 видов | 40, десять `instructions.*` | каталог |
+  | 18а | `test_messenger_deploy.py::test_slice_numbers_nineteen_points_thirty_kinds_seven_purposes_and_order_61` | `len(catalog) == 30` | 40, имя | каталог |
   | 19 | `test_feed_stand.py::test_feed_stand_reset...`, `test_lists_stand.py::test_lists_stand_reset...`, `test_messenger_stand.py::test_stand_reset_runs...`, `test_tasks_stand.py::test_tasks_stand_reset...`, `test_kb_deploy.py::test_stand_reset_knowledge...` | tasks последний | instructions последний, сдвиг индексов | stand_reset |
   | 20 | `test_feed_deploy.py::test_nginx_dev/prod...`, `test_messenger_deploy.py::test_nginx_has_three_25m...`, `test_deploy_files.py::test_nginx_body_size...` | три 25m | четыре | nginx |
   | 21 | `test_tasks_core_changes.py::test_previous_menu_search_card...`, `test_tasks_boundaries.py::test_without_tasks...`/`test_search_and_card...` | без tasks | «без tasks и instructions», 16 пунктов | зависимость |
@@ -139,25 +140,25 @@ id: TASKS-010
 - [ ] T-10113 [code] уведомления: десять видов, получатели, приоритет, принятие/возврат, внешний текст,
   письмо по настройке, `still_relevant` — `test_instructions_notify.py` — (FR-711, NFR-723)
 - [ ] T-10114 [code] сводка: первый рабочий день, содержание, `cache.add`, пустая/повтор, неделя —
-  `test_instructions_digest.py` — (FR-712, NFR-724)
+  `test_instructions_digest.py` — сроки и отчётные даты на 30 дней и просроченные — (FR-712, NFR-724)
 - [ ] T-10115 [code] настройки: умолчания лестницы, срок хранения 1–10, второй шаг, журнал, справочник видов,
   права администратора — `test_instructions_settings.py` — (FR-701, 709, NFR-729)
 - [ ] T-10116 [code] файлы: 20 МБ, ClamAV, карантин, exe/архивы, 10 на отчёт/часть, недоступность до проверки,
   чужая ссылка, X-Accel, регистрация `file_purposes` для `instruction` — `test_instructions_files.py` — (NFR-722)
 - [ ] T-10117 [code] журнал и история: коды, «было/стало», части и переносы, закрытие, хранение, подписи —
-  `test_instructions_audit.py` — (FR-718, NFR-727)
+  `test_instructions_audit.py` — включая `instructions.reminder_failed` — (FR-718, NFR-727)
 - [ ] T-10118 [code] хранение: только закрытые, календарное вычитание, файлы/части/связи, журнал, идемпотентность,
   неснятые не удаляются — `test_instructions_retention.py` — (NFR-729)
 - [ ] T-10119 [code] границы: импорты только публичных служб, модели `core`/`tasks`, отключение вместе с задачами,
   отсутствие прямого импорта `tasks.models` — `test_instructions_boundaries.py` — (конституция)
 - [ ] T-10120 [code] данные установки: виды основания, `InstructionSettings`, идемпотентность — `test_instructions_seed.py` — (FR-701, 709, NFR-729)
 - [ ] T-10121 [code] развёртывание: маршруты, cron 27, меню 20, статика/CSP, nginx четыре 25m, права, профиль —
-  `test_instructions_deploy.py` — (NFR-722, 723, 725, 728)
+  `test_instructions_deploy.py` — меню 3/66, три задания с расписанием, русские тексты и Europe/Moscow — (NFR-722, 723, 725, 726, 728)
 - [ ] T-10122 [code] изменения ядра: Purpose, права, settings/urls/cron, `stand_reset`, прежнее поведение без
   приложения — `test_instructions_core_changes.py` — (FR-700…723)
 - [ ] T-10123 [code] стенд: `stand_reset`, порядок, `e2e_instructions_seed` — `test_instructions_stand.py` — (все FR; PLAN-010 ссылается на T-10124, читать как T-10123)
-- [ ] T-10124 [code] браузерные сценарии: `test_t10_01_registry.py`, `t10_02_create.py`, `t10_03_report.py`, `t10_04_return.py`, `t10_05_transfer.py`,
-  `t10_06_reminders.py`, `t10_07_discipline.py`, `t10_08_tasks.py`, `t10_09_rights.py`, `t10_10_mobile.py` —
+- [ ] T-10124 [code] браузерные сценарии: `test_t10_01_registry.py`, `test_t10_02_create.py`, `test_t10_03_report.py`, `test_t10_04_return.py`, `test_t10_05_transfer.py`,
+  `test_t10_06_reminders.py`, `test_t10_07_discipline.py`, `test_t10_08_tasks.py`, `test_t10_09_rights.py`, `test_t10_10_mobile.py` —
   `backend/tests/e2e/` — (FR-700…723)
 - [ ] T-10150 [code] нагрузочный профиль: `fill_instructions.py` (1 000 поручений/100 сотрудников), `InstructionUser`,
   проверка наличия в deploy-тесте — `backend/tests/load/`, `test_instructions_deploy.py` — (NFR-720, 728)
@@ -190,7 +191,7 @@ id: TASKS-010
 **Партия 3 — реестр, напоминания, уведомления.**
 - [ ] T-10207 [code] реестр и страницы: `services/registry.py`, `views/pages.py`, шаблоны — зелёный:
   `test_instructions_registry` — (FR-713, 717, NFR-721)
-- [ ] T-10208 [code] напоминания: `services/reminders.py`, задание, лестница, тихие часы — зелёный:
+- [ ] T-10208 [code] напоминания: `services/reminders.py`, задание, лестница, маршрут `/instructions/<id>/ladder/`, тихие часы — зелёный:
   `test_instructions_reminders` — (FR-709, 710, NFR-724)
 - [ ] T-10209 [code] уведомления и сводка: `notify_kinds.py`, `services/notify_rules.py`, `services/digest.py`,
   задание сводки — зелёные: `test_instructions_notify`, `test_instructions_digest` — (FR-711, 712, NFR-723)
@@ -210,8 +211,7 @@ id: TASKS-010
 **Партия 5 — стенд, деплой, границы, 360.**
 - [ ] T-10215 [code] 360 px и запасные пути: `instructions.css`, карточка/реестр/дисциплина — e2e `t10_10` —
   (NFR-725)
-- [ ] T-10216 [code] стенд: проверка `stand.py`/`extensions.py`/`e2e_instructions_seed` после Stage 1, данные установки
-  `instructions 0002` — зелёные: `test_instructions_seed`, `test_instructions_stand` — (все FR)
+- [ ] T-10216 [code] стенд: проверка `stand.py`/`extensions.py`/`e2e_instructions_seed` после Stage 1 — зелёные: `test_instructions_seed`, `test_instructions_stand` — (все FR)
 - [ ] T-10217 [code] деплой и границы: `urls.py`, `config/cron.py`, `_assets.html`, меню, nginx, `boundaries` —
   зелёные: `test_instructions_deploy`, `test_instructions_boundaries`, `test_instructions_core_changes` —
   (NFR-722, 723, 725, 728)
@@ -229,7 +229,7 @@ id: TASKS-010
 - [ ] T-10303 [P] [arch] ворота: `sdd.py`, tools, конституция, `check_secrets`, `verify_vendor`, `git diff --check` —
   `docs/reviews/TASKS-010.md`, раздел «Ворота» — (конституция)
 - [ ] T-10304 [arch] нагрузка NFR-720 — только после отдельного решения владельца, на остывшей машине: L1
-  `InstructionUser`, L2 все классы, p95 500 мс — `crm-work/slice010/stage4/load/`, отчёт — (NFR-720, 728)
+  `InstructionUser`, L2 все классы, p95 500 мс — `crm-work/slice010/stage4/load/`, `docs/reviews/TASKS-010.md`, раздел «Нагрузка» — (NFR-720, 728)
 - [ ] T-10305 [arch] наблюдения на стенде (с разрешения владельца): отказ слоя, повтор задания, ночная уборка —
   `docs/reviews/TASKS-010.md`, раздел «Наблюдения» — (FR-711, NFR-729)
 - [ ] T-10306 [arch] инварианты по диффу: модуль-приложение (зависимость от tasks), настройка-без-кода, ПДн,
@@ -238,7 +238,8 @@ id: TASKS-010
   после T-10304 — `docs/reviews/TASKS-010.md`, раздел «Требования», `[x]` в этом файле — (все FR)
 - [ ] T-10308 [человек] ручной проход критерия «поручение с основанием и отчётом за минуту»; отметка — `docs/reviews/TASKS-010.md`, раздел «Критерий успеха» —
   (FR-700, 706)
-- [ ] T-10309 [человек] принять срез, подписать, `git push` — владелец — (инвариант «спека-прежде-кода»)
+- [ ] T-10309 [человек] принять срез, подписать, `git push`; если после подписи менялся текст задач — подписать
+  заново — владелец — (инвариант «спека-прежде-кода»)
 
 ## Решения Opus по задачам
 
@@ -298,12 +299,12 @@ id: TASKS-010
 | FR-722 увольнение/смена | T-10202, T-10203 | access |
 | FR-723 части | T-10205 | reports |
 | NFR-720 p95 | T-10150, T-10304 | нагрузка |
-| NFR-721 SQL | T-10110, T-10207, T-10210 | registry, discipline |
+| NFR-721 SQL | T-10109, T-10110, T-10207, T-10210 | registry, discipline |
 | NFR-722 файлы | T-10009, T-10211 | files, deploy |
 | NFR-723 внешний текст | T-10209 | notify |
 | NFR-724 идемпотентность | T-10208, T-10209, T-10213 | reminders, digest, retention |
 | NFR-725 360/браузеры | T-10010, T-10215, T-10302 | e2e 4 круга |
-| NFR-726 русский/Москва | T-10121, T-10217 | deploy |
+| NFR-726 русский/Москва | T-10121, T-10217 | deploy (русские тексты, Europe/Moscow) |
 | NFR-727 журнал | T-10212 | audit |
 | NFR-728 профиль | T-10150, T-10217 | deploy |
 | NFR-729 хранение | T-10213 | retention |
