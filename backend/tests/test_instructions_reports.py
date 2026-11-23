@@ -30,7 +30,7 @@ def _err(call):
 def _people():
     tree = support_org.make_tree({"Отдел": {"Группа": {}}})
     head = ins.head_of(tree["Отдел"])
-    assignee = support.make_employee()
+    assignee = ins.staff_user()
     support_org.make_member(assignee, tree["Группа"])
     controller = ins.staff_user()
     coexecutor = ins.staff_user()
@@ -131,11 +131,13 @@ def test_part_forbidden_after_submit_and_duplicate():
     err = _err(lambda: reports().add_part(coexecutor, row, due, text="Вторая"))
     assert (err.code, err.field) == ("part_duplicate", "text")
 
-    row2, head2, controller2, assignee2, coexecutor2, due2 = _people()
-    reports().submit(assignee2, row2, date=due2, text="Сводный")
-    err = _err(lambda: reports().add_part(coexecutor2, row2, due2, text="Поздно"))
+    row2 = ins.make_instruction(author=head, controller=controller, assignee=assignee)
+    ins.add_coexecutor(row2, coexecutor)
+    due2 = ins.add_report_date(row2, ins._today() + datetime.timedelta(days=4))
+    reports().submit(assignee, row2, date=due2, text="Сводный")
+    err = _err(lambda: reports().add_part(coexecutor, row2, due2, text="Поздно"))
     assert (err.code, err.field) == ("part_forbidden", "text")
-    err = _err(lambda: reports().add_part(assignee2, row2, due2, text="Не моё"))
+    err = _err(lambda: reports().add_part(assignee, row2, due2, text="Не моё"))
     assert (err.code, err.field) == ("part_forbidden", "text")
 
 
@@ -188,7 +190,7 @@ def test_report_pages_success_and_refusal(client):
     """CONTRACT-010, 6.2: обычный POST отчёта — 302 на карточку; пустой текст — 200 с
     `[data-error="text"][data-code="report_empty"]`; решение контролёра — 302."""
     row, head, controller, assignee, coexecutor, due = _people()
-    client.force_login(assignee)
+    support.login(client, assignee)
     bad = client.post(f"/instructions/{row.pk}/reports/", {"date": due.pk, "text": ""})
     assert bad.status_code == 200
     assert b'data-error="text"' in bad.content and b'data-code="report_empty"' in bad.content
@@ -197,8 +199,7 @@ def test_report_pages_success_and_refusal(client):
     report = support.model("instructions.InstructionReport").objects.get(instruction=row, date=due)
     assert good.status_code == 302 and good["Location"] == f"/instructions/{row.pk}/"
 
-    client.force_login(controller)
-    accepted = client.post(f"/instructions/reports/{report.pk}/accept/", {})
+    accepted = support.logged_in(controller).post(f"/instructions/reports/{report.pk}/accept/", {})
     assert accepted.status_code == 302
     report.refresh_from_db()
     assert report.decision == "accepted"

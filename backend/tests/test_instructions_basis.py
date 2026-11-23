@@ -16,6 +16,12 @@ def basis():
     return module
 
 
+def _clear():
+    """Убрать данные установки стенда, чтобы справочник начинался с пустого (тест изолирован)."""
+    support.model("instructions.InstructionBasisKind").objects.all().delete()
+    support.model("instructions.InstructionSettings").objects.all().delete()
+
+
 def _err(call):
     from apps.instructions.texts import InstructionsError
 
@@ -26,6 +32,7 @@ def _err(call):
 
 def test_all_is_ordered_by_position_and_active_excludes_inactive():
     """FR-701: справочник отдаётся по `position`; `active()` не показывает выключенные виды."""
+    _clear()
     late = ins.make_basis("Письмо", position=2)
     early = ins.make_basis("Приказ", position=0)
     off = ins.make_basis("Устное указание", position=1, active=False)
@@ -37,6 +44,7 @@ def test_all_is_ordered_by_position_and_active_excludes_inactive():
 
 def test_add_checks_title_length_and_uniqueness():
     """FR-701: название вида 1–100 (`basis_title_range`), повтор — `basis_title_taken`; отказ у поля `title`."""
+    _clear()
     for title in ("", "я" * 101):
         err = _err(lambda title=title: basis().add(support.make_admin(), title))
         assert (err.code, err.field) == ("basis_title_range", "title")
@@ -47,6 +55,7 @@ def test_add_checks_title_length_and_uniqueness():
 
 def test_rename_and_delete_unused():
     """FR-701: вид переименовывается; неиспользованный удаляется из справочника."""
+    _clear()
     actor = support.make_admin()
     kind = basis().add(actor, "Приказ")
     renamed = basis().rename(actor, kind, "Приказ отдела")
@@ -57,6 +66,7 @@ def test_rename_and_delete_unused():
 
 def test_delete_used_deactivates_and_keeps_instructions():
     """FR-701: удаление использованного вида не удаляет поручения — вид выключается (`active=False`), новые
+    _clear()
     поручения с ним отклоняются."""
     actor = support.make_admin()
     kind = ins.make_basis("Приказ")
@@ -70,6 +80,7 @@ def test_delete_used_deactivates_and_keeps_instructions():
 
 def test_one_document_can_basis_several_instructions():
     """FR-701: один документ-основание — у нескольких поручений."""
+    _clear()
     kind = ins.make_basis("Протокол совещания")
     first = ins.make_instruction(title="Первое", basis=kind, basis_number="7", basis_date=ins._today())
     second = ins.make_instruction(title="Второе", basis=kind, basis_number="7", basis_date=ins._today())
@@ -78,9 +89,10 @@ def test_one_document_can_basis_several_instructions():
 
 def test_settings_pages_are_admin_only_and_create_rename_delete(client):
     """NFR-729, CONTRACT-010, 6.1: справочник под `settings.portal`; рядовому — 403; создание, переименование и
+    _clear()
     удаление через страницы."""
     actor = support.make_admin()
-    client.force_login(actor)
+    support.login(client, actor)
     page = client.get("/settings/instructions/basis/")
     assert page.status_code == 200 and b'data-instructions-page="settings"' in page.content
 
@@ -100,6 +112,6 @@ def test_settings_pages_are_admin_only_and_create_rename_delete(client):
     assert deleted.status_code == 302
     assert not support.model("instructions.InstructionBasisKind").objects.filter(pk=other.pk).exists()
 
-    client.force_login(ins.staff_user())
-    assert client.get("/settings/instructions/basis/").status_code == 403
-    assert client.post("/settings/instructions/basis/", {"title": "Чужое"}).status_code == 403
+    staff_client = support.logged_in(ins.staff_user())
+    assert staff_client.get("/settings/instructions/basis/").status_code == 403
+    assert staff_client.post("/settings/instructions/basis/", {"title": "Чужое"}).status_code == 403

@@ -228,7 +228,7 @@ def test_static_assets_are_wired_for_both_prefixes():
 
 def test_csp_without_unsafe_inline_on_instructions_pages(client):
     """NFR-725: страницы отдают CSP без `unsafe-inline`/`unsafe-eval`."""
-    client.force_login(support.make_admin())
+    support.login(client, support.make_admin())
     for path in ("/instructions/", "/settings/instructions/"):
         response = client.get(path)
         csp = response["Content-Security-Policy"]

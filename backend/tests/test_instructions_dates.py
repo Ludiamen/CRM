@@ -104,7 +104,7 @@ def test_manual_dates_reject_past_and_deadline_and_collapse_duplicates():
     assert (err.code, err.field) == ("date_not_before_deadline", "dates")
 
     first = today + datetime.timedelta(days=7)
-    built = dates().build(row, periodicity="weekly", dates=[first, first])
+    built = dates().build(row, dates=[first, first])
     assert _due(built) == [first]
 
 
@@ -117,25 +117,29 @@ def test_periodicity_invalid():
 
 def test_rebuild_keeps_dates_with_reports_and_regenerates_future():
     """FR-705: смена срока пересобирает только будущие даты без отчётов; дата с принятым отчётом сохраняется."""
-    row = _instr(DAY(2026, 1, 5), DAY(2026, 2, 2))
+    today = ins._today()
+    row = _instr(today, today + datetime.timedelta(days=28))
     built = dates().build(row, periodicity="weekly")
     first = built[0]
     _report(row, first, decision="accepted", state="accepted")
 
-    row.deadline = DAY(2026, 2, 16)
+    row.deadline = today + datetime.timedelta(days=42)
     row.save(update_fields=["deadline"])
     rebuilt = dates().rebuild(row, deadline=row.deadline, periodicity="weekly")
-    assert _due(rebuilt) == [DAY(2026, 1, 12), DAY(2026, 1, 19), DAY(2026, 1, 26), DAY(2026, 2, 9)]
+    assert _due(rebuilt) == [today + datetime.timedelta(days=7), today + datetime.timedelta(days=14),
+                             today + datetime.timedelta(days=21), today + datetime.timedelta(days=28),
+                             today + datetime.timedelta(days=35)]
     assert support.model("instructions.InstructionReportDate").objects.get(pk=first.pk).state == "accepted"
 
 
 def test_rebuild_keeps_early_report_to_future_date():
     """FR-705: отчёт, отправленный заранее к будущей дате, переживает пересборку."""
-    row = _instr(DAY(2026, 1, 5), DAY(2026, 2, 2))
+    today = ins._today()
+    row = _instr(today, today + datetime.timedelta(days=21))
     built = dates().build(row, periodicity="weekly")
     future = built[-1]
     _report(row, future, state="review")
-    row.deadline = DAY(2026, 2, 16)
+    row.deadline = today + datetime.timedelta(days=35)
     row.save(update_fields=["deadline"])
     rebuilt = dates().rebuild(row, deadline=row.deadline, periodicity="weekly")
     assert future.due_date in _due(rebuilt)

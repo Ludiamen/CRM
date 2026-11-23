@@ -119,13 +119,13 @@ def test_card_shows_task_only_to_those_who_see_it(client):
     tree, head, controller, assignee, row = _base()
     task = instructions().link_task(assignee, row, title="Видна не всем",
                                     deadline=ins._today() + datetime.timedelta(days=2))
-    client.force_login(assignee)
+    support.login(client, assignee)
     assert "Видна не всем" in client.get(f"/instructions/{row.pk}/").content.decode()
 
-    client.force_login(controller)
+    support.login(client, controller)
     assert "Видна не всем" not in client.get(f"/instructions/{row.pk}/").content.decode()
 
     outsider = support.make_employee()
     support_org.make_member(outsider, support_org.make_tree({"Чужой": {}})["Чужой"])
-    client.force_login(outsider)
+    support.login(client, outsider)
     assert client.get(f"/instructions/{row.pk}/").status_code == 404

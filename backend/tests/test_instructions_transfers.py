@@ -30,7 +30,7 @@ def _err(call):
 def _setup():
     tree = support_org.make_tree({"Отдел": {"Группа": {}}})
     head = ins.head_of(tree["Отдел"])
-    assignee = support.make_employee()
+    assignee = ins.staff_user()
     support_org.make_member(assignee, tree["Группа"])
     controller = ins.staff_user()
     row = ins.make_instruction(author=head, controller=controller, assignee=assignee)
@@ -154,15 +154,15 @@ def test_decision_notifies_assignee(django_capture_on_commit_callbacks):
 def test_request_and_decide_pages(client):
     """CONTRACT-010, 6.2: запрос переноса и решение — 302; строка `[data-transfer]` со состоянием `pending`."""
     row, head, controller, assignee = _setup()
-    client.force_login(assignee)
+    assignee_client = support.logged_in(assignee)
     new_deadline = (row.deadline + datetime.timedelta(days=7)).isoformat()
-    requested = client.post(f"/instructions/{row.pk}/transfers/",
-                            {"new_deadline": new_deadline, "reason": "Нужно время"})
+    requested = assignee_client.post(f"/instructions/{row.pk}/transfers/",
+                                     {"new_deadline": new_deadline, "reason": "Нужно время"})
     transfer = support.model("instructions.InstructionTransfer").objects.get(instruction=row)
     assert requested.status_code == 302
 
-    client.force_login(controller)
-    approved = client.post(f"/instructions/transfers/{transfer.pk}/approve/", {"comment": "Ок"})
+    approved = support.logged_in(controller).post(f"/instructions/transfers/{transfer.pk}/approve/",
+                                                  {"comment": "Ок"})
     assert approved.status_code == 302
     transfer.refresh_from_db()
     assert transfer.state == "approved"

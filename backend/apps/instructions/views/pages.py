@@ -21,10 +21,3 @@ def registry(request):
 def list_fragment(request):
     """GET `/instructions/list/` — фрагмент реестра (каркас: пустой список)."""
     return render_page(request, "instructions/_list.html", {"preset": request.GET.get("preset", "mine")})
-
-
-@require_GET
-@permissions.require_permission("settings.portal")
-def settings_page(request):
-    """GET `/settings/instructions/` — настройки (каркас)."""
-    return render_page(request, "instructions/settings.html", {})

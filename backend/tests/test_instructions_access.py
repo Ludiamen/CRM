@@ -220,8 +220,10 @@ def test_dismissed_assignee_waits_for_new_appointment(django_capture_on_commit_c
     остаётся видимым автору, действия исполнителя запрещены."""
     from apps.org.services import people
 
-    author = ins.staff_user()
+    tree = _tree()
+    author = ins.head_of(tree["Отдел"])
     assignee = ins.staff_user()
+    support_org.make_member(assignee, tree["Группа"])
     row = ins.make_instruction(author=author, assignee=assignee)
     with django_capture_on_commit_callbacks(execute=True):
         people.dismiss(assignee, actor=support.make_admin())
@@ -230,6 +232,7 @@ def test_dismissed_assignee_waits_for_new_appointment(django_capture_on_commit_c
     assert access().visible(author, row)
     assert not access().can_report(row.assignee, row)
     replacement = ins.staff_user()
+    support_org.make_member(replacement, tree["Группа"])
     services().update(author, row, assignee=replacement)
     row.refresh_from_db()
     assert row.assignee_id == replacement.pk
@@ -243,7 +246,7 @@ def test_moved_employee_leaves_previous_manager_view():
     head = ins.head_of(tree["Отдел"])
     person = support.make_employee()
     membership = support_org.make_member(person, tree["Группа"])
-    row = ins.make_instruction(author=head, assignee=person)
+    row = ins.make_instruction(author=ins.staff_user(), controller=ins.staff_user(), assignee=person)
     assert access().visible(head, row)
     membership.unit = tree["Чужой"]
     membership.save(update_fields=["unit"])
@@ -255,25 +258,21 @@ def test_card_404_for_stranger_and_admin_403_for_visible_forbidden(client):
     403 (снятие с контроля руководителем)."""
     tree = _tree()
     head = ins.head_of(tree["Отдел"])
-    assignee = support.make_employee()
+    assignee = ins.staff_user()
     support_org.make_member(assignee, tree["Группа"])
     controller = ins.staff_user()
     row = ins.make_instruction(author=head, controller=controller, assignee=assignee)
 
-    client.force_login(assignee)
-    assert client.get(f"/instructions/{row.pk}/").status_code == 200
+    assert support.logged_in(assignee).get(f"/instructions/{row.pk}/").status_code == 200
 
-    client.force_login(ins.head_of(tree["Чужой"]))
-    stranger = client.get(f"/instructions/{row.pk}/")
-    missing = client.get("/instructions/999999/")
+    stranger_client = support.logged_in(ins.head_of(tree["Чужой"]))
+    stranger = stranger_client.get(f"/instructions/{row.pk}/")
+    missing = stranger_client.get("/instructions/999999/")
     assert stranger.status_code == missing.status_code == 404
     assert support.same_failure(stranger, missing)
 
-    admin = support.make_admin()
-    client.force_login(admin)
-    admin_response = client.get(f"/instructions/{row.pk}/")
+    admin_response = support.logged_in(support.make_admin()).get(f"/instructions/{row.pk}/")
     assert admin_response.status_code == 404
     assert support.same_failure(admin_response, missing)
 
-    client.force_login(head)
-    assert client.post(f"/instructions/{row.pk}/close/", {"confirm": "1"}).status_code == 403
+    assert support.logged_in(head).post(f"/instructions/{row.pk}/close/", {"confirm": "1"}).status_code == 403

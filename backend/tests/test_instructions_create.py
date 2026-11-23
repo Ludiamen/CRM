@@ -35,8 +35,7 @@ def _people():
     return tree, head, assignee
 
 
-def _data(**extra):
-    _, _head, assignee = _people()
+def _data(*, assignee, **extra):
     base = {"title": "Проверить регламент", "text": "Текст поручения", "basis_kind": ins.make_basis(),
             "basis_number": "12-01", "basis_date": ins._today(), "assignee": assignee,
             "deadline": ins._today() + datetime.timedelta(days=14)}
@@ -54,7 +53,7 @@ def test_create_saves_fields_controller_and_audit():
     """FR-700, FR-703: создание сохраняет поля, `original_deadline = deadline`, контролёр по умолчанию — автор;
     журнал `instructions.created` — номер, название, исполнитель, срок, основание."""
     tree, head, assignee = _people()
-    data = _data()
+    data = _data(assignee=assignee)
     row = instructions().create(head, **data)
 
     assert row.pk and row.title == data["title"] and row.text == data["text"]
@@ -74,34 +73,34 @@ def test_create_saves_fields_controller_and_audit():
 def test_title_text_limits_and_required():
     """FR-700: название 1–300 (`title_range`), текст до 10 000 (`text_long`); отказ — `InstructionsError`
     с кодом и полем (CONTRACT-010, 12.1)."""
-    _, head, _ = _people()
+    _, head, assignee = _people()
     for title in ("", "я" * 301):
-        err = _err(lambda title=title: instructions().create(head, **_data(title=title)))
+        err = _err(lambda title=title: instructions().create(head, **_data(assignee=assignee, title=title)))
         assert (err.code, err.field) == ("title_range", "title")
-    err = _err(lambda: instructions().create(head, **_data(text="я" * 10_001)))
+    err = _err(lambda: instructions().create(head, **_data(assignee=assignee, text="я" * 10_001)))
     assert (err.code, err.field) == ("text_long", "text")
 
 
 def test_basis_view_number_and_date_are_required_and_known():
     """FR-700, FR-701: основание обязательно — вид, номер и дата (`basis_required` у своего поля); неизвестный или
     выключенный вид — `basis_unknown`."""
-    _, head, _ = _people()
+    _, head, assignee = _people()
     for field in ("basis_kind", "basis_number", "basis_date"):
-        err = _err(lambda field=field: instructions().create(head, **_data(**{field: None if field != "basis_number" else ""})))
+        err = _err(lambda field=field: instructions().create(head, **_data(assignee=assignee, **{field: None if field != "basis_number" else ""})))
         assert (err.code, err.field) == ("basis_required", field)
     inactive = ins.make_basis("Письмо", active=False)
-    err = _err(lambda: instructions().create(head, **_data(basis_kind=inactive)))
+    err = _err(lambda: instructions().create(head, **_data(assignee=assignee, basis_kind=inactive)))
     assert (err.code, err.field) == ("basis_unknown", "basis_kind")
 
 
 def test_deadline_required_and_not_in_past_but_today_allowed():
     """FR-700: срок обязателен (`deadline_required`), раньше сегодняшнего — `deadline_past`, сегодня — можно."""
-    _, head, _ = _people()
-    err = _err(lambda: instructions().create(head, **_data(deadline=None)))
+    _, head, assignee = _people()
+    err = _err(lambda: instructions().create(head, **_data(assignee=assignee, deadline=None)))
     assert (err.code, err.field) == ("deadline_required", "deadline")
-    err = _err(lambda: instructions().create(head, **_data(deadline=ins._today() - datetime.timedelta(days=1))))
+    err = _err(lambda: instructions().create(head, **_data(assignee=assignee, deadline=ins._today() - datetime.timedelta(days=1))))
     assert (err.code, err.field) == ("deadline_past", "deadline")
-    row = instructions().create(head, **_data(deadline=ins._today()))
+    row = instructions().create(head, **_data(assignee=assignee, deadline=ins._today()))
     assert row.deadline == ins._today()
 
 
@@ -128,13 +127,13 @@ def test_members_duplicate_assignee_and_dismissed():
     tree, head, assignee = _people()
     peer = support.make_employee()
     support_org.make_member(peer, tree["Группа"])
-    err = _err(lambda: instructions().create(head, **_data(members=(peer, peer))))
+    err = _err(lambda: instructions().create(head, **_data(assignee=assignee, members=(peer, peer))))
     assert (err.code, err.field) == ("member_duplicate", "members")
-    err = _err(lambda: instructions().create(head, **_data(members=(assignee,))))
+    err = _err(lambda: instructions().create(head, **_data(assignee=assignee, members=(assignee,))))
     assert (err.code, err.field) == ("member_is_assignee", "members")
     dismissed = support.make_employee(state="dismissed")
     support_org.make_member(dismissed, tree["Группа"])
-    err = _err(lambda: instructions().create(head, **_data(members=(dismissed,))))
+    err = _err(lambda: instructions().create(head, **_data(assignee=assignee, members=(dismissed,))))
     assert (err.code, err.field) == ("member_dismissed", "members")
 
 
@@ -143,10 +142,10 @@ def test_controller_must_be_active_and_can_be_changed_by_author():
     меняет контролёра автор с журналом `instructions.changed`."""
     _, head, assignee = _people()
     controller = ins.staff_user()
-    row = instructions().create(head, **_data(controller=controller))
+    row = instructions().create(head, **_data(assignee=assignee, controller=controller))
     assert row.controller_id == controller.pk
     dismissed = support.make_employee(state="dismissed")
-    err = _err(lambda: instructions().create(head, **_data(controller=dismissed)))
+    err = _err(lambda: instructions().create(head, **_data(assignee=assignee, controller=dismissed)))
     assert (err.code, err.field) == ("controller_dismissed", "controller")
 
     new_controller = ins.staff_user()
@@ -161,7 +160,7 @@ def test_controller_must_be_active_and_can_be_changed_by_author():
 def test_update_refused_for_non_author_and_closed():
     """FR-700, FR-703: поля меняет автор (`edit_forbidden` у остальных); после снятия с контроля правка запрещена."""
     _, head, assignee = _people()
-    row = instructions().create(head, **_data())
+    row = instructions().create(head, **_data(assignee=assignee))
     err = _err(lambda: instructions().update(assignee, row, title="Новое"))
     assert (err.code, err.field) == ("edit_forbidden", "title")
     row.closed_at = _now()
@@ -180,7 +179,7 @@ def test_create_page_and_post_render_errors_and_redirect(client):
     """CONTRACT-010, 6.2: `GET /instructions/new/` — форма; успешный POST — 302 на карточку; отказ — 200 с
     `[data-error="title"][data-code="title_range"]`."""
     tree, head, assignee = _people()
-    client.force_login(head)
+    support.login(client, head)
     page = client.get("/instructions/new/")
     assert page.status_code == 200 and b'data-instructions-page="new"' in page.content
 
@@ -203,7 +202,7 @@ def test_form_offers_only_managed_people_and_existing_basis_kinds(client):
     outsider = support.make_employee()
     support_org.make_member(outsider, tree["Чужой"])
     kind = ins.make_basis("Протокол совещания", position=7)
-    client.force_login(head)
+    support.login(client, head)
     page = client.get("/instructions/new/")
     html = page.content.decode()
     assert f'value="{assignee.pk}"' in html and f'value="{outsider.pk}"' not in html

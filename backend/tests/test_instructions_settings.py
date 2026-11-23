@@ -54,8 +54,8 @@ def test_save_retention_writes_audit_and_checks_range():
 def test_save_default_ladder_and_invalid():
     """FR-709: умолчание лестницы сохраняется 1–60 без повторов; иное — `ladder_invalid`."""
     actor = support.make_admin()
-    row = settings_service().save(actor, default_ladder={"offsets": [10, 2], "due": False, "overdue": True})
-    assert row.default_ladder == {"offsets": [10, 2], "due": False, "overdue": True}
+    row = settings_service().save(actor, default_ladder={"offsets": [2, 10], "due": False, "overdue": True})
+    assert row.default_ladder == {"offsets": [2, 10], "due": False, "overdue": True}
     for ladder in ({"offsets": [0], "due": True, "overdue": True},
                    {"offsets": [5, 5], "due": True, "overdue": True}):
         err = _err(lambda ladder=ladder: settings_service().save(actor, default_ladder=ladder))
@@ -64,21 +64,21 @@ def test_save_default_ladder_and_invalid():
 
 def test_page_admin_only_and_renders_field(client):
     """CONTRACT-010, 6.2: страница настроек под `settings.portal`; поле срока и лестница; рядовому — 403."""
-    client.force_login(support.make_admin())
+    support.login(client, support.make_admin())
     page = client.get("/settings/instructions/")
     html = page.content.decode()
     assert page.status_code == 200 and 'data-instructions-page="settings"' in html
     assert 'data-instruction-field="retention_years"' in html
     assert "Хранить поручения, лет" in html
 
-    client.force_login(ins.staff_user())
-    assert client.get("/settings/instructions/").status_code == 403
-    assert client.post("/settings/instructions/", {"retention_years": 5}).status_code == 403
+    staff_client = support.logged_in(ins.staff_user())
+    assert staff_client.get("/settings/instructions/").status_code == 403
+    assert staff_client.post("/settings/instructions/", {"retention_years": 5}).status_code == 403
 
 
 def test_page_saves_retention_and_shows_range_error(client):
     """CONTRACT-010, 6.2: сохранение — 302; вне 1–10 — 200 с `[data-error="retention_years"]`."""
-    client.force_login(support.make_admin())
+    support.login(client, support.make_admin())
     saved = client.post("/settings/instructions/", {"retention_years": 5})
     assert saved.status_code == 302
     assert support.model("instructions.InstructionSettings").objects.get(pk=1).retention_years == 5
@@ -96,7 +96,7 @@ def test_decrease_requires_second_step_with_count(client):
     old.closed_at = datetime.datetime(2021, 1, 5, 12, 0, tzinfo=MSK)
     old.save(update_fields=["closed_at"])
 
-    client.force_login(actor)
+    support.login(client, actor)
     first = client.post("/settings/instructions/", {"retention_years": 2})
     html = first.content.decode()
     assert first.status_code == 200 and "data-instructions-confirm" in html

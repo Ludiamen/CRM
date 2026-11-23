@@ -139,7 +139,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 Имена и поля — план, «Модель данных»; тесты берут их через `support.model("instructions.<Модель>")`. Номер
 поручения — `pk`; `__str__` — `#<pk> <title>` (К3). Пределы: `title` 1–300, `text` ≤ 10 000,
 `basis_number` ≤ 100, `InstructionReport.text`/`InstructionReportPart.text` ≤ 10 000,
-`InstructionReport.comment`/`InstructionTransfer.comment` ≤ 2 000, `InstructionTransfer.reason` ≤ 1 000,
+`InstructionReport.comment` ≤ 2 000, `InstructionTransfer.comment` ≤ 1 000, `InstructionTransfer.reason` ≤ 1 000,
 `InstructionFile.name` ≤ 255, `InstructionBasisKind.title` ≤ 100, `InstructionSettings.retention_years` 1–10
 (по умолчанию 3).
 

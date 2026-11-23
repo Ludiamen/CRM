@@ -230,7 +230,7 @@ def test_discipline_page_and_excel_route(client):
     today = ins._today()
     _closed(today, assignee=assignee, deadline=today)
 
-    client.force_login(head)
+    support.login(client, head)
     page = client.get("/instructions/discipline/")
     html = page.content.decode()
     assert page.status_code == 200 and "data-discipline-table" in html and "data-discipline-row" in html
@@ -239,6 +239,6 @@ def test_discipline_page_and_excel_route(client):
     assert book.status_code == 200 and book.content[:2] == b"PK"
     assert "spreadsheet" in book["Content-Type"]
 
-    client.force_login(assignee)
+    support.login(client, assignee)
     assert client.get("/instructions/discipline/").status_code == 403
     assert client.get("/instructions/discipline.xlsx").status_code == 403

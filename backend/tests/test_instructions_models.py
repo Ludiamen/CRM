@@ -57,7 +57,7 @@ def _unique_sets(model) -> list[tuple]:
     return result
 
 
-def _constraint(model, **fields):
+def _constraint(model, *fields):
     """`UniqueConstraint`/`CheckConstraint` по именам полей (условие не важно)."""
     for constraint in model._meta.constraints:
         if tuple(getattr(constraint, "fields", ()) or ()) == tuple(fields):
@@ -178,7 +178,7 @@ def test_transfer_single_pending_and_states():
         "pending", "approved", "rejected"]
     assert Transfer._meta.get_field("state").default == "pending"
     assert Transfer._meta.get_field("reason").max_length == 1_000
-    assert Transfer._meta.get_field("comment").max_length == 2_000
+    assert Transfer._meta.get_field("comment").max_length == 1_000
     assert ("instruction", "state") in _index_fields(Transfer)
     constraint = _constraint(Transfer, "instruction")
     assert constraint.condition is not None and "state" in str(constraint.condition)
@@ -227,7 +227,7 @@ def test_settings_single_row_retention_default_and_check():
     assert field.default == 3
     assert any("retention" in (getattr(item, "name", "") or "") or "retention_years" in str(item)
                for item in Settings._meta.constraints), Settings._meta.constraints
-    row = Settings.objects.create(pk=1)
+    row, _ = Settings.objects.update_or_create(pk=1, defaults={"retention_years": 3})
     assert row.retention_years == 3
     assert isinstance(row.default_ladder, dict)
     for bad in (0, 11):

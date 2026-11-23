@@ -21,7 +21,7 @@ def registry():
 def _base():
     tree = support_org.make_tree({"Отдел": {"Группа": {}}, "Чужой": {}})
     head = ins.head_of(tree["Отдел"])
-    assignee = support.make_employee()
+    assignee = ins.staff_user()
     support_org.make_member(assignee, tree["Группа"])
     peer = support.make_employee()
     support_org.make_member(peer, tree["Группа"])
@@ -167,7 +167,7 @@ def test_registry_page_and_fragment_render_hooks(client):
     пресеты и пустое состояние; фрагмент — без `<html>`."""
     tree, head, assignee, peer, controller, outsider = _base()
     row = ins.make_instruction(title="В реестре", author=head, controller=head, assignee=assignee)
-    client.force_login(assignee)
+    support.login(client, assignee)
 
     page = client.get("/instructions/")
     html = page.content.decode()

@@ -30,7 +30,7 @@ def _err(call):
 def _setup():
     tree = support_org.make_tree({"Отдел": {"Группа": {}}})
     head = ins.head_of(tree["Отдел"])
-    assignee = support.make_employee()
+    assignee = ins.staff_user()
     support_org.make_member(assignee, tree["Группа"])
     controller = ins.staff_user()
     row = ins.make_instruction(author=head, controller=controller, assignee=assignee)
@@ -114,12 +114,12 @@ def test_close_page_two_steps_and_access(client):
     row, head, controller, assignee = _setup()
     _accepted_final(row)
 
-    client.force_login(head)
-    assert client.post(f"/instructions/{row.pk}/close/", {"confirm": "1"}).status_code == 403
+    assert support.logged_in(head).post(f"/instructions/{row.pk}/close/",
+                                       {"confirm": "1"}).status_code == 403
 
-    client.force_login(controller)
-    first = client.post(f"/instructions/{row.pk}/close/", {})
+    controller_client = support.logged_in(controller)
+    first = controller_client.post(f"/instructions/{row.pk}/close/", {})
     assert first.status_code == 200 and b"data-instructions-confirm" in first.content
-    second = client.post(f"/instructions/{row.pk}/close/", {"confirm": "1"})
+    second = controller_client.post(f"/instructions/{row.pk}/close/", {"confirm": "1"})
     row.refresh_from_db()
     assert second.status_code == 302 and row.closed_at is not None

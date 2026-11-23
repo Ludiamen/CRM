@@ -30,7 +30,7 @@ def labels():
 def _base():
     tree = support_org.make_tree({"Отдел": {"Группа": {}}})
     head = ins.head_of(tree["Отдел"])
-    assignee = support.make_employee()
+    assignee = ins.staff_user()
     support_org.make_member(assignee, tree["Группа"])
     controller = ins.staff_user()
     row = ins.make_instruction(author=head, controller=controller, assignee=assignee)
@@ -117,7 +117,7 @@ def test_history_page_shows_created_and_changed(client):
     from apps.instructions.services import instructions as service
 
     service.update(head, row, title="Изменённое поручение")
-    client.force_login(assignee)
+    support.login(client, assignee)
     page = client.get(f"/instructions/{row.pk}/")
     html = page.content.decode()
     assert page.status_code == 200 and "data-history" in html
