@@ -17,7 +17,7 @@ def cast(browser, admin_page, mailpit, new_context):
 
 
 def test_t10_05_request_and_approve_transfer(cast, new_context):
-    new_day = (datetime.now(MOSCOW).date() + timedelta(days=14)).isoformat()
+    new_day = (datetime.now(MOSCOW).date() + timedelta(days=30)).isoformat()
     head_page = open_instructions(new_context(), cast.head)
     instruction_id = create_instruction(head_page, "Перенос срока", basis="Приказ", assignee=cast.assignee)
     page = open_card(new_context(), cast.assignee, instruction_id)

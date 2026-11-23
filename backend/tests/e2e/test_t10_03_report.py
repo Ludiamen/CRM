@@ -30,4 +30,4 @@ def test_t10_03_assignee_reports_and_controller_accepts(cast, new_context):
     controller = open_card(new_context(), cast.head, instruction_id)
     accept_report(controller, date_id)
     expect(controller.locator(f'[data-report-date="{date_id}"] [data-report-state]')).to_have_text(
-        re.compile("Принято"))
+        re.compile("принято", re.I))

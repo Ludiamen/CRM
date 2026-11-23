@@ -29,7 +29,7 @@ def test_t10_04_return_requires_reason_and_resubmit(cast, new_context):
     controller = open_card(new_context(), cast.head, instruction_id)
     return_report(controller, date_id, "Нужны детали")
     expect(controller.locator(f'[data-report-date="{date_id}"] [data-report-state]')).to_have_text(
-        re.compile("Возвращено"))
+        re.compile("возвращено", re.I))
 
     again = open_card(new_context(), cast.assignee, instruction_id)
     submit_report(again, "Доработано")

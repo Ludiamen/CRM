@@ -32,4 +32,4 @@ def test_t10_01_registry_rows_and_presets(cast, new_context):
     expect(row).to_contain_text(title)
     expect(row).to_contain_text(cast.assignee.full_name)
     expect(row).to_contain_text(_day(5))
-    expect(row.locator("[data-instruction-state]")).to_be_visible()
+    expect(page.locator(f'[data-instruction-id="{instruction_id}"][data-instruction-state]')).to_be_visible()

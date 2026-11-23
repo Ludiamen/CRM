@@ -204,7 +204,7 @@ def accept_report(page, report_id):
     expect(block).to_be_visible()
     page.locator('[data-decide="accept"]').first.click()
     page.wait_for_load_state()
-    expect(block.locator('[data-report-state]')).to_have_text(re.compile("Принято"))
+    expect(block.locator('[data-report-state]')).to_have_text(re.compile("принято", re.I))
 
 
 def return_report(page, report_id, comment):
@@ -214,7 +214,7 @@ def return_report(page, report_id, comment):
     page.locator('[data-instruction-field="comment"]').first.fill(comment)
     page.locator('[data-decide="return"]').first.click()
     page.wait_for_load_state()
-    expect(block.locator('[data-report-state]')).to_have_text(re.compile("Возвращено"))
+    expect(block.locator('[data-report-state]')).to_have_text(re.compile("возвращено", re.I))
 
 
 # --- Переносы (13.3) -----------------------------------------------------------------------------
