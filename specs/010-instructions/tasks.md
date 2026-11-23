@@ -38,15 +38,15 @@ id: TASKS-010
 
 ## Этап 1 — каркас, контракт, помощники, правки ядра
 
-- [ ] T-10001 [arch] каркас `apps.instructions` по PLAN-010 «Где живёт код»: `apps.py`, `models.py`, `urls.py`,
+- [x] T-10001 [arch] каркас `apps.instructions` по PLAN-010 «Где живёт код»: `apps.py`, `models.py`, `urls.py`,
   `extensions.py`, `notify_kinds.py`, `audit_labels.py`, `texts.py`, `stand.py`, `tasks.py`, пакеты `services/`,
   `views/`, `migrations/`, `templates/instructions/`, `static/instructions/`; `"apps.instructions"` после
   `"apps.tasks"`; пустой include под `is_installed`; сбор тестов растёт — `backend/apps/instructions/`,
   `backend/config/settings.py`, `backend/config/urls.py` — (FR-700…723)
-- [ ] T-10002 [P] [arch] `Purpose.INSTRUCTION = "instruction"` в конце перечня и миграция `core 0014`; тест
+- [x] T-10002 [P] [arch] `Purpose.INSTRUCTION = "instruction"` в конце перечня и миграция `core 0014`; тест
   «последнее назначение — instruction» — `backend/apps/core/models/files.py`,
   `backend/apps/core/migrations/0014_storedfile_instruction_purpose.py`, `backend/tests/test_instructions_models.py::test_purpose_instruction_is_last` — (NFR-722)
-- [ ] T-10003 [arch] права `instructions.use`, `instructions.assign` — строки `core.Permission`, выданы
+- [x] T-10003 [arch] права `instructions.use`, `instructions.assign` — строки `core.Permission`, выданы
   «Администратору портала» и «Сотруднику ИТ»; миграция `core 0015` от `0014`, идемпотентна; тест роли без
   `instructions.assign` — `backend/apps/core/migrations/0015_instructions_permissions.py`,
   `backend/tests/test_instructions_core_changes.py` — (FR-702, FR-703)
@@ -71,9 +71,9 @@ id: TASKS-010
   `e2e_instructions_seed` (виды основания, три поручения); тест сброса —
   `backend/apps/instructions/stand.py`, `extensions.py`, `management/commands/e2e_instructions_seed.py`,
   `backend/tests/test_instructions_stand.py` — (все FR)
-- [ ] T-10009 [P] [arch] nginx: `location ~ ^/instructions/files/$` с `client_max_body_size 25m` и повтором
+- [x] T-10009 [P] [arch] nginx: `location ~ ^/instructions/files/$` с `client_max_body_size 25m` и повтором
   `proxy_*` в `deploy/nginx.conf` и `nginx.prod.conf` — `deploy/nginx.conf`, `deploy/nginx.prod.conf` — (NFR-722)
-- [ ] T-10010 [arch] статика: `instructions.css`, `instructions.js` и их подключение в `_assets.html` для
+- [x] T-10010 [arch] статика: `instructions.css`, `instructions.js` и их подключение в `_assets.html` для
   `/instructions/` и `/settings/instructions/`; CSP-заголовки страниц — `backend/static/instructions/`,
   `backend/templates/_assets.html` — (NFR-725)
 

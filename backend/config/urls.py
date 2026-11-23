@@ -23,6 +23,10 @@ if apps.is_installed("apps.tasks"):
     # Адреса задач — только у установленного модуля (T-9001, Этап 1).
     urlpatterns.append(path("", include("apps.tasks.urls")))  # /tasks/…, /settings/tasks/…
 
+if apps.is_installed("apps.instructions"):
+    # Адреса поручений — только у установленного модуля (T-10001, Этап 1).
+    urlpatterns.append(path("", include("apps.instructions.urls")))  # /instructions/…, /settings/instructions/…
+
 handler400 = "apps.core.views.pages.bad_request"
 handler403 = "apps.core.views.pages.forbidden"
 handler404 = "apps.core.views.pages.not_found"

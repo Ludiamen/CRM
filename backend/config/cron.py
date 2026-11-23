@@ -91,3 +91,15 @@ if apps.is_installed("apps.tasks"):
     register(tasks_reminders, queue_name="maintenance", cron="*/5 * * * *", name="tasks_reminders", job_timeout=300)
     register(tasks_digest, queue_name="maintenance", cron="*/15 * * * *", name="tasks_digest", job_timeout=300)
     register(tasks_retention, queue_name="maintenance", cron="42 23 * * *", name="tasks_retention", job_timeout=600)
+
+# Поручения (срез 010): напоминания и сводка в `maintenance`, ночная уборка — 23:43 UTC (02:43 МСК), между
+# `tasks_retention` (23:42) и `purge_trash` (23:45). Модуль отключаемый и требует `apps.tasks`.
+if apps.is_installed("apps.instructions") and apps.is_installed("apps.tasks"):
+    from apps.instructions.tasks import instructions_digest, instructions_reminders, instructions_retention  # noqa: E402
+
+    register(instructions_reminders, queue_name="maintenance", cron="*/5 * * * *", name="instructions_reminders",
+             job_timeout=300)
+    register(instructions_digest, queue_name="maintenance", cron="*/15 * * * *", name="instructions_digest",
+             job_timeout=300)
+    register(instructions_retention, queue_name="maintenance", cron="43 23 * * *", name="instructions_retention",
+             job_timeout=600)

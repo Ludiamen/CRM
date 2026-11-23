@@ -19,6 +19,7 @@ class StoredFile(models.Model):
         FEED = "feed", "вложение ленты"
         MESSENGER = "messenger", "вложение сообщения чата"
         TASK = "task", "вложение задачи"
+        INSTRUCTION = "instruction", "вложение поручения"
 
     class Status(models.TextChoices):
         PENDING = "pending", "проверяется"
