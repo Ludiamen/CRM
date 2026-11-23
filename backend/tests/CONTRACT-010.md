@@ -153,7 +153,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | `InstructionReportPart` | **`date` FK `InstructionReportDate` CASCADE обязателен**; уникальность `(date, author)`; индекс `(date)` | T-10101; T-10105 |
 | `InstructionFile` | `kind` ∈ `basis`/`report`/`part`; `report`/`part` SET_NULL; `file` OneToOne `StoredFile` PROTECT; `name`, `uploaded_by`; индексы `(instruction)`, `(report)`, `(part)` | T-10101; T-10116 |
 | `InstructionTransfer` | `old_deadline`, `new_deadline`, `reason`, `state` (`pending`/`approved`/`rejected`), `decided_by` SET_NULL, `decided_at`, `comment`; **частичный уникальный `(instruction)` при `state='pending'`**; индекс `(instruction, state)` | T-10101; T-10107 |
-| `InstructionReminder` | `date` FK CASCADE (пусто у срока), `user` CASCADE, `kind` (`deadline`/`report`), `stage` ∈ `d30`/`d14`/`d7`/`d3`/`d1`/`due`/`overdue`/`r3`/`r1`, `moment`, `state` (`pending`/`sent`/`cancelled`); **уникальность `(instruction, date, user, kind, stage)` при `state='pending'` с `nulls_distinct=False`**; индекс `(state, moment)` | T-10101; T-10108 |
+| `InstructionReminder` | `date` FK CASCADE (пусто у срока), `user` CASCADE, `kind` (`deadline`/`report`), `stage` — `due`, `overdue`, `r3`, `r1` или `d<offset>` (1–60; стандартные 30/14/7/3/1 — умолчание лестницы, К22), `moment`, `state` (`pending`/`sent`/`cancelled`); **уникальность `(instruction, date, user, kind, stage)` при `state='pending'` с `nulls_distinct=False`**; индекс `(state, moment)` | T-10101; T-10108 |
 | `InstructionSettings` | одна строка `pk=1`, `retention_years` 1–10, `default_ladder` JSON, `updated_at`, `updated_by`; `CheckConstraint` 1–10 | T-10101; T-10115 |
 | `InstructionTask` | `instruction` CASCADE, `task` FK `tasks.Task` CASCADE, `created_by` PROTECT, `created_at`; уникальность `(instruction, task)`, индекс `(task)` | T-10101; T-10112 |
 
@@ -385,7 +385,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | Что | Требование | Тесты |
 |---|---|---|
 | Длина | `deadline − created_at.date()` в календарных днях; границы — календарные месяцы: ≤ 1 месяца, > 1 и ≤ 6, > 6 (К11; без `dateutil`: сравнение с `created + 1/6 месяцев` через последний день месяца) | T-10108 |
-| Пороги срока | ≤ 1 месяца — 3 и 1 рабочий день; > 1 и ≤ 6 — ещё 14 и 7; > 6 — ещё 30; `due` — начало рабочего дня срока; `overdue` — начало следующего рабочего дня | T-10108 |
+| Пороги срока | ≤ 1 месяца — 3 и 1 рабочий день; > 1 и ≤ 6 — ещё 14 и 7; > 6 — ещё 30; `due` — начало рабочего дня срока; `overdue` — начало следующего рабочего дня; своя лестница — `d<offset>` | T-10108 |
 | Пороги отчёта | на каждую отчётную дату — `r3` и `r1` (3 и 1 рабочий день до неё); просрочка отчёта — следующий рабочий день после даты (уведомление контролёру, не напоминание) | T-10108; T-10113 |
 | Момент | начало рабочего дня (`calendar.day_kind`/`next_working_start`), по Москве; нерабочая дата — первый рабочий день после; прошедшие пороги при создании и пересборке не создаются | T-10108 |
 | Тихие часы | при планировании и **перед отправкой** момент сдвигается `quiet.next_start(prefs, moment)` по настройкам получателя; `None` — остаётся `pending` до следующего цикла; повторный `None` — `cancelled` и запись `instructions.reminder_failed` (ключ `instructions:reminder-none:<pk>`, TTL 24 ч) | T-10108 |
@@ -657,3 +657,4 @@ T-10003, T-10007 и **до** T-10160 (решение 2 задач). Строки
 | К19 | Уникальность напоминаний — `(instruction, date, user, kind, stage)` при `pending` с `nulls_distinct=False`; `date` пусто у срока | план, «Модель данных»; FR-709 |
 | К20 | `ladder` JSON — `{"offsets": [...], "due": bool, "overdue": bool}`; пустой объект — умолчание настроек | план, «Модель данных»; FR-709 |
 | К21 | Периодичность отчётных дат не хранится в модели: `build`/`rebuild` получают её из формы; ряд строится заново, даты с отчётами сохраняются, смена периодичности при таких датах — `dates_locked` | план не перечисляет поле `periodicity`; FR-705, FR-717 |
+| К22 | `stage` напоминания — `due`, `overdue`, `r3`, `r1` или `d<offset>` (1–60); перечень плана (`d30`…`d1`) — стандартные пороги умолчания, а не замкнутый набор | план разрешает свою лестницу 1–60 (FR-709); фиксированный `choices` не дал бы её сохранить |
