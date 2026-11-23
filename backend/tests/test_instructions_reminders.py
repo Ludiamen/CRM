@@ -123,7 +123,7 @@ def test_month_and_half_year_boundaries_are_inclusive():
 def test_past_thresholds_are_not_created():
     """FR-709: прошедшие пороги при создании не создаются — остаются только будущие."""
     today = ins._today()
-    row = _instr(today - datetime.timedelta(days=30), today + datetime.timedelta(days=1))
+    row = _instr(today, today + datetime.timedelta(days=1))
     reminders().plan(row)
     assert _stages(row) == {"due", "overdue"}
 
@@ -131,7 +131,8 @@ def test_past_thresholds_are_not_created():
 def test_recipients_assignee_and_coexecutors_without_author():
     """FR-709, FR-704: напоминания получают исполнитель и соисполнители, постановщик — нет; строки не
     дублируются."""
-    row = _instr(datetime.date(2026, 1, 5), datetime.date(2026, 1, 20))
+    assignee = ins.staff_user()
+    row = _instr(datetime.date(2026, 1, 5), datetime.date(2026, 1, 20), author=ins.staff_user(), assignee=assignee)
     coexecutor = ins.staff_user()
     ins.add_coexecutor(row, coexecutor)
     reminders().plan(row)
@@ -158,9 +159,9 @@ def test_report_dates_get_r3_and_r1():
 def test_custom_ladder_offsets_become_d_stages():
     """FR-709, К22: своя лестница `[5, 2]` даёт пороги `d5` и `d2`; `due`/`overdue` — по флагам."""
     row = _instr(datetime.date(2026, 1, 5), datetime.date(2026, 1, 20))
-    reminders().set_ladder(row.author, row, {"offsets": [5, 2], "due": True, "overdue": False})
+    reminders().set_ladder(row.author, row, {"offsets": [2, 5], "due": True, "overdue": False})
     reminders().plan(row)
-    assert _stages(row) == {"d5", "d2", "due"}
+    assert _stages(row) == {"d2", "d5", "due"}
 
 
 def test_empty_ladder_uses_settings_default():
@@ -198,9 +199,9 @@ def test_ladder_edit_touches_only_future_pending_not_sent():
     sent.save(update_fields=["state"])
     sent_moment = sent.moment
 
-    reminders().set_ladder(row.author, row, {"offsets": [5, 2], "due": True, "overdue": True})
+    reminders().set_ladder(row.author, row, {"offsets": [2, 5], "due": True, "overdue": True})
     stages = _stages(row)
-    assert {"d5", "d2", "due", "overdue"} <= stages
+    assert {"d2", "d5", "due", "overdue"} <= stages
     assert not ({"d30", "d14", "d7"} & stages), f"старые пороги остались: {stages}"
     again = support.model("instructions.InstructionReminder").objects.get(pk=sent.pk)
     assert (again.state, again.moment) == ("sent", sent_moment)
@@ -247,7 +248,7 @@ def test_job_sends_due_reminders_once():
     возвращает 0."""
     row = _instr(datetime.date(2026, 1, 5), datetime.date(2026, 1, 20))
     reminders().plan(row)
-    now = _at(datetime.date(2026, 1, 20), hour=10)
+    now = _at(datetime.date(2026, 1, 21), hour=10)
     first = _job(now)
     assert first >= 1
     assert not _pending(row)

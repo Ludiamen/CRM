@@ -171,49 +171,49 @@ id: TASKS-010
 ## Этап 3 — партии кода
 
 **Партия 1 — модели, настройки, права.**
-- [ ] T-10201 [code] модели и миграция `instructions 0001` (назначение/права уже в T-10002/T-10003), служба настроек и
+- [x] T-10201 [code] модели и миграция `instructions 0001` (назначение/права уже в T-10002/T-10003), служба настроек и
   справочника, `views/settings.py` — `backend/apps/instructions/models.py`, `migrations/`, `services/settings.py`,
   `services/basis.py` — зелёные: `test_instructions_models`, `test_instructions_basis`, `test_instructions_settings`
   (часть) — (FR-700…705, 709, NFR-729)
-- [ ] T-10202 [code] `services/access.py`: кто ставит, видимость (участники + цепочка), руководители только чтение,
+- [x] T-10202 [code] `services/access.py`: кто ставит, видимость (участники + цепочка), руководители только чтение,
   администратор 404, увольнение/блокировка — `services/access.py`, `services/instructions.reassign`, подписка `core.user_dismissed` в `apps.py` — зелёные: `test_instructions_access`,
   `test_instructions_core_changes` (часть) — (FR-702, 703, 719, 721, 722)
 
 **Партия 2 — создание, даты, отчёты.**
-- [ ] T-10203 [code] создание/правка и журнал: `services/instructions.py`, `views/actions.py`, формы и шаблоны —
+- [x] T-10203 [code] создание/правка и журнал: `services/instructions.py`, `views/actions.py`, формы и шаблоны —
   зелёные: `test_instructions_create`, `test_instructions_audit` (часть) — (FR-700…704, 718)
-- [ ] T-10204 [code] отчётные даты: `services/dates.py`, пересборка, ранний отчёт — зелёный:
+- [x] T-10204 [code] отчётные даты: `services/dates.py`, пересборка, ранний отчёт — зелёный:
   `test_instructions_dates` — (FR-705)
-- [ ] T-10205 [code] отчёты и части: `services/reports.py`, `views/reports.py`, карточка, решения — зелёные:
+- [x] T-10205 [code] отчёты и части: `services/reports.py`, `views/reports.py`, карточка, решения — зелёные:
   `test_instructions_reports`, `test_instructions_audit` (часть) — (FR-706, 707, 718, 723)
-- [ ] T-10206 [code] переносы и снятие: `services/transfers.py`, `services/instructions.close`, `views/transfers.py` —
+- [x] T-10206 [code] переносы и снятие: `services/transfers.py`, `services/instructions.close`, `views/transfers.py` —
   зелёные: `test_instructions_transfers`, `test_instructions_close` — (FR-707, 708)
 
 **Партия 3 — реестр, напоминания, уведомления.**
-- [ ] T-10207 [code] реестр и страницы: `services/registry.py`, `views/pages.py`, шаблоны — зелёный:
+- [x] T-10207 [code] реестр и страницы: `services/registry.py`, `views/pages.py`, шаблоны — зелёный:
   `test_instructions_registry` — (FR-713, 717, NFR-721)
-- [ ] T-10208 [code] напоминания: `services/reminders.py`, задание, лестница, маршрут `/instructions/<id>/ladder/`, тихие часы — зелёный:
+- [x] T-10208 [code] напоминания: `services/reminders.py`, задание, лестница, маршрут `/instructions/<id>/ladder/`, тихие часы — зелёный:
   `test_instructions_reminders` — (FR-709, 710, NFR-724)
-- [ ] T-10209 [code] уведомления и сводка: `notify_kinds.py`, `services/notify_rules.py`, `services/digest.py`,
+- [x] T-10209 [code] уведомления и сводка: `notify_kinds.py`, `services/notify_rules.py`, `services/digest.py`,
   задание сводки — зелёные: `test_instructions_notify`, `test_instructions_digest` — (FR-711, 712, NFR-723)
-- [ ] T-10210 [code] дисциплина и Excel: `services/discipline.py`, `services/excel.py`, `views/pages.py` — зелёный:
+- [x] T-10210 [code] дисциплина и Excel: `services/discipline.py`, `services/excel.py`, `views/pages.py` — зелёный:
   `test_instructions_discipline` — (FR-714, 715)
 
 **Партия 4 — файлы, журнал, хранение, задачи.**
-- [ ] T-10211 [code] файлы: `services/files.py`, `views/files.py`, `file_purposes`, X-Accel — зелёный:
+- [x] T-10211 [code] файлы: `services/files.py`, `views/files.py`, `file_purposes`, X-Accel — зелёный:
   `test_instructions_files` — (NFR-722)
-- [ ] T-10212 [code] журнал и история: `audit_labels.py`, блок истории в карточке — зелёные:
+- [x] T-10212 [code] журнал и история: `audit_labels.py`, блок истории в карточке — зелёные:
   `test_instructions_audit`, `test_instructions_close` (часть) — (FR-718, NFR-727)
-- [ ] T-10213 [code] срок хранения: `services/retention.py`, задание, настройки и журнал — зелёные:
+- [x] T-10213 [code] срок хранения: `services/retention.py`, задание, настройки и журнал — зелёные:
   `test_instructions_retention`, `test_instructions_settings` — (FR-701, NFR-729)
-- [ ] T-10214 [code] связь с задачами: `services/instructions.link_task`, `InstructionTask`, карточка — зелёный:
+- [x] T-10214 [code] связь с задачами: `services/instructions.link_task`, `InstructionTask`, карточка — зелёный:
   `test_instructions_tasks` — (FR-716)
 
 **Партия 5 — стенд, деплой, границы, 360.**
-- [ ] T-10215 [code] 360 px и запасные пути: `instructions.css`, карточка/реестр/дисциплина — e2e `t10_10` —
+- [x] T-10215 [code] 360 px и запасные пути: `instructions.css`, карточка/реестр/дисциплина — e2e `t10_10` —
   (NFR-725)
-- [ ] T-10216 [code] стенд: проверка `stand.py`/`extensions.py`/`e2e_instructions_seed` после Stage 1 — зелёные: `test_instructions_seed`, `test_instructions_stand` — (все FR)
-- [ ] T-10217 [code] деплой и границы: `urls.py`, `config/cron.py`, `_assets.html`, меню, nginx, `boundaries` —
+- [x] T-10216 [code] стенд: проверка `stand.py`/`extensions.py`/`e2e_instructions_seed` после Stage 1 — зелёные: `test_instructions_seed`, `test_instructions_stand` — (все FR)
+- [x] T-10217 [code] деплой и границы: `urls.py`, `config/cron.py`, `_assets.html`, меню, nginx, `boundaries` —
   зелёные: `test_instructions_deploy`, `test_instructions_boundaries`, `test_instructions_core_changes` —
   (NFR-722, 723, 725, 728)
 - [ ] T-10260 [arch] зелёная сборка: весь серверный набор зелёный, ни один тест не ослаблен; правки прежних — только

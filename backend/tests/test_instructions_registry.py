@@ -54,9 +54,9 @@ def test_visible_rows_include_participants_and_managers_but_not_outsiders():
     assert hidden.pk not in seen and managed.pk not in seen
 
     seen_controller = _ids(registry().rows(controller, preset="control"))
-    assert control.pk in seen_controller and own.pk not in seen_controller
+    assert {own.pk, co.pk, control.pk, managed.pk} <= set(seen_controller) and hidden.pk not in seen_controller
 
-    seen_head = _ids(registry().rows(head))
+    seen_head = _ids(registry().rows(head, preset="subordinate"))
     assert managed.pk in seen_head and hidden.pk not in seen_head
 
     assert _ids(registry().rows(outsider, preset="control")) == [hidden.pk]
@@ -101,15 +101,15 @@ def test_filters_basis_assignee_deadline_state_and_query():
     overdue = ins.make_instruction(title="Просроченное", author=head, controller=head, assignee=assignee,
                                    deadline=today - datetime.timedelta(days=1))
 
-    assert _ids(registry().rows(head, filters={"basis": kind.pk})) == [by_basis.pk]
-    assert _ids(registry().rows(head, filters={"assignee": peer.pk})) == [by_assignee.pk]
-    assert set(_ids(registry().rows(head, filters={"deadline": "today"}))) == {due_today.pk}
-    assert set(_ids(registry().rows(head, filters={"deadline": "week"}))) == {due_today.pk, due_week.pk}
-    assert set(_ids(registry().rows(head, filters={"deadline": "overdue"}))) == {overdue.pk}
-    assert set(_ids(registry().rows(head, filters={"state": "overdue"}))) == {overdue.pk}
-    assert _ids(registry().rows(head, filters={"q": "Неделе"})) == [due_week.pk]
-    assert _ids(registry().rows(head, filters={"q": str(by_assignee.pk)})) == [by_assignee.pk]
-    assert set(_ids(registry().rows(head, filters={"unknown": "x"}))) >= {by_basis.pk}
+    assert _ids(registry().rows(head, preset="control", filters={"basis": kind.pk})) == [by_basis.pk]
+    assert _ids(registry().rows(head, preset="control", filters={"assignee": peer.pk})) == [by_assignee.pk]
+    assert set(_ids(registry().rows(head, preset="control", filters={"deadline": "today"}))) == {due_today.pk}
+    assert set(_ids(registry().rows(head, preset="control", filters={"deadline": "week"}))) == {due_today.pk, due_week.pk}
+    assert set(_ids(registry().rows(head, preset="control", filters={"deadline": "overdue"}))) == {overdue.pk}
+    assert set(_ids(registry().rows(head, preset="control", filters={"state": "overdue"}))) == {overdue.pk}
+    assert _ids(registry().rows(head, preset="control", filters={"q": "Неделе"})) == [due_week.pk]
+    assert _ids(registry().rows(head, preset="control", filters={"q": str(by_assignee.pk)})) == [by_assignee.pk]
+    assert set(_ids(registry().rows(head, preset="control", filters={"unknown": "x"}))) >= {by_basis.pk}
 
 
 def test_default_sort_deadline_then_updated_and_pages_twenty_fifty():
@@ -120,15 +120,15 @@ def test_default_sort_deadline_then_updated_and_pages_twenty_fifty():
                                  deadline=today + datetime.timedelta(days=index))
             for index in range(25)]
 
-    first = registry().rows(head, per_page=20)
+    first = registry().rows(head, preset="control", per_page=20)
     assert (first["total"], first["pages"], first["page"], first["per_page"]) == (25, 2, 1, 20)
     assert _ids(first) == [row.pk for row in made[:20]]
-    second = registry().rows(head, per_page=20, page=2)
+    second = registry().rows(head, preset="control", per_page=20, page=2)
     assert _ids(second) == [row.pk for row in made[20:]]
 
-    fifty = registry().rows(head, per_page=50)
+    fifty = registry().rows(head, preset="control", per_page=50)
     assert fifty["per_page"] == 50 and len(fifty["rows"]) == 25
-    fallback = registry().rows(head, per_page=30)
+    fallback = registry().rows(head, preset="control", per_page=30)
     assert fallback["per_page"] == 20 and len(fallback["rows"]) == 20
 
 
@@ -143,8 +143,8 @@ def test_updated_sort_and_no_deadline_last():
     support.model("instructions.Instruction").objects.filter(pk=first.pk).update(
         updated_at=support.model("instructions.Instruction").objects.get(pk=second.pk).updated_at
         + datetime.timedelta(hours=1))
-    assert _ids(registry().rows(head)) == [first.pk, second.pk]
-    assert _ids(registry().rows(head, sort="updated")) == [second.pk, first.pk]
+    assert _ids(registry().rows(head, preset="control")) == [first.pk, second.pk]
+    assert _ids(registry().rows(head, preset="control", sort="updated")) == [second.pk, first.pk]
 
 
 def test_sql_parameters_and_chain_any():

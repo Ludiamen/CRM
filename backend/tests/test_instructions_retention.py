@@ -94,7 +94,11 @@ def test_purge_removes_parts_files_transfers_reminders_and_links(protected_root,
     assert result["instructions"] == 1
     for model in ("InstructionReport", "InstructionReportPart", "InstructionFile", "InstructionTransfer",
                   "InstructionReminder", "InstructionTask"):
-        assert not support.model(f"instructions.{model}").objects.filter(instruction=row).exists(), model
+        queryset = support.model(f"instructions.{model}").objects
+        if model == "InstructionReportPart":
+            assert not queryset.filter(date__instruction=row).exists(), model
+        else:
+            assert not queryset.filter(instruction=row).exists(), model
     assert not support.model("core.StoredFile").objects.filter(pk=world["stored"].pk).exists()
     assert not world["path"].exists(), "файл остался на диске"
 

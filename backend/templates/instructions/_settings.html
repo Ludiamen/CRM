@@ -1,0 +1,36 @@
+{% if error %}
+  <div class="text-danger mb-2" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>
+{% endif %}
+{% if confirm %}
+  <div class="alert alert-warning" data-instructions-confirm>
+    <p>{{ confirm_message|default:"Ближайшая уборка удалит поручений: " }}{{ confirm.count }}</p>
+    <form method="post" action="/settings/instructions/">
+      {% csrf_token %}
+      <input type="hidden" name="retention_years" value="{{ confirm.years }}">
+      <input type="hidden" name="confirm" value="1">
+      <button class="btn btn-warning" type="submit">Подтвердить</button>
+    </form>
+  </div>
+{% endif %}
+<form method="post" action="/settings/instructions/" class="mb-4">
+  {% csrf_token %}
+  <div class="mb-2">
+    <label class="form-label">Хранить поручения, лет</label>
+    <input class="form-control" type="number" min="1" max="10" name="retention_years"
+           value="{{ value }}" data-instruction-field="retention_years">
+  </div>
+  <div class="mb-2">
+    <label class="form-label">Лестница напоминаний, рабочих дней до срока</label>
+    <input class="form-control" name="offsets" value="{{ offsets }}" data-instruction-field="ladder">
+  </div>
+  <div class="form-check mb-2">
+    <input class="form-check-input" type="checkbox" name="due" value="1" id="ladder-due"{% if due %} checked{% endif %}>
+    <label class="form-check-label" for="ladder-due">Напоминать в день срока</label>
+  </div>
+  <div class="form-check mb-2">
+    <input class="form-check-input" type="checkbox" name="overdue" value="1" id="ladder-overdue"{% if overdue %} checked{% endif %}>
+    <label class="form-check-label" for="ladder-overdue">Напоминать о просрочке</label>
+  </div>
+  <button class="btn btn-primary" type="submit">Сохранить</button>
+</form>
+<p><a href="/settings/instructions/basis/">Виды основания</a></p>

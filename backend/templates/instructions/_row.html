@@ -1,0 +1,5 @@
+<li class="py-2" data-instruction-id="{{ row.pk }}" data-instruction-state="{{ row.state }}"
+    data-instruction-title="{{ row.title }}">
+  <a href="/instructions/{{ row.pk }}/">#{{ row.pk }} {{ row.title }}</a>
+  <span class="text-muted">· {{ row.assignee.full_name }} · {{ row.deadline|date:"d.m.Y" }} · {{ row.state_title }}</span>
+</li>

@@ -1,7 +1,14 @@
-/* Поручения (срез 010): реестр, карточка, дисциплина. Каркас T-10010; 360 px — T-10215. */
+/* Поручения (срез 010): реестр, карточка, дисциплина; 360 px — T-10215/NFR-725. */
 [data-instructions-page] .instructions-card { max-width: 60rem; }
 [data-report-date], [data-transfer] { border-bottom: 1px solid var(--bs-border-color, #dee2e6); padding: .35rem 0; }
+[data-discipline-table] { overflow-x: auto; }
+[data-instructions-page="card"] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.5rem; }
 @media (max-width: 900px) {
   [data-instructions-page] { display: block; }
-  [data-discipline-table] { overflow-x: auto; }
+  [data-instructions-page="card"] { display: block; }
+  [data-instructions-page="card"] > * + * { margin-top: 1rem; }
+  [data-discipline-table] { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  [data-instructions-page] .table { min-width: 44rem; }
+  [data-instructions-page] nav .btn, [data-instructions-page] form .form-control,
+  [data-instructions-page] form .form-select { width: 100%; }
 }

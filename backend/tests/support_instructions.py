@@ -86,10 +86,17 @@ def make_instruction(title="Поручение", *, author=None, controller=None
     controller = controller or author
     basis = basis or make_basis()
     deadline = deadline or (_today() + datetime.timedelta(days=30))
-    return Instruction.objects.create(
+    original = extra.pop("original_deadline", deadline)
+    row = Instruction.objects.create(
         title=title, text=text, basis_kind=basis, basis_number=basis_number,
         basis_date=basis_date or _today(), author=author, controller=controller, assignee=assignee,
-        deadline=deadline, original_deadline=deadline, ladder={} if ladder is None else ladder, **extra)
+        deadline=deadline, original_deadline=original, ladder={} if ladder is None else ladder, **extra)
+    from apps.core.services import audit
+
+    audit.record("instructions.created", actor=author, object_type="instructions.instruction", object_id=row.pk,
+                 after={"title": row.title, "assignee": assignee.full_name, "deadline": deadline.isoformat(),
+                        "basis": f"{basis.title} {basis_number}"})
+    return row
 
 
 def add_coexecutor(instruction, user):

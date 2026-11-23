@@ -8,6 +8,8 @@ import datetime
 import pytest
 from django.utils import timezone
 
+from django.utils import timezone
+
 from tests import support, support_org
 from tests import support_instructions as ins
 
@@ -50,7 +52,7 @@ def test_submit_to_date_sets_review_cancels_reminders_and_writes_audit():
     row, head, controller, assignee, coexecutor, due = _people()
     reminder = support.model("instructions.InstructionReminder").objects.create(
         instruction=row, date=due, user=assignee, kind="report", stage="r3",
-        moment=ins._today() + datetime.timedelta(days=1))
+        moment=timezone.now() + datetime.timedelta(days=1))
 
     report = reports().submit(assignee, row, date=due, text="Сделано")
     assert report.instruction_id == row.pk and report.date_id == due.pk

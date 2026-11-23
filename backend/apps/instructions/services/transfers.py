@@ -6,8 +6,10 @@
 from django.db import transaction
 from django.utils import timezone
 
+from apps.core.extensions import Draft
 from apps.core.services import audit
 from apps.instructions.models import InstructionTransfer
+from apps.notify.services import dispatch
 from apps.instructions.services import access
 from apps.instructions.texts import InstructionsError
 
@@ -46,6 +48,7 @@ def request(actor, instruction, *, new_deadline, reason) -> InstructionTransfer:
     audit.record("instructions.transfer_requested", actor=actor, object_type="instructions.instruction",
                  object_id=instruction.pk,
                  after={"old": instruction.deadline.isoformat(), "new": due.isoformat(), "reason": text})
+    _notify(instruction, "transfer_requested", actor)
     return row
 
 
@@ -73,4 +76,16 @@ def decide(actor, transfer, *, approve, comment="") -> InstructionTransfer:
     audit.record("instructions.transfer_decided", actor=actor, object_type="instructions.instruction",
                  object_id=instruction.pk,
                  after={"transfer": transfer.pk, "state": transfer.state, "comment": reason})
+    _notify(instruction, "transfer_decided", actor)
     return transfer
+
+
+def _notify(instruction, event, actor):
+    from apps.instructions.services import notify_rules
+
+    drafts = [Draft(user_id=user_id, text=f"Перенос срока: №{instruction.pk}",
+                    url=f"/instructions/{instruction.pk}/",
+                    object_ref=f"instructions.instruction:{instruction.pk}")
+              for user_id in notify_rules.recipients(instruction, event, actor=actor)]
+    if drafts:
+        dispatch.create("instructions.transfer", drafts)

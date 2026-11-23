@@ -32,9 +32,9 @@ def _base():
     tree = support_org.make_tree({"Направление": {"Отдел": {"Группа": {}}}, "Чужой": {}})
     head = ins.head_of(tree["Направление"])
     deputy = ins.deputy_of(tree["Направление"])
-    assignee = support.make_employee()
+    assignee = support.make_employee(full_name="Исполнитель Дисциплины")
     support_org.make_member(assignee, tree["Группа"])
-    peer = support.make_employee()
+    peer = support.make_employee(full_name="Второй Исполнитель")
     support_org.make_member(peer, tree["Группа"])
     outsider = support.make_employee()
     support_org.make_member(outsider, tree["Чужой"])
@@ -132,7 +132,6 @@ def test_final_scale_example_from_spec():
                      original=datetime.date(2026, 6, 1),
                      transfer=(datetime.date(2026, 6, 10), datetime.date(2026, 6, 2)))
     data = discipline().rows(head, date_from=datetime.date(2026, 6, 1), date_to=datetime.date(2026, 6, 30))
-
     first_row = _person_row(data, assignee)
     assert (first_row["with_transfer"], first_row["final_in_time"], first_row["final_overdue"]) == (1, 1, 0)
     second_row = _person_row(data, peer)
@@ -230,15 +229,14 @@ def test_discipline_page_and_excel_route(client):
     today = ins._today()
     _closed(today, assignee=assignee, deadline=today)
 
-    support.login(client, head)
-    page = client.get("/instructions/discipline/")
+    page = support.logged_in(head).get("/instructions/discipline/")
     html = page.content.decode()
     assert page.status_code == 200 and "data-discipline-table" in html and "data-discipline-row" in html
 
-    book = client.get("/instructions/discipline.xlsx")
+    book = support.logged_in(head).get("/instructions/discipline.xlsx")
     assert book.status_code == 200 and book.content[:2] == b"PK"
     assert "spreadsheet" in book["Content-Type"]
 
-    support.login(client, assignee)
-    assert client.get("/instructions/discipline/").status_code == 403
-    assert client.get("/instructions/discipline.xlsx").status_code == 403
+    staff_client = support.logged_in(assignee)
+    assert staff_client.get("/instructions/discipline/").status_code == 403
+    assert staff_client.get("/instructions/discipline.xlsx").status_code == 403

@@ -1,0 +1,16 @@
+{% extends layout %}
+{% block title %}Дисциплина{% endblock %}
+{% block content %}
+<div data-instructions-page="discipline">
+  <header class="page-head d-flex flex-wrap gap-2 align-items-center">
+    <h1 class="page-title mb-0">Дисциплина</h1>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ export_url }}">Excel</a>
+  </header>
+  <form method="get" action="/instructions/discipline/" class="d-flex flex-wrap gap-2 mb-2">
+    <input class="form-control w-auto" type="date" name="from" value="{{ date_from }}">
+    <input class="form-control w-auto" type="date" name="to" value="{{ date_to }}">
+    <button class="btn btn-outline-secondary" type="submit">Показать</button>
+  </form>
+  {% include "instructions/_discipline.html" %}
+</div>
+{% endblock %}

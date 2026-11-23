@@ -53,7 +53,7 @@ def test_audit_labels_cover_every_code_and_object_type():
     assert all(value for value in data["actions"].values())
 
 
-def test_created_changed_closed_and_reassigned_events():
+def test_created_changed_closed_and_reassigned_events(django_capture_on_commit_callbacks):
     """FR-718: создание, правка, снятие и смена контролёра пишутся в журнал."""
     from apps.org.services import people
 
@@ -73,7 +73,8 @@ def test_created_changed_closed_and_reassigned_events():
     assert _events("instructions.closed", row).exists()
 
     other = ins.make_instruction(author=head, controller=ins.staff_user(), assignee=assignee)
-    people.dismiss(other.controller, actor=support.make_admin())
+    with django_capture_on_commit_callbacks(execute=True):
+        people.dismiss(other.controller, actor=support.make_admin())
     assert _events("instructions.reassigned", other).exists()
 
 
@@ -83,14 +84,14 @@ def test_report_and_part_events_do_not_store_text():
     due = ins.add_report_date(row, ins._today() + datetime.timedelta(days=3))
     from apps.instructions.services import reports as service
 
+    service.add_part(assignee, row, due, text="Секретная часть")
+    part = _events("instructions.part_added", row).last()
+    assert part is not None and "Секретная часть" not in str(part.after)
+
     report = service.submit(assignee, row, date=due, text="Секретный текст отчёта")
     submitted = _events("instructions.report_submitted", row).last()
     assert submitted is not None
     assert "Секретный текст" not in str(submitted.after) and "Секретный текст" not in str(submitted.before)
-
-    service.add_part(assignee, row, due, text="Секретная часть")
-    part = _events("instructions.part_added", row).last()
-    assert part is not None and "Секретная часть" not in str(part.after)
 
     service.decide(controller, report, accept=False, comment="Нужны детали")
     returned = _events("instructions.report_returned", row).last()

@@ -3,6 +3,24 @@
 {% block content %}
 <div data-instructions-page="registry">
   <header class="page-head"><h1 class="page-title">Поручения</h1></header>
+  <nav class="d-flex flex-wrap gap-2 mb-2">
+    <a class="btn btn-sm btn-outline-primary" data-instructions-preset="mine" href="/instructions/?preset=mine"{% if preset == "mine" %} aria-pressed="true"{% endif %}>Мои</a>
+    <a class="btn btn-sm btn-outline-primary" data-instructions-preset="control" href="/instructions/?preset=control"{% if preset == "control" %} aria-pressed="true"{% endif %}>На моём контроле</a>
+    <a class="btn btn-sm btn-outline-primary" data-instructions-preset="subordinate" href="/instructions/?preset=subordinate"{% if preset == "subordinate" %} aria-pressed="true"{% endif %}>Подчинённых</a>
+    <a class="btn btn-sm btn-outline-primary" data-instructions-preset="overdue" href="/instructions/?preset=overdue"{% if preset == "overdue" %} aria-pressed="true"{% endif %}>Просроченные</a>
+  </nav>
+  <form method="get" action="/instructions/" class="d-flex flex-wrap gap-2 mb-2">
+    <input type="hidden" name="preset" value="{{ preset }}">
+    <input class="form-control w-auto" name="q" value="{{ filters.q }}" placeholder="Название или номер">
+    <select class="form-select w-auto" name="state">
+      <option value="">Статус</option>
+      <option value="control"{% if filters.state == "control" %} selected{% endif %}>На контроле</option>
+      <option value="waiting"{% if filters.state == "waiting" %} selected{% endif %}>Ждёт отчёта</option>
+      <option value="overdue"{% if filters.state == "overdue" %} selected{% endif %}>Просрочено</option>
+    </select>
+    <button class="btn btn-outline-secondary" type="submit">Найти</button>
+    <a class="btn btn-outline-secondary" href="/instructions/?preset={{ preset }}">Сбросить</a>
+  </form>
   <section id="instructions-list">
     {% include "instructions/_list.html" %}
   </section>

@@ -27,7 +27,7 @@ def tasks():
 def _base():
     tree = support_org.make_tree({"Отдел": {"Группа": {}}})
     head = ins.head_of(tree["Отдел"])
-    assignee = support.make_employee()
+    assignee = ins.staff_user()
     support_org.make_member(assignee, tree["Группа"])
     controller = ins.staff_user()
     row = ins.make_instruction(author=head, controller=controller, assignee=assignee)
@@ -119,13 +119,9 @@ def test_card_shows_task_only_to_those_who_see_it(client):
     tree, head, controller, assignee, row = _base()
     task = instructions().link_task(assignee, row, title="Видна не всем",
                                     deadline=ins._today() + datetime.timedelta(days=2))
-    support.login(client, assignee)
-    assert "Видна не всем" in client.get(f"/instructions/{row.pk}/").content.decode()
+    assert "Видна не всем" in support.logged_in(assignee).get(f"/instructions/{row.pk}/").content.decode()
+    assert "Видна не всем" not in support.logged_in(controller).get(f"/instructions/{row.pk}/").content.decode()
 
-    support.login(client, controller)
-    assert "Видна не всем" not in client.get(f"/instructions/{row.pk}/").content.decode()
-
-    outsider = support.make_employee()
+    outsider = ins.staff_user()
     support_org.make_member(outsider, support_org.make_tree({"Чужой": {}})["Чужой"])
-    support.login(client, outsider)
-    assert client.get(f"/instructions/{row.pk}/").status_code == 404
+    assert support.logged_in(outsider).get(f"/instructions/{row.pk}/").status_code == 404

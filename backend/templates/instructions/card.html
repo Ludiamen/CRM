@@ -1,0 +1,88 @@
+{% extends layout %}
+{% block title %}#{{ row.pk }} {{ row.title }}{% endblock %}
+{% block content %}
+<div data-instructions-page="card">
+  {% include "instructions/_form_error.html" %}
+  <header class="page-head d-flex flex-wrap gap-2 align-items-center">
+    <h1 class="page-title mb-0">#{{ row.pk }} <span data-instruction-title>{{ row.title }}</span></h1>
+    <span class="badge" data-instruction-id="{{ row.pk }}" data-instruction-state="{{ state }}">{{ state_title }}</span>
+    <a class="btn btn-sm btn-outline-secondary" href="/instructions/">Назад</a>
+  </header>
+  <p class="text-muted">Постановщик: {{ row.author.full_name }} · Контролёр: {{ row.controller.full_name }} · Исполнитель: {{ row.assignee.full_name }}</p>
+  <p>Основание: {{ row.basis_kind.title }} № {{ row.basis_number }} от {{ row.basis_date|date:"d.m.Y" }}</p>
+  <p>Срок: <span data-deadline="{{ row.deadline|date:'Y-m-d' }}">{{ row.deadline|date:"d.m.Y" }}</span></p>
+  {% if row.text %}<div class="mb-3">{{ row.text|linebreaks }}</div>{% endif %}
+
+  {% if can_edit %}
+  <form method="post" action="/instructions/{{ row.pk }}/" data-form="instruction-edit" class="mb-4">
+    {% csrf_token %}
+    <div class="mb-2"><label class="form-label">Название</label>
+      <input class="form-control" name="title" value="{{ row.title }}" data-instruction-field="title"></div>
+    <div class="mb-2"><label class="form-label">Срок</label>
+      <input class="form-control" type="date" name="deadline" value="{{ row.deadline|date:'Y-m-d' }}" data-instruction-field="deadline"></div>
+    <button class="btn btn-outline-primary" type="submit">Сохранить</button>
+  </form>
+  {% endif %}
+
+  <section data-report-dates class="mb-4">
+    <h2 class="h6">Отчётные даты</h2>
+    {% include "instructions/_dates.html" %}
+  </section>
+
+  {% if confirm_close %}
+  <div class="alert alert-warning" data-instructions-confirm>
+    <p>Снять поручение с контроля?</p>
+    <form method="post" action="/instructions/{{ row.pk }}/close/">
+      {% csrf_token %}<input type="hidden" name="confirm" value="1">
+      <button class="btn btn-warning" type="submit">Подтвердить</button>
+    </form>
+  </div>
+  {% elif can_close %}
+  <form method="post" action="/instructions/{{ row.pk }}/close/" data-form="instruction-close" class="mb-4">
+    {% csrf_token %}
+    <button class="btn btn-warning" type="submit">Снять с контроля</button>
+  </form>
+  {% endif %}
+
+  <section data-transfers class="mb-4">
+    <h2 class="h6">Переносы срока</h2>
+    {% for transfer in transfers %}
+      <div data-transfer="{{ transfer.pk }}" data-transfer-state="{{ transfer.state }}">
+        {{ transfer.old_deadline|date:"d.m.Y" }} → {{ transfer.new_deadline|date:"d.m.Y" }} · {{ transfer.get_state_display }}
+        {% if can_decide_transfer and transfer.state == "pending" %}
+          <form method="post" action="/instructions/transfers/{{ transfer.pk }}/approve/" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-success" data-decide="approve" type="submit">Согласовать</button></form>
+          <form method="post" action="/instructions/transfers/{{ transfer.pk }}/reject/" class="d-inline">{% csrf_token %}<input class="form-control d-inline w-auto" name="comment" data-instruction-field="comment"><button class="btn btn-sm btn-outline-danger" data-decide="reject" type="submit">Отклонить</button></form>
+        {% endif %}
+      </div>
+    {% empty %}<p>Переносов нет</p>{% endfor %}
+    {% if can_request_transfer %}
+    <form method="post" action="/instructions/{{ row.pk }}/transfers/" data-form="instruction-transfer" class="mt-2">
+      {% csrf_token %}
+      <input class="form-control" type="date" name="new_deadline" data-instruction-field="new_deadline">
+      <input class="form-control" name="reason" data-instruction-field="reason" placeholder="Причина">
+      <button class="btn btn-sm btn-outline-primary" type="submit">Просить перенос</button>
+    </form>
+    {% endif %}
+  </section>
+
+  {% include "instructions/_reports.html" %}
+
+  <section data-instruction-files class="mb-4">
+    <h2 class="h6">Файлы</h2>
+    {% for entry in files %}<a href="/instructions/files/{{ entry.pk }}/" data-instruction-file="{{ entry.pk }}" data-file-state="{{ entry.file.status }}">{{ entry.name }}</a>{% empty %}<p>Файлов нет</p>{% endfor %}
+  </section>
+
+  <section data-instruction-tasks class="mb-4">
+    <h2 class="h6">Связанные задачи</h2>
+    {% for task in tasks %}<p><a href="/tasks/{{ task.pk }}/">{{ task.title }}</a></p>{% empty %}<p>Задач нет</p>{% endfor %}
+    {% if request.user.pk == row.assignee_id %}<form method="post" action="/instructions/{{ row.pk }}/tasks/" data-form="instruction-task">{% csrf_token %}<button class="btn btn-sm btn-outline-primary" type="submit">Создать задачу</button></form>{% endif %}
+  </section>
+
+  <section data-history class="mb-4">
+    <h2 class="h6">История</h2>
+    <ul class="list-unstyled">
+      {% for event in history %}<li>{{ event.at|date:"d.m.Y H:i" }} — {{ event.title }}</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

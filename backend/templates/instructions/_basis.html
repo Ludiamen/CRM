@@ -1,0 +1,34 @@
+{% if error %}
+  <div class="text-danger mb-2" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>
+{% endif %}
+{% if confirm %}
+  <div class="alert alert-warning" data-instructions-confirm>
+    <p>{{ error.message|default:"Удалить вид основания?" }}</p>
+    <form method="post" action="/settings/instructions/basis/{{ confirm.kind.pk }}/delete/">
+      {% csrf_token %}
+      <input type="hidden" name="confirm" value="1">
+      <button class="btn btn-danger" type="submit">Подтвердить</button>
+    </form>
+  </div>
+{% endif %}
+<ul class="list-group mb-3">
+  {% for kind in kinds %}
+    <li class="list-group-item" data-basis-kind="{{ kind.pk }}">
+      <form method="post" action="/settings/instructions/basis/{{ kind.pk }}/" class="d-flex gap-2">
+        {% csrf_token %}
+        <input class="form-control" name="title" value="{{ kind.title }}" data-instruction-field="title">
+        <button class="btn btn-outline-primary" type="submit">Переименовать</button>
+      </form>
+      {% if not kind.active %}<span class="badge" data-basis-inactive>выключен</span>{% endif %}
+      <form method="post" action="/settings/instructions/basis/{{ kind.pk }}/delete/" class="mt-1">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-outline-danger" type="submit">Удалить</button>
+      </form>
+    </li>
+  {% endfor %}
+</ul>
+<form method="post" action="/settings/instructions/basis/" class="d-flex gap-2" data-form="basis-form">
+  {% csrf_token %}
+  <input class="form-control" name="title" value="{{ title }}" placeholder="Новый вид" data-instruction-field="title">
+  <button class="btn btn-primary" type="submit">Добавить вид</button>
+</form>

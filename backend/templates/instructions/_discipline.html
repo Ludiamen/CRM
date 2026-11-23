@@ -1,0 +1,16 @@
+<div data-discipline-table class="table-responsive">
+  <table class="table table-sm">
+    <thead><tr><th>Подразделение</th><th>Сотрудник</th><th>В срок</th><th>С переносом</th><th>Просрочено</th><th>Всего</th><th>По сроку с переносами: в срок</th><th>По сроку с переносами: просрочено</th></tr></thead>
+    <tbody>
+      {% for row in rows %}
+        <tr data-discipline-row data-unit="{{ row.unit }}" data-person="{{ row.person }}"
+            data-in-time="{{ row.in_time }}" data-with-transfer="{{ row.with_transfer }}"
+            data-overdue="{{ row.overdue }}">
+          <td>{{ row.unit }}</td><td>{{ row.person }}</td><td>{{ row.in_time }}</td><td>{{ row.with_transfer }}</td>
+          <td>{{ row.overdue }}</td><td>{{ row.total }}</td><td>{{ row.final_in_time }}</td><td>{{ row.final_overdue }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if open_rows %}<p>На контроле с истёкшим сроком: {{ open_rows|length }}</p>{% endif %}

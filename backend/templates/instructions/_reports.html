@@ -1,0 +1,21 @@
+<section data-reports class="mb-4">
+  <h2 class="h6">Отчёты</h2>
+  {% for report in reports %}
+    <div data-report="{{ report.pk }}" data-report-decision="{{ report.decision }}">
+      <p>{{ report.author.full_name }} · {% if report.date %}{{ report.date.due_date|date:"d.m.Y" }}{% else %}к сроку{% endif %} — {{ report.get_decision_display }}</p>
+      <div>{{ report.text|linebreaks }}</div>
+      {% if can_decide and report.decision == "pending" %}
+        <form method="post" action="/instructions/reports/{{ report.pk }}/accept/" class="d-inline">
+          {% csrf_token %}<button class="btn btn-sm btn-success" data-decide="accept" type="submit">Принять</button>
+        </form>
+        <form method="post" action="/instructions/reports/{{ report.pk }}/return/" class="d-inline">
+          {% csrf_token %}
+          <input class="form-control d-inline w-auto" name="comment" data-instruction-field="comment" placeholder="Причина возврата">
+          <button class="btn btn-sm btn-outline-warning" data-decide="return" type="submit">Вернуть</button>
+        </form>
+      {% endif %}
+      {% if report.comment %}<p class="text-muted">{{ report.comment }}</p>{% endif %}
+    </div>
+  {% empty %}<p>Отчётов нет</p>{% endfor %}
+  {% for part in parts %}<p data-report-part="{{ part.pk }}">{{ part.author.full_name }}: {{ part.text }}</p>{% endfor %}
+</section>

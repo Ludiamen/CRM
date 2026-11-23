@@ -1,0 +1,6 @@
+{% for date in report_dates %}
+  <div class="py-1" data-report-date="{{ date.pk }}" data-report-due="{{ date.due_date|date:'Y-m-d' }}">
+    <span>{{ date.due_date|date:"d.m.Y" }}</span>
+    <span data-report-state>{{ date.get_state_display }}</span>
+  </div>
+{% empty %}<p>Отчётных дат нет</p>{% endfor %}

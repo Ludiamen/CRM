@@ -164,3 +164,36 @@ def close(request, instruction_id):
         return render_page(request, "instructions/card.html", _card_context(request, row, error=_error(exc)),
                            status=200)
     return HttpResponseRedirect(f"/instructions/{row.pk}/")
+
+
+@require_permission("instructions.use")
+@require_POST
+def ladder(request, instruction_id):
+    """POST `/instructions/<id>/ladder/` — правка лестницы поручения."""
+    from apps.instructions.services import reminders
+
+    row = _card_or_404(request.user, instruction_id)
+    raw = request.POST.get("offsets") or ""
+    try:
+        offsets = [int(part.strip()) for part in raw.replace(";", ",").split(",") if part.strip()]
+        reminders.set_ladder(request.user, row, {"offsets": offsets,
+                                                 "due": request.POST.get("due") == "1",
+                                                 "overdue": request.POST.get("overdue") == "1"})
+    except InstructionsError as exc:
+        return render_page(request, "instructions/card.html", _card_context(request, row, error=_error(exc)),
+                           status=200)
+    return HttpResponseRedirect(f"/instructions/{row.pk}/")
+
+
+@require_permission("instructions.use")
+@require_POST
+def task_link(request, instruction_id):
+    """POST `/instructions/<id>/tasks/` — создать задачу из поручения."""
+    row = _card_or_404(request.user, instruction_id)
+    try:
+        service.link_task(request.user, row, title=request.POST.get("title") or None,
+                          deadline=request.POST.get("deadline") or None)
+    except InstructionsError as exc:
+        return render_page(request, "instructions/card.html", _card_context(request, row, error=_error(exc)),
+                           status=200)
+    return HttpResponseRedirect(f"/instructions/{row.pk}/")

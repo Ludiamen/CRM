@@ -271,8 +271,10 @@ def test_card_404_for_stranger_and_admin_403_for_visible_forbidden(client):
     assert stranger.status_code == missing.status_code == 404
     assert support.same_failure(stranger, missing)
 
-    admin_response = support.logged_in(support.make_admin()).get(f"/instructions/{row.pk}/")
-    assert admin_response.status_code == 404
-    assert support.same_failure(admin_response, missing)
+    admin_client = support.logged_in(support.make_admin())
+    admin_response = admin_client.get(f"/instructions/{row.pk}/")
+    admin_missing = admin_client.get("/instructions/999999/")
+    assert admin_response.status_code == admin_missing.status_code == 404
+    assert support.same_failure(admin_response, admin_missing)
 
     assert support.logged_in(head).post(f"/instructions/{row.pk}/close/", {"confirm": "1"}).status_code == 403

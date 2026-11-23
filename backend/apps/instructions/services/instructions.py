@@ -248,3 +248,27 @@ def close(actor, instruction) -> Instruction:
     audit.record("instructions.closed", actor=actor, object_type="instructions.instruction",
                  object_id=instruction.pk, after={"closed_at": now.isoformat()})
     return instruction
+
+
+# --- связь с задачами (T-10214; FR-716) -----------------------------------------------------------
+
+from apps.core.services import permissions as core_permissions  # noqa: E402
+from apps.instructions.models import InstructionTask  # noqa: E402
+
+
+def link_task(actor, instruction, *, title=None, task=None, assignee=None, deadline=None):
+    """Создать задачу из поручения или связать видимую; нужно `tasks.use`."""
+    from apps.instructions.texts import InstructionsError as _Error
+    from apps.tasks.services import access as task_access
+    from apps.tasks.services import tasks as task_service
+
+    if not core_permissions.has_permission(actor, "tasks.use"):
+        raise _Error("task_forbidden", "task")
+    if task is None:
+        task = task_service.create(actor, title=title or instruction.title, assignee=assignee or actor,
+                                   deadline=deadline)
+    elif not task_access.visible(actor, task):
+        raise _Error("task_missing", "task")
+    InstructionTask.objects.get_or_create(instruction=instruction, task=task,
+                                          defaults={"created_by": actor})
+    return task

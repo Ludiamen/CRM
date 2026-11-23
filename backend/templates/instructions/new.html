@@ -1,0 +1,51 @@
+{% extends layout %}
+{% block title %}Новое поручение{% endblock %}
+{% block content %}
+<div data-instructions-page="new">
+  <header class="page-head"><h1 class="page-title">Новое поручение</h1></header>
+  {% include "instructions/_form_error.html" %}
+  <form method="post" action="/instructions/new/" data-form="instruction-new">
+    {% csrf_token %}
+    <div class="mb-2"><label class="form-label">Название</label>
+      <input class="form-control" name="title" maxlength="300" value="{{ values.title }}" data-instruction-field="title"></div>
+    <div class="mb-2"><label class="form-label">Текст</label>
+      <textarea class="form-control" name="text" rows="4" data-instruction-field="text">{{ values.text }}</textarea></div>
+    <div class="mb-2"><label class="form-label">Вид основания</label>
+      <select class="form-select" name="basis_kind" data-instruction-field="basis_kind">
+        <option value="">—</option>
+        {% for kind in kinds %}<option value="{{ kind.pk }}"{% if values.basis_kind == kind.pk|stringformat:"s" %} selected{% endif %}>{{ kind.title }}</option>{% endfor %}
+      </select></div>
+    <div class="mb-2"><label class="form-label">Номер основания</label>
+      <input class="form-control" name="basis_number" maxlength="100" value="{{ values.basis_number }}" data-instruction-field="basis_number"></div>
+    <div class="mb-2"><label class="form-label">Дата основания</label>
+      <input class="form-control" type="date" name="basis_date" value="{{ values.basis_date }}" data-instruction-field="basis_date"></div>
+    <div class="mb-2"><label class="form-label">Исполнитель</label>
+      <select class="form-select" name="assignee" data-instruction-field="assignee">
+        <option value="">—</option>
+        {% for person in people %}<option value="{{ person.pk }}"{% if values.assignee == person.pk|stringformat:"s" %} selected{% endif %}>{{ person.full_name }}</option>{% endfor %}
+      </select></div>
+    <div class="mb-2"><label class="form-label">Соисполнители</label>
+      <select class="form-select" name="members" multiple data-instruction-field="members">
+        {% for person in people %}<option value="{{ person.pk }}">{{ person.full_name }}</option>{% endfor %}
+      </select></div>
+    <div class="mb-2"><label class="form-label">Срок</label>
+      <input class="form-control" type="date" name="deadline" value="{{ values.deadline }}" data-instruction-field="deadline"></div>
+    <div class="mb-2"><label class="form-label">Контролёр (по умолчанию — вы)</label>
+      <select class="form-select" name="controller" data-instruction-field="controller">
+        <option value="">Я</option>
+        {% for person in people %}<option value="{{ person.pk }}">{{ person.full_name }}</option>{% endfor %}
+      </select></div>
+    <div class="mb-2"><label class="form-label">Отчётные даты</label>
+      <select class="form-select" name="periodicity" data-instruction-field="periodicity">
+        <option value="">Без периодичности</option>
+        <option value="weekly">Еженедельно</option>
+        <option value="monthly">Ежемесячно</option>
+        <option value="quarterly">Ежеквартально</option>
+      </select></div>
+    <div class="mb-2"><label class="form-label">Даты списком</label>
+      <input class="form-control" name="dates" placeholder="ГГГГ-ММ-ДД, …" value="{{ values.dates }}" data-instruction-field="dates"></div>
+    <button class="btn btn-primary" type="submit">Создать</button>
+    <a class="btn btn-outline-secondary" href="/instructions/">Назад</a>
+  </form>
+</div>
+{% endblock %}

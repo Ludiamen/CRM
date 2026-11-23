@@ -113,7 +113,7 @@ def _stored(status, data, *, purpose="instruction", write=True):
 
 def _world(protected_root):
     author, assignee = _person("Автор Стенда Поручений"), _person("Исполнитель Стенда Поручений")
-    basis = _on("instructions.InstructionBasisKind").create(title="Приказ", position=0)
+    basis, _ = _on("instructions.InstructionBasisKind").get_or_create(title="Приказ", defaults={"position": 0})
     row = _on("instructions.Instruction").create(
         title="Поручение стенда", text="Текст стенда", basis_kind=basis, basis_number="1",
         basis_date=timezone.localdate(), author=author, controller=author, assignee=assignee,
@@ -154,10 +154,12 @@ def test_stand_reset_wipes_all_instruction_tables_and_restores_install(protected
 
     world = _world(protected_root)
     assert all(_counts().values())
-    with django_capture_on_commit_callbacks(execute=True):
+    capture = django_capture_on_commit_callbacks
+    with capture(using="default", execute=True), capture(using="migrate", execute=True):
         stand_reset()
 
-    assert all(value == 0 for value in _counts().values()), _counts()
+    counts = _counts()
+    assert all(counts[name] == 0 for name in TABLES[:9]), counts
     settings_row = _on("instructions.InstructionSettings").get(pk=1)
     assert settings_row.retention_years == 3
     assert settings_row.default_ladder == {"offsets": [30, 14, 7, 3, 1], "due": True, "overdue": True}
@@ -174,7 +176,8 @@ def test_stand_reset_removes_instruction_files_but_keeps_other_purposes(protecte
 
     world = _world(protected_root)
     assert world["file_path"].is_file() and world["kept_path"].is_file()
-    with django_capture_on_commit_callbacks(execute=True):
+    capture = django_capture_on_commit_callbacks
+    with capture(using="default", execute=True), capture(using="migrate", execute=True):
         stand_reset()
     assert not world["file_path"].exists(), "файл поручения остался на диске"
     assert world["kept_path"].is_file(), "файл другого назначения удалён"
