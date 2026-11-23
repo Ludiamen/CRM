@@ -21,9 +21,11 @@
 > (`T-10108-red.log`); в контракт добавлено К22: `stage` = `d<offset>` для своей лестницы 1–60. **Этап 2 закрыт по
 > тестам:** T-10109…T-10124 и T-10150 — 186 серверных тестов, 10 e2e-файлов, `fill_instructions.py` и
 > `InstructionUser` (коммит `5c388c3`). **T-10159 выполнен:** копия `before-T10159-20261123-222353`, сборка,
-> миграции, health gates, `/instructions/` 302. **T-10160 идёт** (`crm-work/slice010/stage2/red/run-red.sh`,
-> systemd `crm-T10160-red-*`). Состояние и точный следующий шаг — `crm-work/slice010-NEXT.md`: разобрать красный
-> прогон, затем Этап 3 (T-10201…). Отчёт — `docs/reviews/TASKS-010.md`.
+> миграции, health gates, `/instructions/` 302. **T-10160 выполнен:** 4628 passed / 171 failed; из 186 тестов
+> среза падают 169 новых, 17 — артефакты Этапа 1; две регрессии прежних тестов исправлены (`test_feed_boundaries`
+> — индекс сброса; `test_tasks_plan` — дефект шаблона задач среза 009), контроль 33 passed. Состояние и точный
+> следующий шаг — `crm-work/slice010-NEXT.md`: **Этап 3, партия 1 — T-10201** (модели, миграция `instructions
+> 0001`, настройки, справочник), затем T-10202. Отчёт — `docs/reviews/TASKS-010.md`.
 
 > **2026-11-22, интерактивная карта CRM:** план `docs/superpowers/plans/2026-11-22-crm-project-map.md`.
 > Сборщик и тесты в `tools/project_map.py` и `tools/test_project_map.py`; после ревью OpenAI внесены правки

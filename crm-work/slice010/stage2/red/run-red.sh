@@ -9,7 +9,7 @@ mkdir -p "$OUT" "$BASE"
 printf 'running\n' > "$BASE/status"
 printf '%s\n' "$OUT" > "$BASE/last-run.txt"
 cd "$CRM" || exit 99
-{
+(
   printf 'started=%s\n' "$(date --iso-8601=seconds)"
   exec 9>"$LOCK"
   flock 9
@@ -18,7 +18,7 @@ cd "$CRM" || exit 99
   flock -u 9
   printf 'exit=%s\nfinished=%s\n' "$code" "$(date --iso-8601=seconds)"
   exit "$code"
-} > "$OUT/full.log" 2>&1
+) > "$OUT/full.log" 2>&1
 code=$?
 printf '%s\n' "$code" > "$OUT/full.exit"
 if [ "$code" -eq 0 ]; then printf 'passed\n' > "$BASE/status"; else printf 'failed\n' > "$BASE/status"; fi

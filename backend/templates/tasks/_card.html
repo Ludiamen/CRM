@@ -21,7 +21,7 @@
   {% endif %}
 
   {% if can_edit %}
-  <form method="post" action="/tasks/{{ task.pk }}/" data-form="task-edit" data-task-field="plan_column" novalidate>
+  <form method="post" action="/tasks/{{ task.pk }}/" data-form="task-edit"{% if request.user.pk == task.assignee_id %} data-task-field="plan_column"{% endif %} novalidate>
     {% csrf_token %}
     <div class="mb-2"><label class="form-label">Название</label>
       <input class="form-control" name="title" value="{{ task.title }}" data-task-field="title"></div>

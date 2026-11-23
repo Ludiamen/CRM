@@ -336,7 +336,7 @@ def test_feed_registers_eight_notification_kinds_file_purpose_audit_labels_and_s
     assert {k.module for k in kinds} == {feed.FEED_MODULE}
     assert [p.purpose for p in _own("file_purposes")[0]()] == ["feed"]
     assert set(_own("audit_labels")[0]()) >= {"actions", "fields", "object_types", "values"}
-    assert extensions.registered("stand_reset")[-3] is _own("stand_reset")[0], "stand_reset ленты не третий с конца"
+    assert extensions.registered("stand_reset")[-4] is _own("stand_reset")[0], "stand_reset ленты не четвёртый с конца"
     used = {point for point in extensions.POINTS if _own(point)}
     assert used == FEED_POINTS, f"точки с регистрациями feed: {sorted(used)}"
 

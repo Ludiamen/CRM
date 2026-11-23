@@ -59,9 +59,19 @@ id: REV-TASKS-010
 
 ## Красный прогон (T-10160)
 
-Запущен `crm-work/slice010/stage2/red/run-red.sh` через systemd (`crm-T10160-red-*`), весь серверный набор.
-Результат — `crm-work/slice010/stage2/red/<run>/full.log`, `full.exit`, `status`. Числа и разбор — после
-завершения; новые тесты обязаны падать, кроме тестов Этапа 1, прежние — зелёные или перечислены в T-10111.
+`crm-work/slice010/stage2/red/red-20261123-222524/full.log`, 50 мин 52 с: **4628 passed, 171 failed**. Из 186
+тестов среза падают **169** — ровно новые тесты Этапа 2; 17 проходят и относятся к артефактам Этапа 1 (Purpose,
+права, приложения/адреса/cron/nginx/статика, стенд) — они и должны быть зелёными. Прочие срезы зелёные, кроме двух
+регрессий, найденных и исправленных:
+
+| Регрессия | Причина | Исправление |
+|---|---|---|
+| `test_feed_boundaries::test_feed_registers_eight_notification_kinds_file_purpose_audit_labels_and_stand_reset` | строка 8 T-10111: `stand_reset` ленты теперь `[-4]`, не `[-3]` | индекс поправлен; тест не ослаблен |
+| `test_tasks_plan::test_plan_column_choice_in_card_is_visible_only_to_plan_owner` | дефект шаблона среза 009: `data-task-field="plan_column"` стоял на форме правки у всех редакторов | атрибут формы условный (только ответственному); выбор колонки у владельца сохранён |
+
+Контрольная проверка после исправлений: `test_tasks_plan`, `test_feed_boundaries`, `test_tasks_core_changes` —
+**33 passed** (`crm-work/slice010/stage2/recheck-unexpected2.log`). Итог красного прогона для среза 010 —
+**169 ожидаемых падений новых тестов**, прежние зелёные.
 
 ## Стенд (T-10159)
 
