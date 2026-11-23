@@ -216,12 +216,12 @@ id: TASKS-010
 - [x] T-10217 [code] деплой и границы: `urls.py`, `config/cron.py`, `_assets.html`, меню, nginx, `boundaries` —
   зелёные: `test_instructions_deploy`, `test_instructions_boundaries`, `test_instructions_core_changes` —
   (NFR-722, 723, 725, 728)
-- [ ] T-10260 [arch] зелёная сборка: весь серверный набор зелёный, ни один тест не ослаблен; правки прежних — только
+- [x] T-10260 [arch] зелёная сборка: весь серверный набор зелёный, ни один тест не ослаблен; правки прежних — только
   T-10111 с разрешения; отчёт `docs/reviews/TASKS-010.md` — (все FR)
 
 ## Этап 4 — приёмка
 
-- [ ] T-10300 [arch] полный серверный прогон на PostgreSQL (`systemd-run --user`), сверка с красным, регрессия —
+- [x] T-10300 [arch] полный серверный прогон на PostgreSQL (`systemd-run --user`), сверка с красным, регрессия —
   `docs/reviews/TASKS-010.md` — (все FR)
 - [ ] T-10301 [arch] проход в браузере по 10 сценариям (4 круга), консоль без CSP и ошибок —
   `docs/reviews/TASKS-010.md`, раздел «Проход в браузере» — (FR-700…723)
