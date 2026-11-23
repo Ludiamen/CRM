@@ -15,9 +15,11 @@
 > приложений, права 22, Purpose 8, порядок `stand_reset`, четыре `25m`) — **353 passed**
 > (`crm-work/slice010/stage1/T-10111-after-final.log`); строки 11–16, 18, 18а и 22 — партиями Этапа 3, T-10111
 > остаётся `[ ]`. **T-10103:** `tests/test_instructions_create.py` (11) и `test_instructions_basis.py` (6) —
-> 17 red (`crm-work/slice010/stage2/T-10103-red.log`). Состояние и точный следующий шаг —
-> `crm-work/slice010-NEXT.md`: T-10104 (отчётные даты и статусы), затем T-10105…, стенд T-10159, красный прогон
-> T-10160, только после него Этап 3.
+> 17 red (`crm-work/slice010/stage2/T-10103-red.log`). **T-10104…T-10107:** dates 13, reports 11, close 6,
+> transfers 9 — 39 red (`T-10104-red.log`, `T-10105-red.log`, `T-10106-07-red.log`). В контракт добавлено К21:
+> периодичность не хранится в модели, `build/rebuild` получают её из формы. Состояние и точный следующий шаг —
+> `crm-work/slice010-NEXT.md`: T-10108 (напоминания), затем T-10109…, стенд T-10159, красный прогон T-10160,
+> только после него Этап 3.
 
 > **2026-11-22, интерактивная карта CRM:** план `docs/superpowers/plans/2026-11-22-crm-project-map.md`.
 > Сборщик и тесты в `tools/project_map.py` и `tools/test_project_map.py`; после ревью OpenAI внесены правки

@@ -224,7 +224,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | `services.access` | раздел 4 | T-10102…T-10107, T-10110 |
 | `services.basis` | `all()`, `active()`, `add(actor, title)`, `rename(actor, kind, title)`, `delete(actor, kind)` | T-10103; T-10115 |
 | `services.instructions` | `create(actor, *, title, text="", basis_kind, basis_number, basis_date, assignee, deadline, members=(), controller=None, periodicity="", dates=()) -> Instruction`, `update(actor, instruction, **fields) -> Instruction`, `close(actor, instruction) -> Instruction`, `link_task(actor, instruction, *, title, assignee=None, deadline=None) -> Task`, `reassign(user) -> int` | T-10103; T-10106; T-10112; T-10117 |
-| `services.dates` | `build(instruction) -> list[InstructionReportDate]`, `rebuild(instruction, *, deadline=None, periodicity=None) -> list`, `next_open(instruction)`, `state_of(instruction) -> str` | T-10104; T-10109 |
+| `services.dates` | `build(instruction, *, periodicity="", dates=()) -> list[InstructionReportDate]`, `rebuild(instruction, *, deadline=None, periodicity=None, dates=None) -> list`, `next_open(instruction) -> InstructionReportDate | None`, `state_of(instruction) -> str` | T-10104; T-10109 |
 | `services.reports` | `submit(actor, instruction, *, date=None, text, files=()) -> InstructionReport`, `add_part(actor, instruction, report_date, *, text, files=()) -> InstructionReportPart`, `decide(actor, report, *, accept, comment="") -> InstructionReport` | T-10105; T-10106 |
 | `services.transfers` | `request(actor, instruction, *, new_deadline, reason) -> InstructionTransfer`, `decide(actor, transfer, *, approve, comment="") -> InstructionTransfer` | T-10107 |
 | `services.reminders` | `plan(instruction) -> list[InstructionReminder]`, `rebuild(instruction)`, `due(now) -> list`, `cancel_all(instruction, *, reason="")`, `set_ladder(actor, instruction, ladder) -> Instruction` | T-10108 |
@@ -318,7 +318,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | `/instructions/<id>/` | GET | видит поручение | `edit` (1 — форма правки) | карточка (`[data-instructions-page="card"]`): основание, срок, состояние, отчётные даты, отчёты и части, переносы, история, файлы, связанные задачи, лестница | 404 невидимого; удалённое — 404 |
 | `/instructions/<id>/` | POST | `can_edit_fields` | `title`, `text`, `basis_kind`, `basis_number`, `basis_date`, `members`, `deadline`, `controller`, `periodicity`, `dates` | обычный — 302 на карточку; HTMX — 200 карточкой; журнал `instructions.changed` | те же коды, что у создания; `deadline` заблокирован при `pending`-переносе; `dates_locked` при смене периодичности с отчётами; нет права — 403 |
 | `/instructions/<id>/ladder/` | POST | `can_edit_ladder` | `offsets` (список), `due`, `overdue` | обычный — 302 на карточку; HTMX — 200 блоком лестницы | `ladder_invalid`; пересчёт только будущих `pending` |
-| `/instructions/<id>/close/` | POST | `can_close` | `confirm=1` | обычный — 302 на карточку; `closed_at`, отчёты не принимаются, напоминания и `pending`-перенос сняты; журнал `instructions.closed` | без `confirm` — 200 второй шаг `[data-instructions-confirm]` с текстом `close_confirm`; не контролёр — `close_forbidden` (200) или 403; нет принятого итогового отчёта — `close_no_report`; есть `pending`-перенос — `close_transfer_pending` |
+| `/instructions/<id>/close/` | POST | `can_close` | `confirm=1` | обычный — 302 на карточку; `closed_at`, отчёты не принимаются, `pending`-напоминания сняты; журнал `instructions.closed` | без `confirm` — 200 второй шаг `[data-instructions-confirm]` с текстом `close_confirm`; не контролёр — `close_forbidden` (200) или 403; нет принятого итогового отчёта — `close_no_report`; есть `pending`-перенос — `close_transfer_pending` |
 | `/instructions/<id>/reports/` | POST | `can_report` | `date` (номер отчётной даты; пусто — к сроку), `text`, `files` (номера непривязанных) | обычный — 302 на карточку; HTMX — 200 блоком отчётов; дата → `review`, напоминания даты отменены; журнал `instructions.report_submitted` | `report_forbidden`; `report_empty`; `report_long`; `report_limit` (11-й файл); `report_closed`; `report_date_unknown`; `file_missing` |
 | `/instructions/<id>/parts/` | POST | `can_add_part` | `date`, `text`, `files` | обычный — 302 на карточку; HTMX — 200 блоком частей; журнал `instructions.part_added` | `part_forbidden`; `part_duplicate`; `report_empty`; `report_limit`; `report_closed`; `report_date_unknown` |
 | `/instructions/reports/<id>/accept/` | POST | `can_decide` | — | обычный — 302 на карточку; дата `accepted`/`closed_at`, поручение → «Ждёт отчёта» по следующей дате; уведомление `report_accepted`; журнал | `decision_forbidden`; `decision_state` (уже рассмотрен); 404 чужого |
@@ -369,6 +369,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | Что | Требование | Тесты |
 |---|---|---|
 | Источники дат | периодичность (`weekly`/`monthly`/`quarterly`) или список дат; обе формы допустимы в одной заявке, совпадающие даты схлопываются | T-10104 |
+| Хранение периодичности | периодичность не поле модели (план её не перечисляет): она приходит из формы в `build`/`rebuild` вместе со списком дат; ряд строится каждый раз заново, а сохранённые даты с отчётами остаются (К21) | T-10104 |
 | Начало ряда | строго после даты постановки: еженедельно — тот же день недели через 7 дней; ежемесячно — то же число следующего месяца; ежеквартально — то же число через 3 месяца | T-10104 |
 | 31-е и 29.02 | число больше длины месяца — последний день месяца (31 → 30/28/29); 29.02 в невисокосный год → 28.02 | T-10104 |
 | Обрезка | ряд обрезается **строго до** срока; дата, равная сроку, не создаётся (итоговый отчёт «к сроку» один) | T-10104 |
@@ -376,7 +377,7 @@ Opus по задачам» (1–18); «факт» — файл репозито�
 | Пересборка | смена срока/периодичности пересобирает только будущие даты без отчётов; даты с отправленным или принятым отчётом сохраняются; смена периодичности при таких датах — `dates_locked`; ранний отчёт к будущей дате сохраняется | T-10104 |
 | Состояния даты | `waiting` → `review` (отчёт отправлен) → `returned` (возврат с комментарием) → `waiting`; `accepted` закрывает дату (`closed_at`); отправка заранее сразу даёт `review` | T-10105; T-10107 |
 | Статус поручения | `done` при `closed_at`; иначе `overdue`, если `deadline < moscow_today()` или ближайшая незакрытая дата `due_date < moscow_today()`; иначе по ближайшей незакрытой дате: `review` → «Отчёт на проверке», `returned` → «Возвращено», `waiting` и `due_date <= moscow_today()` → «Ждёт отчёта»; иначе «На контроле». Приоритет «Просрочено» выше всех, кроме «Исполнено»; ручной установки нет (К4) | T-10109; T-10105 |
-| «Ближайшая» | минимальная `due_date` среди дат без `accepted`; если таких нет — срок (`deadline`) | T-10109 |
+| «Ближайшая» | `next_open` — строка с минимальной `due_date` среди дат без `accepted`; если таких нет — `None`, и `state_of` берёт срок (`deadline`) | T-10104; T-10109 |
 | Дата в карточке | даты показаны по возрастанию (`position`), принятые — с пометкой «Принято», просроченные — с пометкой «Просрочено» | T-10105 |
 
 ## 8. Напоминания
@@ -655,3 +656,4 @@ T-10003, T-10007 и **до** T-10160 (решение 2 задач). Строки
 | К18 | Отчёт и часть: текст обязателен, до 10 000; файлов до 10 на отчёт или часть; части переживают возврат | план, «Отчёты и части»; FR-706, FR-723 |
 | К19 | Уникальность напоминаний — `(instruction, date, user, kind, stage)` при `pending` с `nulls_distinct=False`; `date` пусто у срока | план, «Модель данных»; FR-709 |
 | К20 | `ladder` JSON — `{"offsets": [...], "due": bool, "overdue": bool}`; пустой объект — умолчание настроек | план, «Модель данных»; FR-709 |
+| К21 | Периодичность отчётных дат не хранится в модели: `build`/`rebuild` получают её из формы; ряд строится заново, даты с отчётами сохраняются, смена периодичности при таких датах — `dates_locked` | план не перечисляет поле `periodicity`; FR-705, FR-717 |
