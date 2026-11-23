@@ -154,3 +154,56 @@ id: REV-TASKS-009
 - **Браузерный красный прогон T-9160** (`stage2/browser-red/`) не входил в задачу (T-9160 — только серверный
   набор) и был прерван на 124 кейсах без итога; его место занимает зелёная приёмка T-9302 по тому же набору.
 
+
+## T-9307 — прохождение требований
+
+Все строки ниже проверены зелёным прогоном `full2` (4613 passed) и приёмкой `t09` (124 passed) 2026-11-22;
+реализация — в `backend/apps/tasks/` и перечисленных файлах.
+
+| Требование | Механизм | Тест | Результат |
+|---|---|---|---|
+| FR-674 поля, номер = pk, 300 знаков | `Task`, `services.tasks.create` | `test_tasks_models`, `test_tasks_create`, e2e `t09_02` | passed |
+| FR-675 исполнитель, соисполнители, наблюдатели | `Task`, `TaskMember`, `services.tasks` | `test_tasks_create`, `test_tasks_permissions`, `t09_03` | passed |
+| FR-676 кому можно ставить | `access.can_set_task` | `test_tasks_permissions`, e2e `t09_03` | passed |
+| FR-677 видимость и цепочка | `access.visible/manages` | `test_tasks_visibility`, `test_tasks_access` | passed |
+| FR-678 права статуса и полей | `access.can_change_status/can_edit_fields` | `test_tasks_permissions`, `test_tasks_edit` | passed |
+| FR-679 четыре статуса и возврат | `Task.Status`, `services.tasks.change_status` | `test_tasks_models`, `test_tasks_edit`, e2e `t09_02` | passed |
+| FR-680 доска «Стадии» | `services.boards`, `tasks.js` | `test_tasks_boards`, e2e `t09_04` | passed |
+| FR-681 доска «Сроки» | `boards.deadline_columns`, `views.actions.move` | `test_tasks_move`, e2e `t09_05` | passed |
+| FR-682 «Мой план» | `PlanColumn`, `services.plan` | `test_tasks_plan`, e2e `t09_06` | passed |
+| FR-683 категории | `TaskCategory`, `services.categories` | `test_tasks_categories`, e2e `t09_07` | passed |
+| FR-684 запасной путь | выбор полей в карточке | `test_tasks_boards`, e2e `t09_04`, `t09_10` | passed |
+| FR-685 список, пресеты, фильтры | `services.list` | `test_tasks_list`, e2e `t09_01` | passed |
+| FR-686 подчинённые на момент просмотра | `access.manages`, `subtree_member_ids` | `test_tasks_list`, `test_tasks_visibility` | passed |
+| FR-687 моменты напоминаний | `services.reminders.moments`, `tasks_reminders` | `test_tasks_reminders` | passed |
+| FR-688 ручные, отложить, лимит 10 | `TaskReminder`, `views.reminders` | `test_tasks_reminders`, e2e `t09_08` | passed |
+| FR-689 тихие часы, снятие | `quiet.next_start`, `cancel_all` | `test_tasks_reminders`, `test_tasks_notify` | passed |
+| FR-690 пересчёт при смене срока | `services.tasks.update → reminders.plan` | `test_tasks_reminders` | passed |
+| FR-691 восемь видов и приоритет | `notify_kinds`, `notify_rules` | `test_tasks_notify`, `test_tasks_digest` | passed |
+| FR-692 каналы, письмо 15 минут, внешний текст | `notify.dispatch` | `test_tasks_notify` | passed |
+| FR-693 комментарии, файлы, лента | `TaskComment`, `TaskFile`, `uploads.store` | `test_tasks_comments`, `test_tasks_files`, e2e `t09_09` | passed |
+| FR-694 журнал «было/стало» | `core.audit.record` | `test_tasks_audit` | passed |
+| FR-695 мягкое удаление и снимок | `services.tasks.soft_delete` | `test_tasks_audit`, `test_tasks_permissions` | passed |
+| FR-696 срок хранения и уборка | `services.retention`, `TaskSettings` | `test_tasks_retention`, `test_tasks_settings` | passed |
+| FR-697 поиск «Задачи» | `services.search`, order 62 | `test_tasks_search` | passed |
+| FR-698 раздел карточки сотрудника | `services.search.card_section` | `test_tasks_card_section` | passed |
+| FR-699 360 px | `tasks.css`, выбор в карточке | e2e `t09_10` (4 браузера) | passed |
+| NFR-710 p95 500 мс | `TaskUser`, `fill_tasks.py` | T-9304 — по отдельному решению владельца | отложено |
+| NFR-711 перенос без перезагрузки | `tasks.js`, HTMX | e2e `t09_04`…`t09_07` | passed |
+| NFR-712 SQL параметрами | `services.list`, `services.search` | `test_tasks_list`, `test_tasks_search` | passed |
+| NFR-713 файлы 20 МБ, ClamAV | `services.files`, nginx 25m | `test_tasks_files`, `test_tasks_deploy` | passed |
+| NFR-714 внешний текст без названия | `notify_kinds` | `test_tasks_notify` | passed |
+| NFR-715 идемпотентность | `tasks_reminders`, `tasks_retention` | `test_tasks_reminders`, `test_tasks_retention` | passed |
+| NFR-716 360 px и браузеры | `tasks.css` | e2e `t09_10`, 4 браузера | passed |
+| NFR-717 русский, Москва | тексты, `Europe/Moscow` | `test_tasks_deploy` | passed |
+| NFR-718 журнал только дополняется | права `crm_app` | `test_tasks_audit` | passed |
+| NFR-719 профиль `TaskUser` | `locustfile.py`, `fill_tasks.py` | `test_tasks_deploy` | passed |
+
+NFR-710 остаётся единственным не замеренным: T-9304 выполняется только после отдельного решения владельца
+(такое же ограничение стенда, как NFR-612 среза 007 и NFR-707 среза 008).
+
+## Приёмка (T-9309)
+
+Владелец принял срез 009 «Задачи» 2026-11-23 («Принимаю, пуш сделал»). `git push` выполнен владельцем,
+`origin/main` = `f9e5712`. Ручной критерий T-9308 принят вместе со срезом; NFR-710 (T-9304) и наблюдения
+T-9305 остаются по отдельному решению владельца. Срез 009 закрыт.
