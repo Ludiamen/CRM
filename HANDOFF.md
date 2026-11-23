@@ -1,5 +1,17 @@
 # Передача между сессиями — портал ИТ-отдела (CRM)
 
+> **2026-11-23, срез 010 «Поручения», Этап 1 ЗАКРЫТ.** Выполнены T-10004 (`backend/tests/CONTRACT-010.md`:
+> 15 разделов, коды/тексты, маршруты, зацепки, помощники, таблица T-10111), T-10005
+> (`backend/tests/support_instructions.py`), T-10006 (`backend/tests/e2e/helpers_instructions.py`), T-10007
+> (`/instructions/list/`, фрагмент реестра, cron 27 записей), T-10008 (`apps/instructions/stand.py`, регистрация
+> `stand_reset` последней, `e2e_instructions_seed`, `tests/test_instructions_stand.py`). `manage.py check` — 0;
+> срез — **6 passed** (`crm-work/slice010/stage1/stage1-tests.log`); ворота `tools/verify.sh --быстро` —
+> SDD 130/0/0, tools 176/176, конституция 6/6, секреты, источники, vendor — чисто. Из-за регистрации
+> `stand_reset` ожидаемо падают **7** прежних тестов — все строки таблицы T-10111, замер
+> `crm-work/slice010/stage1/T-10111-before.log`; правки — только с разрешения владельца. Состояние и точный
+> следующий шаг — `crm-work/slice010-NEXT.md`: разрешение на T-10111, затем Этап 2 (T-10101…), стенд T-10159,
+> красный прогон T-10160, только после него Этап 3.
+
 > **2026-11-22, интерактивная карта CRM:** план `docs/superpowers/plans/2026-11-22-crm-project-map.md`.
 > Сборщик и тесты в `tools/project_map.py` и `tools/test_project_map.py`; после ревью OpenAI внесены правки
 > приёмки, Markdown, Git-истории и чтения источников; все 172 теста `tools/` прошли. 008 подтверждён отчётом

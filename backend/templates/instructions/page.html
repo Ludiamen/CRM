@@ -3,6 +3,8 @@
 {% block content %}
 <div data-instructions-page="registry">
   <header class="page-head"><h1 class="page-title">Поручения</h1></header>
-  <p data-empty-state="instructions">Поручений пока нет</p>
+  <section id="instructions-list">
+    {% include "instructions/_list.html" %}
+  </section>
 </div>
 {% endblock %}

@@ -1,0 +1,7 @@
+{% if rows %}
+  <ul class="instructions-list" id="instructions-list-rows">
+    {% for row in rows %}{% include "instructions/_row.html" with row=row %}{% endfor %}
+  </ul>
+{% else %}
+  <p data-empty-state="instructions">Поручений пока нет</p>
+{% endif %}

@@ -50,23 +50,23 @@ id: TASKS-010
   «Администратору портала» и «Сотруднику ИТ»; миграция `core 0015` от `0014`, идемпотентна; тест роли без
   `instructions.assign` — `backend/apps/core/migrations/0015_instructions_permissions.py`,
   `backend/tests/test_instructions_core_changes.py` — (FR-702, FR-703)
-- [ ] T-10004 [P] [arch] `CONTRACT-010`: адреса, зацепки `data-*`, коды и тексты отказов (`title_range`,
+- [x] T-10004 [P] [arch] `CONTRACT-010`: адреса, зацепки `data-*`, коды и тексты отказов (`title_range`,
   `basis_required`, `deadline_past`, `assignee_forbidden`, `report_forbidden`, `report_empty`, `report_limit`,
   `transfer_forbidden`, `transfer_state`, `close_forbidden`, `ladder_invalid`, `file_too_big`, `file_type`,
   `file_missing`, `retention_range`), ответы HTMX и обычных запросов, подпись `instructions.reminder_failed` —
   `backend/tests/CONTRACT-010.md` — (все FR)
-- [ ] T-10005 [P] [arch] помощники серверных тестов: `make_instruction`, `add_coexecutor`, `make_basis`,
+- [x] T-10005 [P] [arch] помощники серверных тестов: `make_instruction`, `add_coexecutor`, `make_basis`,
   `add_report_date`, `submit_report`, `add_part`, `accept_report`, `return_report`, `request_transfer`,
   `decide_transfer`, `reminders_of`, `registry_rows`, `discipline_rows`, роли прав-данных; без импорта кода
   приложения на уровне модуля — `backend/tests/support_instructions.py` — (все FR)
-- [ ] T-10006 [arch] помощники e2e: `open_instructions`, `create_instruction`, `open_card`, `submit_report`,
+- [x] T-10006 [arch] помощники e2e: `open_instructions`, `create_instruction`, `open_card`, `submit_report`,
   `accept_report`, `return_report`, `request_transfer`, `decide_transfer`, `close_instruction`, `open_discipline`, `export_excel`, `check_360`;
   локаторы — только зацепки CONTRACT-010 — `backend/tests/e2e/helpers_instructions.py` — (FR-700…723)
-- [ ] T-10007 [arch] маршруты и задания (после T-10001): `urls.py` — адреса контракта; `config/cron.py` —
+- [x] T-10007 [arch] маршруты и задания (после T-10001): `urls.py` — адреса контракта; `config/cron.py` —
   `instructions_reminders` (`*/5 * * * *`, 300), `instructions_digest` (`*/15 * * * *`, 300),
   `instructions_retention` (`43 23 * * *`, 600) под `is_installed`; страницы-заглушки реестра и настроек —
   `backend/apps/instructions/urls.py`, `views/`, `backend/config/cron.py` — (FR-711, FR-712, NFR-729)
-- [ ] T-10008 [arch] стенд (после T-10001 и T-10003): `instructions` в `stand_reset` (поручения, участники,
+- [x] T-10008 [arch] стенд (после T-10001 и T-10003): `instructions` в `stand_reset` (поручения, участники,
   даты, отчёты, части, файлы, переносы, напоминания, настройки) регистрацией последней; команда
   `e2e_instructions_seed` (виды основания, три поручения); тест сброса —
   `backend/apps/instructions/stand.py`, `extensions.py`, `management/commands/e2e_instructions_seed.py`,
