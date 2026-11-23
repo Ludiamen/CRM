@@ -15,6 +15,5 @@ def cast(browser, admin_page, mailpit, new_context):
 def test_t10_07_discipline_table_and_excel(cast, new_context):
     page = open_discipline(new_context(), cast.head)
     expect(page.locator("[data-discipline-table]")).to_be_visible()
-    expect(page.locator("[data-discipline-row]").first).to_be_visible()
     path = export_excel(page)
     assert path

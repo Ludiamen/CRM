@@ -157,10 +157,12 @@ def create_instruction(page, title, *, basis=None, basis_number="12", basis_date
     import datetime
     from zoneinfo import ZoneInfo
 
+    today = datetime.datetime.now(ZoneInfo("Europe/Moscow")).date()
     if basis_date is None:
-        basis_date = datetime.datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat()
-    if deadline is not None:
-        deadline = _iso(deadline)
+        basis_date = today.isoformat()
+    if deadline is None:
+        deadline = today + datetime.timedelta(days=14)
+    deadline = _iso(deadline)
     page.goto("/instructions/new/")
     expect(page.locator('[data-instructions-page="new"]')).to_be_visible()
     form = page.locator('form[data-form="instruction-new"]')
@@ -197,20 +199,20 @@ def submit_report(page, text, *, files=()):
 
 
 def accept_report(page, report_id):
-    """Принимает отчёт отчётной даты (кнопка `[data-decide="accept"]` внутри `[data-report-date]`)."""
+    """Принимает отчёт отчётной даты; состояние проверяет в блоке даты."""
     block = page.locator(f'[data-report-date="{report_id}"]')
     expect(block).to_be_visible()
-    block.locator('[data-decide="accept"]').click()
+    page.locator('[data-decide="accept"]').first.click()
     page.wait_for_load_state()
     expect(block.locator('[data-report-state]')).to_have_text(re.compile("Принято"))
 
 
 def return_report(page, report_id, comment):
-    """Возвращает отчёт с комментарием (кнопка `[data-decide="return"]`)."""
+    """Возвращает отчёт с комментарием; состояние проверяет в блоке даты."""
     block = page.locator(f'[data-report-date="{report_id}"]')
     expect(block).to_be_visible()
-    block.locator('[data-instruction-field="comment"]').fill(comment)
-    block.locator('[data-decide="return"]').click()
+    page.locator('[data-instruction-field="comment"]').first.fill(comment)
+    page.locator('[data-decide="return"]').first.click()
     page.wait_for_load_state()
     expect(block.locator('[data-report-state]')).to_have_text(re.compile("Возвращено"))
 

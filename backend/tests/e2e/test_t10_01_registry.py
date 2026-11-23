@@ -26,7 +26,7 @@ def test_t10_01_registry_rows_and_presets(cast, new_context):
         expect(page.locator(f'[data-instructions-preset="{preset}"]')).to_be_visible()
     title = helpers_org.unique_name("Реестр")
     instruction_id = create_instruction(page, title, basis="Приказ", assignee=cast.assignee, deadline=_day(5))
-    page.goto("/instructions/?preset=mine")
+    page.goto("/instructions/?preset=control")
     row = page.locator(f'[data-instruction-id="{instruction_id}"]')
     expect(row).to_be_visible()
     expect(row).to_contain_text(title)

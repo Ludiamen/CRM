@@ -17,6 +17,16 @@ def test_t10_02_empty_title_refused_and_valid_create_opens_card(cast, new_contex
     page = open_instructions(new_context(), cast.head)
     page.goto("/instructions/new/")
     form = page.locator('form[data-form="instruction-new"]')
+    from datetime import datetime, timedelta, timezone
+
+    from zoneinfo import ZoneInfo
+
+    today = datetime.now(ZoneInfo("Europe/Moscow")).date()
+    form.locator('[data-instruction-field="basis_kind"]').select_option(label="Приказ")
+    form.locator('[data-instruction-field="basis_number"]').fill("12")
+    form.locator('[data-instruction-field="basis_date"]').fill(today.strftime("%d.%m.%Y"))
+    form.locator('[data-instruction-field="assignee"]').select_option(str(cast.assignee.id))
+    form.locator('[data-instruction-field="deadline"]').fill((today + timedelta(days=7)).strftime("%d.%m.%Y"))
     form.locator('[data-instruction-field="title"]').fill("")
     form.locator("button[type=submit]").first.click()
     expect(page.locator('[data-error="title"][data-code="title_range"]')).to_be_visible()

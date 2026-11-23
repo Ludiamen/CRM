@@ -29,6 +29,18 @@
     {% include "instructions/_dates.html" %}
   </section>
 
+  <section data-ladder class="mb-4">
+    <h2 class="h6">Лестница напоминаний</h2>
+    {% for offset in row.ladder.offsets|default:"" %}<span data-ladder-offset="{{ offset }}">{{ offset }}</span> {% empty %}<span data-ladder-offset="30">30</span><span data-ladder-offset="14">14</span><span data-ladder-offset="7">7</span><span data-ladder-offset="3">3</span><span data-ladder-offset="1">1</span>{% endfor %}
+    {% if can_edit %}
+    <form method="post" action="/instructions/{{ row.pk }}/ladder/" data-form="instruction-ladder" class="d-flex flex-wrap gap-2 mt-2">
+      {% csrf_token %}
+      <input class="form-control w-auto" name="offsets" value="30, 14, 7, 3, 1" data-instruction-field="ladder">
+      <button class="btn btn-sm btn-outline-primary" type="submit">Сохранить лестницу</button>
+    </form>
+    {% endif %}
+  </section>
+
   {% if confirm_close %}
   <div class="alert alert-warning" data-instructions-confirm>
     <p>Снять поручение с контроля?</p>
@@ -64,6 +76,20 @@
     </form>
     {% endif %}
   </section>
+
+  {% if request.user.pk == row.assignee_id and row.closed_at is None and report_dates %}
+  <form method="post" action="/instructions/{{ row.pk }}/reports/" data-form="instruction-report" enctype="multipart/form-data" class="mb-4">
+    {% csrf_token %}
+    <div class="mb-2"><label class="form-label">Отчёт к дате</label>
+      <select class="form-select" name="date" data-instruction-field="date">
+        {% for date in report_dates %}{% if date.state == "waiting" or date.state == "returned" %}<option value="{{ date.pk }}"{% if forloop.first %} selected{% endif %}>{{ date.due_date|date:"d.m.Y" }}</option>{% endif %}{% endfor %}
+      </select></div>
+    <div class="mb-2"><label class="form-label">Текст отчёта</label>
+      <textarea class="form-control" name="text" rows="3" data-instruction-field="text"></textarea></div>
+    <div class="mb-2"><input class="form-control" type="file" name="file" multiple></div>
+    <button class="btn btn-primary" type="submit">Отправить отчёт</button>
+  </form>
+  {% endif %}
 
   {% include "instructions/_reports.html" %}
 
