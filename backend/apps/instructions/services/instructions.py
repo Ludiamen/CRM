@@ -66,10 +66,13 @@ def _as_date(value, code, field):
         return timezone.localtime(value).date()
     if isinstance(value, datetime.date):
         return value
-    try:
-        return datetime.date.fromisoformat(str(value))
-    except ValueError:
-        raise InstructionsError(code, field) from None
+    text = str(value).strip()
+    for pattern in ("%Y-%m-%d", "%d.%m.%Y"):
+        try:
+            return datetime.datetime.strptime(text, pattern).date()
+        except ValueError:
+            continue
+    raise InstructionsError(code, field) from None
 
 
 def _user(value):

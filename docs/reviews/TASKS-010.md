@@ -109,3 +109,68 @@ ClamAV/X-Accel, журнал и история, срок хранения, св�
 (`crm-work/slice010/stage3/T-10260/full-20261124-010525/full.log`, exit 0). Сверка с красным T-10160
 (4628 passed / 171 failed): +171 тест, ровно все падавшие стали зелёными, потерь нет. Это же — полный прогон
 T-10300.
+## Ворота (T-10303)
+
+`tools/verify.sh --быстро` — **всё прошло** (`crm-work/slice010/stage4-gates.log`): SDD 130/0/0, тесты инструментов
+176/176, конституция 6/6, секреты и источники чисто, vendor 0 ошибок (3 замечания о новых версиях Bootstrap,
+Alpine.js, SortableJS), `git diff --check` чист.
+
+## Инварианты по диффу (T-10306)
+
+| Инвариант | Результат | Чем подтверждён |
+|---|---|---|
+| модуль-приложение | PASS: отдельное `apps.instructions`, зависит от `tasks`, связи через точки и публичные службы | `test_instructions_boundaries` (импорты, связи моделей, единственная подписка `core.user_dismissed`) |
+| настройка-без-кода | PASS: виды основания, лестница и срок хранения — данные | `test_instructions_basis`, `test_instructions_settings`, `test_instructions_seed` |
+| ПДн / 152-ФЗ | PASS: администратор чужих не видит, во внешних каналах только событие и ссылка | `test_instructions_access`, `test_instructions_notify` |
+| аудит-изменений | PASS: журнал дополняется, подписи всех кодов, текст отчётов и удаления не пишется | `test_instructions_audit`, `test_instructions_retention` |
+| SQL только параметры | PASS: фильтры, поиск и цепочка узлов — параметрами, `= ANY(%s)` | `test_instructions_registry::test_sql_parameters_and_chain_any`, `test_instructions_discipline::test_sql_uses_parameters_and_chain_array` |
+| стек-интерфейс | PASS: страницы на HTMX, своих скриптов состояния нет, `instructions.js` — каркас | `test_instructions_deploy` (статика/CSP), e2e `test_t10_*` |
+| тест-на-требование | PASS: у каждого FR/NFR есть тест, кроме NFR-720 (ждёт T-10304) | таблица ниже |
+| спека-прежде-кода | PASS: код Этапа 3 начат после T-10160 | красный прогон `red-20261123-222524` |
+
+## Требования (T-10307)
+
+| Требование | Проверка | Результат |
+|---|---|---|
+| FR-700 поля и основание | models, create | PASS |
+| FR-701 справочник | basis, settings, seed | PASS |
+| FR-702 кто ставит | access, create | PASS |
+| FR-703 контролёр | access, create | PASS |
+| FR-704 исполнитель/соисполнители | create, reminders | PASS |
+| FR-705 отчётные даты | dates | PASS |
+| FR-706 отчёт | reports | PASS |
+| FR-707 снятие | close, reports | PASS |
+| FR-708 перенос | transfers | PASS |
+| FR-709 лестница | reminders | PASS |
+| FR-710 тихие часы | reminders | PASS |
+| FR-711 уведомления | notify, reminders | PASS |
+| FR-712 сводка | digest | PASS |
+| FR-713 реестр | registry | PASS |
+| FR-714 дисциплина | discipline | PASS |
+| FR-715 Excel | discipline | PASS |
+| FR-716 задачи | tasks | PASS |
+| FR-717 статусы | dates, registry | PASS |
+| FR-718 журнал/история | audit | PASS |
+| FR-719 404 | access | PASS |
+| FR-720 360 px | e2e `t10_10` | ожидает T-10302 |
+| FR-721 видимость | access, registry | PASS |
+| FR-722 увольнение/смена | access, core_changes | PASS |
+| FR-723 части | reports | PASS |
+| NFR-720 p95 | нагрузка | не замерялся (T-10304 — после решения владельца) |
+| NFR-721 SQL | registry, discipline | PASS |
+| NFR-722 файлы | files, deploy | PASS |
+| NFR-723 внешний текст | notify | PASS |
+| NFR-724 идемпотентность | reminders, digest, retention | PASS |
+| NFR-725 360/браузеры | e2e 4 круга | ожидает T-10302 |
+| NFR-726 русский/Москва | deploy | PASS |
+| NFR-727 журнал | audit | PASS |
+| NFR-728 профиль | deploy, load | PASS (код профиля); замер — T-10304 |
+| NFR-729 хранение | retention, settings | PASS |
+
+## Проход в браузере (T-10301/T-10302)
+
+Стенд обновлён до кода среза: копия `before-T10159-20261124-015940`, миграции `instructions 0001/0002`, 11 таблиц
+`instructions*`, `/instructions/` 302. Первый Chromium-круг нашёл дефект формы: `create_instruction` не заполнял
+дату основания, а серверные разборы принимали только ISO, тогда как поле даты портала показывает `ДД.ММ.ГГГГ`.
+Исправлено: помощник заполняет дату основания; `services.instructions._as_date`, `services.dates` и
+`services.transfers` принимают оба формата. Повторные круги — после обновления образа.

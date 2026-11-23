@@ -22,10 +22,12 @@ def _local_date(value) -> datetime.date:
     if isinstance(value, datetime.date):
         return value
     if isinstance(value, str):
-        try:
-            return datetime.date.fromisoformat(value)
-        except ValueError:
-            raise InstructionsError("date_past", "dates") from None
+        for pattern in ("%Y-%m-%d", "%d.%m.%Y"):
+            try:
+                return datetime.datetime.strptime(value.strip(), pattern).date()
+            except ValueError:
+                continue
+        raise InstructionsError("date_past", "dates") from None
     raise InstructionsError("date_past", "dates")
 
 

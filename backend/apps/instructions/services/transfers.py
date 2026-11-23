@@ -21,10 +21,13 @@ def _as_date(value):
         return timezone.localtime(value).date()
     if isinstance(value, datetime.date):
         return value
-    try:
-        return datetime.date.fromisoformat(str(value))
-    except ValueError:
-        raise InstructionsError("transfer_deadline", "new_deadline") from None
+    text = str(value).strip()
+    for pattern in ("%Y-%m-%d", "%d.%m.%Y"):
+        try:
+            return datetime.datetime.strptime(text, pattern).date()
+        except ValueError:
+            continue
+    raise InstructionsError("transfer_deadline", "new_deadline") from None
 
 
 @transaction.atomic

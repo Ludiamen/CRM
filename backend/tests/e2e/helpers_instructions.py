@@ -140,10 +140,27 @@ def open_discipline(context, account, **params):
 
 # --- Создание и поля (13.3) ----------------------------------------------------------------------
 
+def _iso(value):
+    """Дата `ДД.ММ.ГГГГ` или ISO → ISO для поля с датой."""
+    import datetime
+
+    text = str(value)
+    if "." in text:
+        return datetime.datetime.strptime(text, "%d.%m.%Y").date().isoformat()
+    return text
+
+
 def create_instruction(page, title, *, basis=None, basis_number="12", basis_date=None, assignee=None,
                        deadline=None, periodicity=None, dates=()):
     """Форма «Новое поручение»: `form[data-form="instruction-new"]`, поля `[data-instruction-field]`;
     ждёт карточку и возвращает номер поручения."""
+    import datetime
+    from zoneinfo import ZoneInfo
+
+    if basis_date is None:
+        basis_date = datetime.datetime.now(ZoneInfo("Europe/Moscow")).date().isoformat()
+    if deadline is not None:
+        deadline = _iso(deadline)
     page.goto("/instructions/new/")
     expect(page.locator('[data-instructions-page="new"]')).to_be_visible()
     form = page.locator('form[data-form="instruction-new"]')
@@ -152,8 +169,7 @@ def create_instruction(page, title, *, basis=None, basis_number="12", basis_date
     if basis is not None:
         form.locator('[data-instruction-field="basis_kind"]').select_option(label=str(basis))
     form.locator('[data-instruction-field="basis_number"]').fill(str(basis_number))
-    if basis_date is not None:
-        form.locator('[data-instruction-field="basis_date"]').fill(str(basis_date))
+    form.locator('[data-instruction-field="basis_date"]').fill(_iso(basis_date))
     if assignee is not None:
         form.locator('[data-instruction-field="assignee"]').select_option(str(getattr(assignee, "id", assignee)))
     if deadline is not None:
