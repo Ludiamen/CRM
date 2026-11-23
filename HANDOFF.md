@@ -18,9 +18,12 @@
 > 17 red (`crm-work/slice010/stage2/T-10103-red.log`). **T-10104…T-10107:** dates 13, reports 11, close 6,
 > transfers 9 — 39 red (`T-10104-red.log`, `T-10105-red.log`, `T-10106-07-red.log`). В контракт добавлено К21:
 > периодичность не хранится в модели, `build/rebuild` получают её из формы. **T-10108:** напоминания — 17 red
-> (`T-10108-red.log`); в контракт добавлено К22: `stage` = `d<offset>` для своей лестницы 1–60. Состояние и точный
-> следующий шаг — `crm-work/slice010-NEXT.md`: T-10109 (реестр), затем T-10110…, стенд T-10159, красный прогон
-> T-10160, только после него Этап 3.
+> (`T-10108-red.log`); в контракт добавлено К22: `stage` = `d<offset>` для своей лестницы 1–60. **Этап 2 закрыт по
+> тестам:** T-10109…T-10124 и T-10150 — 186 серверных тестов, 10 e2e-файлов, `fill_instructions.py` и
+> `InstructionUser` (коммит `5c388c3`). **T-10159 выполнен:** копия `before-T10159-20261123-222353`, сборка,
+> миграции, health gates, `/instructions/` 302. **T-10160 идёт** (`crm-work/slice010/stage2/red/run-red.sh`,
+> systemd `crm-T10160-red-*`). Состояние и точный следующий шаг — `crm-work/slice010-NEXT.md`: разобрать красный
+> прогон, затем Этап 3 (T-10201…). Отчёт — `docs/reviews/TASKS-010.md`.
 
 > **2026-11-22, интерактивная карта CRM:** план `docs/superpowers/plans/2026-11-22-crm-project-map.md`.
 > Сборщик и тесты в `tools/project_map.py` и `tools/test_project_map.py`; после ревью OpenAI внесены правки
