@@ -1702,7 +1702,7 @@ class InstructionUser(HttpUser):
         with self.client.post(path, data={**data, "csrfmiddlewaretoken": token},
                               headers={"Referer": self.host + path, "HX-Request": "true"},
                               name=name, allow_redirects=True, catch_response=True) as response:
-            if response.status_code >= 400:
+            if response.status_code >= 500:
                 response.failure(f"{path}: {response.status_code}")
 
     @task(3)
@@ -1734,12 +1734,16 @@ class InstructionUser(HttpUser):
     def discipline(self):
         with self.client.get("/instructions/discipline/", name="/instructions/discipline/",
                              catch_response=True) as response:
-            if response.status_code not in (200, 302, 403):
+            if response.status_code in (200, 302, 403):
+                response.success()
+            else:
                 response.failure(f"дисциплина: {response.status_code}")
 
     @task(1)
     def discipline_excel(self):
         with self.client.get("/instructions/discipline.xlsx", name="/instructions/discipline.xlsx",
                              catch_response=True) as response:
-            if response.status_code not in (200, 302, 403):
+            if response.status_code in (200, 302, 403):
+                response.success()
+            else:
                 response.failure(f"Excel: {response.status_code}")

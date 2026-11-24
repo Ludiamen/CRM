@@ -292,8 +292,9 @@ def test_menu_items_tasks_order_2_and_settings_order_65_before_servicedesk():
     admin = support.make_admin(full_name="Администратор Меню")
     menu = permissions.menu_for(admin)
     titles = [item["title"] for item in menu]
-    assert len(menu) == 18, f"пунктов меню у администратора: {len(menu)} — {titles}"
-    assert titles[:3] == ["Лента", "Мессенджер", "Задачи"], titles[:3]
+    assert len(menu) == 20, f"пунктов меню у администратора: {len(menu)} — {titles}"
+    assert titles[:4] == ["Лента", "Мессенджер", "Задачи", "Поручения"], titles[:4]
+    assert titles.index("Настройки задач") < titles.index("Настройки поручений") < titles.index("Безопасность и политика")
     assert "Настройки задач" in titles and "Сервис-деск" in titles
     assert titles.index("Настройки задач") < titles.index("Сервис-деск"), (
         "при порядке 65 «Настройки задач» должны идти перед «Сервис-деском»")

@@ -693,15 +693,17 @@ def test_menu_staff_structure_calendar_items_by_permission():
         assert "/roles/" not in urls(user) and "/audit/" not in urls(user)
 
     items = permissions.menu_for(support.make_admin())
-    assert [i["url"] for i in items] == ["/", "/messenger/", "/tasks/", "/tickets/", "/kb/", "/lists/", "/staff/",
-                                         "/structure/", "/calendar/", "/roles/", "/audit/", "/settings/portal/",
-                                         "/settings/notifications/", "/settings/feed/", "/settings/messenger/",
-                                         "/settings/tasks/", "/servicedesk/", "/settings/security/"]
-    assert [i["order"] for i in items] == [0, 1, 2, 5, 7, 8, 10, 20, 30, 40, 50, 60, 62, 63, 64, 65, 65, 70]
-    assert [i["title"] for i in items] == ["Лента", "Мессенджер", "Задачи", "Заявки", "База знаний", "Списки",
-                                           "Сотрудники", "Структура", "Календарь", "Роли и права", "Журнал событий",
-                                           "Настройки портала", "Уведомления", "Настройки ленты",
+    assert [i["url"] for i in items] == ["/", "/messenger/", "/tasks/", "/instructions/", "/tickets/", "/kb/",
+                                         "/lists/", "/staff/", "/structure/", "/calendar/", "/roles/", "/audit/",
+                                         "/settings/portal/", "/settings/notifications/", "/settings/feed/",
+                                         "/settings/messenger/", "/settings/tasks/", "/servicedesk/",
+                                         "/settings/instructions/", "/settings/security/"]
+    assert [i["order"] for i in items] == [0, 1, 2, 3, 5, 7, 8, 10, 20, 30, 40, 50, 60, 62, 63, 64, 65, 65, 66, 70]
+    assert [i["title"] for i in items] == ["Лента", "Мессенджер", "Задачи", "Поручения", "Заявки", "База знаний",
+                                           "Списки", "Сотрудники", "Структура", "Календарь", "Роли и права",
+                                           "Журнал событий", "Настройки портала", "Уведомления", "Настройки ленты",
                                            "Настройки мессенджера", "Настройки задач", "Сервис-деск",
+                                           "Настройки поручений",
                                            "Безопасность и политика"]
     # `badge` есть у «Заявок» (CONTRACT-003 § 3.2), у «Ленты» и «Мессенджера» — `badge` и `live_badge`
     # (CONTRACT-007; CONTRACT-008, 3.4); у остальных ровно четыре ключа
@@ -709,8 +711,8 @@ def test_menu_staff_structure_calendar_items_by_permission():
     assert items[0]["live_badge"] == "feed"
     assert set(items[1]) == {"url", "title", "icon", "order", "badge", "live_badge"}
     assert items[1]["live_badge"] == "messenger"
-    assert set(items[3]) == {"url", "title", "icon", "order", "badge"}
-    assert all(set(i) == {"url", "title", "icon", "order"} for i in items[2:3] + items[4:])
+    assert set(items[4]) == {"url", "title", "icon", "order", "badge"}
+    assert all(set(i) == {"url", "title", "icon", "order"} for i in items[2:3] + items[5:])
     icons = {i["url"]: i["icon"] for i in items}
     assert icons["/structure/"] == "icons/structure.html" and icons["/calendar/"] == "icons/calendar.html"
     assert icons["/lists/"] == "icons/lists.html"

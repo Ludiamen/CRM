@@ -87,12 +87,14 @@ def _without_tasks():
     from apps.core import extensions
 
     saved = {point: list(funcs) for point, funcs in extensions._registry.items()}
+    dependent = "apps.instructions"
     for funcs in extensions._registry.values():
-        funcs[:] = [func for func in funcs if not getattr(func, "__module__", "").startswith(APP)]
+        funcs[:] = [func for func in funcs
+                    if not getattr(func, "__module__", "").startswith((APP, dependent))]
     real = registry.is_installed
 
     def is_installed(app_name: str) -> bool:
-        return False if app_name == APP else real(app_name)
+        return False if app_name in (APP, dependent) else real(app_name)
 
     registry.is_installed = is_installed
     try:
@@ -290,7 +292,7 @@ def test_previous_menu_search_card_and_file_purposes_without_tasks():
     support_tasks.make_task("Задача прежнего поведения", author=person, assignee=person)
 
     full_menu = permissions.menu_for(admin)
-    assert len(full_menu) == 18, f"пунктов меню с задачами: {len(full_menu)}"
+    assert len(full_menu) == 20, f"пунктов меню с задачами и поручениями: {len(full_menu)}"
     assert "tasks" in [provider.key for func in extensions.registered("search_providers") for provider in func()]
 
     with _without_tasks():
@@ -300,5 +302,7 @@ def test_previous_menu_search_card_and_file_purposes_without_tasks():
         sections = [section for func in _own("card_sections") for section in func(person, person)]
 
     assert len(menu) == 16, f"пунктов меню без задач: {len(menu)}"
-    assert [item for item in full_menu if item["url"] not in ("/tasks/", "/settings/tasks/")] == menu
+    assert [item for item in full_menu
+            if item["url"] not in ("/tasks/", "/settings/tasks/", "/instructions/",
+                                    "/settings/instructions/")] == menu
     assert "tasks" not in providers and purposes == [] and sections == []

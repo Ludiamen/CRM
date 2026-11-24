@@ -469,8 +469,8 @@ def test_channel_layers_keep_two_keys_with_default_30_and_publish_2_seconds():
     assert default["CONFIG"]["prefix"] == publish["CONFIG"]["prefix"] == "crm-asgi"
 
 
-def test_slice_numbers_nineteen_points_thirty_kinds_eight_purposes_and_order_61():
-    """FR-649, FR-662, FR-668: числа среза — девятнадцать точек расширения (`unit_form_parts` последняя), тридцать
+def test_slice_numbers_nineteen_points_forty_kinds_eight_purposes_and_order_61():
+    """FR-649, FR-662, FR-668: числа среза — девятнадцать точек расширения (`unit_form_parts` последняя), сорок
     видов уведомлений (два `messenger.*` с `order` 80 и 81), восемь значений `StoredFile.Purpose` (`instruction`
     последнее), порядок группы поиска «Мессенджер» 61 сразу после «Ленты» 60 (CONTRACT-008, 1.4)."""
     from apps.core import extensions
@@ -483,7 +483,7 @@ def test_slice_numbers_nineteen_points_thirty_kinds_eight_purposes_and_order_61(
     purposes = tuple(StoredFile.Purpose.values)
     assert purposes == messenger.PURPOSES_008, f"назначения файлов: {purposes}"
     catalog = notify_kinds.catalog()
-    assert len(catalog) == 30, f"видов уведомлений {len(catalog)}"
+    assert len(catalog) == 40, f"видов уведомлений {len(catalog)}"
     orders = {kind.code: kind.order for kind in catalog}
     assert (orders.get("messenger.message"), orders.get("messenger.mention")) == (80, 81), orders
     providers = {provider.key: provider for func in extensions.registered("search_providers") for provider in func()}
@@ -503,7 +503,7 @@ def test_admin_menu_has_16_items_with_messenger_second_and_settings_order_64():
     admin, _chat = _messenger_session()
     items = permissions.menu_for(admin.user)
     titles = [item["title"] for item in items]
-    assert len(items) == 18, f"пунктов меню у администратора: {len(items)} — {titles}"
+    assert len(items) == 20, f"пунктов меню у администратора: {len(items)} — {titles}"
     assert titles[:3] == ["Лента", "Мессенджер", "Задачи"], f"первые пункты: {titles[:3]}"
     by_url = {item["url"]: item for item in items}
     assert by_url["/messenger/"]["order"] == 1

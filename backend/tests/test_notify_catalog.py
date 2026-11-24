@@ -66,6 +66,26 @@ TABLE = [
      "Новый комментарий к задаче"),
     ("tasks.subordinate_digest", "Сводка по задачам подчинённых", "Задачи", 217, False, ("portal", "email"), (),
      "Сводка по задачам подчинённых"),
+    # десять видов модуля «Поручения» (CONTRACT-010, 9.1): order 220–229
+    ("instructions.assigned", "Вам поручено", "Поручения", 220, False, ("portal", "email"), (), "Вам поручено"),
+    ("instructions.deadline", "Срок поручения приближается", "Поручения", 221, False, ("portal", "email"), (),
+     "Срок поручения приближается"),
+    ("instructions.report_due", "Нужен отчёт по поручению", "Поручения", 222, False, ("portal", "email"), (),
+     "Нужен отчёт по поручению"),
+    ("instructions.report_overdue", "Отчёт по поручению просрочен", "Поручения", 223, False,
+     ("portal", "email"), (), "Отчёт по поручению просрочен"),
+    ("instructions.overdue", "Поручение просрочено", "Поручения", 224, False, ("portal", "email"), (),
+     "Поручение просрочено"),
+    ("instructions.report_submitted", "Отчёт по поручению пришёл", "Поручения", 225, False,
+     ("portal", "email"), (), "Отчёт по поручению пришёл"),
+    ("instructions.report_accepted", "Отчёт принят", "Поручения", 226, False, ("portal", "email"), (),
+     "Отчёт принят"),
+    ("instructions.report_returned", "Отчёт возвращён", "Поручения", 227, False, ("portal", "email"), (),
+     "Отчёт возвращён"),
+    ("instructions.transfer", "Перенос срока", "Поручения", 228, False, ("portal", "email"), (),
+     "Перенос срока поручения"),
+    ("instructions.digest", "Сводка по поручениям", "Поручения", 229, False, ("portal", "email"), (),
+     "Сводка по поручениям"),
 ]
 MANDATORY_CODES = {row[0] for row in TABLE if row[4]}
 
@@ -123,13 +143,13 @@ def _register_core_and_notify():
 # --- каталог: состав ---------------------------------------------------------------------------------
 
 def test_catalog_contains_eight_kinds_from_three_modules():
-    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно тридцать видов, по `order` (сервис-деск 10–40, база знаний
+    """FR-301, FR-304, FR-305, FR-344: в каталоге ровно сорок видов, по `order` (сервис-деск 10–40, база знаний
     50–52, списки 60, лента 70–77, мессенджер 80–81, ядро 110–130, уведомления 200), из модулей «Сервис-деск», «База
-    знаний», «Списки», «Лента», «Мессенджер», «Ядро» и «Уведомления»."""
+    знаний», «Списки», «Лента», «Мессенджер», «Задачи», «Поручения», «Ядро» и «Уведомления»."""
     catalog = _kinds().catalog()
     assert [kind.code for kind in catalog] == [row[0] for row in TABLE]
     assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления", "База знаний", "Списки", "Лента",
-                                                 "Мессенджер", "Задачи"}
+                                                 "Мессенджер", "Задачи", "Поручения"}
     assert [kind.module for kind in catalog].count("Сервис-деск") == 4
     assert [kind.module for kind in catalog].count("Ядро") == 3
     assert [kind.module for kind in catalog].count("Уведомления") == 1
@@ -138,6 +158,7 @@ def test_catalog_contains_eight_kinds_from_three_modules():
     assert [kind.module for kind in catalog].count("Лента") == 8
     assert [kind.module for kind in catalog].count("Мессенджер") == 2
     assert [kind.module for kind in catalog].count("Задачи") == 8
+    assert [kind.module for kind in catalog].count("Поручения") == 10
 
 
 def test_catalog_kind_codes_titles_and_modules_match_plan_table():
