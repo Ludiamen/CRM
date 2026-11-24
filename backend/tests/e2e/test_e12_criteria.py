@@ -67,6 +67,18 @@ TASKS_KINDS_E2E = (
     ("tasks.subordinate_overdue", "Задача подчинённого просрочена"), ("tasks.reminder", "Вы просили напомнить"),
     ("tasks.comment", "Новый комментарий"), ("tasks.subordinate_digest", "Сводка по задачам подчинённых"),
 )
+INSTRUCTIONS_KINDS_E2E = (
+    ("instructions.assigned", "Вам поручено"),
+    ("instructions.deadline", "Срок поручения приближается"),
+    ("instructions.report_due", "Нужен отчёт по поручению"),
+    ("instructions.report_overdue", "Отчёт по поручению просрочен"),
+    ("instructions.overdue", "Поручение просрочено"),
+    ("instructions.report_submitted", "Отчёт по поручению пришёл"),
+    ("instructions.report_accepted", "Отчёт принят"),
+    ("instructions.report_returned", "Отчёт возвращён"),
+    ("instructions.transfer", "Перенос срока"),
+    ("instructions.digest", "Сводка по поручениям"),
+)
 
 EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mandatory, внешний текст)
     NEW_IN_QUEUE: ("Новая заявка в моей очереди", MODULE, False, "Новая заявка в вашей очереди"),
@@ -99,6 +111,18 @@ EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mand
     "tasks.reminder": ("Вы просили напомнить", "Задачи", False, "Напоминание о задаче"),
     "tasks.comment": ("Новый комментарий", "Задачи", False, "Новый комментарий к задаче"),
     "tasks.subordinate_digest": ("Сводка по задачам подчинённых", "Задачи", False, "Сводка по задачам подчинённых"),
+    "instructions.assigned": ("Вам поручено", "Поручения", False, "Вам поручено"),
+    "instructions.deadline": ("Срок поручения приближается", "Поручения", False, "Срок поручения приближается"),
+    "instructions.report_due": ("Нужен отчёт по поручению", "Поручения", False, "Нужен отчёт по поручению"),
+    "instructions.report_overdue": ("Отчёт по поручению просрочен", "Поручения", False,
+                                    "Отчёт по поручению просрочен"),
+    "instructions.overdue": ("Поручение просрочено", "Поручения", False, "Поручение просрочено"),
+    "instructions.report_submitted": ("Отчёт по поручению пришёл", "Поручения", False,
+                                      "Отчёт по поручению пришёл"),
+    "instructions.report_accepted": ("Отчёт принят", "Поручения", False, "Отчёт принят"),
+    "instructions.report_returned": ("Отчёт возвращён", "Поручения", False, "Отчёт возвращён"),
+    "instructions.transfer": ("Перенос срока", "Поручения", False, "Перенос срока поручения"),
+    "instructions.digest": ("Сводка по поручениям", "Поручения", False, "Сводка по поручениям"),
     "core.new_device": ("Вход с нового устройства", "Ядро", True, ""),
     "core.password_changed": ("Пароль изменён", "Ядро", True, ""),
     "core.second_factor_reset": ("Второй фактор сброшен", "Ядро", True, ""),
@@ -965,11 +989,12 @@ def test_e12_catalog_shows_four_service_desk_kinds_three_security_kinds_and_chan
         "core.new_device", "core.password_changed", "core.second_factor_reset"]
     # таблица «Мои уведомления»: четыре вида сервис-деска, три вида базы знаний, вид списков и две сводные строки
     member.page.goto("/me/notifications/")
-    for code, title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E + MESSENGER_KINDS_E2E + TASKS_KINDS_E2E:
+    for code, title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E + MESSENGER_KINDS_E2E + TASKS_KINDS_E2E + INSTRUCTIONS_KINDS_E2E:
         row = member.page.locator(f'table[data-notify-table] tr[data-notify-kind="{code}"]')
         expect(row).to_have_count(1)
         expect(row.locator('[data-field="title"]')).to_have_text(title)
         module = ("Задачи" if code.startswith("tasks.") else
+                  "Поручения" if code.startswith("instructions.") else
                   KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.")
                   else FEED_MODULE if code.startswith("feed.") else MESSENGER_MODULE if code.startswith("messenger.")
                   else MODULE)
@@ -977,14 +1002,14 @@ def test_e12_catalog_shows_four_service_desk_kinds_three_security_kinds_and_chan
     # видимый результат: четыре вида сервис-деска, три вида базы знаний и вид списков; видов безопасности и «Канал отвязан» среди строк видов нет
     expect(member.page.locator("table[data-notify-table] tr[data-notify-kind]")).to_have_count(
         len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E) + len(MESSENGER_KINDS_E2E)
-        + len(TASKS_KINDS_E2E))
+        + len(TASKS_KINDS_E2E) + len(INSTRUCTIONS_KINDS_E2E))
     expect(member.page.locator('table[data-notify-table] tr[data-notify-kind^="core."], '
                                'table[data-notify-table] tr[data-notify-kind^="notify."]')).to_have_count(0)
     # страница администратора: все не обязательные виды — четыре сервис-деска, три базы знаний и вид списков (§ 14.4)
     page.goto("/settings/notifications/")
     expect(page.locator("table[data-defaults-table] tr[data-notify-kind]")).to_have_count(
         len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E) + len(MESSENGER_KINDS_E2E)
-        + len(TASKS_KINDS_E2E))
+        + len(TASKS_KINDS_E2E) + len(INSTRUCTIONS_KINDS_E2E))
     for code, _title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E + MESSENGER_KINDS_E2E:
         expect(page.locator(f'table[data-defaults-table] tr[data-notify-kind="{code}"]')).to_have_count(1)
     expect(member.page.locator('tr[data-notify-fixed="security"]')).to_contain_text(FIXED_SECURITY)

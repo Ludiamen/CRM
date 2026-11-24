@@ -66,8 +66,20 @@ TASKS_KINDS_E2E = (
     ("tasks.subordinate_overdue", "Задача подчинённого просрочена"), ("tasks.reminder", "Вы просили напомнить"),
     ("tasks.comment", "Новый комментарий"), ("tasks.subordinate_digest", "Сводка по задачам подчинённых"),
 )
+INSTRUCTIONS_KINDS_E2E = (
+    ("instructions.assigned", "Вам поручено"),
+    ("instructions.deadline", "Срок поручения приближается"),
+    ("instructions.report_due", "Нужен отчёт по поручению"),
+    ("instructions.report_overdue", "Отчёт по поручению просрочен"),
+    ("instructions.overdue", "Поручение просрочено"),
+    ("instructions.report_submitted", "Отчёт по поручению пришёл"),
+    ("instructions.report_accepted", "Отчёт принят"),
+    ("instructions.report_returned", "Отчёт возвращён"),
+    ("instructions.transfer", "Перенос срока"),
+    ("instructions.digest", "Сводка по поручениям"),
+)
 ROWS = (KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E
-        + MESSENGER_KINDS_E2E + TASKS_KINDS_E2E)  # строки таблицы участника очереди в порядке каталога
+        + MESSENGER_KINDS_E2E + TASKS_KINDS_E2E + INSTRUCTIONS_KINDS_E2E)  # строки таблицы участника в порядке каталога
 COLUMNS = ("На портале", "Почта", "Push в браузере", "Telegram", "MAX")  # § 15.5
 CHANNEL_ORDER = ["portal", "email", "push", "telegram", "max"]  # § 14.3
 SAVED = "Настройки уведомлений сохранены."  # § 15.4
@@ -295,6 +307,7 @@ def test_e04_my_notifications_table_shows_kinds_with_module_five_channel_columns
         row = table.locator(f'tr[data-notify-kind="{code}"]')
         expect(row.locator('[data-field="title"]')).to_have_text(title)
         module = ("Задачи" if code.startswith("tasks.") else
+                  "Поручения" if code.startswith("instructions.") else
                   KB_MODULE if code.startswith("knowledge.") else LISTS_MODULE if code.startswith("lists.")
                   else FEED_MODULE if code.startswith("feed.") else MESSENGER_MODULE if code.startswith("messenger.")
                   else MODULE)
