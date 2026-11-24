@@ -149,7 +149,8 @@ def test_minutes_between_skips_weekend_and_holiday():
     holiday = date(2026, 6, 8)
     loaded_year(2026, {holiday: "holiday"})
     level = make_level()
-    assert minutes_between(moment(2026, 6, 5, 17), moment(2026, 6, 9, 10), level) == 60
+    # пятница 17:00–18:00 = 60 минут, понедельник 8 июня — праздник, вторник 09:00–10:00 = 60 минут
+    assert minutes_between(moment(2026, 6, 5, 17), moment(2026, 6, 9, 10), level) == 120
 
 
 def test_zero_work_minutes_outside_hours_moves_to_next_workday_start():

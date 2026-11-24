@@ -10,7 +10,7 @@ from django.db import transaction
 from apps.core.services import audit
 from apps.org.services.refs import UnitRef
 
-from . import access, assignment, events, queues, replies, tickets
+from . import access, assignment, events, queues, replies, tickets, sla
 from .errors import ServiceDeskError
 
 REASON_LIMIT = 500
@@ -95,6 +95,7 @@ def transfer(ticket, queue_id, *, reason="", actor, ip=None) -> TransferResult:
         if len(reason) > REASON_LIMIT:
             raise _error("reason_too_long", "Причина передачи не длиннее 500 знаков")
         removed = _move(ticket, queue_id, actor=actor, ip=ip, reason_text=reason)
+        sla.recalculate(ticket)
     return TransferResult(queue_changed=True, assignee_removed=removed, visible_after=access.can_work(actor, ticket))
 
 
@@ -132,4 +133,5 @@ def change_category(ticket, category, *, confirmed=False, actor, ip=None) -> Cat
         assigned = False
         if ticket.assignee_id is None:
             assigned = assignment.apply_default_assignee(ticket, actor=actor, ip=ip)
+        sla.recalculate(ticket)
     return CategoryResult(False, new_queue_id, True, queue_changed, removed, assigned)

@@ -207,7 +207,20 @@ def create(*, channel, subject, text, requester_email, requester_name="", client
         entry = TicketEntry.objects.create(
             ticket=ticket, kind=TicketEntry.Kind.INCOMING, at=moment, text=text, inbound_id=inbound_id,
             author=created_by if staff else None, author_email="" if staff else email,
-            author_name="" if staff else name)
+             author_name="" if staff else name)
+        from . import assignment, sla
+
+        sla.apply_level_to_ticket(ticket)
+        level_assignee = ticket.sla.default_assignee if ticket.sla is not None else None
+        if (ticket.assignee_id is None and (category is None or category.default_assignee is None)
+                and level_assignee is not None):
+            if access.is_participant(level_assignee, unit_id):
+                assignment._set_assignee(ticket, level_assignee, actor=actor, ip=ip)
+            else:
+                audit.record("ticket.assignee_skipped", actor=actor, object_type="ticket", object_id=number,
+                             before={}, after={"assignee": level_assignee.full_name,
+                                               "assignee_id": level_assignee.pk, "reason": "not_participant"},
+                             ip=ip)
         queue_name = ticket.queue.name
         after = {"number": number, "channel": channel, "queue": queue_name, "queue_id": unit_id,
                  "category": category.name if category else "", "priority": priority.name, "source": source.name}
@@ -398,6 +411,8 @@ def update_fields(ticket, *, actor, ip=None, priority=UNSET, complexity=UNSET, c
             ticket.save(update_fields=saved + ["updated_at"])
             audit.record("ticket.updated", actor=actor, object_type="ticket", object_id=ticket.number, before=before,
                          after=after, ip=ip)
+            from . import sla
+            sla.recalculate(ticket)
         _sync_requester_record(ticket, unit=unit, set_unit=client_unit_id is not UNSET, name=name,
                                set_name=save_name_to_record and name is not None, actor=actor, ip=ip)
         if name_changed:

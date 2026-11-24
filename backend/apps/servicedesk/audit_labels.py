@@ -13,6 +13,7 @@ ACTIONS = dict([
     ("ticket.reopened", "Заявка открыта заново"), ("ticket.reply_sent", "Ответ отправлен"),
     ("ticket.comment_added", "Комментарий добавлен"), ("ticket.attachment_quarantined", "Вложение в карантине"),
     ("ticket.mail_failed", "Письмо не доставлено"), ("ticket.participant_removed", "Участник снят"),
+    ("ticket.assignee_skipped", "Ответственный по уровню не назначен"),
     ("ticket.anonymized", "Заявка обезличена"),
     ("requester.created", "Заявитель добавлен"), ("requester.updated", "Заявитель изменён"),
     ("requester.deleted", "Заявитель удалён"), ("requester_import.completed", "Загрузка заявителей выполнена"),
