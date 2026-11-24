@@ -8,8 +8,9 @@ from django.utils import timezone
 from apps.core.services import audit
 from apps.integrations.mail.models import MailMessage
 
-from ..models import Attachment, Status, Ticket, TicketEntry, TicketParticipant
+from ..models import Attachment, SlaCycle, Status, Ticket, TicketEntry, TicketParticipant
 from . import access, attachments, dictionaries, events, letters, search, tickets
+from . import sla
 from .errors import ServiceDeskError
 
 MAX_TEXT = 50_000
@@ -81,10 +82,23 @@ def _queue_letter(ticket, entry) -> None:
     """Ответ уходит: `queued`, отсчёт ожидания (флажок и вид «ждёт»), письмо после фиксации."""
     entry.send_state = TicketEntry.SendState.QUEUED
     entry.save(update_fields=["send_state"])
+    _record_first_response(ticket, entry)
     if entry.wait_flag and ticket.kind == Status.Kind.WAITING:
         ticket.waiting_since = timezone.now()
         ticket.save(update_fields=["waiting_since", "updated_at"])
     letters.send(ticket, "ticket.reply", entry=entry)
+
+
+def _record_first_response(ticket, entry) -> None:
+    """Зафиксировать первый поставленный в отправку ответ в текущем цикле SLA."""
+    cycle = (SlaCycle.objects.select_for_update()
+             .filter(ticket=ticket, is_current=True).first())
+    if cycle is None or cycle.first_response_at is not None or cycle.level is None:
+        return
+    cycle.first_response_at = entry.at
+    cycle.reaction_minutes = max(0, sla.minutes_between(cycle.cycle_started_at, entry.at, cycle.level))
+    cycle.reaction_met = entry.at <= cycle.reaction_due
+    cycle.save(update_fields=["first_response_at", "reaction_minutes", "reaction_met"])
 
 
 def _dispatch(ticket, entry, actor, ip, *, parts=()) -> None:

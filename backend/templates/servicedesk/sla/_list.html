@@ -1,0 +1,18 @@
+<div class="table-responsive">
+<table class="table w-100">
+  <thead><tr><th>Название</th><th>Приоритет</th><th>Реакция</th><th>Решение</th><th>Привязки</th><th>Действия</th></tr></thead>
+  <tbody>
+  {% for row in rows %}{% with item=row.level %}
+  <tr data-sla-id="{{ item.pk }}">
+    <td>{{ item.title }}{% if item.archived %} <span class="badge text-bg-secondary">в архиве</span>{% endif %}</td>
+    <td>{{ item.priority }}</td><td>{{ item.reaction_minutes }} мин</td><td>{{ item.solution_minutes }} мин</td>
+    <td>{% for binding in row.bindings %}{% if binding.category_id %}{{ binding.category.name }}{% else %}{{ binding.priority.name }}{% endif %}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+    <td><a href="/servicedesk/sla/{{ item.pk }}/">Изменить</a>
+      <form method="post" action="/servicedesk/sla/{{ item.pk }}/archive/" class="d-inline">{% csrf_token %}
+        <button type="submit" class="btn btn-link">{% if item.archived %}Вернуть{% else %}В архив{% endif %}</button>
+      </form></td>
+  </tr>
+  {% endwith %}{% empty %}<tr><td colspan="6">Уровней обслуживания пока нет.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>

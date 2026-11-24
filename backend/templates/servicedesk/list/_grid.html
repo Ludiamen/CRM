@@ -15,7 +15,8 @@
           <th scope="col">Статус</th>
           <th scope="col">Ответственный</th>
           <th scope="col" data-sort="created"{% if cols.created.aria_sort %} aria-sort="{{ cols.created.aria_sort }}"{% endif %}><a class="sort-link" href="{{ cols.created.url }}" hx-get="{{ cols.created.url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">{{ cols.created.title }}</a></th>
-          <th scope="col" data-sort="last_message"{% if cols.last_message.aria_sort %} aria-sort="{{ cols.last_message.aria_sort }}"{% endif %}><a class="sort-link" href="{{ cols.last_message.url }}" hx-get="{{ cols.last_message.url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">{{ cols.last_message.title }}</a></th>
+           <th scope="col" data-sort="last_message"{% if cols.last_message.aria_sort %} aria-sort="{{ cols.last_message.aria_sort }}"{% endif %}><a class="sort-link" href="{{ cols.last_message.url }}" hx-get="{{ cols.last_message.url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">{{ cols.last_message.title }}</a></th>
+           <th scope="col" data-sort="due"{% if cols.due.aria_sort %} aria-sort="{{ cols.due.aria_sort }}"{% endif %}><a class="sort-link" href="{{ cols.due.url }}" hx-get="{{ cols.due.url }}" hx-target="#tickets-grid" hx-swap="outerHTML" hx-push-url="true">{{ cols.due.title }}</a></th>
         </tr>
       </thead>
       <tbody>
@@ -32,7 +33,8 @@
           <td data-cell="status" data-label="Статус">{{ ticket.status.name }}</td>
           <td data-cell="assignee" data-label="Ответственный">{% if ticket.assignee %}{{ ticket.assignee.full_name }}{% if row.assignee_dismissed %} <span data-dismissed-badge>(уволен)</span>{% endif %}{% elif ticket.kind == "closed" and row.closed_by %}Закрыл: {{ row.closed_by }}{% if row.closed_by_dismissed %} <span data-dismissed-badge>(уволен)</span>{% endif %}{% else %}не назначен{% endif %}</td>
           <td data-cell="created" data-label="Создана"><time data-at="{{ ticket.created_at|date:'c' }}">{{ ticket.created_at|date:'d.m.Y H:i' }}</time></td>
-          <td data-cell="last-message" data-label="Последнее сообщение">{% if ticket.last_message_from %}<time data-at="{{ ticket.last_message_at|date:'c' }}">{{ ticket.last_message_at|date:'d.m.Y H:i' }}</time> <span class="small text-muted" data-last-from="{{ ticket.last_message_from }}">{% if ticket.last_message_from == "requester" %}заявитель{% else %}исполнитель{% endif %}</span>{% else %}—{% endif %}</td>
+           <td data-cell="last-message" data-label="Последнее сообщение">{% if ticket.last_message_from %}<time data-at="{{ ticket.last_message_at|date:'c' }}">{{ ticket.last_message_at|date:'d.m.Y H:i' }}</time> <span class="small text-muted" data-last-from="{{ ticket.last_message_from }}">{% if ticket.last_message_from == "requester" %}заявитель{% else %}исполнитель{% endif %}</span>{% else %}—{% endif %}</td>
+           <td data-cell="due" data-label="Срок">{% if ticket.sla_first_response_at %}<time data-due="{{ ticket.sla_solution_due|date:'c' }}">{{ ticket.sla_solution_due|date:'d.m.Y H:i' }}</time>{% elif ticket.sla_reaction_due %}<time data-due="{{ ticket.sla_reaction_due|date:'c' }}">{{ ticket.sla_reaction_due|date:'d.m.Y H:i' }}</time>{% else %}—{% endif %}</td>
         </tr>
         {% endwith %}{% endfor %}
       </tbody>

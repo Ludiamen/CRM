@@ -1,1 +1,1 @@
-<span data-total>{{ total }}</span>
+<span data-total{% if due %} data-due-count="{{ due }}"{% endif %}>{{ total }}</span>

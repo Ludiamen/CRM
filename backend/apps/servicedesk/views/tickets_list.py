@@ -39,7 +39,8 @@ EMPTY_TEXTS = {
 }
 NOTHING_FOUND = "По вашему запросу заявок нет"
 COLUMNS = (("number", "Номер"), ("created", "Создана"), ("last_message", "Последнее сообщение"),
-           ("priority", "Критичность"))
+           ("priority", "Критичность"), ("due", "Срок"))
+DUE_VALUES = ("overdue", "today")
 KIND_TITLES = dict(Status.Kind.choices)
 _DIGITS = re.compile(r"[0-9]{1,9}")
 _LONG_DIGITS = re.compile(r"[0-9]{1,18}")
@@ -91,6 +92,10 @@ def _read(query) -> dict:
     if text:
         values["q"] = text
         params["q"] = text
+    due = (query.get("due") or "").strip()
+    if due in DUE_VALUES:
+        values["due"] = due
+        params["due"] = due
     sort = query.get("sort") if query.get("sort") in listing.SORTS else "number"
     direction = query.get("dir") if query.get("dir") in ("asc", "desc") else "desc"
     page = _number(query.get("page", "")) or 1
@@ -165,6 +170,7 @@ def _context(request, bulk=None) -> dict:
     return {
         "page": page, "rows": rows, "presets": presets, "cols": columns, "current_sort": read["sort"],
         "current_dir": read["dir"], "sort_given": read["sort_given"], "dir_given": read["dir_given"],
+        "due": values.get("due", ""),
         "values": values, "q": values.get("q", ""), "hint_short": page.hint == "short",
         "queue_choices": [{"id": unit.id, "name": unit.name, "selected": unit.id == values.get("queue")}
                           for unit in marked],
@@ -210,7 +216,7 @@ def ticket_count(request):
     """Общее число заявок по параметрам показа: всегда фрагмент `[data-total]`."""
     read = _read(request.GET)
     total = listing.count(request.user, preset=read["preset"], filters=read["filters"])
-    return render(request, "servicedesk/list/_total.html", {"total": total})
+    return render(request, "servicedesk/list/_total.html", {"total": total, "due": read["values"].get("due", "")})
 
 
 def _bulk_numbers(values) -> list[int]:

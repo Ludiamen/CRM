@@ -29,6 +29,10 @@ ACTIONS = dict([
     ("client_unit.restored", "Подразделение-клиент возвращено из архива"),
     ("client_unit.deleted", "Подразделение-клиент удалено"),
     ("servicedesk.settings_changed", "Настройки сервис-деска изменены"),
+    ("servicedesk.sla_level_created", "Уровень обслуживания создан"),
+    ("servicedesk.sla_level_changed", "Уровень обслуживания изменён"),
+    ("servicedesk.sla_level_archived", "Уровень обслуживания архивирован"),
+    ("servicedesk.binding_changed", "Привязка уровня изменена"),
     ("mailbox.connected", "Ящик заявок подключён"), ("mailbox.recreated", "Ящик заявок пересоздан"),
 ])
 FIELDS = dict([
@@ -50,6 +54,9 @@ FIELDS = dict([
     # итоги загрузки заявителей (вложенные ключи `totals`)
     ("added", "добавлено"), ("updated", "обновлено"), ("unchanged", "без изменений"), ("deleted", "удалено"),
     ("origin_changed", "сменили отметку на «заявка»"),
+    ("cycle", "номер цикла"), ("level", "уровень обслуживания"),
+    ("reaction_due", "срок реакции"), ("solution_due", "срок решения"),
+    ("verdicts", "вердикты сроков"),
 ])
 OBJECT_TYPES = dict([
     ("ticket", "заявка"), ("requester", "заявитель"), ("requester_import", "загрузка"), ("queue", "очередь"),
@@ -68,6 +75,9 @@ VALUES = {
     "mail_kind": dict([("confirmation", "подтверждение заявки"), ("assigned", "взята в работу"),
                        ("closed", "закрыта с решением"), ("autoclosed", "закрыта автоматически"),
                        ("reopened", "открыта заново"), ("reply", "ответ исполнителя")]),
+    "verdicts": dict([("reaction", "реакция"), ("solution", "решение"),
+                      ("met", "в срок"), ("late", "с просрочкой"),
+                      ("no_response", "без ответа")]),
 }
 
 

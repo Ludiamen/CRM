@@ -184,7 +184,7 @@ def _step_ticket(run):
             inbound_id=inbound.pk, cc=corporate_cc(parsed, linked.requester_email))
         run.ticket, run.outcome = linked, Outcome.APPENDED.value
     elif linked is not None and closing.within_reopen_term(linked):
-        closing.reopen(linked, actor=None, via="mail")
+        closing.reopen(linked, actor=None, via="mail", at=at)
         linked.refresh_from_db()
         run.entry = tickets.add_incoming(
             linked, author_email=parsed.sender, author_name=parsed.sender_name, text=parsed.text, at=at,

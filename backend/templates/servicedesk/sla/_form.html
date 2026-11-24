@@ -1,0 +1,25 @@
+<form method="post" class="sd-sla-form" data-sla-id="{{ form.level.pk|default:'' }}" action="{% if form.level %}/servicedesk/sla/{{ form.level.pk }}/{% else %}/servicedesk/sla/new/{% endif %}">
+  {% csrf_token %}
+  {% if form.error %}<div role="alert" data-code="{{ form.error.code }}">{{ form.error.message }}</div><span data-error="{{ form.error.field }}" data-code="{{ form.error.code }}"></span>{% endif %}
+  <label>Название <input data-sla-field="title" name="title" value="{{ form.values.title }}" maxlength="100"></label>
+  {% if form.error.field == "title" %}<span data-error="title" data-code="{{ form.error.code }}"></span>{% endif %}
+  <label>Приоритет <input data-sla-field="priority" name="priority" type="number" min="0" max="99" value="{{ form.values.priority }}"></label>
+  <label>Реакция, минут <input data-sla-field="reaction_minutes" name="reaction_minutes" type="number" value="{{ form.values.reaction_minutes }}"></label>
+  <label>Решение, минут <input data-sla-field="solution_minutes" name="solution_minutes" type="number" value="{{ form.values.solution_minutes }}"></label>
+  <label>Рабочие дни <select data-sla-field="workdays" name="workdays" multiple>
+    {% for value, title in form.workday_choices %}<option value="{{ value }}" {% if value|stringformat:"s" in form.values.workdays %}selected{% endif %}>{{ title }}</option>{% endfor %}
+  </select></label>
+  <label>Начало <input data-sla-field="day_start" name="day_start" type="time" value="{{ form.values.day_start }}"></label>
+  <label>Конец <input data-sla-field="day_end" name="day_end" type="time" value="{{ form.values.day_end }}"></label>
+  <label><input data-sla-field="all_day" name="all_day" type="checkbox" {% if form.values.all_day %}checked{% endif %}> круглосуточно</label>
+  <label>Ответственный <select data-sla-field="assignee" name="default_assignee"><option value="">—</option>
+    {% for person in form.assignees %}<option value="{{ person.pk }}" {% if form.values.default_assignee == person.pk|stringformat:"s" %}selected{% endif %}>{{ person.full_name }}</option>{% endfor %}
+  </select></label>
+  <label>Категории <select data-sla-field="category" name="category" multiple>
+    {% for item in form.categories %}<option value="{{ item.pk }}" {% if item.pk|stringformat:"s" in form.values.categories %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+  </select></label>
+  <label>Критичность <select data-sla-field="priority" name="priority_binding" multiple>
+    {% for item in form.priorities %}<option value="{{ item.pk }}" {% if item.pk|stringformat:"s" in form.values.priorities %}selected{% endif %}>{{ item.name }}</option>{% endfor %}
+  </select></label>
+  <button type="submit" class="btn btn-primary">Сохранить</button>
+</form>

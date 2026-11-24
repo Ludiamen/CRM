@@ -25,8 +25,8 @@ from apps.core.models import StoredFile
 from apps.core.views.common import flash, is_fragment, render_page
 
 from ..audit_labels import VALUES
-from ..models import (Attachment, Category, ClientUnit, Complexity, InboundMail, Priority, Status, Ticket, TicketEntry,
-                      TicketParticipant)
+from ..models import (Attachment, Category, ClientUnit, Complexity, InboundMail, Priority, SlaCycle, Status, Ticket,
+                      TicketEntry, TicketParticipant)
 from ..services import (access, assignment, attachments, closing, dictionaries, events, queues, replies, tickets,
                         transfer)
 from ..services.errors import ServiceDeskError
@@ -257,6 +257,8 @@ def _context(request, ticket, layout: str, *, alert=None, dialog=None, reply_tex
                                             "source", "requester", "assignee", "closed_by", "previous")
               .get(pk=ticket.pk))
     participants = _participants(ticket)
+    sla_cycle = (SlaCycle.objects.filter(ticket=ticket, is_current=True)
+                 .select_related("level").first())
     context = _feed(ticket, user, participants)
     open_ticket = not _closed(ticket)
     continuation = Ticket.objects.filter(previous=ticket).order_by("id").first()
@@ -275,6 +277,7 @@ def _context(request, ticket, layout: str, *, alert=None, dialog=None, reply_tex
                      for s in dictionaries.manual_statuses()] if open_ticket else [],
         "consent": ticket.consent_at,
         "card_parts": _card_parts(request, ticket),
+        "sla_cycle": sla_cycle,
     })
     return context
 

@@ -14,6 +14,12 @@
       {% endfor %}
     </ul>
   </nav>
+  <nav class="tickets-due-filters mb-2" aria-label="Сроки">
+    <a class="chip{% if due == 'overdue' %} active{% endif %}" data-due="overdue" data-due-count="overdue"
+       href="/tickets/?preset={{ page.preset }}&due=overdue">Просроченные</a>
+    <a class="chip{% if due == 'today' %} active{% endif %}" data-due="today" data-due-count="today"
+       href="/tickets/?preset={{ page.preset }}&due=today">Срок сегодня</a>
+  </nav>
   <details data-filter-panel class="filter-panel mb-3" open{% if filtered %} data-filtered="true"{% endif %}>
     <summary class="filter-summary">Фильтр{% if filtered %} (задан){% endif %}</summary>
     <form id="tickets-filter" data-form="tickets-filter" class="filter-bar card card-body" method="get" action="/tickets/"
@@ -95,6 +101,7 @@
         </div>
       </div>
       <input type="hidden" name="preset" value="{{ page.preset }}">
+      <input type="hidden" name="due" value="{{ due }}">
       <input type="hidden" name="sort" value="{{ current_sort }}">
       <input type="hidden" name="dir" value="{{ current_dir }}">
     </form>

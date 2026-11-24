@@ -26,6 +26,7 @@
       {% if previous_link %}<div class="card-field">{% if previous_link.visible %}<a data-field="previous" href="/tickets/{{ previous_link.number }}/">продолжение заявки #{{ previous_link.number }}</a>{% else %}<span data-field="previous">продолжение заявки #{{ previous_link.number }}</span>{% endif %}</div>{% endif %}
       {% if continuation_link %}<div class="card-field">{% if continuation_link.visible %}<a data-field="continuation" href="/tickets/{{ continuation_link.number }}/">продолжение — заявка #{{ continuation_link.number }}</a>{% else %}<span data-field="continuation">продолжение — заявка #{{ continuation_link.number }}</span>{% endif %}</div>{% endif %}
     </div>
+    {% include "servicedesk/card/_sla.html" %}
 
     {% if open %}
     <div class="card-actions">

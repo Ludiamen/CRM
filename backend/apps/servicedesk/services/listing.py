@@ -5,16 +5,19 @@
 """
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
+from django.db.models import Case, DateTimeField, F, Q, When
 from django.utils import timezone
 
 from ..models import Status, Ticket
 from . import access, queues, search
 
 PRESETS = ("mine", "unassigned", "my_queues", "waiting", "closed", "all")
-SORTS = ("number", "created", "last_message", "priority")
+SORTS = ("number", "created", "last_message", "priority", "due")
 OPEN_KINDS = (Status.Kind.NEW, Status.Kind.IN_PROGRESS, Status.Kind.WAITING)
 PAGE_SIZE = 50
+MOSCOW = ZoneInfo("Europe/Moscow")
 
 _SORT_FIELDS = {
     "number": ("number",),
@@ -39,6 +42,7 @@ class Filters:
     created_from: date | None = None
     created_to: date | None = None
     q: str | None = None
+    due: str | None = None
 
 
 @dataclass(frozen=True)
@@ -106,6 +110,23 @@ def _apply_filters(queryset, filters: Filters | None):
         queryset = queryset.filter(created_at__lt=_start_of_day(filters.created_to + timedelta(days=1)))
     if filters.q:
         queryset = search.apply(queryset, filters.q)
+    if filters.due == "overdue":
+        now = timezone.now()
+        queryset = queryset.filter(
+            Q(sla_first_response_at__isnull=True, sla_reaction_due__lt=now)
+            | Q(kind__in=OPEN_KINDS, sla_solution_due__lt=now)
+            | Q(kind=Status.Kind.CLOSED, closed_at__gt=F("sla_solution_due"))
+        )
+    elif filters.due == "today":
+        today = timezone.now().astimezone(MOSCOW).date()
+        start = _start_of_day(today)
+        end = _start_of_day(today + timedelta(days=1))
+        queryset = queryset.filter(
+            Q(kind__in=OPEN_KINDS, sla_first_response_at__isnull=True, sla_reaction_due__gte=start,
+              sla_reaction_due__lt=end)
+            | Q(kind__in=OPEN_KINDS, sla_first_response_at__isnull=False, sla_solution_due__gte=start,
+                sla_solution_due__lt=end)
+        )
     return queryset
 
 
@@ -121,6 +142,15 @@ def build(user, *, preset: str | None = None, filters: Filters | None = None, so
     """Страница списка: одна выборка с 51-й строкой, без общего числа."""
     chosen, queryset = _base(user, preset, filters)
     fields = _SORT_FIELDS.get(sort, _SORT_FIELDS["number"])
+    if sort == "due":
+        queryset = queryset.annotate(
+            active_due=Case(
+                When(sla_first_response_at__isnull=True, then=F("sla_reaction_due")),
+                default=F("sla_solution_due"),
+                output_field=DateTimeField(),
+            )
+        )
+        fields = ("active_due", "number")
     prefix = "-" if descending else ""
     # Справочники — маленькими запросами `prefetch_related`: соединение девяти таблиц в одной выборке
     # планируется Postgres десятки миллисекунд (join_collapse_limit = 8), а выполняется за одну.

@@ -5,13 +5,186 @@ from zoneinfo import ZoneInfo
 from django.db import transaction
 from django.utils import timezone
 
+from apps.core.services import audit
 from apps.org.services import calendar
 from apps.org.models import WorkCalendar
 
 from ..models import SlaBinding, SlaCycle, SlaLevel
+from .errors import ServiceDeskError
 
 MSK = ZoneInfo("Europe/Moscow")
 OFF = {"off", "holiday", "day_off"}
+
+TITLE_RANGE = "Название уровня — от 1 до 100 знаков"
+MINUTES_RANGE = "Срок — от 5 минут до 720 часов"
+REACTION_GT_SOLUTION = "Срок реакции не может быть больше срока решения"
+DAYS_EMPTY = "Выберите хотя бы один рабочий день"
+INTERVAL_EMPTY = "Укажите непустой рабочий интервал"
+ASSIGNEE_DISMISSED = "Сотрудник уволен: ответственным по уровню его не назначить"
+
+
+def _level_error(code, message):
+    raise ServiceDeskError(code, message)
+
+
+def _clean_level_values(values):
+    """Normalize and validate values before they reach model constraints."""
+    title = str(values.get("title", "") or "").strip()
+    if not 1 <= len(title) <= 100:
+        _level_error("sla_title_range", TITLE_RANGE)
+    try:
+        reaction = int(values.get("reaction_minutes", 60))
+        solution = int(values.get("solution_minutes", 240))
+    except (TypeError, ValueError):
+        _level_error("sla_minutes_range", MINUTES_RANGE)
+    if not 5 <= reaction <= 43200 or not 5 <= solution <= 43200:
+        _level_error("sla_minutes_range", MINUTES_RANGE)
+    if reaction > solution:
+        _level_error("sla_reaction_gt_solution", REACTION_GT_SOLUTION)
+    try:
+        priority = int(values.get("priority", 0) or 0)
+    except (TypeError, ValueError):
+        _level_error("sla_priority_range", "Приоритет — от 0 до 99")
+    if not 0 <= priority <= 99:
+        _level_error("sla_priority_range", "Приоритет — от 0 до 99")
+    try:
+        workdays = sorted({int(day) for day in (values.get("workdays") or [])})
+    except (TypeError, ValueError):
+        workdays = []
+    if not workdays or any(day not in range(7) for day in workdays):
+        _level_error("sla_days_empty", DAYS_EMPTY)
+    all_day = bool(values.get("all_day", False))
+    day_start = values.get("day_start", time(9))
+    day_end = values.get("day_end", time(18))
+    if isinstance(day_start, str):
+        try:
+            day_start = time.fromisoformat(day_start)
+        except ValueError:
+            day_start = None
+    if isinstance(day_end, str):
+        try:
+            day_end = time.fromisoformat(day_end)
+        except ValueError:
+            day_end = None
+    if not all_day and (day_start is None or day_end is None or day_start >= day_end):
+        _level_error("sla_interval_empty", INTERVAL_EMPTY)
+    assignee = values.get("default_assignee")
+    if assignee is not None and getattr(assignee, "state", None) != "active":
+        _level_error("sla_assignee_dismissed", ASSIGNEE_DISMISSED)
+    return {
+        "title": title, "priority": priority,
+        "reaction_minutes": reaction, "solution_minutes": solution,
+        "workdays": workdays, "day_start": day_start or time(9),
+        "day_end": day_end or time(18), "all_day": all_day,
+        "default_assignee": assignee,
+    }
+
+
+def _level_snapshot(level):
+    return {
+        "title": level.title, "priority": level.priority,
+        "reaction_minutes": level.reaction_minutes, "solution_minutes": level.solution_minutes,
+        "workdays": list(level.workdays), "day_start": level.day_start.strftime("%H:%M"),
+        "day_end": level.day_end.strftime("%H:%M"), "all_day": level.all_day,
+        "default_assignee": level.default_assignee.full_name if level.default_assignee_id else "",
+    }
+
+
+@transaction.atomic
+def create_level(*, actor=None, ip=None, **values):
+    fields = _clean_level_values(values)
+    level = SlaLevel.objects.create(**fields)
+    audit.record("servicedesk.sla_level_created", actor=actor, ip=ip,
+                 object_type="servicedesk", object_id=level.pk, after=_level_snapshot(level))
+    return level
+
+
+@transaction.atomic
+def update_level(level, *, actor=None, ip=None, **values):
+    level = SlaLevel.objects.select_for_update().get(pk=level.pk)
+    current = {
+        "title": level.title, "priority": level.priority,
+        "reaction_minutes": level.reaction_minutes, "solution_minutes": level.solution_minutes,
+        "workdays": level.workdays, "day_start": level.day_start, "day_end": level.day_end,
+        "all_day": level.all_day, "default_assignee": level.default_assignee,
+    }
+    fields = _clean_level_values({**current, **values})
+    before = _level_snapshot(level)
+    for key, value in fields.items():
+        setattr(level, key, value)
+    level.save()
+    after = _level_snapshot(level)
+    if before != after:
+        audit.record("servicedesk.sla_level_changed", actor=actor, ip=ip,
+                     object_type="servicedesk", object_id=level.pk, before=before, after=after)
+    return level
+
+
+@transaction.atomic
+def archive_level(level, *, actor=None, ip=None):
+    level = SlaLevel.objects.select_for_update().get(pk=level.pk)
+    was_archived = level.archived
+    level.archived = not was_archived
+    level.save(update_fields=["archived", "updated_at"])
+    audit.record("servicedesk.sla_level_archived", actor=actor, ip=ip,
+                 object_type="servicedesk", object_id=level.pk,
+                 before={"archived": was_archived}, after={"archived": level.archived})
+    return level
+
+
+restore_level = archive_level
+
+
+def _binding_snapshot(binding):
+    return {
+        "level": binding.level_id, "kind": binding.kind,
+        "category": binding.category.name if binding.category_id else "",
+        "priority": binding.priority.name if binding.priority_id else "",
+    }
+
+
+@transaction.atomic
+def bind_level(level, *, category=None, priority=None, actor=None, ip=None):
+    if (category is None) == (priority is None):
+        raise ValueError("передайте ровно category или priority")
+    kind = SlaBinding.Kind.CATEGORY if category is not None else SlaBinding.Kind.PRIORITY
+    lookup = {"level": level, "kind": kind}
+    fields = {"category": category, "priority": priority}
+    binding = SlaBinding.objects.create(**lookup, **fields)
+    audit.record("servicedesk.binding_changed", actor=actor, ip=ip,
+                 object_type="servicedesk", object_id=level.pk,
+                 after=_binding_snapshot(binding))
+    return binding
+
+
+def create_binding(level, **kwargs):
+    return bind_level(level, **kwargs)
+
+
+@transaction.atomic
+def set_bindings(level, *, categories=(), priorities=(), actor=None, ip=None):
+    """Replace all level bindings, recording one event per added/removed row."""
+    desired = {(SlaBinding.Kind.CATEGORY, int(item.pk if hasattr(item, "pk") else item), None)
+               for item in categories}
+    desired |= {(SlaBinding.Kind.PRIORITY, None, int(item.pk if hasattr(item, "pk") else item))
+                for item in priorities}
+    current = {(row.kind, row.category_id, row.priority_id): row
+               for row in SlaBinding.objects.filter(level=level)}
+    for key, row in current.items():
+        if key not in desired:
+            before = _binding_snapshot(row)
+            row.delete()
+            audit.record("servicedesk.binding_changed", actor=actor, ip=ip,
+                         object_type="servicedesk", object_id=level.pk, before=before, after={})
+    for kind, category_id, priority_id in desired:
+        if (kind, category_id, priority_id) in current:
+            continue
+        row = SlaBinding.objects.create(level=level, kind=kind, category_id=category_id,
+                                        priority_id=priority_id)
+        audit.record("servicedesk.binding_changed", actor=actor, ip=ip,
+                     object_type="servicedesk", object_id=level.pk,
+                     after=_binding_snapshot(row))
+    return list(SlaBinding.objects.filter(level=level).select_related("category", "priority"))
 
 
 def _schedule(level):
