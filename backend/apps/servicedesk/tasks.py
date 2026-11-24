@@ -1,7 +1,18 @@
-"""Задания RQ: опрос, разбор, автозакрытие, сроки хранения, сверка ответственных, подбор зависших писем (PLAN-003, «Где живёт код»)."""
+"""Задания RQ сервис-деска, включая контроль сроков SLA."""
+
+from datetime import datetime, timedelta
 
 import django_rq
+from django.core.cache import cache
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 
+from apps.core.extensions import Draft
+from apps.notify.services import dispatch
+from apps.org.models import WorkCalendar
+from apps.org.services import calendar, structure
+
+from .models import Queue, SlaCycle, SlaDigest, SlaNotice, Ticket
 from .services import closing, intake, mailbox, reconcile, retention
 
 
@@ -61,14 +72,120 @@ def purge_orphan_files(after=""):
         django_rq.get_queue("maintenance").enqueue(purge_orphan_files, after=batch.last, job_timeout=600)
 
 
-def sla_tick():
-    """Напоминания о сроках SLA и отметка просрочки (срез 011; T-11207): тело появится в Этапе 3.
+def _notice(cycle, deadline, kind, due_at, recipient, now, number):
+    """Записать маркер и уведомление атомарно; уникальный ключ защищает от повтора."""
+    try:
+        with transaction.atomic():
+            notice = SlaNotice.objects.create(
+                cycle=cycle, deadline=deadline, kind=kind, due_at=due_at, recipient=recipient, sent_at=now,
+            )
+            code = "servicedesk.sla_due_soon" if kind == SlaNotice.Kind.DUE_SOON else "servicedesk.sla_overdue"
+            dispatch.create(code, [Draft(
+                user_id=recipient.pk, text="Срок заявки приближается" if kind == SlaNotice.Kind.DUE_SOON
+                else "Заявка просрочена", url=f"/tickets/{number}/",
+                object_ref=f"servicedesk.ticket:{cycle.ticket_id}",
+            )])
+    except IntegrityError:
+        return False
+    return True
 
-    Заглушка Этапа 1: задание уже стоит в расписании, чтобы проверки cron были готовы к красным тестам.
-     """
-    return 0
+
+def _overdue(cycle, deadline):
+    return (deadline == SlaNotice.Deadline.REACTION and cycle.first_response_at is None) or (
+        deadline == SlaNotice.Deadline.SOLUTION and cycle.closed_at is None
+    )
 
 
-def sla_digest():
-    """Ежедневная сводка руководителям очередей (срез 011; T-11211): тело появится в Этапе 3."""
-    return 0
+def sla_tick(now=None):
+    """Напоминания до сроков и одно уведомление о каждой просрочке."""
+    now = now or timezone.now()
+    if not cache.add("sla:tick", 1, timeout=240):
+        return 0
+    try:
+        from .services import settings as sd_settings
+        reminder_hours = getattr(sd_settings.get(), "sla_reminder_hours", 1)
+        created = 0
+        cycles = SlaCycle.objects.filter(is_current=True).select_related("ticket", "ticket__assignee", "level", "queue")
+        for cycle in cycles:
+            ticket = cycle.ticket
+            if ticket.kind == "closed" and cycle.closed_at is not None:
+                continue
+            for deadline, due_at in (
+                (SlaNotice.Deadline.REACTION, cycle.reaction_due),
+                (SlaNotice.Deadline.SOLUTION, cycle.solution_due),
+            ):
+                if due_at is None:
+                    continue
+                if _overdue(cycle, deadline) and due_at <= now:
+                    kind = SlaNotice.Kind.OVERDUE
+                elif due_at > now:
+                    from .services.sla import minutes_between
+                    minutes = minutes_between(now, due_at, cycle.level)
+                    if minutes > reminder_hours * 60:
+                        continue
+                    kind = SlaNotice.Kind.DUE_SOON
+                else:
+                    continue
+                recipients = ([ticket.assignee] if ticket.assignee_id else []) + structure.heads_of_unit(ticket.queue_id)
+                for recipient in {person.pk: person for person in recipients}.values():
+                    if _notice(cycle, deadline, kind, due_at, recipient, now, ticket.number):
+                        created += 1
+        return created
+    finally:
+        cache.delete("sla:tick")
+
+
+def sla_digest(now=None):
+    """Ежедневная сводка руководителям очередей в первое рабочее окно."""
+    now = now or timezone.now()
+    local = now
+    if calendar.day_kind(local.date()) in {"off", "holiday", "day_off"}:
+        return 0
+    workday = WorkCalendar.objects.first() or WorkCalendar.objects.create()
+    start = datetime.combine(local.date(), workday.day_start, tzinfo=local.tzinfo)
+    if not start <= local < start + timedelta(hours=1):
+        return 0
+    sent = 0
+    cycles = SlaCycle.objects.filter(is_current=True).select_related("ticket", "ticket__queue", "queue")
+    queues = list(Queue.objects.all())
+    recipients = {}
+    for queue in queues:
+        for person in structure.heads_of_unit(queue.unit_id):
+            recipients.setdefault(person.pk, set()).add(queue.unit_id)
+    for person_id, unit_ids in recipients.items():
+        day = local.date()
+        try:
+            with transaction.atomic():
+                row = SlaDigest.objects.create(recipient_id=person_id, day=day,
+                                               units=sorted(unit_ids), sent_at=now)
+                overdue, today, week = [], [], []
+                week_end = day + timedelta(days=6 - day.weekday())
+                for cycle in cycles:
+                    if cycle.queue_id not in unit_ids:
+                        continue
+                    deadlines = [d for d in (cycle.reaction_due, cycle.solution_due) if d is not None]
+                    if not deadlines:
+                        continue
+                    due = min(deadlines)
+                    due_day = timezone.localtime(due).date()
+                    if _overdue(cycle, SlaNotice.Deadline.REACTION) and cycle.reaction_due <= now:
+                        overdue.append(cycle.ticket.number)
+                    elif _overdue(cycle, SlaNotice.Deadline.SOLUTION) and cycle.solution_due <= now:
+                        overdue.append(cycle.ticket.number)
+                    elif due_day == day:
+                        today.append(cycle.ticket.number)
+                    elif day < due_day <= week_end:
+                        week.append(cycle.ticket.number)
+                text = (
+                    f"Просроченные: {', '.join(map(str, sorted(set(overdue)))) or 'нет'}\n"
+                    f"Срок сегодня: {', '.join(map(str, sorted(set(today)))) or 'нет'}\n"
+                    f"Срок на неделе: {', '.join(map(str, sorted(set(week)))) or 'нет'}"
+                )
+                dispatch.create("servicedesk.sla_digest", [Draft(
+                    user_id=person_id, text=text, url="/tickets/",
+                    object_ref=f"servicedesk.sla_digest:{day.isoformat()}",
+                )])
+        except IntegrityError:
+            continue
+        sent += 1
+    return sent

@@ -394,6 +394,19 @@ def queue_people(unit_id: int) -> list[PersonRef]:
     return [_person_ref(p) for p in sorted(people.values(), key=lambda p: (p.full_name, p.pk))]
 
 
+def heads_of_unit(unit_id: int) -> list:
+    """Руководители и заместители узла и всех его предков, без повторов."""
+    path = Unit.objects.filter(pk=unit_id).values_list("path", flat=True).first()
+    if path is None:
+        return []
+    unit_ids = _chain_ids(path)
+    found = Membership.objects.filter(
+        unit_id__in=unit_ids, mark__in=[Membership.Mark.HEAD, Membership.Mark.DEPUTY]
+    ).exclude(user__state="dismissed").select_related("user")
+    people = {row.user_id: row.user for row in found}
+    return sorted(people.values(), key=lambda person: (person.full_name, person.pk))
+
+
 def direct_members(unit_id: int) -> list[PersonRef]:
     """Прямые участники узла: члены самого узла, без вложенных и вышестоящих (получатели уведомлений).
 

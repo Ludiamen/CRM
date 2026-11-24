@@ -1,4 +1,4 @@
-"""Четыре вида уведомлений сервис-деска (PLAN-004, «События и получатели»; CONTRACT-004, § 4.3, § 15.1–15.2).
+"""Виды уведомлений сервис-деска (PLAN-004, CONTRACT-004 и PLAN-011).
 
 Каждый вид сам решает, кому и о чём уведомлять (FR-314): получатель видит заявку (`access.can_work`), не совершал
 действие (`actor_id`, FR-315) и состоит в состоянии `active` или `blocked`. Состояние заявки — ответственный, очередь,
@@ -17,6 +17,9 @@ NEW_IN_QUEUE = "servicedesk.new_in_queue"
 ASSIGNED = "servicedesk.assigned"
 REQUESTER_REPLIED = "servicedesk.requester_replied"
 REPLY_FAILED = "servicedesk.reply_failed"
+SLA_DUE_SOON = "servicedesk.sla_due_soon"
+SLA_OVERDUE = "servicedesk.sla_overdue"
+SLA_DIGEST = "servicedesk.sla_digest"
 
 SUBJECT_LIMIT = 100
 OBJECT_PREFIX = "servicedesk.ticket:"
@@ -107,6 +110,27 @@ def _reply_failed(event: str, data: dict) -> list[Draft]:
     return _drafts(ticket, [ticket.assignee_id], number_text.format(ticket.number), skip=data.get("actor_id"))
 
 
+def _sla(event: str, data: dict) -> list[Draft]:
+    if event not in (SLA_DUE_SOON, SLA_OVERDUE):
+        return []
+    ticket = _ticket(data)
+    if ticket is None:
+        return []
+    code = event
+    text = "Срок заявки приближается" if code == SLA_DUE_SOON else "Заявка просрочена"
+    recipients = ([ticket.assignee_id] if ticket.assignee_id else []) + [
+        person.pk for person in structure.heads_of_unit(ticket.queue_id)
+    ]
+    return _drafts(ticket, recipients, text, skip=data.get("actor_id"))
+
+
+def _sla_digest(event: str, data: dict) -> list[Draft]:
+    if event != SLA_DIGEST or not data.get("user_id"):
+        return []
+    return [Draft(user_id=data["user_id"], text=data.get("text", "Сводка по срокам заявок"),
+                  url="/tickets/", object_ref=data.get("object_ref", ""))]
+
+
 def _in_queue(user) -> bool:
     """Прямой участник хотя бы одного узла-очереди (руководитель и заместитель этого узла — тоже)."""
     unit_ids = [unit.id for unit in structure.units_of(user)]
@@ -176,4 +200,17 @@ def notification_kinds() -> list[NotificationKind]:
             events=("servicedesk.reply_not_sent", "servicedesk.mail_failed"), build=_reply_failed,
             external_text="Ответ заявителю не ушёл", default_channels=ALL_CHANNELS, available=_menu_available,
             still_relevant=_relevant_other, order=40),
+        NotificationKind(
+            code=SLA_DUE_SOON, title="Срок заявки приближается", module="Сервис-деск",
+            events=(SLA_DUE_SOON,), build=_sla, external_text="Срок заявки приближается",
+            default_channels=ALL_CHANNELS, available=_menu_available, still_relevant=_relevant_other, order=230),
+        NotificationKind(
+            code=SLA_OVERDUE, title="Заявка просрочена", module="Сервис-деск",
+            events=(SLA_OVERDUE,), build=_sla, external_text="Заявка просрочена",
+            default_channels=ALL_CHANNELS, available=_menu_available, still_relevant=_relevant_other, order=231),
+        NotificationKind(
+            code=SLA_DIGEST, title="Сводка по срокам заявок", module="Сервис-деск",
+            events=(SLA_DIGEST,), build=_sla_digest, external_text="Сводка по срокам заявок",
+            default_channels=("portal", "email"), channels=("portal", "email"),
+            available=_menu_available, order=232),
     ]
