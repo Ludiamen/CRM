@@ -254,13 +254,13 @@ def test_nginx_has_four_25m_locations_and_instructions_proxy_directives():
 # --- права, Purpose, нагрузка, язык --------------------------------------------------------------
 
 def test_permissions_and_purpose_are_installed():
-    """FR-702, FR-703, NFR-722: два права поручений и назначение `instruction` — последними."""
+    """FR-702, FR-703, NFR-722: два права поручений и назначение `instruction` — последними; всего прав 25 (срезы 001–011)."""
     from apps.core.models.files import StoredFile
 
     Permission = support.model("core.Permission")
     assert set(Permission.objects.filter(code__in=("instructions.use", "instructions.assign"))
                .values_list("code", flat=True)) == {"instructions.use", "instructions.assign"}
-    assert Permission.objects.count() == 22
+    assert Permission.objects.count() == 25
     assert tuple(StoredFile.Purpose.values)[-1] == "instruction"
 
 

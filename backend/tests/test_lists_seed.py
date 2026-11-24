@@ -166,14 +166,14 @@ def test_seed_adds_lists_manage_to_existing_admin_role_and_keeps_its_prior_right
 
 
 def test_portal_has_twenty_permissions_after_seed():
-    """FR-512, CONTRACT-007: до `seed` в портале двадцать одно право (прежние пятнадцать, два права среза 007,
-    права задач среза 009 и поручений среза 010, которые `_start()` не трогает), после — двадцать два, и новое `lists.manage` — последнее по
+    """FR-512, CONTRACT-007: до `seed` в портале двадцать четыре права (прежние пятнадцать, два права среза 007,
+    права задач 009, поручений 010 и сроков заявок 011, которые `_start()` не трогает), после — двадцать пять, и новое `lists.manage` — последнее по
     порядку создания (раздел 1.4 контракта)."""
     _start()
     Permission = _model("core.Permission")
-    assert Permission.objects.count() == 21
+    assert Permission.objects.count() == 24
     ls.run_seed(using="default")
-    assert Permission.objects.count() == 22
+    assert Permission.objects.count() == 25
     assert Permission.objects.order_by("-pk").first().code == "lists.manage"
 
 

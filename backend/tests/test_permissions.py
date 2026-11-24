@@ -23,12 +23,13 @@ def test_seven_permissions_created_by_migration():
 
 
 def test_three_builtin_roles_with_initial_permissions():
-    """FR-015, FR-020, FR-118: три начальные роли; у администратора все двадцать два права (срезы 001–010), у «Руководителя» ровно `staff.view` и `feed.post_all`, у «Сотрудника ИТ» `staff.view`, `knowledge.edit`, `feed.post_all`, `tasks.use`, `tasks.assign`, `instructions.use` и `instructions.assign`."""
+    """FR-015, FR-020, FR-118: три начальные роли; у администратора все двадцать четыре права (срезы 001–011, без `servicedesk.reports` — SPEC-011, решение 10), у «Руководителя» ровно `staff.view`, `feed.post_all` и `servicedesk.reports`, у «Сотрудника ИТ» `staff.view`, `knowledge.edit`, `feed.post_all`, `tasks.use`, `tasks.assign`, `instructions.use` и `instructions.assign`."""
     from tests.support_feed import PERMISSIONS_007
     from tests.support_kb import PERMISSIONS_005
     from tests.support_lists import PERMISSIONS_006
     from tests.support_instructions import PERMISSIONS_010
     from tests.support_notify import PERMISSIONS_004
+    from tests.support_servicedesk import PERMISSIONS_011
     from tests.support_tasks import PERMISSIONS_009
 
     Role = model("core.Role")
@@ -36,8 +37,10 @@ def test_three_builtin_roles_with_initial_permissions():
     assert set(builtin) == {support.ADMIN_ROLE, support.MANAGER_ROLE, support.STAFF_ROLE}
     assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(
         PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003 + PERMISSIONS_004 + PERMISSIONS_005 + PERMISSIONS_006
-        + PERMISSIONS_007 + PERMISSIONS_009 + PERMISSIONS_010)
-    assert set(builtin[support.MANAGER_ROLE].permissions.values_list("code", flat=True)) == {"staff.view", "feed.post_all"}
+        + PERMISSIONS_007 + PERMISSIONS_009 + PERMISSIONS_010
+        + tuple(code for code in PERMISSIONS_011 if code != "servicedesk.reports"))
+    assert set(builtin[support.MANAGER_ROLE].permissions.values_list("code", flat=True)) == {
+        "staff.view", "feed.post_all", "servicedesk.reports"}
     assert set(builtin[support.STAFF_ROLE].permissions.values_list("code", flat=True)) == {
         "staff.view", "knowledge.edit", "feed.post_all", *PERMISSIONS_009, *PERMISSIONS_010}
     employee = support.logged_in(support.make_employee(roles=[builtin[support.STAFF_ROLE]]))

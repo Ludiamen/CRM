@@ -126,36 +126,38 @@ def unit_role_event(unit):
 # --- FR-118: права и их начальное распределение ----------------------------------------------
 
 def test_three_new_permissions_and_initial_distribution():
-    """FR-118, FR-275: всего двадцать два права срезов 001–010 с русскими названиями; «Администратор портала» имеет все; «Руководитель» —
-    `staff.view` и `feed.post_all`; «Сотрудник ИТ» — `staff.view`, `knowledge.edit`, `feed.post_all`, `tasks.use` и `tasks.assign`; `org.manage`, `calendar.manage`, `knowledge.manage`, `lists.manage` (срез 006), `feed.moderate` (срез 007) и оба права задач (срез 009) — только у администратора, `feed.post_all` — у трёх встроенных ролей, `knowledge.edit` — у администратора и «Сотрудника ИТ», оба права задач — у администратора и «Сотрудника ИТ»; набор меняется в интерфейсе без кода."""
+    """FR-118, FR-275: всего двадцать пять прав срезов 001–011 с русскими названиями; «Администратор портала» имеет все, кроме
+    `servicedesk.reports` (SPEC-011, решение 10); «Руководитель» — `staff.view`, `feed.post_all` и `servicedesk.reports`; «Сотрудник ИТ» — `staff.view`, `knowledge.edit`, `feed.post_all`, `tasks.use` и `tasks.assign`; `org.manage`, `calendar.manage`, `knowledge.manage`, `lists.manage` (срез 006), `feed.moderate` (срез 007) и оба права задач (срез 009) — только у администратора, `feed.post_all` — у трёх встроенных ролей, `knowledge.edit` — у администратора и «Сотрудника ИТ», оба права задач — у администратора и «Сотрудника ИТ»; набор меняется в интерфейсе без кода."""
     from tests.support_feed import PERMISSIONS_007, TITLES_007
     from tests.support_kb import PERMISSIONS_005, TITLES_005
     from tests.support_lists import PERMISSIONS_006, TITLES_006
     from tests.support_instructions import PERMISSIONS_010, TITLES_010
     from tests.support_notify import PERMISSIONS_004, TITLES_004
+    from tests.support_servicedesk import PERMISSIONS_011, TITLES_011
     from tests.support_tasks import PERMISSIONS_009, TITLES_009
 
     Permission, Role = model("core.Permission"), model("core.Role")
     titles = dict(Permission.objects.values_list("code", "title"))
     assert set(titles) == (set(ALL_PERMISSIONS) | set(sd.PERMISSIONS_003) | set(PERMISSIONS_004) | set(PERMISSIONS_005)
                            | set(PERMISSIONS_006) | set(PERMISSIONS_007) | set(PERMISSIONS_009)
-                           | set(PERMISSIONS_010)), (
+                           | set(PERMISSIONS_010) | set(PERMISSIONS_011)), (
         "ожидалось семь прав среза 001, три среза 002, два среза 003, одно среза 004, два среза 005, одно среза 006, "
-        "два среза 007, два среза 009 и два среза 010")
+        "два среза 007, два среза 009, два среза 010 и три среза 011")
     for code, title in {**NEW_PERMISSIONS, **TITLES_003, **TITLES_004, **TITLES_005, **TITLES_006,
-                        **TITLES_007, **TITLES_009, **TITLES_010}.items():
+                        **TITLES_007, **TITLES_009, **TITLES_010, **TITLES_011}.items():
         assert titles[code] == title, code
     assert all(re.search("[а-яА-Я]", title) for title in titles.values())
     builtin = {r.name: set(r.permissions.values_list("code", flat=True)) for r in Role.objects.filter(is_builtin=True)}
     assert builtin[support.ADMIN_ROLE] == (
         set(ALL_PERMISSIONS) | set(sd.PERMISSIONS_003) | set(PERMISSIONS_004) | set(PERMISSIONS_005)
-        | set(PERMISSIONS_006) | set(PERMISSIONS_007) | set(PERMISSIONS_009) | set(PERMISSIONS_010))
-    assert builtin[support.MANAGER_ROLE] == {"staff.view", "feed.post_all"}
+        | set(PERMISSIONS_006) | set(PERMISSIONS_007) | set(PERMISSIONS_009) | set(PERMISSIONS_010)
+        | (set(PERMISSIONS_011) - {"servicedesk.reports"}))
+    assert builtin[support.MANAGER_ROLE] == {"staff.view", "feed.post_all", "servicedesk.reports"}
     assert builtin[support.STAFF_ROLE] == {"staff.view", "knowledge.edit", "feed.post_all", *PERMISSIONS_009,
                                              *PERMISSIONS_010}
     holders = {code: sorted(name for name, codes in builtin.items() if code in codes)
                for code in tuple(NEW_PERMISSIONS) + PERMISSIONS_005 + PERMISSIONS_006 + PERMISSIONS_007
-               + PERMISSIONS_009 + PERMISSIONS_010}
+               + PERMISSIONS_009 + PERMISSIONS_010 + PERMISSIONS_011}
     assert holders["org.manage"] == [support.ADMIN_ROLE] and holders["calendar.manage"] == [support.ADMIN_ROLE]
     assert holders["knowledge.manage"] == [support.ADMIN_ROLE]
     assert holders["lists.manage"] == [support.ADMIN_ROLE]
