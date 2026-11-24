@@ -1,7 +1,7 @@
 ---
 id: PLAN-011
 вид: план
-статус: черновик
+статус: на-проверке
 версия: 5
 зависит_от: SPEC-011, CONST, ADR-0002, ADR-0004, ADR-0008, ADR-0019, REF-CAP, REF-UX, REF-SRC, TGT-ARCH, TGT-NFR, SPEC-002, SPEC-003, SPEC-004, SPEC-009, SPEC-010
 основан_на: SPEC-011 sha256:acf75cf54d0ed1c79db2313aba47d7fb6c2cebb4123e8d43c7b5d98de570af8b
