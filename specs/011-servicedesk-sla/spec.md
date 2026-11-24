@@ -1,7 +1,7 @@
 ---
 id: SPEC-011
 вид: спека
-статус: черновик
+статус: на-проверке
 версия: 4
 зависит_от: CONST, REF-CAP, REF-UX, REF-SRC, TGT-ARCH, TGT-NFR, ADR-0002, ADR-0004, ADR-0008, ADR-0019, SPEC-002, SPEC-003, SPEC-004, SPEC-010
 ---
