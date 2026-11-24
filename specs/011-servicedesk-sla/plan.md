@@ -2,7 +2,7 @@
 id: PLAN-011
 вид: план
 статус: черновик
-версия: 4
+версия: 5
 зависит_от: SPEC-011, CONST, ADR-0002, ADR-0004, ADR-0008, ADR-0019, REF-CAP, REF-UX, REF-SRC, TGT-ARCH, TGT-NFR, SPEC-002, SPEC-003, SPEC-004, SPEC-009, SPEC-010
 основан_на: SPEC-011 sha256:acf75cf54d0ed1c79db2313aba47d7fb6c2cebb4123e8d43c7b5d98de570af8b
 ---
@@ -77,7 +77,7 @@ backend/tests/test_sd_sla_*.py, test_sd_reports_*.py, test_sd_answers_*.py, test
 | `apps/servicedesk/services/tickets.py` | применение уровня при создании, ответственный уровня (приоритет категории) | FR-734, 731 |
 | `apps/servicedesk/services/transfer.py` | пересчёт сроков при смене категории/критичности/очереди (не только `tickets.update_fields`) | FR-736 |
 | `apps/servicedesk/services/replies.py` | факт первого ответа и минуты реакции в `SlaCycle` | FR-738 |
-| `apps/servicedesk/services/closing.py` | цикл и вердикты при закрытии и автозакрытии; закрытие цикла при reopen | FR-739, 740 |
+| `apps/servicedesk/services/closing.py` | цикл и вердикты при закрытии и автозакрытии; `reopen(at)` закрывает цикл; журнал `ticket.assignee_skipped` | FR-739, 740 |
 | `apps/org/services/structure.py` | `heads_of_unit` — руководители и заместители узла и предков | FR-743/744 |
 | `apps/servicedesk/views/tickets_list.py` | поле `due` в `Filters`, разбор `?due=overdue|today`, счётчики срока в `count` | FR-741 |
 | `apps/servicedesk/views/settings.py` | `sla_reminder_hours` в `INT_FIELDS` | FR-756 |
@@ -105,7 +105,7 @@ backend/tests/test_sd_sla_*.py, test_sd_reports_*.py, test_sd_answers_*.py, test
 
 | Модель / поле | Поля | Индексы и ограничения |
 |---|---|---|
-| `SlaLevel` | `title` 100, `priority` 0–99, `reaction_minutes` 5…43 200, `solution_minutes` 5…43 200, `workdays` JSON (0–6, по умолчанию `[0,1,2,3,4]`), `day_start` 09:00, `day_end` 18:00, `all_day` bool, `default_assignee` FK `core.User` PROTECT пусто, `archived` bool, `created_at`, `updated_at` | `CheckConstraint`: минуты в диапазоне, дни — подмножество 0–6, `all_day OR day_start < day_end`; форма не даёт сохранить пустой набор дней и пустой интервал; индекс `(archived, priority)` |
+| `SlaLevel` | `title` 100, `priority` 0–99, `reaction_minutes` 5…43 200, `solution_minutes` 5…43 200, `workdays` JSON (0–6, по умолчанию `[0,1,2,3,4]`), `day_start` 09:00, `day_end` 18:00, `all_day` bool, `default_assignee` FK `core.User` PROTECT пусто, `archived` bool, `created_at`, `updated_at` | `CheckConstraint`: минуты в диапазоне, `reaction_minutes <= solution_minutes`, дни — подмножество 0–6, `all_day OR day_start < day_end`; форма не даёт пустой набор дней и пустой интервал; индекс `(archived, priority)` |
 | `SlaBinding` | `level` CASCADE, `kind` (`category`/`priority`), `category` PROTECT пусто, `priority` PROTECT пусто | `CheckConstraint`: ровно одно поле по `kind`; частичные уникальные `(category)` и `(priority)` |
 | `AnswerTemplate` | `owner` FK `core.User` CASCADE пусто (пусто — общий), `title` 100, `text` 10 000, `category` PROTECT пусто (только у общего), `archived`, `created_at`, `updated_at` | индексы `(owner, archived)`, `(category)`; `CheckConstraint`: личный шаблон без категории |
 | `SlaCycle` | `ticket` CASCADE (related `sla_cycles`), `number` (номер цикла в заявке, с 1), `is_current` bool (истина у одного цикла из `sla_cycles`), `level` FK SET_NULL пусто, `level_title` 100 (снимок), `queue` FK `org.Unit` SET_NULL пусто, `queue_name` 255 (снимок), `category` FK SET_NULL пусто, `category_name` 255 (снимок), `assignee` FK `core.User` SET_NULL пусто, `assignee_name` 255 (снимок: исполнитель на момент закрытия), `schedule` JSON (снимок расписания), `cycle_started_at`, `reaction_due`, `solution_due`, `first_response_at` пусто, `reaction_minutes` пусто, `closed_at` пусто, `solution_minutes` пусто, `closed_kind` (`manual`/`autoclosed`) пусто, `reaction_met` bool пусто, `solution_met` bool пусто, `created_at` | уникальность `(ticket, number)` и `(ticket, cycle_started_at)`; частичный уникальный `(ticket)` при `is_current`; индексы `(closed_at)`, `(cycle_started_at)`, `(level)`, `(queue)`, `(category)` и частичный `(ticket)` при `is_current` и `solution_met = False` |
@@ -122,15 +122,29 @@ backend/tests/test_sd_sla_*.py, test_sd_reports_*.py, test_sd_answers_*.py, test
    по снимку `schedule`.
 3. **Закрытие (ручное или авто).** В цикл пишутся `closed_at`, `solution_minutes`, `solution_met`, `closed_kind`,
    `assignee`/`assignee_name` (на кого закрыта заявка — знаменатель «нагрузки»). `is_current` остаётся истиной.
-4. **Открытие заново.** У прошлого цикла `is_current=False`; создаётся новый цикл `number+1` с `is_current=True`,
-   новым снимком `queue`/`category`/`schedule` и новыми сроками от момента открытия. Прошлый цикл не удаляется и
-   в отчёт не попадает — он виден в журнале.
+4. **Открытие заново.** `closing.reopen` получает параметр `at` — время ответа заявителя (для письма —
+   `inbound.received_at`, `intake.py` передаёт его явно), иначе «сейчас». У прошлого цикла `is_current=False`;
+   создаётся новый цикл `number+1` с `is_current=True`,
+   новым снимком `queue`/`category`/`schedule` и новыми сроками от `at`. Прошлый цикл не удаляется и в отчёт не
+   попадает — он виден в журнале.
 
-Так у каждого цикла ровно один текущий (частичная уникальность `(ticket)` при `is_current`), а `schedule` цикла
-включает снимок календаря: `{"workdays": [...], "day_start", "day_end", "all_day", "days": {"YYYY-MM-DD":
-"work|short|off|holiday|day_off"}}` на диапазон от начала цикла до срока решения. Если факт выходит за диапазон
-(позднее закрытие), недостающие даты дописываются в `days` в момент факта (`schedule.extended=true`), и минуты
-считаются по ним — уже посчитанные числа не пересчитываются. Записи `ticket.closed` / `ticket.autoclosed`
+Так у каждого цикла ровно один текущий (частичная уникальность `(ticket)` при `is_current`). Снимок `schedule`
+цикла — строго такой JSON:
+
+```json
+{"workdays": [0, 1, 2, 3, 4],
+ "day_start": "09:00",
+ "day_end": "18:00",
+ "all_day": false,
+ "days": {"2026-11-24": "workday", "2026-11-25": "short"},
+ "extended": false}
+```
+
+`days` — карта «дата → вид дня» на диапазон от начала цикла до `max(reaction_due, solution_due)`; значения — `work`,
+`off` (по рабочим дням недели) плюс виды переносов календаря `holiday`, `day_off`, `workday`, `short`
+(`org.SpecialDay.Kind`). Если факт выходит за диапазон (позднее закрытие), недостающие даты дописываются в `days`
+в момент факта и ставится `extended: true`; минуты считаются по ним, уже посчитанные числа не пересчитываются.
+Ограничение уровня: `reaction_minutes <= solution_minutes` (иначе форма не сохраняет). Записи `ticket.closed` / `ticket.autoclosed`
 дополняются номером цикла и вердиктами, чтобы журнал был самодостаточен.
 
 ### Правило рабочих часов (FR-734/735, NFR-733)
@@ -160,7 +174,10 @@ backend/tests/test_sd_sla_*.py, test_sd_reports_*.py, test_sd_answers_*.py, test
   полей проверяется участие сотрудника в очереди заявки — не участник: поле игнорируется, в журнал пишется
   `ticket.assignee_skipped` (метка и подписи полей — в `audit_labels`, в интерфейсе не показывается).
 - Смена категории, критичности или очереди проходит через `services/transfer.py` (там же, где сейчас меняется
-  категория): пересчёт сроков, пока нет первого ответа.
+  категория). Пока нет первого ответа, пересчёт обновляет и `Ticket`, и текущий `SlaCycle`: `level`,
+  `level_title`, `queue`/`queue_name`, `category`/`category_name`, `schedule` и оба срока от начала цикла. Если
+  цикла ещё не было (заявка создана без уровня), а уровень появился — создаётся цикл `number=1`, `is_current=True`
+  с теми же снимками и сроками. После первого ответа пересчёта нет.
 
 ## Контракты
 
@@ -253,7 +270,7 @@ Excel: лист **«Показатели»** — те же числа и пер�
 | `test_sd_sla_ticket.py` | подбор по критичности/категории, снимок, пересчёт до первого ответа, ответственный уровня и конфликт с категорией, заявка без уровня (FR-734…737) |
 | `test_sd_sla_cycles.py` | первый ответ (`queued`, `waiting_files`, `not_sent`, комментарий), ручное и авто-закрытие, открытие заново, `is_current` (старый цикл не текущий), уникальность `(ticket, number)`, вердикты (FR-738…740) |
 | `test_sd_sla_views.py` | уровни, `due=overdue` (в том числе закрытая позже срока) и `due=today` с пресетами, счётчики, блок карточки, права и 403 (FR-730…742, 757) |
-| `test_sd_sla_audit.py` | журнал: уровень, привязки, шаблон, выгрузка — с автором и временем; русского/Москвы на страницах (FR-755, 758) |
+| `test_sd_sla_audit.py` | журнал: уровень, привязки, шаблон, выгрузка и `ticket.assignee_skipped` — с автором, временем и подписями полей; русский/Москва на страницах (FR-755, 758) |
 | `test_sd_sla_notify.py` | три вида, получатели (ответственный, `heads_of_unit` включая предков), отдельные напоминания по реакции и решению, границы 1/24/25 часов, опережение, без повторов, внешний текст без темы (FR-743/744, NFR-732/734) |
 | `test_sd_reports.py` | показатели за период, только текущий цикл (после reopen прошлый не считается), фильтры и нагрузка по снимкам, знаменатель доли в срок без «закрыто без ответа», область `managed_units`, 370/371 день, границы суток по Москве, неизменность истории после правки уровня, календаря, передачи заявки и смены ответственного, пустой отчёт, оценка пуста, 403 (FR-746…750, NFR-735) |
 | `test_sd_reports_excel.py` | два листа, те же числа, 20 000 строк ≤ 10 с, нет темы/текста/адреса, чужие очереди отсутствуют, журнал (FR-748, NFR-731) |
@@ -288,7 +305,7 @@ NFR-731 — 10 с).
 | `tests/test_org_permissions.py:140-153` | у «Руководителя» ровно `staff.view`, `feed.post_all`; `set(titles)` и набор администратора | плюс `servicedesk.reports`; `set(titles)` собран из `PERMISSIONS_011` | начальная выдача (FR-756) |
 | `tests/test_sd_boundaries.py:472` | ровно 4 вида уведомлений | 7 видов | три новых вида |
 | `tests/test_sd_boundaries.py:481` | меню «Заявки», «Сервис-деск» | плюс «Уровни обслуживания», «Отчёт по заявкам» | пункты меню |
-| `tests/test_sd_audit.py:120-122` | у `ticket.closed`/`ticket.autoclosed` ровно `{"status"}` | плюс `cycle`, `level`, `reaction_due`, `solution_due`, `verdicts` | журнал самодостаточен (Б3) |
+| `tests/test_sd_audit.py:120-122` | у `ticket.closed`/`ticket.autoclosed` ровно `{"status"}`; точный набор кодов меток | плюс `cycle`, `level`, `reaction_due`, `solution_due`, `verdicts` и код `ticket.assignee_skipped` | журнал самодостаточен (Б3) |
 | `tests/test_sd_deploy.py:424` | `len(...) == 27` записей cron | 29 записей | восьмой deploy-тест, тоже считает cron |
 | `apps/servicedesk/audit_labels.py` `FIELDS` | нет подписей новых полей | подписи `cycle`, `level`, `reaction_due`, `solution_due`, `verdicts` | журнал показывает поля по-русски |
 | `tests/test_kb_deploy.py:134`, `test_lists_deploy.py:169`, `test_feed_deploy.py:245`, `test_messenger_deploy.py:340`, `test_notify_deploy.py:321`, `test_tasks_deploy.py:243`, `test_instructions_deploy.py:188` | `len(...) == 27` записей cron | 29 записей | `sla_tick`, `sla_digest` |
