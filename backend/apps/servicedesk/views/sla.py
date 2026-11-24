@@ -47,7 +47,8 @@ def _rows():
 
 
 def _page(request, *, level=None, values=None, error=None, status=200):
-    values = values if values is not None else _values(level)
+    if values is None:
+        values = _values(level if level is not False else None)
     context = {"rows": _rows(), "form": _form_context(level, values, error) if level is not False else None}
     return render_page(request, "servicedesk/sla/page.html", context, status=status)
 

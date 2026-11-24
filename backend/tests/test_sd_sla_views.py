@@ -115,7 +115,7 @@ def test_due_today_uses_moscow_date_and_excludes_tomorrow():
 def test_due_combines_with_my_queues_preset():
     queue = sd.make_queue()
     foreign = sd.make_queue()
-    user = _member(queue, "servicedesk.all")
+    user = _member(queue)  # участник одной очереди: «Мои очереди» — только она
     now = timezone.now()
     mine = _ticket_with_cycle(queue, reaction_due=now - timedelta(hours=1))
     other = _ticket_with_cycle(foreign, reaction_due=now - timedelta(hours=1))
@@ -150,7 +150,9 @@ def test_overdue_count_matches_overdue_list():
     count = client.get("/tickets/count/", {"due": "overdue", "preset": "all"})
     assert listing.status_code == count.status_code == 200
     assert wanted.number in _numbers(listing)
-    assert f'data-total="{len(_numbers(listing))}"' in _body(count)
+    import re
+    total = re.search(r'data-total[^>]*>(\d+)<', _body(count))
+    assert total and int(total.group(1)) == len(_numbers(listing))
 
 
 def test_card_shows_sla_level_deadlines_facts_and_verdicts():
