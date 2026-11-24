@@ -45,50 +45,50 @@ id: TASKS-011
 
 ## Этап 1 — каркас, контракт, данные, помощники, стенд
 
-- [ ] T-11001 [arch] `CONTRACT-011`: маршруты уровней, отчёта, шаблонов, вставки (`?ticket=`), фильтр `due`,
+- [x] T-11001 [arch] `CONTRACT-011`: маршруты уровней, отчёта, шаблонов, вставки (`?ticket=`), фильтр `due`,
   счётчики, зацепки `data-*`, коды и тексты отказов (`sla_title_range`, `sla_minutes_range`,
   `sla_reaction_gt_solution`, `sla_days_empty`, `sla_interval_empty`, `sla_assignee_dismissed`,
   `answer_title_range`, `answer_text_range`, `answer_category_personal`, `report_period_range`,
   `report_forbidden`), ответы HTMX и обычных запросов, подписи журнала — `backend/tests/CONTRACT-011.md` —
   (все FR)
-- [ ] T-11003 [arch] права `servicedesk.sla`, `servicedesk.reports`, `servicedesk.answers` и начальные выдачи
+- [x] T-11003 [arch] права `servicedesk.sla`, `servicedesk.reports`, `servicedesk.answers` и начальные выдачи
   («Администратор портала» — `sla` и `answers`, роль «Руководитель» — `reports`), миграция `core 0016` от
   `0015`, идемпотентна; у администратора **24** права из 25 — `reports` ему не выдан —
   `backend/apps/core/migrations/0016_servicedesk_sla_permissions.py` — (FR-756)
-- [ ] T-11002 [arch] модели и миграция `servicedesk 0004` (после T-11003): `SlaLevel`, `SlaBinding`,
+- [x] T-11002 [arch] модели и миграция `servicedesk 0004` (после T-11003): `SlaLevel`, `SlaBinding`,
   `AnswerTemplate`, `SlaCycle`, `SlaNotice`, `SlaDigest`, поля `Ticket` (`sla`, `sla_cycle_started_at`,
   `sla_reaction_due`, `sla_solution_due`, `sla_first_response_at`), `ServiceDeskSettings.sla_reminder_hours`;
   ограничения и индексы плана; `default_permissions = ()`, русские `verbose_name`; `manage.py check` — 0 —
   `backend/apps/servicedesk/models.py`, `backend/apps/servicedesk/migrations/0004_sla_answers.py` —
   (FR-730…745, FR-751, FR-752)
-- [ ] T-11004 [P] [arch] помощники серверных тестов: `PERMISSIONS_011`, `TITLES_011`, `KINDS_011`,
+- [x] T-11004 [P] [arch] помощники серверных тестов: `PERMISSIONS_011`, `TITLES_011`, `KINDS_011`,
   `make_level`, `bind_level`, `make_answer`, `make_cycle`, `close_ticket`, `reopen_ticket`, `report_numbers`,
   `notice_rows`; без импорта кода приложения на уровне модуля — `backend/tests/support_servicedesk.py` —
   (все FR)
-- [ ] T-11005 [P] [arch] помощники e2e и seed стенда: `open_sla`, `create_level`, `open_report`, `export_xlsx`,
+- [x] T-11005 [P] [arch] помощники e2e и seed стенда: `open_sla`, `create_level`, `open_report`, `export_xlsx`,
   `insert_answer`, `check_360`; `e2e_sla_seed` (два уровня, привязки, три шаблона, заявки со сроками) —
   `backend/tests/e2e/helpers_sla.py`, `backend/apps/servicedesk/management/commands/e2e_sla_seed.py` —
   (FR-730…754)
-- [ ] T-11006 [arch] маршруты и **заглушки** представлений, пункты меню «Уровни обслуживания» (order 6,
+- [x] T-11006 [arch] маршруты и **заглушки** представлений, пункты меню «Уровни обслуживания» (order 6,
   `servicedesk.sla`) и «Отчёт по заявкам» (order 7, `servicedesk.reports`; order 7 уже занят «Базой знаний»,
   порядок при равных order решает вторичный ключ названия — «База знаний» раньше «Отчёта»), подключение
   `answers.js` для `/servicedesk/answers/` и карточки — `backend/apps/servicedesk/urls.py`, `views/sla.py`,
   `views/reports.py`, `views/answers.py`, `extensions.py`, `backend/templates/_assets.html` —
   (FR-730…757)
-- [ ] T-11007 [arch] задания-заглушки и записи cron: `sla_tick` (`*/5 * * * *`, 300) с замком `sla:tick`,
+- [x] T-11007 [arch] задания-заглушки и записи cron: `sla_tick` (`*/5 * * * *`, 300) с замком `sla:tick`,
   `sla_digest` (`10 * * * *`, 300) в `maintenance` — `backend/apps/servicedesk/tasks.py`,
   `backend/config/cron.py` — (FR-743, FR-744, NFR-734)
-- [ ] T-11008 [arch] стенд: `stand_reset` чистит `SlaCycle`, `SlaNotice`, `SlaDigest`, уровни, привязки,
+- [x] T-11008 [arch] стенд: `stand_reset` чистит `SlaCycle`, `SlaNotice`, `SlaDigest`, уровни, привязки,
   шаблоны, поля сроков у заявок, ключи `sla:tick`, `servicedesk:sla:*`, `servicedesk:digest:*`; порядок строк
   сохраняется; проверка удаления ключей — тест стенда (T-11112) — `backend/apps/servicedesk/stand.py`,
   `backend/tests/test_sd_stand_restore.py` — (все FR)
-- [ ] T-11009 [arch] нагрузка: `ServiceDeskUser` получает страницы `/servicedesk/reports/?period=week` и
+- [x] T-11009 [arch] нагрузка: `ServiceDeskUser` получает страницы `/servicedesk/reports/?period=week` и
   `/tickets/?due=overdue`, имена в `SD_PAGES`/`_check_sd_p95`; `fill_tickets.py` с `LOAD_TICKETS_SLA=1` создаёт
   уровни, привязки и сроки у 20 % заявок — `backend/tests/load/locustfile.py`,
   `backend/tests/load/fill_tickets.py` — (NFR-730)
-- [ ] T-11010 [arch] правки прежних тестов — **права** (только после разрешения владельца), строки ниже —
+- [x] T-11010 [arch] правки прежних тестов — **права** (только после разрешения владельца), строки ниже —
   `backend/tests/…` — (FR-756)
-- [ ] T-11011 [arch] правки прежних тестов — **меню** (только после разрешения владельца), строки ниже —
+- [x] T-11011 [arch] правки прежних тестов — **меню** (только после разрешения владельца), строки ниже —
   `backend/tests/…` — (FR-730…758)
 - [ ] T-11018 [arch] правки прежних тестов — **каталог уведомлений, cron, журнал, стенд** (только после разрешения
   владельца), строки ниже; в сценарий `_everything` добавляется создание `ticket.assignee_skipped`, иначе точный
