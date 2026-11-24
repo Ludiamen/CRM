@@ -2,7 +2,7 @@
 id: PLAN-011
 вид: план
 статус: черновик
-версия: 3
+версия: 4
 зависит_от: SPEC-011, CONST, ADR-0002, ADR-0004, ADR-0008, ADR-0019, REF-CAP, REF-UX, REF-SRC, TGT-ARCH, TGT-NFR, SPEC-002, SPEC-003, SPEC-004, SPEC-009, SPEC-010
 основан_на: SPEC-011 sha256:acf75cf54d0ed1c79db2313aba47d7fb6c2cebb4123e8d43c7b5d98de570af8b
 ---
@@ -105,20 +105,33 @@ backend/tests/test_sd_sla_*.py, test_sd_reports_*.py, test_sd_answers_*.py, test
 
 | Модель / поле | Поля | Индексы и ограничения |
 |---|---|---|
-| `SlaLevel` | `title` 100, `priority` 0–99, `reaction_minutes` 5…43 200, `solution_minutes` 5…43 200, `workdays` JSON (0–6, по умолчанию `[0,1,2,3,4]`), `day_start` 09:00, `day_end` 18:00, `all_day` bool, `default_assignee` FK `core.User` PROTECT пусто, `archived` bool, `created_at`, `updated_at` | `CheckConstraint`: минуты в диапазоне, дни — подмножество 0–6; индекс `(archived, priority)` |
+| `SlaLevel` | `title` 100, `priority` 0–99, `reaction_minutes` 5…43 200, `solution_minutes` 5…43 200, `workdays` JSON (0–6, по умолчанию `[0,1,2,3,4]`), `day_start` 09:00, `day_end` 18:00, `all_day` bool, `default_assignee` FK `core.User` PROTECT пусто, `archived` bool, `created_at`, `updated_at` | `CheckConstraint`: минуты в диапазоне, дни — подмножество 0–6, `all_day OR day_start < day_end`; форма не даёт сохранить пустой набор дней и пустой интервал; индекс `(archived, priority)` |
 | `SlaBinding` | `level` CASCADE, `kind` (`category`/`priority`), `category` PROTECT пусто, `priority` PROTECT пусто | `CheckConstraint`: ровно одно поле по `kind`; частичные уникальные `(category)` и `(priority)` |
 | `AnswerTemplate` | `owner` FK `core.User` CASCADE пусто (пусто — общий), `title` 100, `text` 10 000, `category` PROTECT пусто (только у общего), `archived`, `created_at`, `updated_at` | индексы `(owner, archived)`, `(category)`; `CheckConstraint`: личный шаблон без категории |
-| `SlaCycle` | `ticket` CASCADE (related `sla_cycles`), `number` (номер цикла в заявке, с 1), `is_current` bool (истина у одного цикла из `sla_cycles`), `level` FK SET_NULL пусто, `level_title` 100 (снимок), `queue` FK `org.Unit` SET_NULL пусто, `queue_name` 255 (снимок), `category` FK SET_NULL пусто, `category_name` 255 (снимок), `assignee` FK `core.User` SET_NULL пусто, `assignee_name` 255 (снимок: исполнитель на момент закрытия), `schedule` JSON (снимок расписания), `cycle_started_at`, `reaction_due`, `solution_due`, `first_response_at` пусто, `reaction_minutes` пусто, `closed_at` пусто, `solution_minutes` пусто, `closed_kind` (`manual`/`autoclosed`) пусто, `reaction_met` bool пусто, `solution_met` bool пусто, `created_at` | уникальность `(ticket, number)` и `(ticket, cycle_started_at)`; частичный уникальный `(ticket)` при `is_current`; индексы `(closed_at)`, `(cycle_started_at)`, `(level)`, `(queue)`, `(category)` |
-| `SlaNotice` | `cycle` CASCADE, `deadline` (`reaction`/`solution`), `kind` (`due_soon`/`overdue`), `recipient` FK `core.User` CASCADE, `sent_at` | уникальность `(cycle, deadline, kind, recipient)` |
+| `SlaCycle` | `ticket` CASCADE (related `sla_cycles`), `number` (номер цикла в заявке, с 1), `is_current` bool (истина у одного цикла из `sla_cycles`), `level` FK SET_NULL пусто, `level_title` 100 (снимок), `queue` FK `org.Unit` SET_NULL пусто, `queue_name` 255 (снимок), `category` FK SET_NULL пусто, `category_name` 255 (снимок), `assignee` FK `core.User` SET_NULL пусто, `assignee_name` 255 (снимок: исполнитель на момент закрытия), `schedule` JSON (снимок расписания), `cycle_started_at`, `reaction_due`, `solution_due`, `first_response_at` пусто, `reaction_minutes` пусто, `closed_at` пусто, `solution_minutes` пусто, `closed_kind` (`manual`/`autoclosed`) пусто, `reaction_met` bool пусто, `solution_met` bool пусто, `created_at` | уникальность `(ticket, number)` и `(ticket, cycle_started_at)`; частичный уникальный `(ticket)` при `is_current`; индексы `(closed_at)`, `(cycle_started_at)`, `(level)`, `(queue)`, `(category)` и частичный `(ticket)` при `is_current` и `solution_met = False` |
+| `SlaNotice` | `cycle` CASCADE, `deadline` (`reaction`/`solution`), `kind` (`due_soon`/`overdue`), `due_at` (срок, к которому относится напоминание), `recipient` FK `core.User` CASCADE, `sent_at` | уникальность `(cycle, deadline, kind, due_at, recipient)` — пересчёт срока даёт новый ключ |
 | `SlaDigest` | `recipient` FK `core.User` CASCADE, `day` дата, `units` JSON (очереди в сводке), `sent_at` | уникальность `(recipient, day)` |
 | `Ticket` + | `sla` FK `SlaLevel` SET_NULL пусто, `sla_cycle_started_at`, `sla_reaction_due`, `sla_solution_due`, `sla_first_response_at` — пусто | частичные индексы `(sla_reaction_due)` и `(sla_solution_due)` при `kind != 'closed'` |
 | `ServiceDeskSettings` + | `sla_reminder_hours` 1–24 часов, по умолчанию 1 | `CheckConstraint` 1–24 |
 
-Текущий цикл живёт на `Ticket`; при первом ответе и закрытии создаётся или дописывается строка `SlaCycle`:
-`reaction_minutes` и `solution_minutes` считаются один раз по расписанию цикла (`schedule`) и больше не меняются —
-поэтому средние в отчёте не зависят от будущих правок уровня или календаря. Открытие заново не удаляет прошлую
-строку цикла: старый цикл остаётся закрытым со своими вердиктами, новый начинается новой строкой. Записи
-`ticket.closed` / `ticket.autoclosed` дополняются номером цикла и вердиктами, чтобы журнал был самодостаточен.
+Жизненный цикл `SlaCycle` определён так:
+
+1. **Создание заявки.** Есть уровень — создаётся цикл с `number=1`, `is_current=True`; снимки `queue`,
+   `category`, `level_title` и `schedule` берутся в этот момент. Уровня нет — нет и цикла, и полей сроков.
+2. **Первый ответ.** В текущем цикле пишутся `first_response_at`, `reaction_minutes`, `reaction_met` — один раз,
+   по снимку `schedule`.
+3. **Закрытие (ручное или авто).** В цикл пишутся `closed_at`, `solution_minutes`, `solution_met`, `closed_kind`,
+   `assignee`/`assignee_name` (на кого закрыта заявка — знаменатель «нагрузки»). `is_current` остаётся истиной.
+4. **Открытие заново.** У прошлого цикла `is_current=False`; создаётся новый цикл `number+1` с `is_current=True`,
+   новым снимком `queue`/`category`/`schedule` и новыми сроками от момента открытия. Прошлый цикл не удаляется и
+   в отчёт не попадает — он виден в журнале.
+
+Так у каждого цикла ровно один текущий (частичная уникальность `(ticket)` при `is_current`), а `schedule` цикла
+включает снимок календаря: `{"workdays": [...], "day_start", "day_end", "all_day", "days": {"YYYY-MM-DD":
+"work|short|off|holiday|day_off"}}` на диапазон от начала цикла до срока решения. Если факт выходит за диапазон
+(позднее закрытие), недостающие даты дописываются в `days` в момент факта (`schedule.extended=true`), и минуты
+считаются по ним — уже посчитанные числа не пересчитываются. Записи `ticket.closed` / `ticket.autoclosed`
+дополняются номером цикла и вердиктами, чтобы журнал был самодостаточен.
 
 ### Правило рабочих часов (FR-734/735, NFR-733)
 
@@ -144,8 +157,8 @@ backend/tests/test_sd_sla_*.py, test_sd_reports_*.py, test_sd_answers_*.py, test
 
 - Уровень выбирается по критичности, затем по категории (конфликт — критичность, SPEC-011). Ответственный по
   умолчанию уровня назначается, только если у категории нет своего `default_assignee`; при создании и смене
-  полей проверяется участие сотрудника в очереди заявки — не участник: поле игнорируется, пишется событие
-  `assignee_skipped` (без назначения и без ошибки).
+  полей проверяется участие сотрудника в очереди заявки — не участник: поле игнорируется, в журнал пишется
+  `ticket.assignee_skipped` (метка и подписи полей — в `audit_labels`, в интерфейсе не показывается).
 - Смена категории, критичности или очереди проходит через `services/transfer.py` (там же, где сейчас меняется
   категория): пересчёт сроков, пока нет первого ответа.
 
@@ -188,7 +201,8 @@ backend/tests/test_sd_sla_*.py, test_sd_reports_*.py, test_sd_answers_*.py, test
 заявки или смены ответственного; средние — из готовых `reaction_minutes` и `solution_minutes`. Доля в срок по
 реакции — `reaction_met=True` к сумме `reaction_met=True/False`; заявки, закрытые без первого ответа
 (`reaction_met IS NULL`), в знаменатель не входят и показываются отдельной строкой «закрыто без ответа». Доля в
-срок по решению — `solution_met=True` к сумме `True/False` закрытых циклов. Показатель «оценка заявителей» —
+срок по решению — `solution_met=True` к сумме `True/False` закрытых циклов. Просрочки по уровням — по
+`level_title`; нагрузка — «закрыто на исполнителя» по `assignee_name`. Показатель «оценка заявителей» —
 колонка без значений (CAP-35 вне среза).
 
 Excel: лист **«Показатели»** — те же числа и период; лист **«Заявки»** — до 20 000 строк цикла: номер, создана,
@@ -271,7 +285,7 @@ NFR-731 — 10 с).
 | Файл и строка | Было | Станет | Почему |
 |---|---|---|---|
 | `tests/test_permissions.py:42` | 22 права | 25 прав | три новых `servicedesk.*` |
-| `tests/test_org_permissions.py:140-153` | у «Руководителя» ровно `staff.view`, `feed.post_all` | плюс `servicedesk.reports` | начальная выдача (FR-756) |
+| `tests/test_org_permissions.py:140-153` | у «Руководителя» ровно `staff.view`, `feed.post_all`; `set(titles)` и набор администратора | плюс `servicedesk.reports`; `set(titles)` собран из `PERMISSIONS_011` | начальная выдача (FR-756) |
 | `tests/test_sd_boundaries.py:472` | ровно 4 вида уведомлений | 7 видов | три новых вида |
 | `tests/test_sd_boundaries.py:481` | меню «Заявки», «Сервис-деск» | плюс «Уровни обслуживания», «Отчёт по заявкам» | пункты меню |
 | `tests/test_sd_audit.py:120-122` | у `ticket.closed`/`ticket.autoclosed` ровно `{"status"}` | плюс `cycle`, `level`, `reaction_due`, `solution_due`, `verdicts` | журнал самодостаточен (Б3) |
