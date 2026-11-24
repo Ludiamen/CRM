@@ -2,6 +2,8 @@
 
 Модели `org` не импортируются: связи с узлом и пользователем заданы строками.
 """
+from datetime import time
+
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models
@@ -12,6 +14,11 @@ from django.utils import timezone
 def now():
     """Время по умолчанию берётся при каждом обращении (подмена времени в тестах)."""
     return timezone.now()
+
+
+def default_sla_workdays():
+    """Рабочие дни SLA по умолчанию: понедельник — пятница."""
+    return [0, 1, 2, 3, 4]
 
 
 def name_key(text: str) -> str:
@@ -157,12 +164,17 @@ class ServiceDeskSettings(models.Model):
     form_hourly_limit = models.PositiveIntegerField("писем с формы в час", default=10)
     retention_years = models.PositiveIntegerField("срок хранения, лет", default=3)
     inbound_retention_days = models.PositiveIntegerField("хранение входящих писем, дней", default=30)
+    sla_reminder_hours = models.PositiveIntegerField("часы напоминания SLA", default=1)
     updated_at = models.DateTimeField("изменены", auto_now=True)
 
     class Meta:
         default_permissions = ()
         verbose_name = "настройки сервис-деска"
         verbose_name_plural = "настройки сервис-деска"
+        constraints = [
+            models.CheckConstraint(condition=Q(sla_reminder_hours__gte=1, sla_reminder_hours__lte=24),
+                                   name="servicedesk_settings_sla_reminder_hours_1_24"),
+        ]
 
 
 class Requester(models.Model):
@@ -304,6 +316,12 @@ class Ticket(models.Model):
                                    verbose_name="сложность")
     status = models.ForeignKey(Status, on_delete=models.PROTECT, related_name="+", verbose_name="статус")
     kind = models.CharField("вид статуса", max_length=16, choices=Status.Kind.choices)
+    sla = models.ForeignKey("servicedesk.SlaLevel", on_delete=models.SET_NULL, null=True, blank=True,
+                            related_name="tickets", verbose_name="уровень SLA")
+    sla_cycle_started_at = models.DateTimeField("начало цикла SLA", null=True, blank=True)
+    sla_reaction_due = models.DateTimeField("срок реакции SLA", null=True, blank=True)
+    sla_solution_due = models.DateTimeField("срок решения SLA", null=True, blank=True)
+    sla_first_response_at = models.DateTimeField("первый ответ SLA", null=True, blank=True)
     source = models.ForeignKey(Source, on_delete=models.PROTECT, related_name="+", verbose_name="источник")
     assignee = models.ForeignKey("core.User", on_delete=models.PROTECT, null=True, blank=True, related_name="+",
                                  verbose_name="ответственный")
@@ -341,11 +359,216 @@ class Ticket(models.Model):
                          condition=Q(kind="closed") & Q(anonymized_at__isnull=True)),
             models.Index(fields=["created_at"], name="servicedesk_ticket_created"),
             models.Index(fields=["last_message_at"], name="servicedesk_ticket_last_msg"),
+            models.Index(fields=["sla_reaction_due"], name="sd_ticket_sla_reaction",
+                         condition=~Q(kind="closed")),
+            models.Index(fields=["sla_solution_due"], name="sd_ticket_sla_solution",
+                         condition=~Q(kind="closed")),
             GinIndex(fields=["search"], name="servicedesk_ticket_search_gin"),
         ]
 
     def __str__(self) -> str:
         return f"#{self.number}"
+
+
+class SlaLevel(models.Model):
+    """Уровень обслуживания и его рабочее расписание."""
+
+    title = models.CharField("название", max_length=100)
+    priority = models.PositiveIntegerField("приоритет", default=0)
+    reaction_minutes = models.PositiveIntegerField("реакция, минут")
+    solution_minutes = models.PositiveIntegerField("решение, минут")
+    workdays = models.JSONField("рабочие дни", default=default_sla_workdays)
+    day_start = models.TimeField("начало рабочего дня", default=time(9, 0))
+    day_end = models.TimeField("конец рабочего дня", default=time(18, 0))
+    all_day = models.BooleanField("круглосуточно", default=False)
+    default_assignee = models.ForeignKey("core.User", on_delete=models.PROTECT, null=True, blank=True,
+                                         related_name="default_sla_levels", verbose_name="ответственный по умолчанию")
+    archived = models.BooleanField("в архиве", default=False)
+    created_at = models.DateTimeField("создан", default=now)
+    updated_at = models.DateTimeField("изменён", auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        verbose_name = "уровень SLA"
+        verbose_name_plural = "уровни SLA"
+        constraints = [
+            models.CheckConstraint(condition=Q(priority__gte=0, priority__lte=99),
+                                   name="servicedesk_sla_level_priority_0_99"),
+            models.CheckConstraint(condition=Q(reaction_minutes__gte=5, reaction_minutes__lte=43200),
+                                   name="servicedesk_sla_level_reaction_5_43200"),
+            models.CheckConstraint(condition=Q(solution_minutes__gte=5, solution_minutes__lte=43200),
+                                   name="servicedesk_sla_level_solution_5_43200"),
+            models.CheckConstraint(condition=Q(reaction_minutes__lte=models.F("solution_minutes")),
+                                   name="servicedesk_sla_level_reaction_lte_solution"),
+            models.CheckConstraint(condition=Q(workdays__contained_by=[0, 1, 2, 3, 4, 5, 6]),
+                                   name="servicedesk_sla_level_workdays_0_6"),
+            models.CheckConstraint(condition=Q(all_day=True) | Q(day_start__lt=models.F("day_end")),
+                                   name="servicedesk_sla_level_day_interval"),
+        ]
+        indexes = [
+            models.Index(fields=["archived", "priority"], name="sd_sla_level_arch_prio"),
+        ]
+
+
+class SlaBinding(models.Model):
+    """Привязка уровня SLA к категории или критичности."""
+
+    class Kind(models.TextChoices):
+        CATEGORY = "category", "категория"
+        PRIORITY = "priority", "критичность"
+
+    level = models.ForeignKey(SlaLevel, on_delete=models.CASCADE, related_name="bindings", verbose_name="уровень SLA")
+    kind = models.CharField("вид", max_length=10, choices=Kind.choices)
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, null=True, blank=True,
+                                 related_name="sla_bindings", verbose_name="категория")
+    priority = models.ForeignKey(Priority, on_delete=models.PROTECT, null=True, blank=True,
+                                 related_name="sla_bindings", verbose_name="критичность")
+
+    class Meta:
+        default_permissions = ()
+        verbose_name = "привязка уровня SLA"
+        verbose_name_plural = "привязки уровней SLA"
+        constraints = [
+            models.CheckConstraint(
+                condition=(Q(kind="category", category__isnull=False, priority__isnull=True)
+                           | Q(kind="priority", category__isnull=True, priority__isnull=False)),
+                name="servicedesk_sla_binding_kind_one_field"),
+            models.UniqueConstraint(fields=["category"], condition=Q(kind="category"),
+                                    name="servicedesk_sla_binding_category_uniq"),
+            models.UniqueConstraint(fields=["priority"], condition=Q(kind="priority"),
+                                    name="servicedesk_sla_binding_priority_uniq"),
+        ]
+
+
+class AnswerTemplate(models.Model):
+    """Личный или общий шаблон ответа."""
+
+    owner = models.ForeignKey("core.User", on_delete=models.CASCADE, null=True, blank=True,
+                              related_name="answer_templates", verbose_name="владелец")
+    title = models.CharField("название", max_length=100)
+    text = models.TextField("текст", max_length=10000)
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, null=True, blank=True,
+                                 related_name="answer_templates", verbose_name="категория")
+    archived = models.BooleanField("в архиве", default=False)
+    created_at = models.DateTimeField("создан", default=now)
+    updated_at = models.DateTimeField("изменён", auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        verbose_name = "шаблон ответа"
+        verbose_name_plural = "шаблоны ответов"
+        constraints = [
+            models.CheckConstraint(condition=Q(owner__isnull=False) | Q(category__isnull=True),
+                                   name="servicedesk_answer_template_personal_no_category"),
+        ]
+        indexes = [
+            models.Index(fields=["owner", "archived"], name="servicedesk_answer_owner_arch"),
+            models.Index(fields=["category"], name="servicedesk_answer_category"),
+        ]
+
+
+class SlaCycle(models.Model):
+    """Исторический цикл SLA заявки со снимками уровня и расписания."""
+
+    class ClosedKind(models.TextChoices):
+        MANUAL = "manual", "вручную"
+        AUTOCLOSED = "autoclosed", "автоматически"
+
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="sla_cycles", verbose_name="заявка")
+    number = models.PositiveIntegerField("номер цикла")
+    is_current = models.BooleanField("текущий", default=True)
+    level = models.ForeignKey(SlaLevel, on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="sla_cycles", verbose_name="уровень SLA")
+    level_title = models.CharField("название уровня", max_length=100)
+    queue = models.ForeignKey("org.Unit", on_delete=models.SET_NULL, null=True, blank=True,
+                              related_name="sla_cycles", verbose_name="очередь")
+    queue_name = models.CharField("название очереди", max_length=255)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="sla_cycles", verbose_name="категория")
+    category_name = models.CharField("название категории", max_length=255)
+    assignee = models.ForeignKey("core.User", on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="sla_cycles", verbose_name="ответственный")
+    assignee_name = models.CharField("имя ответственного", max_length=255)
+    schedule = models.JSONField("расписание", default=dict)
+    cycle_started_at = models.DateTimeField("начало цикла")
+    reaction_due = models.DateTimeField("срок реакции")
+    solution_due = models.DateTimeField("срок решения")
+    first_response_at = models.DateTimeField("первый ответ", null=True, blank=True)
+    reaction_minutes = models.PositiveIntegerField("реакция, минут", null=True, blank=True)
+    closed_at = models.DateTimeField("закрыт", null=True, blank=True)
+    solution_minutes = models.PositiveIntegerField("решение, минут", null=True, blank=True)
+    closed_kind = models.CharField("вид закрытия", max_length=10, choices=ClosedKind.choices, null=True, blank=True)
+    reaction_met = models.BooleanField("реакция в срок", null=True, blank=True)
+    solution_met = models.BooleanField("решение в срок", null=True, blank=True)
+    created_at = models.DateTimeField("создан", default=now)
+
+    class Meta:
+        default_permissions = ()
+        verbose_name = "цикл SLA"
+        verbose_name_plural = "циклы SLA"
+        constraints = [
+            models.UniqueConstraint(fields=["ticket", "number"], name="servicedesk_sla_cycle_ticket_number_uniq"),
+            models.UniqueConstraint(fields=["ticket", "cycle_started_at"],
+                                    name="servicedesk_sla_cycle_ticket_started_uniq"),
+            models.UniqueConstraint(fields=["ticket"], condition=Q(is_current=True),
+                                    name="servicedesk_sla_cycle_current_uniq"),
+        ]
+        indexes = [
+            models.Index(fields=["closed_at"], name="servicedesk_sla_cycle_closed"),
+            models.Index(fields=["cycle_started_at"], name="servicedesk_sla_cycle_started"),
+            models.Index(fields=["level"], name="servicedesk_sla_cycle_level"),
+            models.Index(fields=["queue"], name="servicedesk_sla_cycle_queue"),
+            models.Index(fields=["category"], name="servicedesk_sla_cycle_category"),
+            models.Index(fields=["ticket"], name="servicedesk_sla_cycle_open",
+                         condition=Q(is_current=True, solution_met=False)),
+        ]
+
+
+class SlaNotice(models.Model):
+    """Идемпотентная запись напоминания по сроку цикла."""
+
+    class Deadline(models.TextChoices):
+        REACTION = "reaction", "реакция"
+        SOLUTION = "solution", "решение"
+
+    class Kind(models.TextChoices):
+        DUE_SOON = "due_soon", "скоро срок"
+        OVERDUE = "overdue", "просрочено"
+
+    cycle = models.ForeignKey(SlaCycle, on_delete=models.CASCADE, related_name="notices", verbose_name="цикл SLA")
+    deadline = models.CharField("срок", max_length=8, choices=Deadline.choices)
+    kind = models.CharField("вид", max_length=8, choices=Kind.choices)
+    due_at = models.DateTimeField("срок",)
+    recipient = models.ForeignKey("core.User", on_delete=models.CASCADE, related_name="sla_notices",
+                                  verbose_name="получатель")
+    sent_at = models.DateTimeField("отправлено", null=True, blank=True)
+
+    class Meta:
+        default_permissions = ()
+        verbose_name = "уведомление SLA"
+        verbose_name_plural = "уведомления SLA"
+        constraints = [
+            models.UniqueConstraint(fields=["cycle", "deadline", "kind", "due_at", "recipient"],
+                                    name="servicedesk_sla_notice_key_uniq"),
+        ]
+
+
+class SlaDigest(models.Model):
+    """Ежедневная сводка SLA для получателя."""
+
+    recipient = models.ForeignKey("core.User", on_delete=models.CASCADE, related_name="sla_digests",
+                                  verbose_name="получатель")
+    day = models.DateField("день")
+    units = models.JSONField("очереди", default=list)
+    sent_at = models.DateTimeField("отправлено", null=True, blank=True)
+
+    class Meta:
+        default_permissions = ()
+        verbose_name = "сводка SLA"
+        verbose_name_plural = "сводки SLA"
+        constraints = [
+            models.UniqueConstraint(fields=["recipient", "day"], name="servicedesk_sla_digest_recipient_day_uniq"),
+        ]
 
 
 class TicketParticipant(models.Model):
