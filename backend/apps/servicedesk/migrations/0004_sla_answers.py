@@ -247,7 +247,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='answertemplate',
-            constraint=models.CheckConstraint(condition=models.Q(('owner__isnull', False), ('category__isnull', True), _connector='OR'), name='servicedesk_answer_template_personal_no_category'),
+            constraint=models.CheckConstraint(condition=models.Q(('owner__isnull', True), ('category__isnull', True), _connector='OR'), name='servicedesk_answer_template_personal_no_category'),
         ),
         migrations.AddConstraint(
             model_name='sladigest',

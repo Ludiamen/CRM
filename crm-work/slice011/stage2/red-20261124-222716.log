@@ -1,0 +1,2130 @@
+ Container crm-fakebots-1  Running
+ Container crm-valkey-1  Running
+ Container crm-dovecot-1  Running
+ Container crm-clamav-1  Running
+ Container crm-postgres-1  Running
+......F.F.....FFFFFFFFFFFFFFFFF.FFFFF.F.F..FFFFFFFF..FF..FF.FFF.FFFFFFFF [ 52%]
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.FFFFFFFFFF...F...        [100%]
+=================================== FAILURES ===================================
+____ test_personal_answer_template_has_no_category_and_common_may_have_one _____
+
+    def test_personal_answer_template_has_no_category_and_common_may_have_one():
+        Answer = _model("AnswerTemplate")
+        category = sd.make_category()
+>       _assert_db_reject(lambda: Answer.objects.create(
+            owner=support.make_employee(), title="Личный", text="Текст", category=category))
+
+tests/test_sd_sla_models.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+create = <function test_personal_answer_template_has_no_category_and_common_may_have_one.<locals>.<lambda> at 0x7402b55bd620>
+
+    def _assert_db_reject(create):
+>       with pytest.raises(IntegrityError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE IntegrityError
+
+tests/test_sd_sla_models.py:21: Failed
+____________ test_archived_sla_level_is_not_selected_for_new_ticket ____________
+
+    def test_archived_sla_level_is_not_selected_for_new_ticket():
+        level = sd.make_level(archived=True)
+        category = sd.make_category()
+        sd.bind_level(level, category=category)
+>       from apps.servicedesk.services import sla
+E       ImportError: cannot import name 'sla' from 'apps.servicedesk.services' (/app/backend/apps/servicedesk/services/__init__.py)
+
+tests/test_sd_sla_models.py:137: ImportError
+______________ test_friday_evening_moves_reaction_to_next_workday ______________
+
+    def test_friday_evening_moves_reaction_to_next_workday():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:53: ModuleNotFoundError
+___________________________ test_weekend_is_skipped ____________________________
+
+    def test_weekend_is_skipped():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:60: ModuleNotFoundError
+_______________________ test_calendar_holiday_is_skipped _______________________
+
+    def test_calendar_holiday_is_skipped():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:67: ModuleNotFoundError
+_________ test_day_off_is_skipped_but_moved_workday_counts_on_saturday _________
+
+    def test_day_off_is_skipped_but_moved_workday_counts_on_saturday():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:76: ModuleNotFoundError
+_____ test_level_saturday_is_still_skipped_when_calendar_calls_it_weekend ______
+
+    def test_level_saturday_is_still_skipped_when_calendar_calls_it_weekend():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:86: ModuleNotFoundError
+_____ test_short_day_uses_calendar_end_minus_hour_without_shortening_level _____
+
+    def test_short_day_uses_calendar_end_minus_hour_without_shortening_level():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:93: ModuleNotFoundError
+_____________ test_all_day_has_24_working_hours_and_skips_holidays _____________
+
+    def test_all_day_has_24_working_hours_and_skips_holidays():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:102: ModuleNotFoundError
+______________________ test_empty_intersection_is_skipped ______________________
+
+    def test_empty_intersection_is_skipped():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:111: ModuleNotFoundError
+______________ test_year_boundary_uses_calendar_days_in_next_year ______________
+
+    def test_year_boundary_uses_calendar_days_in_next_year():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:121: ModuleNotFoundError
+___________ test_leap_day_and_non_leap_year_are_calendar_transitions ___________
+
+    def test_leap_day_and_non_leap_year_are_calendar_transitions():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:130: ModuleNotFoundError
+____ test_minutes_between_counts_work_minutes_and_is_symmetric_by_magnitude ____
+
+    def test_minutes_between_counts_work_minutes_and_is_symmetric_by_magnitude():
+>       from apps.servicedesk.services.sla import minutes_between
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:138: ModuleNotFoundError
+________________ test_minutes_between_skips_weekend_and_holiday ________________
+
+    def test_minutes_between_skips_weekend_and_holiday():
+>       from apps.servicedesk.services.sla import minutes_between
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:147: ModuleNotFoundError
+_______ test_zero_work_minutes_outside_hours_moves_to_next_workday_start _______
+
+    def test_zero_work_minutes_outside_hours_moves_to_next_workday_start():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:156: ModuleNotFoundError
+____________ test_minimum_and_thirty_day_deadlines_do_not_overflow _____________
+
+    def test_minimum_and_thirty_day_deadlines_do_not_overflow():
+>       from apps.servicedesk.services.sla import deadline
+E       ModuleNotFoundError: No module named 'apps.servicedesk.services.sla'
+
+tests/test_sd_sla_deadlines.py:163: ModuleNotFoundError
+_____ test_ticket_gets_sla_deadlines_and_first_cycle_from_priority_binding _____
+
+    def test_ticket_gets_sla_deadlines_and_first_cycle_from_priority_binding():
+        """Критичность выбирает уровень, оба срока записываются, создаётся цикл 1."""
+        priority = _priority("Критичная")
+        queue = sd.make_queue()
+        level = sd.make_level(reaction_minutes=60, solution_minutes=240, all_day=True)
+        sd.bind_level(level, priority=priority)
+    
+        ticket = _create(queue=queue, priority=priority)
+    
+        ticket.refresh_from_db()
+>       cycle = _cycle(ticket)
+                ^^^^^^^^^^^^^^
+
+tests/test_sd_sla_ticket.py:58: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_sd_sla_ticket.py:45: in _cycle
+    return support.model("servicedesk.SlaCycle").objects.get(ticket=ticket, is_current=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/db/models/manager.py:87: in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <QuerySet []>, args = ()
+kwargs = {'ticket': <Ticket: #5>, 'is_current': True}
+
+    def get(self, *args, **kwargs):
+        """
+        Perform the query and return a single object matching the given
+        keyword arguments.
+        """
+        if self.query.combinator and (args or kwargs):
+            raise NotSupportedError(
+                "Calling QuerySet.get(...) with filters after %s() is not "
+                "supported." % self.query.combinator
+            )
+        clone = self._chain() if self.query.combinator else self.filter(*args, **kwargs)
+        if self.query.can_filter() and not self.query.distinct_fields:
+            clone = clone.order_by()
+        limit = None
+        if (
+            not clone.query.select_for_update
+            or connections[clone.db].features.supports_select_for_update_with_limit
+        ):
+            limit = MAX_GET_RESULTS
+            clone.query.set_limits(high=limit)
+        num = len(clone)
+        if num == 1:
+            return clone._result_cache[0]
+        if not num:
+>           raise self.model.DoesNotExist(
+                "%s matching query does not exist." % self.model._meta.object_name
+            )
+E           apps.servicedesk.models.SlaCycle.DoesNotExist: SlaCycle matching query does not exist.
+
+/opt/venv/lib/python3.12/site-packages/django/db/models/query.py:635: DoesNotExist
+________ test_ticket_uses_category_binding_when_priority_has_no_binding ________
+
+    def test_ticket_uses_category_binding_when_priority_has_no_binding():
+        """При отсутствии привязки критичности уровень находится по категории."""
+        queue = sd.make_queue()
+        category = sd.make_category(queue=queue)
+        level = sd.make_level(all_day=True)
+        sd.bind_level(level, category=category)
+    
+        ticket = _create(queue=queue, category=category)
+    
+>       assert ticket.sla_id == level.pk
+E       assert None == 7
+E        +  where None = <Ticket: #6>.sla_id
+E        +  and   7 = <SlaLevel: SlaLevel object (7)>.pk
+
+tests/test_sd_sla_ticket.py:75: AssertionError
+_________ test_priority_binding_wins_over_conflicting_category_binding _________
+
+    def test_priority_binding_wins_over_conflicting_category_binding():
+        """При конфликте привязок критичность имеет приоритет над категорией."""
+        queue = sd.make_queue()
+        category = sd.make_category(queue=queue)
+        priority = _priority("Высокая")
+        category_level = sd.make_level(title="Категорийный", priority=10, all_day=True)
+        priority_level = sd.make_level(title="Критичный", priority=20, all_day=True)
+        sd.bind_level(category_level, category=category)
+        sd.bind_level(priority_level, priority=priority)
+    
+        ticket = _create(queue=queue, category=category, priority=priority)
+    
+>       assert ticket.sla_id == priority_level.pk
+E       assert None == 9
+E        +  where None = <Ticket: #7>.sla_id
+E        +  and   9 = <SlaLevel: SlaLevel object (9)>.pk
+
+tests/test_sd_sla_ticket.py:91: AssertionError
+_ test_category_change_before_first_response_recalculates_cycle_snapshot_and_due _
+
+    def test_category_change_before_first_response_recalculates_cycle_snapshot_and_due():
+        """Смена категории до ответа пересчитывает уровень, снимок и оба срока."""
+        queue = sd.make_queue()
+        old = sd.make_category("Сеть", queue=queue)
+        new = sd.make_category("Серверы", queue=queue)
+        first = sd.make_level(title="Первый", reaction_minutes=60, solution_minutes=120, all_day=True)
+        second = sd.make_level(title="Второй", reaction_minutes=180, solution_minutes=300, all_day=True)
+        sd.bind_level(first, category=old)
+        sd.bind_level(second, category=new)
+        ticket = _create(queue=queue, category=old)
+        actor = _actor()
+    
+        from apps.servicedesk.services import transfer
+    
+        transfer.change_category(ticket, new, actor=actor)
+        ticket.refresh_from_db()
+>       cycle = _cycle(ticket)
+                ^^^^^^^^^^^^^^
+
+tests/test_sd_sla_ticket.py:121: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_sd_sla_ticket.py:45: in _cycle
+    return support.model("servicedesk.SlaCycle").objects.get(ticket=ticket, is_current=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/db/models/manager.py:87: in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <QuerySet []>, args = ()
+kwargs = {'ticket': <Ticket: #9>, 'is_current': True}
+
+    def get(self, *args, **kwargs):
+        """
+        Perform the query and return a single object matching the given
+        keyword arguments.
+        """
+        if self.query.combinator and (args or kwargs):
+            raise NotSupportedError(
+                "Calling QuerySet.get(...) with filters after %s() is not "
+                "supported." % self.query.combinator
+            )
+        clone = self._chain() if self.query.combinator else self.filter(*args, **kwargs)
+        if self.query.can_filter() and not self.query.distinct_fields:
+            clone = clone.order_by()
+        limit = None
+        if (
+            not clone.query.select_for_update
+            or connections[clone.db].features.supports_select_for_update_with_limit
+        ):
+            limit = MAX_GET_RESULTS
+            clone.query.set_limits(high=limit)
+        num = len(clone)
+        if num == 1:
+            return clone._result_cache[0]
+        if not num:
+>           raise self.model.DoesNotExist(
+                "%s matching query does not exist." % self.model._meta.object_name
+            )
+E           apps.servicedesk.models.SlaCycle.DoesNotExist: SlaCycle matching query does not exist.
+
+/opt/venv/lib/python3.12/site-packages/django/db/models/query.py:635: DoesNotExist
+______ test_priority_change_before_first_response_recalculates_deadlines _______
+
+    def test_priority_change_before_first_response_recalculates_deadlines():
+        """Смена критичности до ответа выбирает новый уровень и пересчитывает сроки."""
+        queue = sd.make_queue()
+        old = _priority("Обычная")
+        new = _priority("Критичная")
+        first = sd.make_level(title="Обычный SLA", all_day=True)
+        second = sd.make_level(title="Критичный SLA", reaction_minutes=180, solution_minutes=300, all_day=True)
+        sd.bind_level(first, priority=old)
+        sd.bind_level(second, priority=new)
+        ticket = _create(queue=queue, priority=old)
+        actor = _actor()
+    
+        from apps.servicedesk.services import tickets
+    
+        tickets.update_fields(ticket, actor=actor, priority=new)
+        ticket.refresh_from_db()
+        assert ticket.priority_id == new.pk
+>       assert ticket.sla_id == second.pk and _cycle(ticket).level_id == second.pk
+E       assert (None == 13)
+E        +  where None = <Ticket: #10>.sla_id
+E        +  and   13 = <SlaLevel: SlaLevel object (13)>.pk
+
+tests/test_sd_sla_ticket.py:144: AssertionError
+_ test_queue_transfer_before_first_response_updates_queue_snapshot_and_deadlines _
+
+    def test_queue_transfer_before_first_response_updates_queue_snapshot_and_deadlines():
+        """Передача в другую очередь до ответа обновляет снимок очереди и сроки."""
+        old_queue = sd.make_queue()
+        new_queue = sd.make_queue()
+        category = sd.make_category(queue=old_queue)
+        level = sd.make_level(all_day=True)
+        sd.bind_level(level, category=category)
+        ticket = _create(queue=old_queue, category=category)
+        actor = _actor()
+    
+        from apps.servicedesk.services import transfer
+    
+        transfer.transfer(ticket, new_queue.unit_id, actor=actor, reason="Передача")
+        ticket.refresh_from_db()
+>       cycle = _cycle(ticket)
+                ^^^^^^^^^^^^^^
+
+tests/test_sd_sla_ticket.py:161: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_sd_sla_ticket.py:45: in _cycle
+    return support.model("servicedesk.SlaCycle").objects.get(ticket=ticket, is_current=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/db/models/manager.py:87: in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <QuerySet []>, args = ()
+kwargs = {'ticket': <Ticket: #11>, 'is_current': True}
+
+    def get(self, *args, **kwargs):
+        """
+        Perform the query and return a single object matching the given
+        keyword arguments.
+        """
+        if self.query.combinator and (args or kwargs):
+            raise NotSupportedError(
+                "Calling QuerySet.get(...) with filters after %s() is not "
+                "supported." % self.query.combinator
+            )
+        clone = self._chain() if self.query.combinator else self.filter(*args, **kwargs)
+        if self.query.can_filter() and not self.query.distinct_fields:
+            clone = clone.order_by()
+        limit = None
+        if (
+            not clone.query.select_for_update
+            or connections[clone.db].features.supports_select_for_update_with_limit
+        ):
+            limit = MAX_GET_RESULTS
+            clone.query.set_limits(high=limit)
+        num = len(clone)
+        if num == 1:
+            return clone._result_cache[0]
+        if not num:
+>           raise self.model.DoesNotExist(
+                "%s matching query does not exist." % self.model._meta.object_name
+            )
+E           apps.servicedesk.models.SlaCycle.DoesNotExist: SlaCycle matching query does not exist.
+
+/opt/venv/lib/python3.12/site-packages/django/db/models/query.py:635: DoesNotExist
+_____ test_category_change_can_create_cycle_for_ticket_created_without_sla _____
+
+    def test_category_change_can_create_cycle_for_ticket_created_without_sla():
+        """Если уровень появился после создания, смена категории до ответа создаёт цикл 1."""
+        queue = sd.make_queue()
+        old = sd.make_category("Без SLA", queue=queue)
+        new = sd.make_category("С SLA", queue=queue)
+        ticket = _create(queue=queue, category=old)
+        level = sd.make_level(all_day=True)
+        sd.bind_level(level, category=new)
+        actor = _actor()
+    
+        from apps.servicedesk.services import transfer
+    
+        transfer.change_category(ticket, new, actor=actor)
+        ticket.refresh_from_db()
+>       cycle = _cycle(ticket)
+                ^^^^^^^^^^^^^^
+
+tests/test_sd_sla_ticket.py:181: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_sd_sla_ticket.py:45: in _cycle
+    return support.model("servicedesk.SlaCycle").objects.get(ticket=ticket, is_current=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/db/models/manager.py:87: in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <QuerySet []>, args = ()
+kwargs = {'ticket': <Ticket: #12>, 'is_current': True}
+
+    def get(self, *args, **kwargs):
+        """
+        Perform the query and return a single object matching the given
+        keyword arguments.
+        """
+        if self.query.combinator and (args or kwargs):
+            raise NotSupportedError(
+                "Calling QuerySet.get(...) with filters after %s() is not "
+                "supported." % self.query.combinator
+            )
+        clone = self._chain() if self.query.combinator else self.filter(*args, **kwargs)
+        if self.query.can_filter() and not self.query.distinct_fields:
+            clone = clone.order_by()
+        limit = None
+        if (
+            not clone.query.select_for_update
+            or connections[clone.db].features.supports_select_for_update_with_limit
+        ):
+            limit = MAX_GET_RESULTS
+            clone.query.set_limits(high=limit)
+        num = len(clone)
+        if num == 1:
+            return clone._result_cache[0]
+        if not num:
+>           raise self.model.DoesNotExist(
+                "%s matching query does not exist." % self.model._meta.object_name
+            )
+E           apps.servicedesk.models.SlaCycle.DoesNotExist: SlaCycle matching query does not exist.
+
+/opt/venv/lib/python3.12/site-packages/django/db/models/query.py:635: DoesNotExist
+__________ test_level_default_assignee_is_used_when_category_has_none __________
+
+    def test_level_default_assignee_is_used_when_category_has_none():
+        """Ответственный уровня назначается, если он участник очереди и категория без своего."""
+        queue = sd.make_queue()
+        assignee = support.make_employee(full_name="Исполнитель SLA")
+        support_org.make_member(assignee, queue.unit)
+        category = sd.make_category(queue=queue)
+        level = sd.make_level(default_assignee=assignee, all_day=True)
+        sd.bind_level(level, category=category)
+    
+        ticket = _create(queue=queue, category=category)
+    
+        ticket.refresh_from_db()
+>       assert ticket.assignee_id == assignee.pk
+E       assert None == 25
+E        +  where None = <Ticket: #13>.assignee_id
+E        +  and   25 = <User: user-cb5a1ff7@example.com>.pk
+
+tests/test_sd_sla_ticket.py:198: AssertionError
+___________ test_nonparticipant_level_assignee_is_skipped_and_logged ___________
+
+    def test_nonparticipant_level_assignee_is_skipped_and_logged():
+        """Ответственный уровня вне очереди не назначается, пишется not_participant."""
+        queue = sd.make_queue()
+        outsider = support.make_employee(full_name="Не участник")
+        category = sd.make_category(queue=queue)
+        level = sd.make_level(default_assignee=outsider, all_day=True)
+        sd.bind_level(level, category=category)
+    
+        ticket = _create(queue=queue, category=category)
+    
+        AuditEvent = support.model("core.AuditEvent")
+        event = AuditEvent.objects.filter(action="ticket.assignee_skipped",
+>                                         object_type="ticket", object_id=str(ticket.number)).latest("id")
+                                                                                              ^^^^^^^^^^^^
+
+tests/test_sd_sla_ticket.py:230: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/opt/venv/lib/python3.12/site-packages/django/db/models/query.py:1094: in latest
+    return self.reverse()._earliest(*fields)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/opt/venv/lib/python3.12/site-packages/django/db/models/query.py:1077: in _earliest
+    return obj.get()
+           ^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <QuerySet []>, args = (), kwargs = {}
+
+    def get(self, *args, **kwargs):
+        """
+        Perform the query and return a single object matching the given
+        keyword arguments.
+        """
+        if self.query.combinator and (args or kwargs):
+            raise NotSupportedError(
+                "Calling QuerySet.get(...) with filters after %s() is not "
+                "supported." % self.query.combinator
+            )
+        clone = self._chain() if self.query.combinator else self.filter(*args, **kwargs)
+        if self.query.can_filter() and not self.query.distinct_fields:
+            clone = clone.order_by()
+        limit = None
+        if (
+            not clone.query.select_for_update
+            or connections[clone.db].features.supports_select_for_update_with_limit
+        ):
+            limit = MAX_GET_RESULTS
+            clone.query.set_limits(high=limit)
+        num = len(clone)
+        if num == 1:
+            return clone._result_cache[0]
+        if not num:
+>           raise self.model.DoesNotExist(
+                "%s matching query does not exist." % self.model._meta.object_name
+            )
+E           apps.core.models.audit.AuditEvent.DoesNotExist: AuditEvent matching query does not exist.
+
+/opt/venv/lib/python3.12/site-packages/django/db/models/query.py:635: DoesNotExist
+________ test_queued_reply_records_first_response_and_reaction_minutes _________
+
+    def test_queued_reply_records_first_response_and_reaction_minutes():
+        from apps.servicedesk.services import replies
+    
+        ticket = sd.make_ticket()
+        level = sd.make_level(all_day=True, reaction_minutes=60, solution_minutes=240)
+        cycle = sd.make_cycle(ticket, level=level)
+        actor = _actor()
+    
+        entry = replies.reply(ticket, text="Ответ исполнителя", actor=actor)
+    
+        cycle.refresh_from_db()
+        assert entry.kind == "reply"
+        assert entry.send_state == "queued"
+>       assert cycle.first_response_at == entry.at
+E       assert None == datetime.datetime(2026, 11, 24, 19, 27, 48, 14053, tzinfo=datetime.timezone.utc)
+E        +  where None = <SlaCycle: SlaCycle object (7)>.first_response_at
+E        +  and   datetime.datetime(2026, 11, 24, 19, 27, 48, 14053, tzinfo=datetime.timezone.utc) = <TicketEntry: TicketEntry object (18)>.at
+
+tests/test_sd_sla_cycles.py:39: AssertionError
+____________ test_waiting_files_reply_counts_only_after_file_check _____________
+
+    def test_waiting_files_reply_counts_only_after_file_check():
+        from apps.servicedesk.models import TicketEntry
+        from apps.servicedesk.services import replies
+    
+        ticket = sd.make_ticket()
+        cycle = sd.make_cycle(ticket, level=sd.make_level(all_day=True))
+        entry = TicketEntry.objects.create(
+            ticket=ticket, kind=TicketEntry.Kind.REPLY, author=_actor(),
+            text="Ответ с файлом", send_state=TicketEntry.SendState.WAITING_FILES,
+        )
+    
+        cycle.refresh_from_db()
+        assert cycle.first_response_at is None
+        replies.on_files_checked(entry.pk)
+    
+        cycle.refresh_from_db()
+        entry.refresh_from_db()
+        assert entry.send_state == TicketEntry.SendState.QUEUED
+>       assert cycle.first_response_at == entry.at
+E       assert None == datetime.datetime(2026, 11, 24, 19, 27, 48, 725042, tzinfo=datetime.timezone.utc)
+E        +  where None = <SlaCycle: SlaCycle object (10)>.first_response_at
+E        +  and   datetime.datetime(2026, 11, 24, 19, 27, 48, 725042, tzinfo=datetime.timezone.utc) = <TicketEntry: TicketEntry object (24)>.at
+
+tests/test_sd_sla_cycles.py:95: AssertionError
+______________ test_manual_close_records_solution_and_manual_kind ______________
+
+    def test_manual_close_records_solution_and_manual_kind():
+        ticket = sd.make_ticket()
+        sd.make_cycle(ticket, level=sd.make_level(all_day=True))
+    
+        closed = sd.close_ticket(ticket, actor=_actor())
+    
+        cycle = _cycle(closed)
+>       assert closed.closed_at == cycle.closed_at
+E       assert datetime.datetime(2026, 11, 24, 19, 27, 49, 20894, tzinfo=datetime.timezone.utc) == None
+E        +  where datetime.datetime(2026, 11, 24, 19, 27, 49, 20894, tzinfo=datetime.timezone.utc) = <Ticket: #21>.closed_at
+E        +  and   None = <SlaCycle: SlaCycle object (11)>.closed_at
+
+tests/test_sd_sla_cycles.py:106: AssertionError
+_______________ test_autoclose_records_verdict_and_has_no_author _______________
+
+    def test_autoclose_records_verdict_and_has_no_author():
+        from apps.servicedesk.services import closing
+    
+        ticket = sd.make_ticket(kind="waiting")
+        cycle = sd.make_cycle(ticket, level=sd.make_level(all_day=True))
+        now = timezone.now()
+        ticket.waiting_since = now - timedelta(days=8)
+        ticket.save(update_fields=["waiting_since"])
+        sd.configure_servicedesk(autoclose_days=7)
+    
+        assert closing.autoclose_one(ticket.pk, now=now) is True
+    
+        cycle.refresh_from_db()
+        ticket.refresh_from_db()
+>       assert cycle.closed_kind == "autoclosed"
+E       AssertionError: assert None == 'autoclosed'
+E        +  where None = <SlaCycle: SlaCycle object (12)>.closed_kind
+
+tests/test_sd_sla_cycles.py:126: AssertionError
+____________________ test_close_after_solution_due_is_late _____________________
+
+    def test_close_after_solution_due_is_late():
+        from apps.servicedesk.models import SlaCycle
+    
+        ticket = sd.make_ticket()
+        cycle = sd.make_cycle(ticket, level=sd.make_level(all_day=True))
+        late = timezone.now() - timedelta(minutes=1)
+        SlaCycle.objects.filter(pk=cycle.pk).update(solution_due=late)
+    
+        sd.close_ticket(ticket, actor=_actor())
+    
+        cycle.refresh_from_db()
+>       assert cycle.solution_met is False
+E       assert None is False
+E        +  where None = <SlaCycle: SlaCycle object (13)>.solution_met
+
+tests/test_sd_sla_cycles.py:143: AssertionError
+___________ test_manual_reopen_marks_old_cycle_and_starts_cycle_two ____________
+
+    def test_manual_reopen_marks_old_cycle_and_starts_cycle_two():
+        ticket = sd.make_ticket()
+        first = sd.make_cycle(ticket, level=sd.make_level(all_day=True))
+        sd.close_ticket(ticket, actor=_actor())
+        closed_at = ticket.closed_at
+    
+        reopened = sd.reopen_ticket(ticket, actor=_actor())
+    
+        first.refresh_from_db()
+        current = _cycle(reopened)
+>       assert first.is_current is False
+E       assert True is False
+E        +  where True = <SlaCycle: SlaCycle object (14)>.is_current
+
+tests/test_sd_sla_cycles.py:156: AssertionError
+_____________ test_mail_reopen_starts_cycle_at_inbound_received_at _____________
+
+    def test_mail_reopen_starts_cycle_at_inbound_received_at():
+        from apps.servicedesk.services import closing
+    
+        ticket = sd.make_ticket()
+        sd.make_cycle(ticket, level=sd.make_level(all_day=True))
+        sd.close_ticket(ticket, actor=_actor())
+        received_at = ticket.closed_at - timedelta(hours=2)
+    
+>       closing.reopen(ticket, actor=None, at=received_at, via="mail")
+E       TypeError: reopen() got an unexpected keyword argument 'at'
+
+tests/test_sd_sla_cycles.py:171: TypeError
+_______ test_reopened_ticket_keeps_history_but_only_new_cycle_is_current _______
+
+    def test_reopened_ticket_keeps_history_but_only_new_cycle_is_current():
+        ticket = sd.make_ticket()
+        first = sd.make_cycle(ticket, level=sd.make_level(all_day=True))
+        sd.close_ticket(ticket, actor=_actor())
+        sd.reopen_ticket(ticket, actor=_actor())
+    
+        Cycle = support.model("servicedesk.SlaCycle")
+        first.refresh_from_db()
+        current = _cycle(ticket)
+>       assert Cycle.objects.filter(ticket=ticket).count() == 2
+E       AssertionError: assert 1 == 2
+E        +  where 1 = count()
+E        +    where count = <QuerySet [<SlaCycle: SlaCycle object (16)>]>.count
+E        +      where <QuerySet [<SlaCycle: SlaCycle object (16)>]> = filter(ticket=<Ticket: #26>)
+E        +        where filter = <django.db.models.manager.Manager object at 0x7402b4ffa090>.filter
+E        +          where <django.db.models.manager.Manager object at 0x7402b4ffa090> = <class 'apps.servicedesk.models.SlaCycle'>.objects
+
+tests/test_sd_sla_cycles.py:187: AssertionError
+____________ test_closed_journal_contains_cycle_number_and_verdicts ____________
+
+    def test_closed_journal_contains_cycle_number_and_verdicts():
+        from apps.core.models import AuditEvent
+    
+        ticket = sd.make_ticket()
+        sd.make_cycle(ticket, level=sd.make_level(all_day=True))
+        sd.close_ticket(ticket, actor=_actor())
+    
+        event = AuditEvent.objects.filter(action="ticket.closed", object_id=str(ticket.number)).latest("id")
+>       assert event.after["cycle"] == 1
+               ^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'cycle'
+
+tests/test_sd_sla_cycles.py:201: KeyError
+___________________ test_sla_levels_page_requires_permission ___________________
+
+    def test_sla_levels_page_requires_permission():
+        holder = support.make_with_permissions("servicedesk.sla")
+        nobody = support.make_employee()
+>       assert support.logged_in(holder).get("/servicedesk/sla/").status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+E        +    where <HttpResponse status_code=404, "text/html; charset=utf-8"> = get('/servicedesk/sla/')
+E        +      where get = <django.test.client.Client object at 0x7402b4ff76b0>.get
+E        +        where <django.test.client.Client object at 0x7402b4ff76b0> = <function logged_in at 0x7402b584c0e0>(<User: user-9d77d03b@example.com>)
+E        +          where <function logged_in at 0x7402b584c0e0> = support.logged_in
+
+tests/test_sd_sla_views.py:53: AssertionError
+___________ test_sla_levels_page_separates_and_marks_archived_levels ___________
+
+    def test_sla_levels_page_separates_and_marks_archived_levels():
+        holder = support.make_with_permissions("servicedesk.sla")
+        active = sd.make_level(title="Действующий уровень")
+        archived = sd.make_level(title="Архивный уровень", archived=True)
+    
+        response = support.logged_in(holder).get("/servicedesk/sla/")
+        html = _body(response)
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_sla_views.py:64: AssertionError
+____________ test_due_today_uses_moscow_date_and_excludes_tomorrow _____________
+
+    def test_due_today_uses_moscow_date_and_excludes_tomorrow():
+        queue = sd.make_queue()
+        user = _member(queue, "servicedesk.all")
+        today = timezone.now().astimezone(MSK).date()
+        today_due = datetime.combine(today, time(12), tzinfo=MSK)
+        tomorrow_due = today_due + timedelta(days=1)
+        today_ticket = _ticket_with_cycle(queue, reaction_due=today_due,
+                                          solution_due=today_due + timedelta(hours=2))
+        tomorrow_ticket = _ticket_with_cycle(queue, reaction_due=tomorrow_due,
+                                             solution_due=tomorrow_due + timedelta(hours=2))
+    
+        response = support.logged_in(user).get("/tickets/", {"due": "today", "preset": "all"})
+        assert response.status_code == 200
+        assert today_ticket.number in _numbers(response)
+>       assert tomorrow_ticket.number not in _numbers(response)
+E       assert 33 not in {32, 33}
+E        +  where 33 = <Ticket: #33>.number
+E        +  and   {32, 33} = _numbers(<HttpResponse status_code=200, "text/html; charset=utf-8">)
+
+tests/test_sd_sla_views.py:112: AssertionError
+___________________ test_due_combines_with_my_queues_preset ____________________
+
+    def test_due_combines_with_my_queues_preset():
+        queue = sd.make_queue()
+        foreign = sd.make_queue()
+        user = _member(queue, "servicedesk.all")
+        now = timezone.now()
+        mine = _ticket_with_cycle(queue, reaction_due=now - timedelta(hours=1))
+        other = _ticket_with_cycle(foreign, reaction_due=now - timedelta(hours=1))
+    
+        response = support.logged_in(user).get("/tickets/", {"due": "overdue", "preset": "my_queues"})
+        assert response.status_code == 200
+        assert mine.number in _numbers(response)
+>       assert other.number not in _numbers(response)
+E       assert 35 not in {34, 35}
+E        +  where 35 = <Ticket: #35>.number
+E        +  and   {34, 35} = _numbers(<HttpResponse status_code=200, "text/html; charset=utf-8">)
+
+tests/test_sd_sla_views.py:126: AssertionError
+___________________ test_overdue_count_matches_overdue_list ____________________
+
+    def test_overdue_count_matches_overdue_list():
+        queue = sd.make_queue()
+        user = _member(queue, "servicedesk.all")
+        now = timezone.now()
+        wanted = _ticket_with_cycle(queue, reaction_due=now - timedelta(hours=1))
+        sd.make_ticket(queue=queue)
+        client = support.logged_in(user)
+    
+        listing = client.get("/tickets/", {"due": "overdue", "preset": "all"})
+        count = client.get("/tickets/count/", {"due": "overdue", "preset": "all"})
+        assert listing.status_code == count.status_code == 200
+        assert wanted.number in _numbers(listing)
+>       assert f'data-total="{len(_numbers(listing))}"' in _body(count)
+E       assert 'data-total="2"' in '<span data-total>2</span>\n'
+E        +  where '<span data-total>2</span>\n' = _body(<HttpResponse status_code=200, "text/html; charset=utf-8">)
+
+tests/test_sd_sla_views.py:153: AssertionError
+____________ test_card_shows_sla_level_deadlines_facts_and_verdicts ____________
+
+    def test_card_shows_sla_level_deadlines_facts_and_verdicts():
+        queue = sd.make_queue()
+        user = _member(queue, "servicedesk.all")
+        now = timezone.now()
+        level = sd.make_level(title="Критичный SLA", all_day=True)
+        ticket = _ticket_with_cycle(
+            queue, level=level, reaction_due=now - timedelta(hours=2),
+            solution_due=now + timedelta(hours=2), first_response_at=now - timedelta(hours=1),
+            reaction_met=False, solution_met=True, reaction_minutes=120,
+        )
+    
+        response = support.logged_in(user).get(f"/tickets/{ticket.number}/")
+        html = _body(response)
+        assert response.status_code == 200
+>       assert 'data-sla' in html
+E       assert 'data-sla' in '<!doctype html>\n\n<html lang="ru">\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-..."dialog-root"></div>\n<script src="/static/js/tickets.js" defer></script>\n\n    </main>\n  </div>\n</body>\n</html>\n'
+
+tests/test_sd_sla_views.py:170: AssertionError
+________________ test_card_without_level_says_deadline_not_set _________________
+
+    def test_card_without_level_says_deadline_not_set():
+        queue = sd.make_queue()
+        user = _member(queue, "servicedesk.all")
+        ticket = sd.make_ticket(queue=queue)
+    
+        response = support.logged_in(user).get(f"/tickets/{ticket.number}/")
+        html = _body(response)
+        assert response.status_code == 200
+>       assert "Срок не задан" in html
+E       assert 'Срок не задан' in '<!doctype html>\n\n<html lang="ru">\n<head>\n  <meta charset="utf-8">\n  <meta name="viewport" content="width=device-..."dialog-root"></div>\n<script src="/static/js/tickets.js" defer></script>\n\n    </main>\n  </div>\n</body>\n</html>\n'
+
+tests/test_sd_sla_views.py:185: AssertionError
+_______ test_sla_levels_and_report_have_viewport_and_narrow_layout_hooks _______
+
+    def test_sla_levels_and_report_have_viewport_and_narrow_layout_hooks():
+        queue = sd.make_queue()
+        manager = _member(queue, "servicedesk.sla", "servicedesk.reports")
+        support.model("org.Membership").objects.filter(user=manager, unit=queue.unit).update(mark="head")
+        client = support.logged_in(manager)
+    
+        levels = client.get("/servicedesk/sla/")
+        report = client.get("/servicedesk/reports/", {"period": "month"})
+        for response in (levels, report):
+            html = _body(response)
+>           assert response.status_code == 200
+E           assert 404 == 200
+E            +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_sla_views.py:211: AssertionError
+___________ test_sla_audit_labels_register_level_and_binding_actions ___________
+
+    def test_sla_audit_labels_register_level_and_binding_actions():
+        from apps.servicedesk import audit_labels
+    
+        actions = audit_labels.audit_labels()["actions"]
+>       assert {
+            "servicedesk.sla_level_created": "Уровень обслуживания создан",
+            "servicedesk.sla_level_changed": "Уровень обслуживания изменён",
+            "servicedesk.sla_level_archived": "Уровень обслуживания архивирован",
+            "servicedesk.binding_changed": "Привязка уровня изменена",
+        }.items() <= actions.items()
+E       AssertionError: assert dict_items([('servicedesk.sla_level_created', 'Уровень обслуживания создан'), ('servicedesk.sla_level_changed', 'Урове...sla_level_archived', 'Уровень обслуживания архивирован'), ('servicedesk.binding_changed', 'Привязка уровня изменена')]) <= dict_items([('ticket.created', 'Заявка создана'), ('ticket.assigned', 'Назначен ответственный'), ('ticket.assignee_rem...вис-деска изменены'), ('mailbox.connected', 'Ящик заявок подключён'), ('mailbox.recreated', 'Ящик заявок пересоздан')])
+E        +  where dict_items([('servicedesk.sla_level_created', 'Уровень обслуживания создан'), ('servicedesk.sla_level_changed', 'Урове...sla_level_archived', 'Уровень обслуживания архивирован'), ('servicedesk.binding_changed', 'Привязка уровня изменена')]) = <built-in method items of dict object at 0x7402b4d37c80>()
+E        +    where <built-in method items of dict object at 0x7402b4d37c80> = {'servicedesk.sla_level_created': 'Уровень обслуживания создан', 'servicedesk.sla_level_changed': 'Уровень обслуживани...esk.sla_level_archived': 'Уровень обслуживания архивирован', 'servicedesk.binding_changed': 'Привязка уровня изменена'}.items
+E        +  and   dict_items([('ticket.created', 'Заявка создана'), ('ticket.assigned', 'Назначен ответственный'), ('ticket.assignee_rem...вис-деска изменены'), ('mailbox.connected', 'Ящик заявок подключён'), ('mailbox.recreated', 'Ящик заявок пересоздан')]) = <built-in method items of dict object at 0x7402b5fae000>()
+E        +    where <built-in method items of dict object at 0x7402b5fae000> = {'ticket.created': 'Заявка создана', 'ticket.assigned': 'Назначен ответственный', 'ticket.assignee_removed': 'Ответственный снят', 'ticket.transferred': 'Заявка передана в другую очередь', ...}.items
+
+tests/test_sd_sla_audit.py:26: AssertionError
+___________ test_sla_audit_labels_register_answer_and_report_actions ___________
+
+    def test_sla_audit_labels_register_answer_and_report_actions():
+        from apps.servicedesk import audit_labels
+    
+        actions = audit_labels.audit_labels()["actions"]
+>       assert {
+            "servicedesk.answer_created": "Шаблон ответа создан",
+            "servicedesk.answer_changed": "Шаблон ответа изменён",
+            "servicedesk.answer_archived": "Шаблон ответа архивирован",
+            "servicedesk.report_exported": "Отчёт выгружен",
+        }.items() <= actions.items()
+E       AssertionError: assert dict_items([('servicedesk.answer_created', 'Шаблон ответа создан'), ('servicedesk.answer_changed', 'Шаблон ответа изменён'), ('servicedesk.answer_archived', 'Шаблон ответа архивирован'), ('servicedesk.report_exported', 'Отчёт выгружен')]) <= dict_items([('ticket.created', 'Заявка создана'), ('ticket.assigned', 'Назначен ответственный'), ('ticket.assignee_rem...вис-деска изменены'), ('mailbox.connected', 'Ящик заявок подключён'), ('mailbox.recreated', 'Ящик заявок пересоздан')])
+E        +  where dict_items([('servicedesk.answer_created', 'Шаблон ответа создан'), ('servicedesk.answer_changed', 'Шаблон ответа изменён'), ('servicedesk.answer_archived', 'Шаблон ответа архивирован'), ('servicedesk.report_exported', 'Отчёт выгружен')]) = <built-in method items of dict object at 0x7402b52e8780>()
+E        +    where <built-in method items of dict object at 0x7402b52e8780> = {'servicedesk.answer_created': 'Шаблон ответа создан', 'servicedesk.answer_changed': 'Шаблон ответа изменён', 'servicedesk.answer_archived': 'Шаблон ответа архивирован', 'servicedesk.report_exported': 'Отчёт выгружен'}.items
+E        +  and   dict_items([('ticket.created', 'Заявка создана'), ('ticket.assigned', 'Назначен ответственный'), ('ticket.assignee_rem...вис-деска изменены'), ('mailbox.connected', 'Ящик заявок подключён'), ('mailbox.recreated', 'Ящик заявок пересоздан')]) = <built-in method items of dict object at 0x7402b5fae000>()
+E        +    where <built-in method items of dict object at 0x7402b5fae000> = {'ticket.created': 'Заявка создана', 'ticket.assigned': 'Назначен ответственный', 'ticket.assignee_removed': 'Ответственный снят', 'ticket.transferred': 'Заявка передана в другую очередь', ...}.items
+
+tests/test_sd_sla_audit.py:38: AssertionError
+_______ test_sla_level_create_and_update_are_audited_with_actor_and_time _______
+
+    def test_sla_level_create_and_update_are_audited_with_actor_and_time():
+>       from apps.servicedesk.services import sla
+E       ImportError: cannot import name 'sla' from 'apps.servicedesk.services' (/app/backend/apps/servicedesk/services/__init__.py)
+
+tests/test_sd_sla_audit.py:47: ImportError
+_____________________ test_archiving_sla_level_is_audited ______________________
+
+    def test_archiving_sla_level_is_audited():
+>       from apps.servicedesk.services import sla
+E       ImportError: cannot import name 'sla' from 'apps.servicedesk.services' (/app/backend/apps/servicedesk/services/__init__.py)
+
+tests/test_sd_sla_audit.py:67: ImportError
+__________ test_answer_template_create_update_and_archive_are_audited __________
+
+    def test_answer_template_create_update_and_archive_are_audited():
+>       from apps.servicedesk.services import answers
+E       ImportError: cannot import name 'answers' from 'apps.servicedesk.services' (/app/backend/apps/servicedesk/services/__init__.py)
+
+tests/test_sd_sla_audit.py:79: ImportError
+___________________ test_report_export_is_audited_with_actor ___________________
+
+    def test_report_export_is_audited_with_actor():
+>       from apps.servicedesk.services import reports
+E       ImportError: cannot import name 'reports' from 'apps.servicedesk.services' (/app/backend/apps/servicedesk/services/__init__.py)
+
+tests/test_sd_sla_audit.py:95: ImportError
+_____ test_assignee_skipped_and_sla_close_fields_have_russian_audit_labels _____
+
+    def test_assignee_skipped_and_sla_close_fields_have_russian_audit_labels():
+        from apps.servicedesk import audit_labels
+    
+        labels = audit_labels.audit_labels()
+>       assert labels["actions"]["ticket.assignee_skipped"] == "Ответственный по уровню не назначен"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'ticket.assignee_skipped'
+
+tests/test_sd_sla_audit.py:108: KeyError
+______ test_sla_report_and_answer_pages_are_russian_and_show_moscow_time _______
+
+client = <django.test.client.Client object at 0x7402b4775790>
+settings = <pytest_django.fixtures.Settings object at 0x7402b4777230>
+
+    def test_sla_report_and_answer_pages_are_russian_and_show_moscow_time(client, settings):
+        from tests import support_servicedesk as sd
+    
+        actor = support.make_with_permissions(
+            "servicedesk.sla", "servicedesk.reports", "servicedesk.answers",
+        )
+        client.force_login(actor)
+        settings.TIME_ZONE = "Europe/Moscow"
+        sd.make_level(title="Уровень для русской страницы")
+        sd.make_answer(owner=actor, title="Шаблон для русской страницы")
+        date_pattern = re.compile(r"\b\d{2}\.\d{2}\.\d{4}\b")
+    
+        paths = (
+            "/servicedesk/sla/",
+            "/servicedesk/reports/?period=day",
+            "/servicedesk/answers/",
+        )
+        for path in paths:
+            response = client.get(path)
+            text = response.content.decode("utf-8")
+>           assert response.status_code == 200, path
+E           AssertionError: /servicedesk/sla/
+E           assert 302 == 200
+E            +  where 302 = <HttpResponseRedirect status_code=302, "text/html; charset=utf-8", url="/login/?next=/servicedesk/sla/">.status_code
+
+tests/test_sd_sla_audit.py:138: AssertionError
+___ test_sla_notification_kinds_are_registered_with_russian_names_and_orders ___
+
+    def test_sla_notification_kinds_are_registered_with_russian_names_and_orders():
+        expected = {
+            "servicedesk.sla_due_soon": 230,
+            "servicedesk.sla_overdue": 231,
+            "servicedesk.sla_digest": 232,
+        }
+>       found = {kind.code: kind for kind in _catalog() if kind.code in expected}
+                                                           ^^^^^^^^^
+E       AttributeError: 'function' object has no attribute 'code'
+
+tests/test_sd_sla_notify.py:42: AttributeError
+__ test_sla_external_delivery_contains_event_and_link_but_not_ticket_subject ___
+
+    def test_sla_external_delivery_contains_event_and_link_but_not_ticket_subject():
+        from apps.notify.services import delivery, kinds as notify_kinds
+        from apps.notify.models import Delivery, Notification
+        from apps.servicedesk import tasks
+    
+        _, _, assignee, ticket, cycle = _scene(subject="Секретная тема заявки")
+        cycle.reaction_due = timezone.now() - timedelta(minutes=1)
+        cycle.save(update_fields=["reaction_due"])
+>       tasks.sla_tick(now=timezone.now())
+E       TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_notify.py:60: TypeError
+___ test_heads_of_unit_returns_heads_and_deputies_of_unit_and_ancestors_once ___
+
+    def test_heads_of_unit_returns_heads_and_deputies_of_unit_and_ancestors_once():
+        from apps.org.services import structure
+    
+        tree = support_org.make_tree({"Отдел SLA": {"Группа SLA": {}}})
+        top, nested = tree["Отдел SLA"], tree["Группа SLA"]
+        people = [
+            support.make_employee(),
+            support.make_employee(),
+            support.make_employee(),
+            support.make_employee(),
+        ]
+        for person, unit, mark in zip(
+            people, (top, top, nested, nested), ("head", "deputy", "head", "deputy")
+        ):
+            support_org.make_member(person, unit, mark=mark)
+        support_org.make_member(people[0], nested, mark="head")
+    
+>       got = structure.heads_of_unit(nested.pk)
+              ^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'apps.org.services.structure' has no attribute 'heads_of_unit'
+
+tests/test_sd_sla_notify.py:88: AttributeError
+_ test_sla_tick_creates_reaction_reminder_configured_working_hours_before_due __
+
+    def test_sla_tick_creates_reaction_reminder_configured_working_hours_before_due():
+        from apps.servicedesk import tasks
+    
+        _, _, assignee, _, cycle = _scene()
+        now = timezone.now()
+        cycle.reaction_due = now + timedelta(hours=2)
+        cycle.save(update_fields=["reaction_due"])
+        sd.configure_servicedesk(sla_reminder_hours=2)
+    
+>       tasks.sla_tick(now=now)
+E       TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_notify.py:103: TypeError
+__________ test_sla_tick_creates_separate_solution_deadline_reminder ___________
+
+    def test_sla_tick_creates_separate_solution_deadline_reminder():
+        from apps.servicedesk import tasks
+    
+        _, _, assignee, _, cycle = _scene()
+        now = timezone.now()
+        cycle.solution_due = now + timedelta(minutes=1)
+        cycle.save(update_fields=["solution_due"])
+        sd.configure_servicedesk(sla_reminder_hours=1)
+    
+>       tasks.sla_tick(now=now)
+E       TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_notify.py:119: TypeError
+_ test_sla_tick_notifies_assignee_and_queue_heads_once_for_each_overdue_deadline _
+
+    def test_sla_tick_notifies_assignee_and_queue_heads_once_for_each_overdue_deadline():
+        from apps.org.services import structure
+        from apps.servicedesk import tasks
+    
+        unit, _, assignee, _, cycle = _scene()
+        head = support.make_employee()
+        support_org.make_member(head, unit, mark="head")
+        now = timezone.now()
+        cycle.reaction_due = now - timedelta(minutes=1)
+        cycle.solution_due = now - timedelta(minutes=1)
+        cycle.save(update_fields=["reaction_due", "solution_due"])
+    
+>       tasks.sla_tick(now=now)
+E       TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_notify.py:138: TypeError
+_____________ test_repeated_sla_tick_is_idempotent_for_sla_notices _____________
+
+    def test_repeated_sla_tick_is_idempotent_for_sla_notices():
+        from apps.servicedesk import tasks
+    
+        _, _, _, _, cycle = _scene()
+        now = timezone.now()
+        cycle.reaction_due = now - timedelta(minutes=1)
+        cycle.save(update_fields=["reaction_due"])
+    
+>       tasks.sla_tick(now=now)
+E       TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_notify.py:154: TypeError
+___ test_recalculated_due_at_creates_new_notice_without_suppressing_old_one ____
+
+    def test_recalculated_due_at_creates_new_notice_without_suppressing_old_one():
+        from apps.servicedesk import tasks
+    
+        _, _, assignee, _, cycle = _scene()
+        now = timezone.now()
+        cycle.reaction_due = now - timedelta(minutes=1)
+        cycle.save(update_fields=["reaction_due"])
+>       tasks.sla_tick(now=now)
+E       TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_notify.py:168: TypeError
+__________ test_sla_reminder_hours_accepts_one_and_24_but_rejects_25 ___________
+
+    def test_sla_reminder_hours_accepts_one_and_24_but_rejects_25():
+        from apps.servicedesk.services import settings
+        from apps.servicedesk.services.errors import ServiceDeskError
+    
+        actor = support.make_employee()
+        for value in (1, 24):
+>           assert settings.update(actor=actor, sla_reminder_hours=value).sla_reminder_hours == value
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_sd_sla_notify.py:185: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+actor = <User: user-cc2ee0a9@example.com>, ip = None
+fields = {'sla_reminder_hours': 1}
+
+    def update(*, actor, ip=None, **fields) -> ServiceDeskSettings:
+        """Меняет настройки; журнал `servicedesk.settings_changed` — каждое изменённое поле до и после."""
+        bad = set(fields) - _FIELDS
+        if bad:
+>           raise TypeError(f"неожиданные аргументы {sorted(bad)}")
+E           TypeError: неожиданные аргументы ['sla_reminder_hours']
+
+apps/servicedesk/services/settings.py:102: TypeError
+______ test_recipient_without_ticket_visibility_gets_no_sla_notification _______
+
+    def test_recipient_without_ticket_visibility_gets_no_sla_notification():
+        from apps.servicedesk import tasks
+    
+        _, _, _, _, cycle = _scene()
+        outsider = support.make_employee()
+        now = timezone.now()
+        cycle.reaction_due = now - timedelta(minutes=1)
+        cycle.save(update_fields=["reaction_due"])
+    
+>       tasks.sla_tick(now=now)
+E       TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_notify.py:199: TypeError
+_________ test_manual_sla_event_excludes_event_author_from_recipients __________
+
+    def test_manual_sla_event_excludes_event_author_from_recipients():
+        from apps.servicedesk.notify_kinds import notification_kinds
+    
+        _, _, assignee, ticket, _ = _scene()
+>       kind = next(item for item in notification_kinds() if item.code == "servicedesk.sla_overdue")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       StopIteration
+
+tests/test_sd_sla_notify.py:208: StopIteration
+___________ test_sla_digest_is_sent_once_per_day_to_each_queue_head ____________
+
+    def test_sla_digest_is_sent_once_per_day_to_each_queue_head():
+        from apps.servicedesk import tasks
+        from apps.servicedesk.models import SlaDigest
+    
+        unit, _, _, _, _ = _scene()
+        head = support.make_employee()
+        support_org.make_member(head, unit, mark="head")
+        now = timezone.now().replace(hour=10, minute=0, second=0, microsecond=0)
+    
+>       tasks.sla_digest(now=now)
+E       TypeError: sla_digest() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_notify.py:226: TypeError
+__________ test_report_permission_is_required_and_manager_gets_report __________
+
+    def test_report_permission_is_required_and_manager_gets_report():
+        """FR-746/NFR-735: руководитель с правом открывает отчёт, без права получает 403."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        without_permission = support.make_employee()
+        org.make_member(without_permission, tree["ИТ"], mark="head")
+    
+        allowed = _report(manager)
+        denied = _report(without_permission)
+    
+>       assert allowed.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:70: AssertionError
+___ test_admin_without_managed_unit_is_forbidden_even_with_report_permission ___
+
+    def test_admin_without_managed_unit_is_forbidden_even_with_report_permission():
+        """FR-749: администратор без отметки руководителя/заместителя не получает отчёт."""
+        admin = _admin_with_report_permission()
+    
+        response = _report(admin)
+    
+>       assert response.status_code == 403
+E       assert 404 == 403
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:81: AssertionError
+____________ test_queue_manager_sees_only_own_units_and_descendants ____________
+
+    def test_queue_manager_sees_only_own_units_and_descendants():
+        """FR-749: руководитель очереди видит свой узел и вложенные, но не чужую ветку."""
+        tree = org.make_tree({"Своя очередь": {"Вложенная": {}}, "Чужая очередь": {}})
+        manager = _manager(tree["Своя очередь"], "servicedesk.reports")
+        own = sd.make_ticket(queue=tree["Вложенная"])
+        foreign = sd.make_ticket(queue=tree["Чужая очередь"])
+    
+        response = _report(manager)
+        html = _body(response)
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:94: AssertionError
+___________________ test_it_department_head_sees_all_queues ____________________
+
+    def test_it_department_head_sees_all_queues():
+        """FR-749: руководитель ИТ-отдела видит заявки всех очередей."""
+        tree = org.make_tree({"ИТ-отдел": {"Сеть": {}, "Поддержка": {}}})
+        manager = _manager(tree["ИТ-отдел"], "servicedesk.reports")
+        network = sd.make_ticket(queue=tree["Сеть"])
+        support_ticket = sd.make_ticket(queue=tree["Поддержка"])
+    
+        response = _report(manager)
+        html = _body(response)
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:109: AssertionError
+___________ test_month_counts_created_by_ticket_created_at_in_moscow ___________
+
+    def test_month_counts_created_by_ticket_created_at_in_moscow():
+        """FR-746: период month считает созданные заявки по Ticket.created_at."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        now = timezone.now().astimezone(MSK)
+        inside = sd.make_ticket(queue=tree["ИТ"], created_at=now.replace(day=5))
+        outside = sd.make_ticket(queue=tree["ИТ"], created_at=now - timedelta(days=40))
+    
+        numbers = _numbers(_report(manager))
+    
+>       assert numbers["created"] == 1
+               ^^^^^^^^^^^^^^^^^^
+E       KeyError: 'created'
+
+tests/test_sd_reports.py:124: KeyError
+________ test_closed_uses_closed_at_of_current_cycle_only_after_reopen _________
+
+    def test_closed_uses_closed_at_of_current_cycle_only_after_reopen():
+        """Решение 5б: старый закрытый цикл после reopen не входит в «закрыто»."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        ticket = sd.make_ticket(queue=tree["ИТ"])
+        level = sd.make_level(all_day=True)
+        old = _closed_cycle(ticket, level=level, closed_at=timezone.now() - timedelta(days=1))
+        sd.make_cycle(ticket, level=level, number=2, cycle_started_at=timezone.now())
+    
+        numbers = _numbers(_report(manager))
+    
+        old.refresh_from_db()
+        assert old.is_current is False
+>       assert numbers["closed"] == 0
+               ^^^^^^^^^^^^^^^^^
+E       KeyError: 'closed'
+
+tests/test_sd_reports.py:142: KeyError
+___________ test_averages_use_recorded_reaction_and_solution_minutes ___________
+
+    def test_averages_use_recorded_reaction_and_solution_minutes():
+        """FR-747: средние берутся из готовых reaction_minutes/solution_minutes."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        level = sd.make_level(all_day=True)
+        for reaction, solution in ((10, 40), (30, 80)):
+            ticket = sd.make_ticket(queue=tree["ИТ"])
+            _closed_cycle(ticket, level=level, closed_at=timezone.now(),
+                          reaction_minutes=reaction, solution_minutes=solution)
+    
+        numbers = _numbers(_report(manager))
+    
+>       assert numbers["average_reaction_minutes"] == 20
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'average_reaction_minutes'
+
+tests/test_sd_reports.py:157: KeyError
+_________ test_reaction_on_time_ratio_excludes_closed_without_response _________
+
+    def test_reaction_on_time_ratio_excludes_closed_without_response():
+        """FR-747: знаменатель реакции — только True/False; NULL показан отдельно."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        level = sd.make_level(all_day=True)
+        for verdict in (True, False, None):
+            ticket = sd.make_ticket(queue=tree["ИТ"])
+            _closed_cycle(ticket, level=level, closed_at=timezone.now(), reaction_met=verdict)
+    
+        numbers = _numbers(_report(manager))
+    
+>       assert numbers["reaction_on_time"] == 50
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'reaction_on_time'
+
+tests/test_sd_reports.py:172: KeyError
+_____________ test_solution_on_time_ratio_uses_closed_cycles_only ______________
+
+    def test_solution_on_time_ratio_uses_closed_cycles_only():
+        """FR-747: доля решения — True к True/False закрытых текущих циклов."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        level = sd.make_level(all_day=True)
+        for verdict in (True, False):
+            ticket = sd.make_ticket(queue=tree["ИТ"])
+            _closed_cycle(ticket, level=level, closed_at=timezone.now(), solution_met=verdict)
+    
+        numbers = _numbers(_report(manager))
+    
+>       assert numbers["solution_on_time"] == 50
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'solution_on_time'
+
+tests/test_sd_reports.py:187: KeyError
+____________ test_overdue_rows_are_grouped_by_level_title_snapshot _____________
+
+    def test_overdue_rows_are_grouped_by_level_title_snapshot():
+        """FR-747: просрочки группируются по сохранённому level_title."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        late_level = sd.make_level(title="Критичный", all_day=True)
+        ticket = sd.make_ticket(queue=tree["ИТ"])
+        _closed_cycle(ticket, level=late_level, closed_at=timezone.now(),
+                      solution_met=False, level_title="Критичный")
+    
+        response = _report(manager)
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:201: AssertionError
+__________________ test_load_is_closed_per_assignee_snapshot ___________________
+
+    def test_load_is_closed_per_assignee_snapshot():
+        """FR-747: нагрузка — число закрытых заявок на assignee_name."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        first = support.make_employee(full_name="Исполнитель А")
+        second = support.make_employee(full_name="Исполнитель Б")
+        level = sd.make_level(all_day=True)
+        for assignee in (first, first, second):
+            ticket = sd.make_ticket(queue=tree["ИТ"])
+            _closed_cycle(ticket, level=level, closed_at=timezone.now(), assignee=assignee)
+    
+        response = _report(manager)
+        html = _body(response)
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:219: AssertionError
+____________ test_report_filters_queue_level_category_and_assignee _____________
+
+    def test_report_filters_queue_level_category_and_assignee():
+        """FR-746: все четыре фильтра ограничивают выборку отчёта."""
+        tree = org.make_tree({"ИТ": {"Сеть": {}, "Поддержка": {}}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        assignee = support.make_employee(full_name="Нужный исполнитель")
+        category = sd.make_category("Сеть", queue=tree["Сеть"])
+        level = sd.make_level(title="Нужный SLA", all_day=True)
+        ticket = sd.make_ticket(queue=tree["Сеть"], category=category, assignee=assignee, sla=level)
+        sd.make_cycle(ticket, level=level, category=category, assignee=assignee)
+    
+        response = _report(manager, queue=tree["Сеть"].pk, sla=level.pk,
+                           category=category.pk, assignee=assignee.pk)
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:237: AssertionError
+_____________ test_empty_report_returns_zero_metrics_without_error _____________
+
+    def test_empty_report_returns_zero_metrics_without_error():
+        """FR-747: пустая выборка возвращает нули, а не ошибку."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+    
+        response = _report(manager)
+        numbers = _numbers(response)
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:249: AssertionError
+______________ test_requester_rating_metric_is_present_and_empty _______________
+
+    def test_requester_rating_metric_is_present_and_empty():
+        """FR-750: показатель оценки заявителей предусмотрен, но остаётся пустым."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+    
+        response = _report(manager)
+        html = _body(response)
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:261: AssertionError
+__________ test_custom_report_period_allows_370_days_but_rejects_371 ___________
+
+    def test_custom_report_period_allows_370_days_but_rejects_371():
+        """FR-746: custom-период длиной 370 дней допустим, 371 даёт ошибку поля и 400."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        start = date(2026, 1, 1)
+        client = support.logged_in(manager)
+    
+        allowed = client.get("/servicedesk/reports/", {
+            "period": "custom", "from": start, "to": start + timedelta(days=369),
+        })
+        rejected = client.get("/servicedesk/reports/", {
+            "period": "custom", "from": start, "to": start + timedelta(days=370),
+        })
+    
+>       assert allowed.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:280: AssertionError
+____________ test_moscow_midnight_places_tickets_in_different_days _____________
+
+    def test_moscow_midnight_places_tickets_in_different_days():
+        """FR-746/758: 23:59 и 00:01 по Москве относятся к разным суткам."""
+        tree = org.make_tree({"ИТ": {}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        late = sd.make_ticket(queue=tree["ИТ"],
+                              created_at=datetime(2026, 3, 10, 23, 59, tzinfo=MSK))
+        early = sd.make_ticket(queue=tree["ИТ"],
+                               created_at=datetime(2026, 3, 11, 0, 1, tzinfo=MSK))
+        client = support.logged_in(manager)
+    
+        previous_day = client.get("/servicedesk/reports/", {
+            "period": "day", "date": "2026-03-10",
+        })
+        next_day = client.get("/servicedesk/reports/", {
+            "period": "day", "date": "2026-03-11",
+        })
+    
+>       assert str(late.number) in _body(previous_day)
+E       assert '69' in ''
+E        +  where '69' = str(69)
+E        +    where 69 = <Ticket: #69>.number
+E        +  and   '' = _body(<HttpResponse status_code=404, "text/html; charset=utf-8">)
+
+tests/test_sd_reports.py:302: AssertionError
+___________ test_report_history_uses_cycle_snapshots_after_mutations ___________
+
+    def test_report_history_uses_cycle_snapshots_after_mutations():
+        """Решения 5/9/11 и NFR-733: правки уровня, календаря, передачи и ответственного не меняют историю."""
+        tree = org.make_tree({"ИТ": {"Сеть": {}, "Поддержка": {}}})
+        manager = _manager(tree["ИТ"], "servicedesk.reports")
+        old_assignee = support.make_employee(full_name="Старый исполнитель")
+        level = sd.make_level(title="Старый SLA", all_day=True)
+        category = sd.make_category("Старая категория", queue=tree["Сеть"])
+        ticket = sd.make_ticket(queue=tree["Сеть"], category=category, assignee=old_assignee, sla=level)
+        cycle = _closed_cycle(ticket, level=level, assignee=old_assignee,
+                              closed_at=timezone.now(), level_title="Старый SLA",
+                              queue_name="Сеть", category_name="Старая категория",
+                              assignee_name="Старый исполнитель")
+        level.title = "Новый SLA"
+        level.save(update_fields=["title"])
+        ticket.queue = tree["Поддержка"]
+        ticket.assignee = support.make_employee(full_name="Новый исполнитель")
+        ticket.save(update_fields=["queue", "assignee"])
+        cycle.refresh_from_db()
+    
+        response = _report(manager)
+        html = _body(response)
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports.py:330: AssertionError
+______ test_report_export_requires_reports_permission_and_managed_access _______
+
+    def test_report_export_requires_reports_permission_and_managed_access():
+        manager, managed, _ = _managed_fixture()
+        without_permission = support.make_employee()
+        org.make_member(without_permission, managed.unit)
+    
+>       assert support.logged_in(manager).get(EXPORT, PERIOD).status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+E        +    where <HttpResponse status_code=404, "text/html; charset=utf-8"> = get('/servicedesk/reports/export/', {'period': 'month'})
+E        +      where get = <django.test.client.Client object at 0x7402b46de2d0>.get
+E        +        where <django.test.client.Client object at 0x7402b46de2d0> = <function logged_in at 0x7402b584c0e0>(<User: user-d243db29@example.com>)
+E        +          where <function logged_in at 0x7402b584c0e0> = support.logged_in
+
+tests/test_sd_reports_excel.py:71: AssertionError
+_____ test_report_export_is_xlsx_named_for_period_and_matches_report_page ______
+
+    def test_report_export_is_xlsx_named_for_period_and_matches_report_page():
+        manager, managed, _ = _managed_fixture(foreign=False)
+        ticket = _ticket_with_cycle(managed)
+        client = support.logged_in(manager)
+        page = client.get("/servicedesk/reports/", PERIOD)
+        exported = client.get(EXPORT, PERIOD)
+    
+>       book = _xlsx(exported)
+               ^^^^^^^^^^^^^^^
+
+tests/test_sd_reports_excel.py:82: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+response = <HttpResponse status_code=404, "text/html; charset=utf-8">
+
+    def _xlsx(response):
+        from openpyxl import load_workbook
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports_excel.py:46: AssertionError
+__________ test_report_export_metrics_sheet_has_same_numbers_as_page ___________
+
+    def test_report_export_metrics_sheet_has_same_numbers_as_page():
+        manager, managed, _ = _managed_fixture(foreign=False)
+        _ticket_with_cycle(managed)
+        client = support.logged_in(manager)
+        page = client.get("/servicedesk/reports/", PERIOD)
+>       book = _xlsx(client.get(EXPORT, PERIOD))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_sd_reports_excel.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+response = <HttpResponse status_code=404, "text/html; charset=utf-8">
+
+    def _xlsx(response):
+        from openpyxl import load_workbook
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports_excel.py:46: AssertionError
+____ test_report_export_ticket_sheet_has_required_columns_and_maximum_rows _____
+
+    def test_report_export_ticket_sheet_has_required_columns_and_maximum_rows():
+        manager, managed, _ = _managed_fixture(foreign=False)
+        ticket = _ticket_with_cycle(managed)
+>       book = _xlsx(support.logged_in(manager).get(EXPORT, PERIOD))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_sd_reports_excel.py:112: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+response = <HttpResponse status_code=404, "text/html; charset=utf-8">
+
+    def _xlsx(response):
+        from openpyxl import load_workbook
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports_excel.py:46: AssertionError
+_______ test_report_export_contains_no_ticket_or_requester_personal_data _______
+
+    def test_report_export_contains_no_ticket_or_requester_personal_data():
+        manager, managed, _ = _managed_fixture(foreign=False)
+        requester = sd.make_requester(email="requester@example.test", full_name="Имя Заявителя")
+        ticket = _ticket_with_cycle(managed, requester=requester)
+        client = support.logged_in(manager)
+        response = client.get(EXPORT, PERIOD)
+>       values = [str(value) for value in _values(_xlsx(response))]
+                                                  ^^^^^^^^^^^^^^^
+
+tests/test_sd_reports_excel.py:131: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+response = <HttpResponse status_code=404, "text/html; charset=utf-8">
+
+    def _xlsx(response):
+        from openpyxl import load_workbook
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports_excel.py:46: AssertionError
+___________ test_report_export_excludes_queues_outside_managed_units ___________
+
+    def test_report_export_excludes_queues_outside_managed_units():
+        manager, managed, foreign = _managed_fixture()
+        inside = _ticket_with_cycle(managed)
+        outside = _ticket_with_cycle(foreign)
+>       book = _xlsx(support.logged_in(manager).get(EXPORT, PERIOD))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_sd_reports_excel.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+response = <HttpResponse status_code=404, "text/html; charset=utf-8">
+
+    def _xlsx(response):
+        from openpyxl import load_workbook
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports_excel.py:46: AssertionError
+_______________ test_report_export_writes_audit_event_with_actor _______________
+
+    def test_report_export_writes_audit_event_with_actor():
+        manager, managed, _ = _managed_fixture(foreign=False)
+        _ticket_with_cycle(managed)
+        before = support.model("core.AuditEvent").objects.filter(
+            action="servicedesk.report_exported").count()
+        response = support.logged_in(manager).get(EXPORT, PERIOD)
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports_excel.py:156: AssertionError
+____________ test_report_export_20000_rows_finishes_within_nfr_731 _____________
+
+    def test_report_export_20000_rows_finishes_within_nfr_731():
+        manager, managed, _ = _managed_fixture(foreign=False)
+        level = sd.make_level(all_day=True)
+        for _ in range(20_000):
+            ticket = sd.make_ticket(queue=managed, sla=level)
+            sd.make_cycle(ticket, level=level, queue=managed)
+    
+        started = time.monotonic()
+>       book = _xlsx(support.logged_in(manager).get(EXPORT, PERIOD))
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_sd_reports_excel.py:174: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+response = <HttpResponse status_code=404, "text/html; charset=utf-8">
+
+    def _xlsx(response):
+        from openpyxl import load_workbook
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_reports_excel.py:46: AssertionError
+_ test_answers_list_is_available_to_service_desk_participant_and_shows_requests_menu _
+
+    def test_answers_list_is_available_to_service_desk_participant_and_shows_requests_menu():
+        queue = sd.make_queue()
+        participant = _member(queue)
+    
+        response = support.logged_in(participant).get("/servicedesk/answers/")
+    
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_answers.py:29: AssertionError
+______________ test_personal_answer_is_visible_only_to_its_owner _______________
+
+    def test_personal_answer_is_visible_only_to_its_owner():
+        queue = sd.make_queue()
+        owner = _member(queue)
+        other = _member(queue)
+        answer = sd.make_answer(owner=owner, title="Только мне")
+    
+        owner_response = support.logged_in(owner).get("/servicedesk/answers/")
+        other_response = support.logged_in(other).get("/servicedesk/answers/")
+    
+>       assert owner_response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_answers.py:43: AssertionError
+____ test_common_answer_is_visible_to_all_participants_but_not_to_outsider _____
+
+    def test_common_answer_is_visible_to_all_participants_but_not_to_outsider():
+        queue = sd.make_queue()
+        participant = _member(queue)
+        outsider = support.make_employee()
+        answer = sd.make_answer(title="Общий ответ")
+    
+        participant_response = support.logged_in(participant).get("/servicedesk/answers/")
+        outsider_response = support.logged_in(outsider).get("/servicedesk/answers/")
+    
+>       assert participant_response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_answers.py:58: AssertionError
+_____ test_common_answer_creation_requires_servicedesk_answers_permission ______
+
+    def test_common_answer_creation_requires_servicedesk_answers_permission():
+        queue = sd.make_queue()
+        participant = _member(queue)
+        holder = _member(queue, "servicedesk.answers")
+    
+        denied = support.logged_in(participant).post(
+            "/servicedesk/answers/new/",
+            {"title": "Общий", "text": "Текст", "kind": "common"},
+        )
+        allowed = support.logged_in(holder).post(
+            "/servicedesk/answers/new/",
+            {"title": "Общий держателя", "text": "Текст", "kind": "common"},
+        )
+    
+>       assert denied.status_code == 403
+E       assert 404 == 403
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_answers.py:77: AssertionError
+______ test_participant_creates_personal_answer_but_category_is_rejected _______
+
+    def test_participant_creates_personal_answer_but_category_is_rejected():
+        queue = sd.make_queue()
+        participant = _member(queue)
+        category = sd.make_category(queue=queue)
+    
+        response = support.logged_in(participant).post(
+            "/servicedesk/answers/new/",
+            {"title": "Личный", "text": "Текст", "category": category.pk},
+        )
+    
+        body = _body(response)
+>       assert response.status_code == 400
+E       assert 404 == 400
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_answers.py:92: AssertionError
+________ test_answer_title_and_text_ranges_return_contract_error_codes _________
+
+    def test_answer_title_and_text_ranges_return_contract_error_codes():
+        queue = sd.make_queue()
+        participant = _member(queue)
+    
+        title_response = support.logged_in(participant).post(
+            "/servicedesk/answers/new/",
+            {"title": "", "text": "Текст"},
+        )
+        text_response = support.logged_in(participant).post(
+            "/servicedesk/answers/new/",
+            {"title": "Корректное название", "text": ""},
+        )
+    
+>       assert title_response.status_code == 400
+E       assert 404 == 400
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_answers.py:110: AssertionError
+____ test_archived_answer_is_absent_from_suggestions_but_present_in_archive ____
+
+    def test_archived_answer_is_absent_from_suggestions_but_present_in_archive():
+        queue = sd.make_queue()
+        participant = _member(queue)
+        active = sd.make_answer(title="Действующий")
+        archived = sd.make_answer(title="Архивный", archived=True)
+    
+        response = support.logged_in(participant).get("/servicedesk/answers/")
+    
+        body = _body(response)
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_answers.py:127: AssertionError
+_________ test_owner_and_answers_holder_can_archive_and_restore_answer _________
+
+    def test_owner_and_answers_holder_can_archive_and_restore_answer():
+        queue = sd.make_queue()
+        owner = _member(queue)
+        holder = _member(queue, "servicedesk.answers")
+        answer = sd.make_answer(owner=owner, title="Архивируемый")
+    
+        archive = support.logged_in(owner).post(
+            f"/servicedesk/answers/{answer.pk}/archive/", {}
+        )
+        answer.refresh_from_db()
+        archived_state = answer.archived
+        restore = support.logged_in(holder).post(
+            f"/servicedesk/answers/{answer.pk}/archive/", {}
+        )
+        answer.refresh_from_db()
+    
+>       assert archive.status_code in (200, 302)
+E       assert 404 in (200, 302)
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_answers.py:151: AssertionError
+______ test_insert_returns_answer_text_only_when_user_can_work_on_ticket _______
+
+    def test_insert_returns_answer_text_only_when_user_can_work_on_ticket():
+        queue = sd.make_queue()
+        participant = _member(queue)
+        outsider = support.make_employee()
+        ticket = sd.make_ticket(queue=queue)
+        answer = sd.make_answer(owner=participant, text="Текст для textarea")
+        client = support.logged_in(participant)
+    
+        inserted = client.get(
+            f"/servicedesk/answers/{answer.pk}/insert/?ticket={ticket.number}"
+        )
+        denied = support.logged_in(outsider).get(
+            f"/servicedesk/answers/{answer.pk}/insert/?ticket={ticket.number}"
+        )
+    
+>       assert inserted.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <HttpResponse status_code=404, "text/html; charset=utf-8">.status_code
+
+tests/test_sd_answers.py:172: AssertionError
+________ test_sla_cron_entries_have_required_schedule_queue_and_timeout ________
+
+    def test_sla_cron_entries_have_required_schedule_queue_and_timeout():
+        """FR-743/744: tick идёт каждые пять минут, digest — на десятой минуте часа,
+        оба задания находятся в maintenance и имеют предел выполнения 300 секунд."""
+>       jobs = _cron_calls()
+               ^^^^^^^^^^^^^
+
+tests/test_sd_sla_cron.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_sd_sla_cron.py:43: in _cron_calls
+    values = {arg.arg: ast.literal_eval(arg.value) for arg in node.keywords if arg.arg}
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/ast.py:112: in literal_eval
+    return _convert(node_or_string)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/ast.py:111: in _convert
+    return _convert_signed_num(node)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/ast.py:85: in _convert_signed_num
+    return _convert_num(node)
+           ^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/ast.py:76: in _convert_num
+    _raise_malformed_node(node)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+node = <ast.Name object at 0x7402b532eb50>
+
+    def _raise_malformed_node(node):
+        msg = "malformed node or string"
+        if lno := getattr(node, 'lineno', None):
+            msg += f' on line {lno}'
+>       raise ValueError(msg + f': {node!r}')
+E       ValueError: malformed node or string on line 32: <ast.Name object at 0x7402b532eb50>
+
+/usr/local/lib/python3.12/ast.py:73: ValueError
+__________ test_sla_tick_takes_lock_and_busy_second_pass_does_nothing __________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7402b4889310>
+
+    def test_sla_tick_takes_lock_and_busy_second_pass_does_nothing(monkeypatch):
+        """NFR-734: второй тик, встретивший занятый ``sla:tick``, не создаёт
+        уведомлений и не обрабатывает сроки."""
+        from apps.servicedesk import tasks
+    
+        _, _, assignee, _, cycle = _scene()
+        now = timezone.now()
+        cycle.reaction_due = now - timedelta(minutes=1)
+        cycle.save(update_fields=["reaction_due"])
+        lock = {"free": True}
+>       monkeypatch.setattr(tasks.cache, "add", lambda key, *args, **kwargs:
+                            ^^^^^^^^^^^
+                            lock.pop("free", False) if key == "sla:tick" else True)
+E       AttributeError: module 'apps.servicedesk.tasks' has no attribute 'cache'
+
+tests/test_sd_sla_cron.py:69: AttributeError
+________ test_sla_tick_restart_before_notice_creation_leaves_one_notice ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7402b4877410>
+
+    def test_sla_tick_restart_before_notice_creation_leaves_one_notice(monkeypatch):
+        """NFR-732: падение до фиксации уведомления и повторный запуск дают одну
+        запись ``SlaNotice``."""
+        from apps.notify.services import dispatch
+        from apps.servicedesk import tasks
+    
+        _, _, assignee, _, cycle = _scene()
+        now = timezone.now()
+        cycle.reaction_due = now - timedelta(minutes=1)
+        cycle.save(update_fields=["reaction_due"])
+        original = dispatch.create
+        monkeypatch.setattr(dispatch, "create", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("restart")))
+        with pytest.raises(RuntimeError):
+>           tasks.sla_tick(now=now)
+E           TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_cron.py:90: TypeError
+____________ test_sla_tick_restart_during_dispatch_keeps_one_notice ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7402b46a9b80>
+
+    def test_sla_tick_restart_during_dispatch_keeps_one_notice(monkeypatch):
+        """NFR-732: перезапуск на границе транзакции доставки не дублирует
+        ``SlaNotice``."""
+        from apps.notify.services import dispatch
+        from apps.servicedesk import tasks
+    
+        _, _, assignee, _, cycle = _scene()
+        now = timezone.now()
+        cycle.reaction_due = now - timedelta(minutes=1)
+        cycle.save(update_fields=["reaction_due"])
+        original = dispatch.create
+        calls = {"count": 0}
+    
+        def fail_once(*args, **kwargs):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise RuntimeError("worker stopped during transaction")
+            return original(*args, **kwargs)
+    
+        monkeypatch.setattr(dispatch, "create", fail_once)
+        with pytest.raises(RuntimeError):
+>           tasks.sla_tick(now=now)
+E           TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_cron.py:117: TypeError
+____________ test_sla_tick_restart_after_creation_keeps_one_notice _____________
+
+    def test_sla_tick_restart_after_creation_keeps_one_notice():
+        """NFR-732: обычный повтор после успешного тика оставляет одну запись
+        уведомления на срок и получателя."""
+        from apps.servicedesk import tasks
+    
+        _, _, assignee, _, cycle = _scene()
+        now = timezone.now()
+        cycle.reaction_due = now - timedelta(minutes=1)
+        cycle.save(update_fields=["reaction_due"])
+>       tasks.sla_tick(now=now)
+E       TypeError: sla_tick() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_cron.py:131: TypeError
+________ test_sla_digest_is_sent_in_first_hour_after_calendar_day_start ________
+
+    def test_sla_digest_is_sent_in_first_hour_after_calendar_day_start():
+        """FR-744: рабочая сводка отправляется в первый час после
+        ``WorkCalendar.day_start``."""
+        from apps.servicedesk import tasks
+    
+        unit, _, _, _, _ = _scene()
+        head = support.make_employee()
+        support_org.make_member(head, unit, mark="head")
+        calendar = support.model("org.WorkCalendar").objects.get()
+        calendar.day_start = time(9, 0)
+        calendar.save(update_fields=["day_start"])
+        now = datetime(2026, 11, 24, 9, 30, tzinfo=MSK)
+>       assert tasks.sla_digest(now=now) == 1
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: sla_digest() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_cron.py:148: TypeError
+_________ test_sla_digest_is_not_sent_on_weekend_or_outside_first_hour _________
+
+    def test_sla_digest_is_not_sent_on_weekend_or_outside_first_hour():
+        """FR-744: сводка не отправляется в выходной и за пределами окна
+        первого рабочего часа."""
+        from apps.servicedesk import tasks
+    
+        unit, _, _, _, _ = _scene()
+        head = support.make_employee()
+        support_org.make_member(head, unit, mark="head")
+>       assert tasks.sla_digest(now=datetime(2026, 11, 22, 9, 30, tzinfo=MSK)) == 0
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: sla_digest() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_cron.py:160: TypeError
+_______________ test_sla_digest_is_unique_per_recipient_and_day ________________
+
+    def test_sla_digest_is_unique_per_recipient_and_day():
+        """FR-745/NFR-732: повторная сводка в один день не создаёт второй
+        ``SlaDigest`` для получателя."""
+        from apps.servicedesk import tasks
+    
+        unit, _, _, _, _ = _scene()
+        head = support.make_employee()
+        support_org.make_member(head, unit, mark="head")
+        now = datetime(2026, 11, 24, 9, 10, tzinfo=MSK)
+>       tasks.sla_digest(now=now)
+E       TypeError: sla_digest() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_cron.py:174: TypeError
+___________ test_sla_digest_contains_overdue_today_and_week_sections ___________
+
+    def test_sla_digest_contains_overdue_today_and_week_sections():
+        """FR-744: текст сводки содержит разделы «Просроченные», «Срок
+        сегодня» и «Срок на неделе»."""
+        from apps.notify.models import Notification
+        from apps.servicedesk import tasks
+    
+        unit, _, _, ticket, cycle = _scene()
+        head = support.make_employee()
+        support_org.make_member(head, unit, mark="head")
+        now = datetime(2026, 11, 24, 9, 10, tzinfo=MSK)
+        cycle.reaction_due = now - timedelta(days=1)
+        cycle.solution_due = now + timedelta(hours=2)
+        cycle.save(update_fields=["reaction_due", "solution_due"])
+>       tasks.sla_digest(now=now)
+E       TypeError: sla_digest() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_cron.py:192: TypeError
+________ test_repeated_sla_digest_same_day_creates_no_new_notification _________
+
+    def test_repeated_sla_digest_same_day_creates_no_new_notification():
+        """FR-745/NFR-732: повторный запуск сводки в тот же день не создаёт
+        новых уведомлений."""
+        from apps.notify.models import Notification
+        from apps.servicedesk import tasks
+    
+        unit, _, _, _, _ = _scene()
+        head = support.make_employee()
+        support_org.make_member(head, unit, mark="head")
+        now = datetime(2026, 11, 24, 9, 10, tzinfo=MSK)
+>       tasks.sla_digest(now=now)
+E       TypeError: sla_digest() got an unexpected keyword argument 'now'
+
+tests/test_sd_sla_cron.py:208: TypeError
+_____________________ test_sla_audit_labels_are_registered _____________________
+
+    def test_sla_audit_labels_are_registered():
+        """FR-755: все события среза и русские подписи полей зарегистрированы."""
+        from apps.core import extensions
+        from apps.servicedesk import audit_labels
+    
+        labels = audit_labels.audit_labels()
+        expected = {
+            "ticket.assignee_skipped": "Ответственный по уровню не назначен",
+            "servicedesk.sla_level_created": "Уровень обслуживания создан",
+            "servicedesk.sla_level_changed": "Уровень обслуживания изменён",
+            "servicedesk.sla_level_archived": "Уровень обслуживания архивирован",
+            "servicedesk.binding_changed": "Привязка уровня изменена",
+            "servicedesk.answer_created": "Шаблон ответа создан",
+            "servicedesk.answer_changed": "Шаблон ответа изменён",
+            "servicedesk.answer_archived": "Шаблон ответа архивирован",
+            "servicedesk.report_exported": "Отчёт выгружен",
+        }
+>       assert {code: labels["actions"].get(code) for code in expected} == expected
+E       AssertionError: assert {'ticket.assi...d': None, ...} == {'ticket.assi...вирован', ...}
+E         
+E         Differing items:
+E         {'servicedesk.answer_changed': None} != {'servicedesk.answer_changed': 'Шаблон ответа изменён'}
+E         {'servicedesk.answer_archived': None} != {'servicedesk.answer_archived': 'Шаблон ответа архивирован'}
+E         {'servicedesk.sla_level_archived': None} != {'servicedesk.sla_level_archived': 'Уровень обслуживания архивирован'}
+E         {'servicedesk.sla_level_changed': None} != {'servicedesk.sla_level_changed': 'Уровень обслуживания изменён'}
+E         {'ticket.assignee_skipped': None} != {'ticket.assignee_skipped': 'Ответственный по уровню не назначен'}...
+E         
+E         ...Full output truncated (5 lines hidden), use '-vv' to show
+
+tests/test_sd_sla_core_changes.py:110: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_sd_sla_models.py::test_personal_answer_template_has_no_category_and_common_may_have_one
+FAILED tests/test_sd_sla_models.py::test_archived_sla_level_is_not_selected_for_new_ticket
+FAILED tests/test_sd_sla_deadlines.py::test_friday_evening_moves_reaction_to_next_workday
+FAILED tests/test_sd_sla_deadlines.py::test_weekend_is_skipped - ModuleNotFou...
+FAILED tests/test_sd_sla_deadlines.py::test_calendar_holiday_is_skipped - Mod...
+FAILED tests/test_sd_sla_deadlines.py::test_day_off_is_skipped_but_moved_workday_counts_on_saturday
+FAILED tests/test_sd_sla_deadlines.py::test_level_saturday_is_still_skipped_when_calendar_calls_it_weekend
+FAILED tests/test_sd_sla_deadlines.py::test_short_day_uses_calendar_end_minus_hour_without_shortening_level
+FAILED tests/test_sd_sla_deadlines.py::test_all_day_has_24_working_hours_and_skips_holidays
+FAILED tests/test_sd_sla_deadlines.py::test_empty_intersection_is_skipped - M...
+FAILED tests/test_sd_sla_deadlines.py::test_year_boundary_uses_calendar_days_in_next_year
+FAILED tests/test_sd_sla_deadlines.py::test_leap_day_and_non_leap_year_are_calendar_transitions
+FAILED tests/test_sd_sla_deadlines.py::test_minutes_between_counts_work_minutes_and_is_symmetric_by_magnitude
+FAILED tests/test_sd_sla_deadlines.py::test_minutes_between_skips_weekend_and_holiday
+FAILED tests/test_sd_sla_deadlines.py::test_zero_work_minutes_outside_hours_moves_to_next_workday_start
+FAILED tests/test_sd_sla_deadlines.py::test_minimum_and_thirty_day_deadlines_do_not_overflow
+FAILED tests/test_sd_sla_ticket.py::test_ticket_gets_sla_deadlines_and_first_cycle_from_priority_binding
+FAILED tests/test_sd_sla_ticket.py::test_ticket_uses_category_binding_when_priority_has_no_binding
+FAILED tests/test_sd_sla_ticket.py::test_priority_binding_wins_over_conflicting_category_binding
+FAILED tests/test_sd_sla_ticket.py::test_category_change_before_first_response_recalculates_cycle_snapshot_and_due
+FAILED tests/test_sd_sla_ticket.py::test_priority_change_before_first_response_recalculates_deadlines
+FAILED tests/test_sd_sla_ticket.py::test_queue_transfer_before_first_response_updates_queue_snapshot_and_deadlines
+FAILED tests/test_sd_sla_ticket.py::test_category_change_can_create_cycle_for_ticket_created_without_sla
+FAILED tests/test_sd_sla_ticket.py::test_level_default_assignee_is_used_when_category_has_none
+FAILED tests/test_sd_sla_ticket.py::test_nonparticipant_level_assignee_is_skipped_and_logged
+FAILED tests/test_sd_sla_cycles.py::test_queued_reply_records_first_response_and_reaction_minutes
+FAILED tests/test_sd_sla_cycles.py::test_waiting_files_reply_counts_only_after_file_check
+FAILED tests/test_sd_sla_cycles.py::test_manual_close_records_solution_and_manual_kind
+FAILED tests/test_sd_sla_cycles.py::test_autoclose_records_verdict_and_has_no_author
+FAILED tests/test_sd_sla_cycles.py::test_close_after_solution_due_is_late - a...
+FAILED tests/test_sd_sla_cycles.py::test_manual_reopen_marks_old_cycle_and_starts_cycle_two
+FAILED tests/test_sd_sla_cycles.py::test_mail_reopen_starts_cycle_at_inbound_received_at
+FAILED tests/test_sd_sla_cycles.py::test_reopened_ticket_keeps_history_but_only_new_cycle_is_current
+FAILED tests/test_sd_sla_cycles.py::test_closed_journal_contains_cycle_number_and_verdicts
+FAILED tests/test_sd_sla_views.py::test_sla_levels_page_requires_permission
+FAILED tests/test_sd_sla_views.py::test_sla_levels_page_separates_and_marks_archived_levels
+FAILED tests/test_sd_sla_views.py::test_due_today_uses_moscow_date_and_excludes_tomorrow
+FAILED tests/test_sd_sla_views.py::test_due_combines_with_my_queues_preset - ...
+FAILED tests/test_sd_sla_views.py::test_overdue_count_matches_overdue_list - ...
+FAILED tests/test_sd_sla_views.py::test_card_shows_sla_level_deadlines_facts_and_verdicts
+FAILED tests/test_sd_sla_views.py::test_card_without_level_says_deadline_not_set
+FAILED tests/test_sd_sla_views.py::test_sla_levels_and_report_have_viewport_and_narrow_layout_hooks
+FAILED tests/test_sd_sla_audit.py::test_sla_audit_labels_register_level_and_binding_actions
+FAILED tests/test_sd_sla_audit.py::test_sla_audit_labels_register_answer_and_report_actions
+FAILED tests/test_sd_sla_audit.py::test_sla_level_create_and_update_are_audited_with_actor_and_time
+FAILED tests/test_sd_sla_audit.py::test_archiving_sla_level_is_audited - Impo...
+FAILED tests/test_sd_sla_audit.py::test_answer_template_create_update_and_archive_are_audited
+FAILED tests/test_sd_sla_audit.py::test_report_export_is_audited_with_actor
+FAILED tests/test_sd_sla_audit.py::test_assignee_skipped_and_sla_close_fields_have_russian_audit_labels
+FAILED tests/test_sd_sla_audit.py::test_sla_report_and_answer_pages_are_russian_and_show_moscow_time
+FAILED tests/test_sd_sla_notify.py::test_sla_notification_kinds_are_registered_with_russian_names_and_orders
+FAILED tests/test_sd_sla_notify.py::test_sla_external_delivery_contains_event_and_link_but_not_ticket_subject
+FAILED tests/test_sd_sla_notify.py::test_heads_of_unit_returns_heads_and_deputies_of_unit_and_ancestors_once
+FAILED tests/test_sd_sla_notify.py::test_sla_tick_creates_reaction_reminder_configured_working_hours_before_due
+FAILED tests/test_sd_sla_notify.py::test_sla_tick_creates_separate_solution_deadline_reminder
+FAILED tests/test_sd_sla_notify.py::test_sla_tick_notifies_assignee_and_queue_heads_once_for_each_overdue_deadline
+FAILED tests/test_sd_sla_notify.py::test_repeated_sla_tick_is_idempotent_for_sla_notices
+FAILED tests/test_sd_sla_notify.py::test_recalculated_due_at_creates_new_notice_without_suppressing_old_one
+FAILED tests/test_sd_sla_notify.py::test_sla_reminder_hours_accepts_one_and_24_but_rejects_25
+FAILED tests/test_sd_sla_notify.py::test_recipient_without_ticket_visibility_gets_no_sla_notification
+FAILED tests/test_sd_sla_notify.py::test_manual_sla_event_excludes_event_author_from_recipients
+FAILED tests/test_sd_sla_notify.py::test_sla_digest_is_sent_once_per_day_to_each_queue_head
+FAILED tests/test_sd_reports.py::test_report_permission_is_required_and_manager_gets_report
+FAILED tests/test_sd_reports.py::test_admin_without_managed_unit_is_forbidden_even_with_report_permission
+FAILED tests/test_sd_reports.py::test_queue_manager_sees_only_own_units_and_descendants
+FAILED tests/test_sd_reports.py::test_it_department_head_sees_all_queues - as...
+FAILED tests/test_sd_reports.py::test_month_counts_created_by_ticket_created_at_in_moscow
+FAILED tests/test_sd_reports.py::test_closed_uses_closed_at_of_current_cycle_only_after_reopen
+FAILED tests/test_sd_reports.py::test_averages_use_recorded_reaction_and_solution_minutes
+FAILED tests/test_sd_reports.py::test_reaction_on_time_ratio_excludes_closed_without_response
+FAILED tests/test_sd_reports.py::test_solution_on_time_ratio_uses_closed_cycles_only
+FAILED tests/test_sd_reports.py::test_overdue_rows_are_grouped_by_level_title_snapshot
+FAILED tests/test_sd_reports.py::test_load_is_closed_per_assignee_snapshot - ...
+FAILED tests/test_sd_reports.py::test_report_filters_queue_level_category_and_assignee
+FAILED tests/test_sd_reports.py::test_empty_report_returns_zero_metrics_without_error
+FAILED tests/test_sd_reports.py::test_requester_rating_metric_is_present_and_empty
+FAILED tests/test_sd_reports.py::test_custom_report_period_allows_370_days_but_rejects_371
+FAILED tests/test_sd_reports.py::test_moscow_midnight_places_tickets_in_different_days
+FAILED tests/test_sd_reports.py::test_report_history_uses_cycle_snapshots_after_mutations
+FAILED tests/test_sd_reports_excel.py::test_report_export_requires_reports_permission_and_managed_access
+FAILED tests/test_sd_reports_excel.py::test_report_export_is_xlsx_named_for_period_and_matches_report_page
+FAILED tests/test_sd_reports_excel.py::test_report_export_metrics_sheet_has_same_numbers_as_page
+FAILED tests/test_sd_reports_excel.py::test_report_export_ticket_sheet_has_required_columns_and_maximum_rows
+FAILED tests/test_sd_reports_excel.py::test_report_export_contains_no_ticket_or_requester_personal_data
+FAILED tests/test_sd_reports_excel.py::test_report_export_excludes_queues_outside_managed_units
+FAILED tests/test_sd_reports_excel.py::test_report_export_writes_audit_event_with_actor
+FAILED tests/test_sd_reports_excel.py::test_report_export_20000_rows_finishes_within_nfr_731
+FAILED tests/test_sd_answers.py::test_answers_list_is_available_to_service_desk_participant_and_shows_requests_menu
+FAILED tests/test_sd_answers.py::test_personal_answer_is_visible_only_to_its_owner
+FAILED tests/test_sd_answers.py::test_common_answer_is_visible_to_all_participants_but_not_to_outsider
+FAILED tests/test_sd_answers.py::test_common_answer_creation_requires_servicedesk_answers_permission
+FAILED tests/test_sd_answers.py::test_participant_creates_personal_answer_but_category_is_rejected
+FAILED tests/test_sd_answers.py::test_answer_title_and_text_ranges_return_contract_error_codes
+FAILED tests/test_sd_answers.py::test_archived_answer_is_absent_from_suggestions_but_present_in_archive
+FAILED tests/test_sd_answers.py::test_owner_and_answers_holder_can_archive_and_restore_answer
+FAILED tests/test_sd_answers.py::test_insert_returns_answer_text_only_when_user_can_work_on_ticket
+FAILED tests/test_sd_sla_cron.py::test_sla_cron_entries_have_required_schedule_queue_and_timeout
+FAILED tests/test_sd_sla_cron.py::test_sla_tick_takes_lock_and_busy_second_pass_does_nothing
+FAILED tests/test_sd_sla_cron.py::test_sla_tick_restart_before_notice_creation_leaves_one_notice
+FAILED tests/test_sd_sla_cron.py::test_sla_tick_restart_during_dispatch_keeps_one_notice
+FAILED tests/test_sd_sla_cron.py::test_sla_tick_restart_after_creation_keeps_one_notice
+FAILED tests/test_sd_sla_cron.py::test_sla_digest_is_sent_in_first_hour_after_calendar_day_start
+FAILED tests/test_sd_sla_cron.py::test_sla_digest_is_not_sent_on_weekend_or_outside_first_hour
+FAILED tests/test_sd_sla_cron.py::test_sla_digest_is_unique_per_recipient_and_day
+FAILED tests/test_sd_sla_cron.py::test_sla_digest_contains_overdue_today_and_week_sections
+FAILED tests/test_sd_sla_cron.py::test_repeated_sla_digest_same_day_creates_no_new_notification
+FAILED tests/test_sd_sla_core_changes.py::test_sla_audit_labels_are_registered
+107 failed, 30 passed in 229.56s (0:03:49)

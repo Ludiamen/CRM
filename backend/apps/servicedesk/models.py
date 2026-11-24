@@ -458,7 +458,7 @@ class AnswerTemplate(models.Model):
         verbose_name = "шаблон ответа"
         verbose_name_plural = "шаблоны ответов"
         constraints = [
-            models.CheckConstraint(condition=Q(owner__isnull=False) | Q(category__isnull=True),
+            models.CheckConstraint(condition=Q(owner__isnull=True) | Q(category__isnull=True),
                                    name="servicedesk_answer_template_personal_no_category"),
         ]
         indexes = [
