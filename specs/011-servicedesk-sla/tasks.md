@@ -2,7 +2,7 @@
 id: TASKS-011
 вид: задачи
 статус: черновик
-версия: 4
+версия: 5
 зависит_от: PLAN-011
 основан_на: PLAN-011 sha256:9a7d6ce930c06e641f142f371904b7776ef3bd94bb2b3381a13750c23dac13e9
 ---
@@ -233,7 +233,7 @@ id: TASKS-011
 | `backend/tests/test_sd_boundaries.py:472` | ровно 4 вида уведомлений | 7 видов | три новых вида |
 | `backend/tests/test_notify_catalog.py:150,153` | точная таблица видов; у «Сервис-деска» 4 вида; докстринг «сорок видов» | плюс `servicedesk.sla_due_soon` (230), `sla_overdue` (231), `sla_digest` (232); 7 видов; «сорок три» | каталог |
 | `backend/tests/test_messenger_notify_2.py:48` | `MODULE_COUNTS["Сервис-деск"] == 4` | 7 | каталог |
-| `backend/tests/test_notify_prefs.py:29,32` | `SD_KINDS` — четыре вида, `TITLES` — их названия | плюс три вида SLA и их названия | каталог и настройки |
+| `backend/tests/test_notify_prefs.py:29,32,212` | `SD_KINDS` — четыре вида, `TITLES` — их названия; список строк настроек = `SD_KINDS + [RUBRIC_KIND, LISTS_KIND] + FEED_CODES + MESSENGER_CODES` | отдельный `SLA_KINDS` (order 230–232) и `TITLES` для него; он дописывается **после** `MESSENGER_CODES`, а не в `SD_KINDS` — иначе порядок строк не совпадёт с каталогом | каталог и настройки |
 | `backend/tests/test_messenger_notify_2.py:248-249`, `test_messenger_deploy.py:486` | `== 40` видов | 43 | каталог |
 | `backend/tests/test_notify_prefs.py:212`, `test_notify_catalog_2.py:579` | 16 строк/ячеек | 19 | три новых вида в настройках |
 | `backend/tests/test_kb_deploy.py:134`, `test_lists_deploy.py:169`, `test_feed_deploy.py:245`, `test_messenger_deploy.py:340`, `test_notify_deploy.py:321`, `test_tasks_deploy.py:243`, `test_instructions_deploy.py:188`, `test_sd_deploy.py:424` | `len(...) == 27` записей cron | 29 | `sla_tick`, `sla_digest` |
