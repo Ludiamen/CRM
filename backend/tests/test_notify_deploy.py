@@ -318,9 +318,9 @@ def test_cron_notify_tick_interval_30_queue_notify_timeout_120():
     """FR-333: `config/cron.py` регистрирует `notify_tick` (функция `apps.notify.tasks.notify_tick`): очередь `notify`,
     `interval=30` без строки `cron`, `job_timeout=120`; всего в файле двадцать семь вызовов `register` (§ 1.3, § 12.3; `purge_trash` среза 005 — семнадцатый, `lists_reminders` среза 006 — восемнадцатый, два задания среза 007 — девятнадцатый и двадцатый, `messenger_retention` среза 008 — двадцать первый, три задания среза 009 — двадцать второй…двадцать четвёртый, три задания среза 010 — двадцать пятый…двадцать седьмой)."""
     registrations = cron_registrations()
-    assert len(registrations) == 27, (
-        f"вызовов register {len(registrations)}, ожидается 27 (14 прежних, 2 среза 004, 1 среза 005, 1 среза 006, "
-        "2 среза 007, 1 среза 008, 3 среза 009 и 3 среза 010)")
+    assert len(registrations) == 29, (
+        f"вызовов register {len(registrations)}, ожидается 29 (14 прежних, 2 среза 004, 1 среза 005, 1 среза 006, "
+        "2 среза 007, 1 среза 008, 3 среза 009, 3 среза 010 и 2 среза 011)")
     assert "lists_reminders" in cron_by_name(), "нет задания lists_reminders среза 006"
     item = cron_by_name().get("notify_tick")
     assert item, "нет задания notify_tick"

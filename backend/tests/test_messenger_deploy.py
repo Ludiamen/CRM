@@ -337,9 +337,9 @@ def test_cron_has_27_registers_and_messenger_retention_55_23_maintenance():
     прежних записей, одна мессенджера и три задач среза 009 — те же имена и минуты (CONTRACT-008, 1.2, 1.4;
     CONTRACT-009, 1.2)."""
     entries = cron_registrations()
-    assert len(entries) == 27, (
-        f"вызовов register {len(entries)}, ожидается 27 (двадцать прежних, messenger_retention среза 008, три "
-        "задания среза 009 и три задания среза 010)")
+    assert len(entries) == 29, (
+        f"вызовов register {len(entries)}, ожидается 29 (двадцать прежних, messenger_retention среза 008, три "
+        "задания среза 009, три задания среза 010 и два задания среза 011)")
     function, queue, interval, cron, timeout = messenger.JOBS_008["messenger_retention"]
     item = cron_by_name().get("messenger_retention")
     assert item, "нет задания messenger_retention"
@@ -370,8 +370,8 @@ def test_cron_has_27_registers_and_messenger_retention_55_23_maintenance():
         else:
             assert row["cron"] == expected and row["interval"] is None, f"{name}: cron {row['cron']!r}"
         assert not row["guarded"], f"прежняя запись {name} оказалась под проверкой apps.messenger"
-    assert len(entries) - len(PREVIOUS_CRON) == 7, (
-        "кроме прежних: одна запись мессенджера, три задач среза 009 и три поручений среза 010")
+    assert len(entries) - len(PREVIOUS_CRON) == 9, (
+        "кроме прежних: одна запись мессенджера, три задач среза 009, три поручений среза 010 и две сроков заявок")
 
 
 # --- nginx (CONTRACT-008, 1.2, 1.4) --------------------------------------------------------------------------------
@@ -483,7 +483,7 @@ def test_slice_numbers_nineteen_points_forty_kinds_eight_purposes_and_order_61()
     purposes = tuple(StoredFile.Purpose.values)
     assert purposes == messenger.PURPOSES_008, f"назначения файлов: {purposes}"
     catalog = notify_kinds.catalog()
-    assert len(catalog) == 40, f"видов уведомлений {len(catalog)}"
+    assert len(catalog) == 43, f"видов уведомлений {len(catalog)}"
     orders = {kind.code: kind.order for kind in catalog}
     assert (orders.get("messenger.message"), orders.get("messenger.mention")) == (80, 81), orders
     providers = {provider.key: provider for func in extensions.registered("search_providers") for provider in func()}

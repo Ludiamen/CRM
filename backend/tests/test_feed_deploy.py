@@ -239,12 +239,12 @@ def test_cron_has_no_other_entry_at_23_35():
 
 
 def test_cron_module_has_twenty_seven_register_calls():
-    """FR-618, FR-638: в `config/cron.py` двадцать семь вызовов `register` (восемнадцать прежних, `feed_reminders`,
-    `feed_retention`, `messenger_retention` среза 008, три задания среза 009 и три задания среза 010)."""
+    """FR-618, FR-638: в `config/cron.py` двадцать девять вызовов `register` (восемнадцать прежних, `feed_reminders`,
+    `feed_retention`, `messenger_retention` среза 008, три задания среза 009, три среза 010 и два среза 011)."""
     entries = cron_registrations()
-    assert len(entries) == 27, (
-        f"вызовов register {len(entries)}, ожидается 27 (18 прежних, две записи ленты, "
-        "messenger_retention среза 008, три задания срезов 009 и 010)")
+    assert len(entries) == 29, (
+        f"вызовов register {len(entries)}, ожидается 29 (18 прежних, две записи ленты, "
+        "messenger_retention среза 008, три задания срезов 009 и 010 и два среза 011)")
     assert {"feed_reminders", "feed_retention"} <= {item["name"] for item in entries}
 
 
@@ -259,8 +259,8 @@ def test_previous_eighteen_cron_entries_keep_names_and_minutes():
             assert item["interval"] == expected and item["cron"] is None, f"{name}: интервал {item['interval']}"
         else:
             assert item["cron"] == expected and item["interval"] is None, f"{name}: cron {item['cron']!r}"
-    assert len(entries) - len(PREVIOUS_CRON) == 9, (
-        "кроме прежних: две записи ленты, одна мессенджера, три задач и три поручений")
+    assert len(entries) - len(PREVIOUS_CRON) == 11, (
+        "кроме прежних: две записи ленты, одна мессенджера, три задач, три поручений и две сроков заявок")
 
 
 def test_feed_urls_are_included_under_is_installed_guard():

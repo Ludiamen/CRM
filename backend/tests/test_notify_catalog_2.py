@@ -576,8 +576,8 @@ def test_my_notifications_page_push_column_carries_permission_hint_and_script_ho
 
     def check(root, available, reason, hint):
         assert len(root.find_all("button", {"data-action": "push-permission"})) == 1
-        assert len(push_cells(root)) == 16, ("шестнадцать строк видов: четыре сервис-деска, «по подписке», срок списка, "
-                                             "восемь видов ленты и два вида мессенджера")
+        assert len(push_cells(root)) == 19, ("девятнадцать строк видов: семь сервис-деска (включая сроки SLA), "
+                                             "«по подписке», срок списка, восемь видов ленты и два вида мессенджера")
         for code, cell in push_cells(root).items():
             if code == FEED_LIKE:
                 assert not cell.find_all("input"), "у «Нравится» флажка push нет (решение 43 (в))"

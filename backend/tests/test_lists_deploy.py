@@ -163,12 +163,12 @@ def test_cron_has_no_other_maintenance_entry_at_0_5():
 
 
 def test_cron_module_has_twenty_seven_register_calls():
-    """FR-530: в `config/cron.py` двадцать семь вызовов `register` (семнадцать прежних, `lists_reminders`, два
-    задания среза 007, `messenger_retention` среза 008, три задания среза 009 и три задания среза 010)."""
+    """FR-530: в `config/cron.py` двадцать девять вызовов `register` (семнадцать прежних, `lists_reminders`, два
+    задания среза 007, `messenger_retention` среза 008, три задания среза 009, три задания среза 010 и два среза 011)."""
     entries = cron_registrations()
-    assert len(entries) == 27, (
-        f"вызовов register {len(entries)}, ожидается 27 (17 прежних, lists_reminders, два задания среза 007, "
-        "messenger_retention среза 008, три задания срезов 009 и 010)")
+    assert len(entries) == 29, (
+        f"вызовов register {len(entries)}, ожидается 29 (17 прежних, lists_reminders, два задания среза 007, "
+        "messenger_retention среза 008, три задания срезов 009 и 010 и два среза 011)")
     assert "lists_reminders" in {item["name"] for item in entries}
 
 

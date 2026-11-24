@@ -27,12 +27,15 @@ ASSIGNED = "servicedesk.assigned"
 REPLIED = "servicedesk.requester_replied"
 FAILED = "servicedesk.reply_failed"
 SD_KINDS = (NEW_IN_QUEUE, ASSIGNED, REPLIED, FAILED)
+SLA_KINDS = ("servicedesk.sla_due_soon", "servicedesk.sla_overdue", "servicedesk.sla_digest")  # срез 011, order 230–232
 RUBRIC_KIND = "knowledge.rubric_subscription"   # пятая строка таблицы участника очереди: вид доступен всем (срез 005)
 LISTS_KIND = "lists.deadline"   # шестая строка таблицы: вид доступен всем (срез 006, CONTRACT-006, раздел 7.3)
 TITLES = {NEW_IN_QUEUE: "Новая заявка в моей очереди", ASSIGNED: "Мне назначили заявку",
           REPLIED: "Заявитель ответил", FAILED: "Ответ заявителю не ушёл",
           RUBRIC_KIND: "Статья в рубрике по подписке", LISTS_KIND: "Срок в записи списка", **FEED_TITLES,
-          **MESSENGER_TITLES}
+          **MESSENGER_TITLES,
+          "servicedesk.sla_due_soon": "Срок заявки приближается",
+          "servicedesk.sla_overdue": "Заявка просрочена", "servicedesk.sla_digest": "Сводка по срокам заявок"}
 EXTERNAL = ["email", "push", "telegram", "max"]     # `default_channels` видов сервис-деска без `portal`
 
 
@@ -200,16 +203,16 @@ def _audit_count(user) -> int:
 # --- строки и столбцы таблицы (FR-321) ------------------------------------------------------------------------
 
 def test_table_rows_show_kind_title_and_module():
-    """FR-321: у участника очереди в таблице шестнадцать строк по порядку каталога: четыре вида сервис-деска, вид «Статья в рубрике по подписке»,
+    """FR-321: у участника очереди в таблице девятнадцать строк по порядку каталога: четыре вида сервис-деска, вид «Статья в рубрике по подписке»,
     вид «Срок в записи списка» (оба доступны всем, срезы 005 и 006), восемь видов ленты (срез 007, тоже доступны всем) и два вида
-    мессенджера (срез 008, CONTRACT-008, раздел 7.1); у каждой строки `tr[data-notify-kind]` — название вида
+    мессенджера (срез 008) и три строки сроков SLA (срез 011); у каждой строки `tr[data-notify-kind]` — название вида
     в `[data-field=title]` и модуль («Сервис-деск», «База знаний», «Списки», «Лента» или «Мессенджер») в `[data-field=module]`;
     виды `mandatory` отдельными строками видов не показаны."""
     user, client = _member()
     doc = _get(client)
     table = one(doc, "table", {"data-notify-table": True})
     rows = find(doc, "tr", {"data-notify-kind": True}, within=table)
-    assert [r.attrs["data-notify-kind"] for r in rows] == list(SD_KINDS) + [RUBRIC_KIND, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES), (
+    assert [r.attrs["data-notify-kind"] for r in rows] == list(SD_KINDS) + [RUBRIC_KIND, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES) + list(SLA_KINDS), (
         "строки видов или их порядок")
     for row in rows:
         code = row.attrs["data-notify-kind"]

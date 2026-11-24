@@ -469,9 +469,10 @@ def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_
     assert answers("login_links") == [{"url": "/request/", "title": "Подать заявку в ИТ-отдел"}]
 
     kinds = answers("notification_kinds")
-    assert len(kinds) == 4 and all(isinstance(kind, extensions.NotificationKind) for kind in kinds)
+    assert len(kinds) == 7 and all(isinstance(kind, extensions.NotificationKind) for kind in kinds)
     assert sorted(kind.code for kind in kinds) == sorted((
-        "servicedesk.new_in_queue", "servicedesk.assigned", "servicedesk.requester_replied", "servicedesk.reply_failed"))
+        "servicedesk.new_in_queue", "servicedesk.assigned", "servicedesk.requester_replied", "servicedesk.reply_failed",
+        "servicedesk.sla_due_soon", "servicedesk.sla_overdue", "servicedesk.sla_digest"))
 
     found = answers("search_providers")
     assert [(p.key, p.title, p.order) for p in found] == [("tickets", "Заявки", 10)]
