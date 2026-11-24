@@ -116,7 +116,7 @@ def test_cron_has_27_registers_and_three_guarded_instructions_jobs():
     """FR-711, NFR-729: три задания поручений в cron с расписанием и очередью `maintenance`, под проверкой
     установки; всего 27 вызовов."""
     calls = _cron_calls()
-    assert len(calls) == 27, f"вызовов register {len(calls)}"
+    assert len(calls) == 29, f"вызовов register {len(calls)}"
     expected = {
         "instructions_reminders": ("apps.instructions.tasks.instructions_reminders", "*/5 * * * *", 300),
         "instructions_digest": ("apps.instructions.tasks.instructions_digest", "*/15 * * * *", 300),

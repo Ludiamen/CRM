@@ -88,18 +88,18 @@ def test_sla_tick_takes_lock_and_busy_second_pass_does_nothing(monkeypatch):
 def test_sla_tick_restart_before_notice_creation_leaves_one_notice(monkeypatch):
     """NFR-732: падение до фиксации уведомления и повторный запуск дают одну
     запись ``SlaNotice``."""
-    from apps.notify.services import dispatch
     from apps.servicedesk import tasks
 
     _, _, assignee, _, cycle = _scene()
     now = timezone.now()
     cycle.reaction_due = now - timedelta(minutes=1)
     cycle.save(update_fields=["reaction_due"])
-    original = dispatch.create
-    monkeypatch.setattr(dispatch, "create", lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("restart")))
+    original = tasks.events.publish
+    monkeypatch.setattr(tasks.events, "publish",
+                        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("restart")))
     with pytest.raises(RuntimeError):
         tasks.sla_tick(now=now)
-    monkeypatch.setattr(dispatch, "create", original)
+    monkeypatch.setattr(tasks.events, "publish", original)
     tasks.sla_tick(now=now)
     assert len(sd.notice_rows(recipient=assignee)) == 1
 
@@ -107,14 +107,13 @@ def test_sla_tick_restart_before_notice_creation_leaves_one_notice(monkeypatch):
 def test_sla_tick_restart_during_dispatch_keeps_one_notice(monkeypatch):
     """NFR-732: перезапуск на границе транзакции доставки не дублирует
     ``SlaNotice``."""
-    from apps.notify.services import dispatch
     from apps.servicedesk import tasks
 
     _, _, assignee, _, cycle = _scene()
     now = timezone.now()
     cycle.reaction_due = now - timedelta(minutes=1)
     cycle.save(update_fields=["reaction_due"])
-    original = dispatch.create
+    original = tasks.events.publish
     calls = {"count": 0}
 
     def fail_once(*args, **kwargs):
@@ -123,7 +122,7 @@ def test_sla_tick_restart_during_dispatch_keeps_one_notice(monkeypatch):
             raise RuntimeError("worker stopped during transaction")
         return original(*args, **kwargs)
 
-    monkeypatch.setattr(dispatch, "create", fail_once)
+    monkeypatch.setattr(tasks.events, "publish", fail_once)
     with pytest.raises(RuntimeError):
         tasks.sla_tick(now=now)
     tasks.sla_tick(now=now)
@@ -200,7 +199,10 @@ def test_sla_digest_contains_overdue_today_and_week_sections():
     cycle.reaction_due = now - timedelta(days=1)
     cycle.solution_due = now + timedelta(hours=2)
     cycle.save(update_fields=["reaction_due", "solution_due"])
-    tasks.sla_digest(now=now)
+    from django.test import TestCase
+
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        tasks.sla_digest(now=now)
     note = Notification.objects.get(user=head, kind="servicedesk.sla_digest")
     assert all(section in note.text for section in ("Просроченные", "Срок сегодня", "Срок на неделе"))
     assert str(ticket.number) in note.text

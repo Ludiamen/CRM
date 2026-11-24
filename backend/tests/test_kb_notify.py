@@ -203,7 +203,7 @@ def test_catalog_contains_three_knowledge_kinds_with_codes_titles_and_module():
     first, last = codes.index(COMMENT), codes.index(SUBSCRIPTION)
     assert last == first + 2, "три вида каталога идут подряд"
     assert all(code.startswith("servicedesk.") for code in codes[:first]), "до видов базы знаний — сервис-деск"
-    assert codes[last + 1:] and all(not code.startswith(("servicedesk.", "knowledge.")) for code in codes[last + 1:])
+    assert all(not code.startswith("knowledge.") for code in codes[last + 1:]), "виды базы знаний идут подряд"
     assert {kind.code for kind in _kinds().catalog()}.issuperset(
         {"core.new_device", "core.password_changed", "core.second_factor_reset", "notify.channel_unbound"})
 

@@ -41,10 +41,13 @@ class ReportPeriod:
 
 
 def _date(value, field):
-    try:
-        return date.fromisoformat(str(value))
-    except (TypeError, ValueError):
+    """Дата периода из строки формы: ДД.ММ.ГГГГ или ГГГГ-ММ-ДД (поле даты портала, FR-148)."""
+    from apps.core.widgets import parse_date
+
+    parsed = parse_date(str(value or ""))
+    if parsed is None:
         raise ReportError("report_period_range", field, "Укажите корректную дату периода отчёта")
+    return parsed
 
 
 def period_from_params(params):

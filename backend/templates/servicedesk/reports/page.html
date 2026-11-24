@@ -10,8 +10,12 @@
       <option value="month" {% if period.kind == "month" %}selected{% endif %}>Месяц</option>
       <option value="custom" {% if period.kind == "custom" %}selected{% endif %}>Свой диапазон</option>
     </select></label>
-    <label>С <input type="date" name="from" value="{{ period.date_from|date:'Y-m-d' }}"></label>
-    <label>По <input type="date" name="to" value="{{ period.date_to|date:'Y-m-d' }}"></label>
+    <label>С <span class="datefield" data-datefield><input type="text" name="from"
+      value="{{ period.date_from|date:'d.m.Y' }}" data-datefield-input inputmode="numeric" maxlength="10"
+      placeholder="ДД.ММ.ГГГГ"></span></label>
+    <label>По <span class="datefield" data-datefield><input type="text" name="to"
+      value="{{ period.date_to|date:'d.m.Y' }}" data-datefield-input inputmode="numeric" maxlength="10"
+      placeholder="ДД.ММ.ГГГГ"></span></label>
     {% for name, title, values in filter_fields %}
       <label>{{ title }} <select name="{{ name }}"><option value="">Все</option>{% for item in values %}<option value="{{ item.pk }}">{% if item.full_name %}{{ item.full_name }}{% else %}{{ item.name }}{% endif %}</option>{% endfor %}</select></label>
     {% endfor %}
