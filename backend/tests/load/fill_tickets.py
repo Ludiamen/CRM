@@ -17,7 +17,9 @@ LOAD_MESSAGES на все заявки) и столбец поиска. Заяв
         python manage.py shell --no-imports < backend/tests/load/fill_tickets.py
 """
 import os
+import random
 import sys
+from datetime import timedelta
 
 from django.db import connection, transaction
 
@@ -182,5 +184,67 @@ with transaction.atomic():
             cursor.execute(SEARCH_SQL, {"phrases": PHRASES, "phrase_count": len(PHRASES), "first": first, "last": last})
             remaining -= count
 
+sla_rows = 0
+if os.environ.get("LOAD_TICKETS_SLA") == "1":
+    # Срез 011 (NFR-730): уровни SLA, привязки и сроки у 20 % заявок, чтобы отчёт и фильтр просрочки мерились на
+    # живых данных. Сроки здесь — арифметика по календарным минутам, а не служба расчёта: наполнение стенда
+    # грубое, точность сроков проверяют серверные тесты среза.
+    from apps.core.models import Permission, Role
+
+    from apps.servicedesk.models import SlaBinding, SlaCycle, SlaLevel
+
+    # Стенд нагрузки: администратору выдаётся право отчёта, иначе NFR-730 упрётся в 403 (в данных установки
+    # `servicedesk.reports` выдан только роли «Руководитель» — SPEC-011, решение 10).
+    reports = Permission.objects.filter(code="servicedesk.reports").first()
+    admin_role = Role.objects.filter(name="Администратор портала").first()
+    if reports and admin_role:
+        admin_role.permissions.add(reports)
+    critical, _ = SlaLevel.objects.get_or_create(
+        title="Нагрузка: критичный", defaults={"priority": 0, "reaction_minutes": 60, "solution_minutes": 480})
+    normal, _ = SlaLevel.objects.get_or_create(
+        title="Нагрузка: обычный", defaults={"priority": 50, "reaction_minutes": 240, "solution_minutes": 1440})
+    first_priority = Priority.objects.filter(archived=False).order_by("order").first()
+    if first_priority is not None:
+        SlaBinding.objects.get_or_create(kind="priority", priority=first_priority, defaults={"level": critical})
+    sample = list(Ticket.objects.filter(queue_id__in=queue_ids).order_by("id")[::5])  # 20 %
+    schedule = {"workdays": [0, 1, 2, 3, 4], "day_start": "09:00", "day_end": "18:00", "all_day": False,
+                "days": {}, "extended": True}
+    cycles, changed = [], []
+    for index, ticket in enumerate(sample):
+        level = critical if index % 2 == 0 else normal
+        started = ticket.created_at
+        reaction_due = started + timedelta(minutes=level.reaction_minutes)
+        solution_due = started + timedelta(minutes=level.solution_minutes)
+        responded = random.random() < 0.8 or ticket.kind == "closed"
+        first_response = started + timedelta(minutes=random.randint(5, level.reaction_minutes * 2)) if responded else None
+        closed = ticket.closed_at
+        reaction_met = None if first_response is None else first_response <= reaction_due
+        solution_met = None if closed is None else closed <= solution_due
+        cycles.append(SlaCycle(
+            ticket=ticket, number=1, is_current=True, level=level, level_title=level.title,
+            queue_id=ticket.queue_id, queue_name=ticket.queue.name[:255] if ticket.queue_id else "",
+            category_id=ticket.category_id, category_name=(ticket.category.name[:255] if ticket.category_id else ""),
+            assignee_id=ticket.assignee_id,
+            assignee_name=(ticket.assignee.full_name[:255] if ticket.assignee_id else ""), schedule=schedule,
+            cycle_started_at=started, reaction_due=reaction_due, solution_due=solution_due,
+            first_response_at=first_response,
+            reaction_minutes=(int((first_response - started).total_seconds() // 60) if first_response else None),
+            closed_at=closed,
+            solution_minutes=(int((closed - started).total_seconds() // 60) if closed else None),
+            closed_kind=("autoclosed" if closed and ticket.status.system_code == "autoclosed" else
+                         ("manual" if closed else None)),
+            reaction_met=reaction_met, solution_met=solution_met))
+        ticket.sla = level
+        ticket.sla_cycle_started_at = started
+        ticket.sla_reaction_due = reaction_due
+        ticket.sla_solution_due = solution_due
+        ticket.sla_first_response_at = first_response
+        changed.append(ticket)
+    SlaCycle.objects.bulk_create(cycles, batch_size=500)
+    Ticket.objects.bulk_update(changed, ["sla", "sla_cycle_started_at", "sla_reaction_due", "sla_solution_due",
+                                         "sla_first_response_at"], batch_size=500)
+    sla_rows = len(cycles)
+
 print(f"очередей: {Queue.objects.filter(unit__in=queue_units).count()}, заявок в очередях нагрузки: "
-      f"{Ticket.objects.filter(queue_id__in=queue_ids).count()} (добавлено {missing}), сообщений добавлено {added_messages}")
+      f"{Ticket.objects.filter(queue_id__in=queue_ids).count()} (добавлено {missing}), сообщений добавлено {added_messages}"
+      f"{f', циклов SLA {sla_rows}' if os.environ.get('LOAD_TICKETS_SLA') == '1' else ''}")

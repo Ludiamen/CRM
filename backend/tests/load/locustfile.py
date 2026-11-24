@@ -228,6 +228,16 @@ class ServiceDeskUser(HttpUser):
                         name="/tickets/<n>/ (HTMX)")
 
     @task(2)
+    def report(self):
+        """Срез 011 (NFR-730): страница отчёта с типовым периодом; выгрузка не входит в 500 мс (NFR-731)."""
+        self.client.get("/servicedesk/reports/?period=week", name="/servicedesk/reports/?period")
+
+    @task(2)
+    def overdue_list(self):
+        """Срез 011 (FR-741, NFR-730): фильтр просроченных заявок."""
+        self.client.get("/tickets/?preset=all&due=overdue", name="/tickets/?due")
+
+    @task(2)
     def count(self):
         self.client.get(f"/tickets/count/?preset={random.choice(self.PRESETS)}", headers={"HX-Request": "true"},
                         name="/tickets/count/")
@@ -249,7 +259,8 @@ class ServiceDeskUser(HttpUser):
                 response.failure(f"/request/: {response.status_code}, заявка не принята")
 
 
-SD_PAGES = ("/tickets/?preset", "/tickets/?kind", "/tickets/?q", "/tickets/<n>/ (HTMX)", "/tickets/count/", "GET /request/")
+SD_PAGES = ("/tickets/?preset", "/tickets/?kind", "/tickets/?q", "/tickets/<n>/ (HTMX)", "/tickets/count/", "GET /request/",
+            "/servicedesk/reports/?period", "/tickets/?due")
 
 
 @events.quitting.add_listener
