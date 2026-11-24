@@ -151,10 +151,14 @@ def badge(user) -> int:
 
 
 def menu_items() -> list[dict]:
-    """Пункты меню для точки `menu_items`: «Заявки» (виден по `access.menu_visible`, со счётчиком) и «Сервис-деск»."""
+    """Пункты меню сервис-деска для точки `menu_items`."""
     return [
         {"permissions": ("servicedesk.all",), "url": "/tickets/", "title": "Заявки", "icon": "icons/tickets.html",
          "order": 5, "visible": access.menu_visible, "badge": badge},
+        {"permissions": ("servicedesk.sla",), "url": "/servicedesk/sla/", "title": "Уровни обслуживания",
+         "icon": "icons/servicedesk.html", "order": 6},
+        {"permissions": ("servicedesk.reports",), "url": "/servicedesk/reports/", "title": "Отчёт по заявкам",
+         "icon": "icons/servicedesk.html", "order": 7},
         {"permissions": ("servicedesk.manage",), "url": "/servicedesk/", "title": "Сервис-деск",
          "icon": "icons/servicedesk.html", "order": 65},
     ]

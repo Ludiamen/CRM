@@ -478,12 +478,17 @@ def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_
     assert isinstance(found[0], extensions.SearchProvider)
 
     menu = {item["title"]: item for item in answers("menu_items")}
-    assert set(menu) == {"Заявки", "Сервис-деск"}
+    assert set(menu) == {"Заявки", "Сервис-деск", "Уровни обслуживания", "Отчёт по заявкам"}
     assert (menu["Заявки"]["url"], menu["Заявки"]["order"], tuple(menu["Заявки"]["permissions"])) == (
         "/tickets/", 5, ("servicedesk.all",))
     assert callable(menu["Заявки"]["visible"]) and callable(menu["Заявки"]["badge"])
     assert (menu["Сервис-деск"]["url"], menu["Сервис-деск"]["order"], tuple(menu["Сервис-деск"]["permissions"])) == (
         "/servicedesk/", 65, ("servicedesk.manage",))
+    assert (menu["Уровни обслуживания"]["url"], menu["Уровни обслуживания"]["order"],
+            tuple(menu["Уровни обслуживания"]["permissions"])) == ("/servicedesk/sla/", 6, ("servicedesk.sla",))
+    assert (menu["Отчёт по заявкам"]["url"], menu["Отчёт по заявкам"]["order"],
+            tuple(menu["Отчёт по заявкам"]["permissions"])) == (
+        "/servicedesk/reports/", 7, ("servicedesk.reports",))
 
     plain, with_tickets, queue_only = org.make_unit(), org.make_unit(), org.make_unit()
     sd.make_queue(with_tickets)

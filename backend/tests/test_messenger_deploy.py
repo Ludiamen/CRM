@@ -503,7 +503,7 @@ def test_admin_menu_has_16_items_with_messenger_second_and_settings_order_64():
     admin, _chat = _messenger_session()
     items = permissions.menu_for(admin.user)
     titles = [item["title"] for item in items]
-    assert len(items) == 20, f"пунктов меню у администратора: {len(items)} — {titles}"
+    assert len(items) == 21, f"пунктов меню у администратора: {len(items)} — {titles}"
     assert titles[:3] == ["Лента", "Мессенджер", "Задачи"], f"первые пункты: {titles[:3]}"
     by_url = {item["url"]: item for item in items}
     assert by_url["/messenger/"]["order"] == 1

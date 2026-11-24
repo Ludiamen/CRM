@@ -7,8 +7,8 @@
 """
 from django.urls import path
 
-from .views import (dictionaries, files, inbound, public_form, requesters, settings, ticket_card, ticket_new,
-                    tickets_list)
+from .views import (answers, dictionaries, files, inbound, public_form, reports, requesters, settings, sla,
+                    ticket_card, ticket_new, tickets_list)
 
 urlpatterns = [
     # открытая форма
@@ -65,4 +65,16 @@ urlpatterns = [
     # входящие письма
     path("servicedesk/inbound/", inbound.inbound_list, name="sd-inbound-list"),
     path("servicedesk/inbound/<int:inbound_id>/retry/", inbound.inbound_retry, name="sd-inbound-retry"),
+    # SLA, отчёты и частые ответы (срез 011; тела представлений добавляются следующим этапом)
+    path("servicedesk/sla/", sla.sla_list, name="sd-sla-list"),
+    path("servicedesk/sla/new/", sla.sla_new, name="sd-sla-new"),
+    path("servicedesk/sla/<int:pk>/", sla.sla_edit, name="sd-sla-edit"),
+    path("servicedesk/sla/<int:pk>/archive/", sla.sla_archive, name="sd-sla-archive"),
+    path("servicedesk/reports/", reports.report_list, name="sd-report-list"),
+    path("servicedesk/reports/export/", reports.report_export, name="sd-report-export"),
+    path("servicedesk/answers/", answers.answer_list, name="sd-answer-list"),
+    path("servicedesk/answers/new/", answers.answer_new, name="sd-answer-new"),
+    path("servicedesk/answers/<int:pk>/edit/", answers.answer_edit, name="sd-answer-edit"),
+    path("servicedesk/answers/<int:pk>/archive/", answers.answer_archive, name="sd-answer-archive"),
+    path("servicedesk/answers/<int:pk>/insert/", answers.answer_insert, name="sd-answer-insert"),
 ]

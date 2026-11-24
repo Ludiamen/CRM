@@ -211,7 +211,7 @@ def test_menu_has_two_items_with_orders_three_and_sixty_six():
         ("/instructions/", "Поручения", 3, ("instructions.use",)),
         ("/settings/instructions/", "Настройки поручений", 66, ("settings.portal",)),
     ]
-    assert len(permissions.menu_for(admin)) == 20
+    assert len(permissions.menu_for(admin)) == 21
 
 
 # --- статика, CSP, nginx -------------------------------------------------------------------------
