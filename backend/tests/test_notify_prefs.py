@@ -28,6 +28,7 @@ REPLIED = "servicedesk.requester_replied"
 FAILED = "servicedesk.reply_failed"
 SD_KINDS = (NEW_IN_QUEUE, ASSIGNED, REPLIED, FAILED)
 SLA_KINDS = ("servicedesk.sla_due_soon", "servicedesk.sla_overdue", "servicedesk.sla_digest")  # срез 011, order 230–232
+SLA_DUE, SLA_OVERDUE, SLA_DIGEST = SLA_KINDS
 RUBRIC_KIND = "knowledge.rubric_subscription"   # пятая строка таблицы участника очереди: вид доступен всем (срез 005)
 LISTS_KIND = "lists.deadline"   # шестая строка таблицы: вид доступен всем (срез 006, CONTRACT-006, раздел 7.3)
 TITLES = {NEW_IN_QUEUE: "Новая заявка в моей очереди", ASSIGNED: "Мне назначили заявку",
@@ -512,6 +513,8 @@ def test_save_with_changed_cell_writes_matrix():
                           # виды ленты (CONTRACT-007): умолчание ("portal", "email") без `portal`; снимок пишет и
                           # «Нравится» (внешних каналов нет) — пустой список (решение 43 (б))
                           **{code: ["email"] for code in FEED_BOXED}, FEED_LIKE: [],
+                          # виды сроков SLA (срез 011): умолчание — все пять, в снимке без `portal`
+                          **{code: EXTERNAL for code in SLA_KINDS},
                           # виды мессенджера (CONTRACT-008, 7.1): умолчание ("portal", "email") без `portal`
                           **{code: ["email"] for code in MESSENGER_CODES}}
     assert _audit_count(user) == before + 1, "ждали одну запись журнала на сохранение"

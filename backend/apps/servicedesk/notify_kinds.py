@@ -118,9 +118,12 @@ def _sla(event: str, data: dict) -> list[Draft]:
         return []
     code = event
     text = "Срок заявки приближается" if code == SLA_DUE_SOON else "Заявка просрочена"
-    recipients = ([ticket.assignee_id] if ticket.assignee_id else []) + [
-        person.pk for person in structure.heads_of_unit(ticket.queue_id)
-    ]
+    if data.get("recipient_id"):
+        recipients = [data["recipient_id"]]
+    else:
+        recipients = ([ticket.assignee_id] if ticket.assignee_id else []) + [
+            person.pk for person in structure.heads_of_unit(ticket.queue_id)
+        ]
     return _drafts(ticket, recipients, text, skip=data.get("actor_id"))
 
 
@@ -211,6 +214,6 @@ def notification_kinds() -> list[NotificationKind]:
         NotificationKind(
             code=SLA_DIGEST, title="Сводка по срокам заявок", module="Сервис-деск",
             events=(SLA_DIGEST,), build=_sla_digest, external_text="Сводка по срокам заявок",
-            default_channels=("portal", "email"), channels=("portal", "email"),
+            default_channels=ALL_CHANNELS,
             available=_menu_available, order=232),
     ]

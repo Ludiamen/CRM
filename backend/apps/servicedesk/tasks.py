@@ -8,7 +8,8 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.core.extensions import Draft
-from apps.notify.services import dispatch
+from apps.core import events
+from apps.core.extensions import Draft
 from apps.org.services import calendar, structure
 
 from .models import Queue, SlaCycle, SlaDigest, SlaNotice, Ticket
@@ -79,11 +80,8 @@ def _notice(cycle, deadline, kind, due_at, recipient, now, number):
                 cycle=cycle, deadline=deadline, kind=kind, due_at=due_at, recipient=recipient, sent_at=now,
             )
             code = "servicedesk.sla_due_soon" if kind == SlaNotice.Kind.DUE_SOON else "servicedesk.sla_overdue"
-            dispatch.create(code, [Draft(
-                user_id=recipient.pk, text="Срок заявки приближается" if kind == SlaNotice.Kind.DUE_SOON
-                else "Заявка просрочена", url=f"/tickets/{number}/",
-                object_ref=f"servicedesk.ticket:{cycle.ticket_id}",
-            )])
+            # Уведомление создаётся через шину: сервис-деск не импортирует `apps.notify` (CONTRACT-004 § 6.1).
+            events.publish(code, number=number, recipient_id=recipient.pk, actor_id=None)
     except IntegrityError:
         return False
     return True
@@ -180,10 +178,8 @@ def sla_digest(now=None):
                     f"Срок сегодня: {', '.join(map(str, sorted(set(today)))) or 'нет'}\n"
                     f"Срок на неделе: {', '.join(map(str, sorted(set(week)))) or 'нет'}"
                 )
-                dispatch.create("servicedesk.sla_digest", [Draft(
-                    user_id=person_id, text=text, url="/tickets/",
-                    object_ref=f"servicedesk.sla_digest:{day.isoformat()}",
-                )])
+                events.publish("servicedesk.sla_digest", user_id=person_id, text=text,
+                               object_ref=f"servicedesk.sla_digest:{day.isoformat()}")
         except IntegrityError:
             continue
         sent += 1

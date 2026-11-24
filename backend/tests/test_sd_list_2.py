@@ -23,7 +23,7 @@ pytestmark = pytest.mark.django_db
 
 GRID = {**HX, "HTTP_HX_TARGET": "tickets-grid"}
 CELLS = ["select", "number", "subject", "requester", "client-unit", "category", "queue", "priority", "status",
-         "assignee", "created", "last-message"]
+         "assignee", "created", "last-message", "due"]  # «Срок» добавлен срезом 011 (FR-741)
 PRESETS = ["mine", "unassigned", "my_queues", "waiting", "closed", "all"]
 
 
@@ -245,7 +245,7 @@ def test_grid_has_all_columns_in_order():
     assert "Сидоров Семён Петрович" in _cell(row, "assignee").text()
     assert _cell(row, "created").text() != ""
     sortable = {th.attrs["data-sort"] for th in q(grid, "th", data_sort=True)}
-    assert sortable == {"number", "created", "last_message", "priority"}
+    assert sortable == {"number", "created", "last_message", "priority", "due"}  # строка «Срок» сортируется
     assert {c.attrs["data-cell"] for c in q(grid, data_cell=True)} == set(CELLS)
 
 

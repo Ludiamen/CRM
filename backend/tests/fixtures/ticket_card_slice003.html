@@ -24,6 +24,10 @@
 <div class="card-field" data-empty="true" data-field="assignee"><span class="card-field-label" data-field-label>Ответственный</span> <span class="card-field-value">не назначен</span></div>
 <div class="card-field" data-field="created"><span class="card-field-label" data-field-label>Создана</span> <span class="card-field-value"><time data-at="0-0-0T0:0:0+0:0">0.0.0 0:0</time></span></div>
 </div>
+<section class="card-section ticket-sla" data-sla data-empty="true">
+<h0 class="card-section-title">Сроки</h0>
+<p data-empty="true">Срок не задан</p>
+</section>
 <div class="card-actions">
 <form class="card-form" data-form="ticket-take" method="post" action="/tickets/0/take/" hx-post="/tickets/0/take/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
 <input type="hidden" name="csrfmiddlewaretoken" value="">
@@ -152,6 +156,10 @@
 <div class="card-field" data-empty="true" data-field="closed-by"><span class="card-field-label" data-field-label>Закрытие</span> <span class="card-field-value">не заполнено</span></div>
 <div class="card-field" data-field="resolution"><span class="card-field-label" data-field-label>Решение</span> <span class="card-field-value">Заменили картридж</span></div>
 </div>
+<section class="card-section ticket-sla" data-sla data-empty="true">
+<h0 class="card-section-title">Сроки</h0>
+<p data-empty="true">Срок не задан</p>
+</section>
 <div class="card-actions">
 <form class="card-form" data-form="ticket-reopen" method="post" action="/tickets/0/reopen/" hx-post="/tickets/0/reopen/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
 <input type="hidden" name="csrfmiddlewaretoken" value="">

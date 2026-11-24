@@ -32,12 +32,6 @@ TABLE = [
      ("servicedesk.reply_received",), "Заявитель ответил по вашей заявке"),
     ("servicedesk.reply_failed", "Ответ заявителю не ушёл", "Сервис-деск", 40, False, ALL_CHANNELS,
      ("servicedesk.reply_not_sent", "servicedesk.mail_failed"), "Ответ заявителю не ушёл"),
-    # виды сроков SLA (срез 011, CONTRACT-011): order 230–232, события создают задания, внешний текст без темы
-    ("servicedesk.sla_due_soon", "Срок заявки приближается", "Сервис-деск", 230, False, ALL_CHANNELS, (),
-     "Срок заявки приближается"),
-    ("servicedesk.sla_overdue", "Заявка просрочена", "Сервис-деск", 231, False, ALL_CHANNELS, (), "Заявка просрочена"),
-    ("servicedesk.sla_digest", "Сводка по срокам заявок", "Сервис-деск", 232, False, ("portal", "email"), (),
-     "Сводка по срокам заявок"),
     # виды модуля «База знаний» (CONTRACT-005, раздел 7.2): order 50–52 (решение 25), каналы «На портале» и «Почта»
     ("knowledge.comment_on_my_article", "Новый комментарий к моей статье", "База знаний", 50, False,
      ("portal", "email"), ("knowledge.comment_added",), "Новый комментарий к вашей статье"),
@@ -92,6 +86,15 @@ TABLE = [
      "Перенос срока поручения"),
     ("instructions.digest", "Сводка по поручениям", "Поручения", 229, False, ("portal", "email"), (),
      "Сводка по поручениям"),
+    # виды сроков SLA (срез 011, CONTRACT-011): order 230–232, события создают задания, внешний текст без темы
+    ("servicedesk.sla_due_soon", "Срок заявки приближается", "Сервис-деск", 230, False, ALL_CHANNELS,
+     ("servicedesk.sla_due_soon",),
+     "Срок заявки приближается"),
+    ("servicedesk.sla_overdue", "Заявка просрочена", "Сервис-деск", 231, False, ALL_CHANNELS,
+     ("servicedesk.sla_overdue",), "Заявка просрочена"),
+    ("servicedesk.sla_digest", "Сводка по срокам заявок", "Сервис-деск", 232, False, ALL_CHANNELS,
+     ("servicedesk.sla_digest",),
+     "Сводка по срокам заявок"),
 ]
 MANDATORY_CODES = {row[0] for row in TABLE if row[4]}
 

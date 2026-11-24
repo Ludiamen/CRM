@@ -29,10 +29,16 @@ ASSIGNED = "servicedesk.assigned"
 REPLIED = "servicedesk.requester_replied"
 FAILED = "servicedesk.reply_failed"
 SD_CODES = [NEW_IN_QUEUE, ASSIGNED, REPLIED, FAILED]
+SLA_DUE = "servicedesk.sla_due_soon"
+SLA_OVERDUE = "servicedesk.sla_overdue"
+SLA_DIGEST = "servicedesk.sla_digest"
+SLA_CODES = [SLA_DUE, SLA_OVERDUE, SLA_DIGEST]  # сроки SLA (срез 011, order 230–232)
 RUBRIC = "knowledge.rubric_subscription"   # пятая строка таблицы: вид доступен всем (срез 005, CONTRACT-005, п. 52 раздела 17)
 LISTS_KIND = "lists.deadline"   # шестая строка таблицы: вид доступен всем (срез 006, CONTRACT-006, раздел 7.3)
 OTHER_SD_CODES = [ASSIGNED, REPLIED, FAILED]
 TITLES = {
+    SLA_DUE: "Срок заявки приближается", SLA_OVERDUE: "Заявка просрочена",
+    SLA_DIGEST: "Сводка по срокам заявок",
     NEW_IN_QUEUE: "Новая заявка в моей очереди",
     ASSIGNED: "Мне назначили заявку",
     REPLIED: "Заявитель ответил",
@@ -229,7 +235,7 @@ def test_effective_table_rows_are_available_non_mandatory_kinds_in_order():
     prefs = _svc("prefs")
     user, _ = _queue_member()
     table = prefs.effective(user)
-    assert [row.kind.code for row in table.rows] == SD_CODES + ["knowledge.rubric_subscription", LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES)
+    assert [row.kind.code for row in table.rows] == SD_CODES + ["knowledge.rubric_subscription", LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES) + SLA_CODES
     expected = [kind.code for kind in _svc("kinds").catalog() if not kind.mandatory and kind.available(user)]
     assert [row.kind.code for row in table.rows] == expected
     for row in table.rows:
@@ -338,7 +344,7 @@ def test_effective_uses_own_matrix_after_first_save():
     assert cells[ASSIGNED]["portal"] is True
     matrix = _row_of(user).matrix
     # решение 43 (б): снимок содержит все строки таблицы, у `feed.like` — пустой список каналов вне портала
-    assert set(matrix) == set(SD_CODES) | {RUBRIC, LISTS_KIND} | set(FEED_CODES) | set(MESSENGER_CODES)
+    assert set(matrix) == set(SD_CODES) | {RUBRIC, LISTS_KIND} | set(FEED_CODES) | set(MESSENGER_CODES) | set(SLA_CODES)
     assert matrix[FEED_LIKE] == []
     assert "push" in matrix[ASSIGNED] and "email" not in matrix[ASSIGNED]
     assert all("portal" not in channels for channels in matrix.values())
@@ -487,7 +493,7 @@ def test_my_notifications_page_has_five_channel_columns_portal_checked_and_fixed
     assert [head.attrs["data-channel"] for head in heads] == list(CHANNELS)
     assert [head.text for head in heads] == [HEADERS[channel] for channel in CHANNELS]
     rows = _kind_rows(root)
-    assert list(rows) == SD_CODES + [RUBRIC, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES)
+    assert list(rows) == SD_CODES + [RUBRIC, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES) + SLA_CODES
     for row in rows.values():
         cells = row.find_all("td", {"data-channel": True})
         assert [cell.attrs["data-channel"] for cell in cells] == list(CHANNELS)
@@ -523,7 +529,7 @@ def test_my_notifications_page_push_is_one_column_for_both_push_kinds():
     values = [box.attrs.get("value", "") for box in table.find_all("input", {"name": "cell"})]
     # пятнадцать флажков: восемь прежних строк (четыре сервис-деска, «по подписке», «Срок в записи списка», два вида
     # мессенджера) и семь видов ленты с флажками; у «Нравится» (`channels=("portal",)`) флажка push нет (решение 43 (в))
-    assert sorted(value.split(":", 1)[1] for value in values if value.endswith(":push")) == ["push"] * (8 + len(FEED_BOXED))
+    assert sorted(value.split(":", 1)[1] for value in values if value.endswith(":push")) == ["push"] * (11 + len(FEED_BOXED))
     assert not [value for value in values if value.endswith(":webpush")]
 
 

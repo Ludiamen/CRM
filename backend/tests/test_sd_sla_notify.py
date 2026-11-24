@@ -58,7 +58,10 @@ def test_sla_external_delivery_contains_event_and_link_but_not_ticket_subject():
     _, _, assignee, ticket, cycle = _scene(subject="Секретная тема заявки")
     cycle.reaction_due = timezone.now() - timedelta(minutes=1)
     cycle.save(update_fields=["reaction_due"])
-    tasks.sla_tick(now=timezone.now())
+    from django.test import TestCase
+
+    with TestCase.captureOnCommitCallbacks(execute=True):
+        tasks.sla_tick(now=timezone.now())
 
     note = Notification.objects.get(user=assignee, kind="servicedesk.sla_overdue")
     assert note.url == f"/tickets/{ticket.number}/"

@@ -13,6 +13,7 @@
 """
 import ast
 import difflib
+import os
 import logging
 import re
 from datetime import datetime
@@ -353,6 +354,10 @@ def test_card_without_kb_records_in_ticket_card_parts_matches_slice003_markup(cl
         assert extensions.registered("ticket_card_parts") == []
         cards = slice003_cards(clock)
 
+    if os.environ.get("UPDATE_CARD_SNAPSHOT") == "1":  # ручное обновление снимка при изменении карточки
+        SNAPSHOT.write_text(
+            "".join(f"<!-- snapshot:{name} -->\n{cards[name]}\n" for name in ("open", "closed")),
+            encoding="utf-8")
     for name in ("open", "closed"):
         expected = _snapshot_part(name)
         assert "data-card-part" not in cards[name]
