@@ -2,7 +2,7 @@
 id: PLAN-011
 вид: план
 статус: черновик
-версия: 1
+версия: 2
 зависит_от: SPEC-011, CONST, ADR-0002, ADR-0004, ADR-0008, ADR-0019, REF-CAP, REF-UX, REF-SRC, TGT-ARCH, TGT-NFR, SPEC-002, SPEC-003, SPEC-004, SPEC-009, SPEC-010
 основан_на: SPEC-011 sha256:7514b90dedd52bd7419edcdc82a850c5231949cfdbfe0df4c427b773bec8e350
 ---
@@ -11,56 +11,56 @@ id: PLAN-011
 
 ## Сверка с конституцией
 
-- **модуль-приложение** — новых приложений нет: срез расширяет `apps.servicedesk` (уровни SLA, сроки на заявке,
-  частые ответы, отчёт); связи с ядром — через существующие точки `menu_items`, `notification_kinds`,
-  `audit_labels`, `stand_reset`; календарь — через `apps.org.services.calendar`, уведомления — через
-  `apps.notify.services.dispatch`.
-- **настройка-без-кода** — уровни, привязки, расписание, шаблоны, права, часы напоминания — данные;
-  администратор меняет их в интерфейсе.
-- **пдн-152фз** — во внешние каналы (Telegram, MAX, Web Push) уходят только событие и ссылка на заявку без темы и
-  текста; отчёт и Excel — внутри портала и под правом; чужие очереди в отчёт не попадают.
-- **sql-только-параметры** — отчёт, фильтры очереди и отчётные выборки — параметрами; ключи фильтров, сортировок
-  и периодов — из белого списка.
-- **аудит-изменений** — журнал только дополняется: уровни, привязки, шаблоны, выгрузка отчёта.
-- **стек-интерфейс** — HTMX, без нового JS; Excel — серверный `openpyxl` (уже в зависимостях).
+- **модуль-приложение** — новых приложений нет: срез расширяет `apps.servicedesk`; связи с ядром — через
+  существующие точки `menu_items`, `notification_kinds`, `audit_labels`, `stand_reset`; календарь — через
+  `apps.org.services.calendar`, уведомления — через `apps.notify.services.dispatch`.
+- **настройка-без-кода** — уровни, привязки, расписание, шаблоны, права, часы напоминания — данные.
+- **пдн-152фз** — во внешние каналы только событие и ссылка; в Excel нет темы, текста и адреса заявителя.
+- **sql-только-параметры** — отчёт, фильтры и выборки — параметрами; ключи фильтров и периодов — из белого списка.
+- **аудит-изменений** — журнал только дополняется, записи уровней и шаблонов — с автором и временем.
+- **стек-интерфейс** — HTMX и один небольшой свой `answers.js` (подстановка текста в `textarea`), сторонних
+  библиотек нет; Excel — серверный `openpyxl`.
 - **стек-бэкенд** — Django 5.2, PostgreSQL, RQ-задания в `maintenance`; новых пакетов нет.
-- **эталон-не-копия** — берём сроки и уровни из эталона, а расчёт по рабочему календарю, два срока, отчёт и
-  шаблоны — свои решения по SPEC-011.
+- **эталон-не-копия** — сроки и уровни из эталона, расчёт по рабочему календарю, второй срок и отчёт — решения
+  SPEC-011.
 
 ## Технический контекст
 
 ### Новые компоненты и лицензии
 
-Новых пакетов нет: `openpyxl==3.1.5` уже в `requirements.txt` (его использует срез 010). Новых JS нет: вставка
-шаблона — HTMX-запрос и подстановка текста в `textarea` небольшим кодом в `static/servicedesk/answers.js`
-(без сторонних библиотек). Календарь, уведомления, файлы и Excel — существующие службы.
+Новых пакетов нет: `openpyxl==3.1.5` уже в `requirements.txt`. Новых сторонних JS нет; `static/servicedesk/answers.js`
+— свой файл без зависимостей.
 
 ### Где живёт код
 
 ```
 backend/apps/servicedesk/
-  models.py                 + SlaLevel, SlaBinding, AnswerTemplate; поля сроков в Ticket; настройки напоминания
-  migrations/0004_sla_answers.py, 0005_initial_data.py
-  services/sla.py           подбор уровня, расчёт сроков, снимок, циклы, вердикты, фильтры просрочки
-  services/answers.py       общие и личные шаблоны, видимость, архивирование
-  services/reports.py       показатели отчёта и выгрузка xlsx
-  services/settings.py      + часы напоминания
-  tasks.py                  + sla_tick (напоминания и просрочка), sla_digest (сводка руководителю)
-  notify_kinds.py           + servicedesk.sla_due_soon, servicedesk.sla_overdue, servicedesk.sla_digest
-  audit_labels.py           + метки уровней, шаблонов и выгрузки
+  models.py                 + SlaLevel, SlaBinding, AnswerTemplate, SlaCycle, SlaNotice, SlaDigest;
+                              поля сроков в Ticket; sla_reminder_hours в ServiceDeskSettings
+  migrations/0004_sla_answers.py
+  services/sla.py           интервалы дня, расчёт сроков и рабочих минут, применение уровня, циклы, вердикты
+  services/answers.py       общие и личные шаблоны, видимость, архивирование, вставка
+  services/reports.py       показатели и выгрузка xlsx
+  services/settings.py      + sla_reminder_hours (1–24)
+  services/listing.py       + колонка и фильтр срока, сортировка по сроку, свои очереди руководителя
+  services/transfer.py      + пересчёт уровня и сроков при смене категории/критичности/очереди
+  tasks.py                  + sla_tick, sla_digest
+  notify_kinds.py           + servicedesk.sla_due_soon, sla_overdue, sla_digest
+  audit_labels.py           + метки уровней, шаблонов, выгрузки
   extensions.py             + пункты меню «Уровни обслуживания», «Отчёт по заявкам»
   urls.py                   + маршруты уровней, отчёта и шаблонов
-  views/sla.py, views/reports.py, views/answers.py    (новые)
-  views/tickets_list.py, views/ticket_card.py         + фильтры срока и блок сроков в карточке
-  views/ticket_new.py, services/tickets.py            + применение уровня при создании и смене полей
-  services/replies.py, services/closing.py            + факты реакции, решения и нового цикла
-backend/templates/servicedesk/sla/{page,_list,_form}.html
-backend/templates/servicedesk/reports/page.html
-backend/templates/servicedesk/answers/{page,_list,_form}.html
-backend/templates/servicedesk/card/_sla.html
+  views/sla.py, views/reports.py, views/answers.py   (новые)
+  views/tickets_list.py     + разбор `due` в Filters и счётчики срока
+  views/ticket_card.py      + блок сроков и выбор шаблона в форме ответа, пересчёт при правке полей
+  views/settings.py         + поле «часы напоминания» в INT_FIELDS
+backend/apps/org/services/structure.py   + heads_of_unit(unit_id) — руководитель и заместитель узла
+backend/apps/org/services/calendar.py    используется как есть (day_kind, WorkCalendar.day_start/day_end)
+backend/templates/servicedesk/
+  sla/{page,_list,_form}.html, reports/page.html, answers/{page,_list,_form}.html,
+  card/_sla.html (включается из card/_card.html), list/_grid.html (колонка срока),
+  list/page.html (фильтр `due`), settings/settings.html (часы напоминания)
 backend/static/servicedesk/answers.js
 backend/tests/test_sd_sla_*.py, test_sd_reports_*.py, test_sd_answers_*.py, tests/e2e/test_t11_*.py
-backend/tests/load/… (новых профилей нет — NFR-730 меряется классом ServiceDeskUser)
 ```
 
 ### Изменения ядра и прежних модулей
@@ -68,41 +68,76 @@ backend/tests/load/… (новых профилей нет — NFR-730 меря�
 | Файл | Изменение | Зачем |
 |---|---|---|
 | данные установки `core 0016` | права `servicedesk.sla`, `servicedesk.reports`, `servicedesk.answers`; «Администратор портала» — sla и answers, роль «Руководитель» — reports; идемпотентно | FR-756 |
-| `apps/servicedesk/models.py` + `0004` | три модели и поля сроков в `Ticket`; два поля в `ServiceDeskSettings` | FR-730…745 |
-| `apps/servicedesk/services/settings.py` | `reminder_hours` 1–24, по умолчанию 1 | FR-743 |
-| `config/cron.py` | `servicedesk_sla_tick` (`*/5`, 300), `servicedesk_sla_digest` (`10 5`, 300) в `maintenance` — после записей поручений | FR-743/744, NFR-734 |
+| `apps/servicedesk/models.py` + `servicedesk 0004` | пять моделей и поля сроков в `Ticket`; `sla_reminder_hours` в настройках (одно поле) | FR-730…745 |
+| `apps/servicedesk/services/settings.py` | `sla_reminder_hours` 1–24, по умолчанию 1 | FR-743 |
+| `apps/servicedesk/services/listing.py` | колонка «Срок», сортировка `due`, фильтр `due` | FR-741 |
+| `apps/servicedesk/services/transfer.py` | пересчёт сроков при смене категории/критичности/очереди (не только `tickets.update_fields`) | FR-736 |
+| `apps/servicedesk/views/tickets_list.py` | поле `due` в `Filters`, разбор `?due=overdue|today`, счётчики срока в `count` | FR-741 |
+| `apps/servicedesk/views/settings.py` | `sla_reminder_hours` в `INT_FIELDS` | FR-756 |
+| `apps/servicedesk/views/ticket_card.py` | блок `_sla.html`, форма ответа с шаблонами, пересчёт при правке полей | FR-742, 753 |
+| `templates/servicedesk/list/_grid.html`, `list/page.html`, `card/_card.html`, `settings/settings.html` | колонка, фильтр, включение блока, поле часов | FR-741/742/756 |
+| `apps/servicedesk/extensions.py` | пункты меню «Уровни обслуживания» (order 6, `servicedesk.sla`), «Отчёт по заявкам» (order 7, `servicedesk.reports`) | навигация |
+| `config/cron.py` | `servicedesk_sla_tick` (`*/5`, 300) и `servicedesk_sla_digest` (`10 * * * *`, 300) в `maintenance` | FR-743/744 |
+| `apps/servicedesk/stand.py` | сброс новых таблиц и полей, ключи кэша `servicedesk:sla:*` и `servicedesk:digest:*` | стенд |
 | `templates/_assets.html` | `answers.js` для `/servicedesk/answers/` и карточки заявки | вставка шаблона |
-| `apps/servicedesk/extensions.py` | пункты меню «Уровни обслуживания» (order 5, `servicedesk.sla`) и «Отчёт по заявкам» (order 6, `servicedesk.reports`) рядом с «Заявками» | навигация |
-| `apps/servicedesk/stand.py` | сброс новых таблиц и полей сроков у заявок, порядок строк `stand_reset` сохраняется | стенд |
 
 `role_sources` не регистрируется: права — данные. Nginx не меняется: файлов у среза нет.
 
 ### Запуск
 
-Новых служб нет. Миграции: `core 0016` от `0015`, `servicedesk 0004` от `0003` и `core 0016`, `servicedesk 0005`
-(данные) от `0004`. Задания идут в очереди `maintenance` (её читают `worker-mail` и `worker-1/2`).
+Новых служб нет. Миграции: `core 0016` от `0015`, `servicedesk 0004` от `0003` и `core 0016`. Данных установки в
+`servicedesk` нет (уровни и шаблоны не создаются), поэтому второй миграции не нужно. Очередь `maintenance` читает
+только служба `worker-mail` — задания `sla_tick` и `sla_digest` пойдут последовательно с напоминаниями задач и
+поручений; `sla_tick` перед работой берёт замок `sla:tick` (Valkey, TTL 4 минуты), чтобы тики не наложились.
 
 ## Модель данных
 
 ### Приложение `servicedesk` (миграция 0004)
 
+Все новые модели — `default_permissions = ()`, русские `verbose_name`; сроки и числа — целые минуты.
+
 | Модель / поле | Поля | Индексы и ограничения |
 |---|---|---|
-| `SlaLevel` | `title` 100, `priority` 0–99 (меньше — важнее), `reaction_minutes` 5…43 200, `solution_minutes` 5…43 200, `workdays` JSON (0–6, по умолчанию `[0,1,2,3,4]`), `day_start` 09:00, `day_end` 18:00, `all_day` bool, `default_assignee` FK `core.User` PROTECT пусто, `archived` bool, `created_at`, `updated_at` | `CheckConstraint` на минуты и `day_start < day_end` при `all_day=False`; индексы `(archived, priority)` |
-| `SlaBinding` | `level` FK `SlaLevel` CASCADE, `kind` (`category`/`priority`), `category` FK PROTECT пусто, `priority` FK PROTECT пусто | `CheckConstraint`: ровно одно из `category`/`priority` по `kind`; частичные уникальные `(category)` и `(priority)` — одна привязка на категорию и на критичность |
-| `AnswerTemplate` | `owner` FK `core.User` CASCADE пусто (пусто — общий), `title` 100, `text` 10 000, `category` FK PROTECT пусто (только у общего), `archived`, `created_at`, `updated_at` | индексы `(owner, archived)`, `(category)`; `CheckConstraint`: личный шаблон без категории |
-| `Ticket` + | `sla` FK `SlaLevel` SET_NULL пусто, `sla_cycle_started_at` timestamptz пусто, `sla_reaction_due`, `sla_solution_due` timestamptz пусто, `sla_first_response_at` пусто | индекс `(sla_reaction_due, kind)`, `(sla_solution_due, kind)` для фильтров и задания |
-| `ServiceDeskSettings` + | `sla_reminder_hours` 1–24 = 1 | `CheckConstraint` 1–24 |
+| `SlaLevel` | `title` 100, `priority` 0–99, `reaction_minutes` 5…43 200, `solution_minutes` 5…43 200, `workdays` JSON (0–6, по умолчанию `[0,1,2,3,4]`), `day_start` 09:00, `day_end` 18:00, `all_day` bool, `default_assignee` FK `core.User` PROTECT пусто, `archived` bool, `created_at`, `updated_at` | `CheckConstraint`: минуты в диапазоне, дни — подмножество 0–6; индекс `(archived, priority)` |
+| `SlaBinding` | `level` CASCADE, `kind` (`category`/`priority`), `category` PROTECT пусто, `priority` PROTECT пусто | `CheckConstraint`: ровно одно поле по `kind`; частичные уникальные `(category)` и `(priority)` |
+| `AnswerTemplate` | `owner` FK `core.User` CASCADE пусто (пусто — общий), `title` 100, `text` 10 000, `category` PROTECT пусто (только у общего), `archived`, `created_at`, `updated_at` | индексы `(owner, archived)`, `(category)`; `CheckConstraint`: личный шаблон без категории |
+| `SlaCycle` | `ticket` CASCADE (related `sla_cycles`), `level` FK `SlaLevel` SET_NULL пусто, `level_title` 100 (снимок), `assignee` FK `core.User` SET_NULL пусто, `assignee_name` 255 (снимок), `schedule` JSON (снимок расписания), `cycle_started_at`, `reaction_due`, `solution_due`, `first_response_at` пусто, `reaction_minutes` пусто, `closed_at` пусто, `solution_minutes` пусто, `closed_kind` (`manual`/`autoclosed`) пусто, `reaction_met` bool пусто, `solution_met` bool пусто, `created_at` | индексы `(ticket, cycle_started_at)`, `(closed_at)`, `(level)`, `(cycle_started_at)` |
+| `SlaNotice` | `cycle` CASCADE, `kind` (`due_soon`/`overdue`), `recipient` FK `core.User` CASCADE, `sent_at` | уникальность `(cycle, kind, recipient)` — идемпотентность в БД |
+| `SlaDigest` | `unit` FK `org.Unit` CASCADE, `day` дата, `sent_at` | уникальность `(unit, day)` |
+| `Ticket` + | `sla` FK `SlaLevel` SET_NULL пусто, `sla_cycle_started_at`, `sla_reaction_due`, `sla_solution_due`, `sla_first_response_at` — пусто | частичные индексы `(sla_reaction_due)` и `(sla_solution_due)` при `kind != 'closed'` |
+| `ServiceDeskSettings` + | `sla_reminder_hours` 1–24 часов, по умолчанию 1 | `CheckConstraint` 1–24 |
 
-Вердикты не хранятся отдельными полями: «реакция в срок» = `sla_first_response_at <= sla_reaction_due` (или
-`IS NULL` до факта), «решение в срок» = `closed_at <= sla_solution_due`; при открытии заново цикл начинается
-снова, поэтому закрытие прошлого цикла остаётся только в журнале (`ticket.closed` / `ticket.autoclosed`) — как
-решила SPEC-011 (решение 5а/5б).
+Текущий цикл живёт на `Ticket`; при первом ответе и закрытии создаётся или дописывается строка `SlaCycle`:
+`reaction_minutes` и `solution_minutes` считаются один раз по расписанию цикла (`schedule`) и больше не меняются —
+поэтому средние в отчёте не зависят от будущих правок уровня или календаря. Открытие заново не удаляет прошлую
+строку цикла: старый цикл остаётся закрытым со своими вердиктами, новый начинается новой строкой. Записи
+`ticket.closed` / `ticket.autoclosed` дополняются номером цикла и вердиктами, чтобы журнал был самодостаточен.
 
-### Данные установки `servicedesk 0005`
+### Правило рабочих часов (FR-734/735, NFR-733)
 
-Права и выдачи — в `core 0016` (см. выше). Уровней и шаблонов миграция не создаёт: пустые справочники, в
-интерфейсе — пустые состояния (UX-13). Повторный запуск ничего не дублирует.
+Интервал дня для даты `D` и уровня `L`:
+
+1. `D.weekday()` входит в `L.workdays`; иначе день нерабочий.
+2. `calendar.day_kind(D)` не из `off`, `holiday`, `day_off`; иначе день нерабочий (праздник календаря сильнее
+   уровня — так решает пункт «нерабочие дни — календарь» SPEC-011).
+3. `start = max(L.day_start, calendar.day_start)`, `end = min(L.day_end, calendar.day_end)`; для `short`
+   `end = end − 1 час` (как в календаре), для `all_day` — `00:00…24:00`; если `start ≥ end`, день пропускается.
+4. `deadline(start, minutes)` идёт по дням вперёд, пока не израсходует минуты; `minutes_between(a, b)` считает
+   израсходованные рабочие минуты так же. Обе функции чистые и принимают снимок расписания (`schedule`) и
+   функцию вида дня — в тестах подменяются календарём-фикстурой.
+
+Замечание к SPEC-011: в её сценарии 1 сказано «17:50 + 30 минут → 09:30», а по правилу и арифметике выходит
+**09:20** (10 минут до 18:00 и 20 минут утром). Правило берём из спеки (рабочие часы), в тесте фиксируем 09:20, а
+пример просим поправить отдельной эрратой, чтобы подпись спеки не снималась молча (вопрос владельцу в конце среза).
+
+### Применение уровня и ответственный по умолчанию
+
+- Уровень выбирается по критичности, затем по категории (конфликт — критичность, SPEC-011). Ответственный по
+  умолчанию уровня назначается, только если у категории нет своего `default_assignee`; при создании и смене
+  полей проверяется участие сотрудника в очереди заявки — не участник: поле игнорируется, пишется событие
+  `assignee_skipped` (без назначения и без ошибки).
+- Смена категории, критичности или очереди проходит через `services/transfer.py` (там же, где сейчас меняется
+  категория): пересчёт сроков, пока нет первого ответа.
 
 ## Контракты
 
@@ -110,119 +145,142 @@ backend/tests/load/… (новых профилей нет — NFR-730 меря�
 
 | Маршрут | Право | Ответ |
 |---|---|---|
-| `GET /servicedesk/sla/` | `servicedesk.sla` | список уровней с привязками и состоянием архива |
-| `GET/POST /servicedesk/sla/new/` | `servicedesk.sla` | форма создания; ошибки у полей, 400 |
+| `GET /servicedesk/sla/` | `servicedesk.sla` | список уровней с привязками и архивом |
+| `GET/POST /servicedesk/sla/new/` | `servicedesk.sla` | форма; ошибки у полей, 400 |
 | `GET/POST /servicedesk/sla/<pk>/` | `servicedesk.sla` | форма правки и привязок |
-| `POST /servicedesk/sla/<pk>/archive/` | `servicedesk.sla` | архивирование и возврат из архива (HTMX-строка) |
+| `POST /servicedesk/sla/<pk>/archive/` | `servicedesk.sla` | архив и возврат (HTMX-строка) |
 
 ### Очередь и карточка (FR-738…742)
 
 | Маршрут | Право | Ответ |
 |---|---|---|
-| `GET /tickets/?f=overdue` | `servicedesk.all` или очередь | фильтр просроченных (реакция или решение) |
-| `GET /tickets/?f=today` | то же | срок сегодня |
-| `GET /tickets/count/` | то же | счётчики срока рядом с существующими |
-| `GET /tickets/<number>/` | доступ к заявке | блок `_sla.html`: уровень, сроки, факты, вердикты, «срок не задан» |
+| `GET /tickets/?due=overdue` | `access.menu_visible` + существующий пресет | просроченные: реакция прошла без ответа или решение прошло без закрытия |
+| `GET /tickets/?due=today` | то же | ближайший активный срок (реакция, если ответа нет, иначе решение) — сегодня по Москве |
+| `GET /tickets/count/?due=…` | то же | число для фильтра рядом с существующими счётчиками |
+| `GET /tickets/<number>/` | доступ к заявке | блок `_sla.html`: уровень, оба срока, факты, вердикты, «срок не задан» |
 
-Сортировка по сроку добавляется в существующий белый список сортировок `listing`; ключи `overdue`/`today` —
-в белый список фильтров.
+`due` — поле `Filters` и разбор в `_read`; сочетается с пресетами `mine`/`my_queues`/`closed`; неизвестное
+значение — как пустое (действующее правило списка).
 
 ### Отчёт (FR-746…750, NFR-731, NFR-735)
 
 | Маршрут | Право | Ответ |
 |---|---|---|
-| `GET /servicedesk/reports/?period=day|week|month|custom&from=&to=&queue=&sla=&category=&assignee=` | `servicedesk.reports` | страница отчёта; область — `managed_units` пользователя, значения — параметрами |
-| `GET /servicedesk/reports/export/…` | `servicedesk.reports` | `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, имя `tickets-YYYY-MM-DD.xlsx`, запись журнала `servicedesk.report_exported` |
+| `GET /servicedesk/reports/?period=day|week|month|custom&from=&to=&queue=&sla=&category=&assignee=` | `servicedesk.reports` | страница отчёта |
+| `GET /servicedesk/reports/export/…` | `servicedesk.reports` | xlsx, имя `tickets-YYYY-MM-DD.xlsx`, журнал `servicedesk.report_exported` |
 
-Показатели: создано, закрыто, среднее время реакции и решения в рабочих часах, доля в срок по реакции и
-решению, просрочки по уровням, нагрузка исполнителей (закрыто на исполнителя), оценка заявителей — колонка
-есть, значения пусты до среза с CAP-35.
+Область — `managed_units` пользователя (очереди узлов и вложенных); администратор без отметки — 403. Период:
+`day/week/month` считаются по Москве, `custom` — от `from` до `to` включительно; больше 370 дней — ошибка поля и
+400. Создано — по `Ticket.created_at`, закрыто — по `SlaCycle.closed_at`, средние — из готовых `reaction_minutes`
+и `solution_minutes`, доля в срок — по `reaction_met`/`solution_met`, просрочки по уровням — по `level_title`,
+нагрузка — по `assignee_name`. Показатель «оценка заявителей» — колонка без значений (CAP-35 вне среза).
+
+Excel: лист **«Показатели»** — те же числа и период; лист **«Заявки»** — до 20 000 строк цикла: номер, создана,
+закрыта, очередь, уровень, срок реакции и факт, срок решения и факт, вердикты, вид закрытия, исполнитель.
+Темы, текста, адреса и имени заявителя в файле нет.
 
 ### Частые ответы (FR-751…754)
 
 | Маршрут | Право | Ответ |
 |---|---|---|
-| `GET /servicedesk/answers/` | вход в портал + доступ к сервис-деску | личные и доступные общие шаблоны |
-| `GET/POST /servicedesk/answers/new/` | то же; общий — `servicedesk.answers` | форма; личный шаблон создаёт любой сотрудник сервис-деска |
+| `GET /servicedesk/answers/` | `access.menu_visible` | видимые личные и общие шаблоны |
+| `GET/POST /servicedesk/answers/new/` | та же; общий — ещё `servicedesk.answers` | форма |
 | `GET/POST /servicedesk/answers/<pk>/edit/` | владелец личного или `servicedesk.answers` | форма правки |
 | `POST /servicedesk/answers/<pk>/archive/` | то же | архив/возврат |
-| `GET /servicedesk/answers/<pk>/insert/` | доступ к заявке | HTMX-фрагмент с текстом для подстановки в `textarea` ответа |
+| `GET /servicedesk/answers/<pk>/insert/?ticket=<number>` | доступ к заявке (`access.can_work`) и видимость шаблона | HTMX-фрагмент с текстом для подстановки |
 
-### Уведомления и задания (FR-743…745)
+Личный шаблон виден владельцу, общий — держателю `servicedesk.answers` и участникам сервис-деска; архивный
+шаблон и чужой личный — 404.
 
-Три вида: `servicedesk.sla_due_soon` (order 230), `servicedesk.sla_overdue` (231), `servicedesk.sla_digest` (232);
-получатели — ответственный, руководитель очереди (по `managed_units` очереди), автор действия исключён; ссылка —
-`/tickets/<number>/`, `object_ref` — `servicedesk.ticket:<pk>`; во внешние каналы только событие и ссылка.
-`sla_tick` каждые 5 минут: напоминание за `reminder_hours` рабочих часов, отметка просрочки (одна на срок —
-строка-маркер в Valkey, как у задач), сводка — `sla_digest` в 05:10 UTC.
+### Уведомления и задания (FR-743…745, NFR-732, NFR-734)
+
+Три вида: `servicedesk.sla_due_soon` (order 230), `servicedesk.sla_overdue` (231), `servicedesk.sla_digest` (232).
+Получатели: ответственный; руководитель очереди — новая функция `structure.heads_of_unit(queue_id)` (отметки
+руководителя и заместителя узла). Напоминание за `sla_reminder_hours` рабочих часов до срока и отметка просрочки
+создают `SlaNotice` и уведомление в одной транзакции; повторный тик видит строку и молчит. Сводка: `sla_digest`
+идущий каждый час (`10 * * * *`), но отправляется только в рабочем дне и в первый час после
+`WorkCalendar.day_start`; повтор в тот же день отсекает `SlaDigest` уникальностью `(unit, day)`.
 
 ## Интеграции
 
-- **Календарь (SPEC-002)** — `org.services.calendar`: `day_kind` (рабочий/сокращённый/выходной/праздник) и
-  `WorkCalendar.day_start/day_end`. Новый расчёт `sla.deadline(start, minutes, level)` идёт по рабочим дням
-  календаря и интервалу уровня; своих календарей у уровня нет.
-- **Уведомления (SPEC-004)** — через `notify.services.dispatch`; тихие часы и каналы — настройки сотрудника;
-  внешние каналы получают только событие и ссылку.
-- **Почта** — не меняется: ответы и письма идут прежними службами; факт реакции фиксируется в `replies.reply`.
-- **Файлы** — не меняются.
+- **Календарь (SPEC-002)** — `org.services.calendar`: `day_kind`, `WorkCalendar.day_start/day_end`, `day_kind`
+  учитывает особые дни; правило пересечения — выше. Своих календарей у уровня нет.
+- **Уведомления (SPEC-004)** — `notify.services.dispatch`; тихие часы и каналы — настройки сотрудника; внешние
+  каналы получают только событие и ссылку.
+- **Почта и файлы** — без изменений; факт реакции фиксируется в `services/replies.py` при `queued`-ответе.
 - **Внешние системы** (Telegram/MAX/Zabbix/АСДОБ) — новых вызовов нет.
 
 ## Проверка
 
-### Серверные тесты (Django TestCase на PostgreSQL)
+### Серверные тесты
 
 | Файл | Что закрывает |
 |---|---|
-| `test_sd_sla_models.py` | модели, ограничения, уникальность привязок, архив (FR-730…733) |
-| `test_sd_sla_deadlines.py` | расчёт рабочих часов: вечер пятницы, выходные, праздник, «круглосуточно», переход года (FR-734, FR-735) |
-| `test_sd_sla_ticket.py` | подбор уровня при создании, конфликт категория/критичность, снимок, пересчёт до первого ответа, заявка без уровня (FR-734…737) |
-| `test_sd_sla_cycles.py` | первый ответ (`reply`/`waiting_files`/`not_sent`), закрытие ручное и автозакрытие, открытие заново, вердикты (FR-738…740) |
-| `test_sd_sla_views.py` | уровни, фильтры `overdue`/`today`, счётчик, карточка; права и 403 (FR-730…742, 757) |
-| `test_sd_sla_notify.py` | три вида уведомлений, получатели, без повторов, внешний текст без темы (FR-743…745) |
-| `test_sd_reports.py` | показатели за период, фильтры, область `managed_units`, пустой отчёт, оценка пуста (FR-746…750) |
-| `test_sd_reports_excel.py` | те же числа в xlsx, имя файла, журнал, 20 000 строк ≤ 10 с (FR-748, NFR-731) |
-| `test_sd_answers.py` | общие и личные шаблоны, видимость, архив, привязка к категории, вставка (FR-751…754) |
-| `test_sd_sla_cron.py` | `sla_tick` и `sla_digest` в расписании, идемпотентность, повторы после перезапуска (NFR-732, NFR-734) |
-| `test_sd_sla_core_changes.py` | права `core 0016`, меню, метки журнала, `stand_reset`, хвост `INSTALLED_APPS` не меняется |
+| `test_sd_sla_models.py` | модели, `default_permissions`, ограничения, уникальность привязок, архив (FR-730…733) |
+| `test_sd_sla_deadlines.py` | правило интервала: суббота уровня при выходном календаре, `short`, праздник, `all_day`, 28.02/29.02/01.03, вечер пятницы; `minutes_between` (FR-734/735, NFR-733) |
+| `test_sd_sla_ticket.py` | подбор по критичности/категории, снимок, пересчёт до первого ответа, ответственный уровня и конфликт с категорией, заявка без уровня (FR-734…737) |
+| `test_sd_sla_cycles.py` | первый ответ (`queued`, `waiting_files`, `not_sent`, комментарий), ручное и авто-закрытие, открытие заново, сохранение старого цикла, вердикты (FR-738…740) |
+| `test_sd_sla_views.py` | уровни, `due=overdue|today` с пресетами, счётчики, блок карточки, права и 403 (FR-730…742, 757) |
+| `test_sd_sla_audit.py` | журнал: уровень, привязки, шаблон, выгрузка — с автором и временем; русского/Москвы на страницах (FR-755, 758) |
+| `test_sd_sla_notify.py` | три вида, получатели (ответственный, `heads_of_unit`), границы 1/24/25 часов, опережение, без повторов, внешний текст без темы (FR-743/744, NFR-732/734) |
+| `test_sd_reports.py` | показатели за период, фильтры, область `managed_units`, 370/371 день, границы суток по Москве, неизменность истории после правки уровня и календаря, пустой отчёт, оценка пуста, 403 (FR-746…750, NFR-735) |
+| `test_sd_reports_excel.py` | два листа, те же числа, 20 000 строк ≤ 10 с, нет темы/текста/адреса, чужие очереди отсутствуют, журнал (FR-748, NFR-731) |
+| `test_sd_answers.py` | общие/личные, видимость, архив, категория у общего, вставка `?ticket=`, чужой личный 404 (FR-751…754) |
+| `test_sd_sla_cron.py` | обе записи в расписании, замок тика, повтор после перезапуска до/во время/после записи, сводка в окне `day_start`, один раз в день (NFR-732/734) |
+| `test_sd_sla_core_changes.py` | права `core 0016` и выдачи, меню (4 пункта), метки журнала, `stand_reset` с ключами `sla`/`digest`, хвост `INSTALLED_APPS` не меняется |
 
 ### Браузер (Playwright, `t11`)
 
-`t11_01` — администратор создаёт уровень и привязки; `t11_02` — заявка получает сроки и показывает блок в
-карточке; `t11_03` — просрочка в очереди, фильтры и счётчик; `t11_04` — руководитель смотрит отчёт и выгружает
-Excel; `t11_05` — вставка общего и личного шаблона; `t11_06` — 360 px и докладная область отчёта. Наполнение —
-`fill_tickets.py` и `ServiceDeskUser` (профиль среза 003), отдельного профиля не вводим.
+`t11_01` — уровень и привязки; `t11_02` — сроки в заявке и блок карточки; `t11_03` — просрочка, `due` и счётчик;
+`t11_04` — отчёт и Excel; `t11_05` — вставка общего и личного шаблона; `t11_06` — 360 px и русский/Москва.
+Данные браузерных сценариев — стенд-фикстуры среза (свой seed), не `fill_tickets.py`.
 
-### Нагрузка
+### Нагрузка (NFR-730)
 
-NFR-730 меряется профилем `ServiceDeskUser` по правилам T-7304 (холодная машина, `systemd-run --user`, порог
-остывания 2,5 — решение 2026-11-21) на наполнении `fill_tickets.py` (110 000 заявок / 550 000 сообщений);
-L2 — все классы. Известные дефекты NFR-612/707 и ограничение стенда записываются в отчёт.
+Профиль `ServiceDeskUser` расширяется: страница отчёта `?period=week` и `?due=overdue`, имена добавляются в
+`SD_PAGES` и `_check_sd_p95`. `fill_tickets.py` получает `LOAD_TICKETS_SLA=1`: уровни, привязки и сроки у 20 %
+заявок, чтобы отчёт и просрочка измерялись на живых данных. Прогон — по правилам T-7304 (холодная машина,
+`systemd-run --user`, порог 2,5). 500 мс NFR-730 относятся к страницам и фрагментам, не к выгрузке (у неё
+NFR-731 — 10 с).
 
 ### Ворота
 
-`tools/verify.sh --быстро` (SDD, инструменты, конституция, секреты, источники, vendor), `manage.py check`,
-`git diff --check`; полный серверный прогон — по правилу среза (зелёный полный + красный до реализации).
+`tools/verify.sh --быстро`, `manage.py check`, `git diff --check`; красный серверный прогон до реализации и
+зелёный полный — по правилу среза.
+
+## Правки прежних тестов (нужно разрешение владельца)
+
+| Файл и строка | Было | Станет | Почему |
+|---|---|---|---|
+| `tests/test_permissions.py:42` | 22 права | 25 прав | три новых `servicedesk.*` |
+| `tests/test_org_permissions.py:140-153` | у «Руководителя» ровно `staff.view`, `feed.post_all` | плюс `servicedesk.reports` | начальная выдача (FR-756) |
+| `tests/test_sd_boundaries.py:472` | ровно 4 вида уведомлений | 7 видов | три новых вида |
+| `tests/test_sd_boundaries.py:481` | меню «Заявки», «Сервис-деск» | плюс «Уровни обслуживания», «Отчёт по заявкам» | пункты меню |
+| `tests/test_kb_deploy.py:134`, `test_lists_deploy.py:169`, `test_feed_deploy.py:245`, `test_messenger_deploy.py:340`, `test_notify_deploy.py:321`, `test_tasks_deploy.py:243`, `test_instructions_deploy.py:188` | `len(...) == 27` записей cron | 29 записей | `sla_tick`, `sla_digest` |
+| `tests/test_sd_stand_restore.py` | сброс чистит только `servicedesk:form:*` | плюс `servicedesk:sla:*`, `servicedesk:digest:*` и новые таблицы | `stand_reset` |
+| `tests/support_servicedesk.py` | константы прав и видов | `PERMISSIONS_011`, `TITLES_011`, `KINDS_011` | общие помощники тестов |
+
+Правки — отдельной задачей после разрешения; до него прежние тесты красные только в перечисленных местах.
 
 ## Риски
 
-1. **Расчёт рабочих часов ошибается на границах** (вечер пятницы, сокращённый день, праздник, переход года,
-   DST в Москве отсутствует) — вероятность средняя: пишем свой цикл по календарю. Что делаем: табличные тесты
-   на границы в `test_sd_sla_deadlines`, сверка с `org.calendar` на стенде.
-2. **Автозакрытие и открытие заново ломают вердикты** — вероятность средняя: сейчас закрытие и reopen меняют
-   `closed_at`, `closed_by`, `resolution`. Что делаем: фиксация фактов в `sla`-полях и журнале, тесты циклов,
-   проверка повторного закрытия после reopen.
-3. **Отчёт на 110 тыс. заявок медленный** — вероятность средняя. Что делаем: индексы по срокам и датам,
-   агрегаты одним SQL на показатель, `EXPLAIN` в тесте, выгрузка 20 000 строк ≤ 10 с (NFR-731); запасной ход —
-   агрегатный кэш на 60 с только для страницы отчёта (решение Opus при исполнении, запись в отчёте).
-4. **Напоминания дублируются после перезапуска задания** — вероятность средняя. Что делаем: маркер в Valkey
-   на «срок + получатель», тест с остановкой задания, как у задач (NFR-732).
-5. **Права и область отчёта перепутаны** (участник очереди видит чужое) — вероятность средняя. Что делаем:
-   область строго по `managed_units`, тест «участник с правом не видит очередь, где он не руководитель»,
-   администратор без отметки — не видит.
-6. **Смена категории/критичности после ответа пересчитывает сроки** — вероятность низкая. Что делаем: пересчёт
-   только до `sla_first_response_at`, тест на заявке с ответом.
-7. **Шаблоны попадают не тому сотруднику** — вероятность низкая. Что делаем: фильтр видимости в службе и тест
-   на чужой личный шаблон; архивные не предлагаются.
-8. **Чужие тесты среза падают из-за нового хвоста прав и cron** — вероятность высокая: срез добавляет права,
-   записи cron, поля `Ticket` и пункты меню. Что делаем: таблица правок прежних тестов — отдельная задача с
-   разрешения владельца, как таблица T-10111 среза 010.
+1. **Расчёт рабочих часов на границах** — вероятность средняя. Что делаем: правило интервала из четырёх шагов,
+   таблица границ (вечер пятницы, `short`, праздник, суббота уровня, 29 февраля), сверка с `org.calendar`.
+2. **История средних «плывёт»** — вероятность средняя. Что делаем: минуты и вердикты пишутся в `SlaCycle` один
+   раз, отчёт читает готовые числа; тест «правка уровня и календаря не меняет прошлые средние».
+3. **Открытие заново теряет вердикты** — вероятность средняя. Что делаем: старый `SlaCycle` не удаляется, журнал
+   получает номер цикла и вердикты; тест закрытия с просрочкой и reopen.
+4. **Отчёт медленный на 110 тыс. заявок** — вероятность средняя. Что делаем: агрегаты по индексам
+   `(closed_at)`, `(cycle_started_at)`, `(level)`; `EXPLAIN` в тесте; запасной ход — кэш страницы на 60 с.
+5. **Дубли напоминаний и сводки** — вероятность средняя. Что делаем: `SlaNotice` и `SlaDigest` с уникальностью
+   в БД, замок тика, тест перезапуска.
+6. **Область отчёта шире замысла** — вероятность средняя. Что делаем: `managed_units` строго, 403 администратору
+   без отметки, тест «участник очереди не видит свою очередь в отчёте».
+7. **Ответственный по умолчанию уровня** — вероятность низкая. Что делаем: приоритет категории, проверка
+   участия в очереди, событие `assignee_skipped`, тест на неучастника.
+8. **Совпадение тиков в единственном `maintenance`-воркере** — вероятность средняя. Что делаем: замок
+   `sla:tick` TTL 4 минуты, порционные выборки по индексу срока, `job_timeout=300`.
+9. **Ломаются прежние тесты прав, видов, меню, cron и стенда** — вероятность высокая. Что делаем: таблица правок
+   выше, отдельная задача с разрешения владельца, `PERMISSIONS_011` в помощниках.
+10. **Шаблон виден не тому** — вероятность низкая. Что делаем: видимость в службе, 404 на чужой личный и
+   архивный, проверка `access.can_work` в маршруте вставки.
