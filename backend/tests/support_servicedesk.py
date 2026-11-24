@@ -17,12 +17,13 @@ import imaplib
 import importlib
 import io
 import os
+import re
 import secrets
 import ssl
 import time
 import zipfile
 from collections.abc import Callable, Sequence
-from datetime import date, datetime, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time as dt_time, timedelta, timezone as dt_timezone
 from email.headerregistry import AddressHeader, HeaderRegistry
 from email.message import EmailMessage
 from email.utils import format_datetime, make_msgid
@@ -41,6 +42,15 @@ SAMPLES_DIR = Path(__file__).resolve().parent / "fixtures" / "servicedesk"
 
 # Три права среза 003 (контракт 3.3); `support.PERMISSIONS` и `support.PERMISSIONS_002` не меняются.
 PERMISSIONS_003 = ("servicedesk.all", "servicedesk.manage")
+
+# Данные установки среза 011 (core 0016); прежние константы не меняются.
+PERMISSIONS_011 = ("servicedesk.sla", "servicedesk.reports", "servicedesk.answers")
+TITLES_011 = {
+    "servicedesk.sla": "Уровни обслуживания заявок",
+    "servicedesk.reports": "Отчёт по заявкам",
+    "servicedesk.answers": "Общие частые ответы",
+}
+KINDS_011 = ("servicedesk.sla_due_soon", "servicedesk.sla_overdue", "servicedesk.sla_digest")
 
 
 # --- классы адаптера IMAP: настоящие, если код уже есть, иначе заглушки той же формы -----------------
@@ -767,6 +777,153 @@ def make_ticket(*, queue=None, requester=None, kind: str = "new", number: int | 
     if "status" in over and "kind" not in over:
         fields["kind"] = fields["status"].kind
     return _db(Ticket, using).create(**fields)
+
+
+# --- помощники среза 011: уровни, циклы и отчёты ----------------------------------------------------
+
+def make_level(*, title=None, priority=0, reaction_minutes=60, solution_minutes=240,
+               workdays=(0, 1, 2, 3, 4), day_start=dt_time(9), day_end=dt_time(18),
+               all_day=False, default_assignee=None, archived=False, using="default", **fields):
+    """Создаёт уровень SLA с рабочим расписанием по умолчанию."""
+    Level = support.model("servicedesk.SlaLevel")
+    title = title or f"Уровень SLA {secrets.token_hex(3)}"
+    values = {
+        "title": title, "priority": priority, "reaction_minutes": reaction_minutes,
+        "solution_minutes": solution_minutes, "workdays": list(workdays),
+        "day_start": day_start, "day_end": day_end, "all_day": all_day,
+        "default_assignee": default_assignee, "archived": archived,
+    }
+    values.update(fields)
+    return _db(Level, using).create(**values)
+
+
+def bind_level(level, *, category=None, priority=None, using="default"):
+    """Привязывает уровень к категории или критичности."""
+    Binding = support.model("servicedesk.SlaBinding")
+    if (category is None) == (priority is None):
+        raise ValueError("передайте ровно category или priority")
+    values = {"level": level}
+    if category is not None:
+        values.update(kind="category", category=category, priority=None)
+    else:
+        values.update(kind="priority", category=None, priority=priority)
+    return _db(Binding, using).create(**values)
+
+
+def make_answer(owner=None, *, title=None, text="Ответ", category=None, archived=False,
+                using="default", **fields):
+    """Создаёт личный или общий шаблон ответа."""
+    Answer = support.model("servicedesk.AnswerTemplate")
+    title = title or f"Шаблон ответа {secrets.token_hex(3)}"
+    values = {"owner": owner, "title": title, "text": text, "category": category, "archived": archived}
+    values.update(fields)
+    return _db(Answer, using).create(**values)
+
+
+def make_cycle(ticket, **fields):
+    """Создаёт цикл SLA со снимками заявки и уровня; сроки можно передать явно."""
+    Cycle = support.model("servicedesk.SlaCycle")
+    using = fields.pop("using", "default")
+    level = fields.pop("level", getattr(ticket, "sla", None))
+    if level is None:
+        level = make_level(using=using)
+    started = fields.pop("cycle_started_at", None) or timezone.now()
+    number = fields.pop("number", None)
+    if number is None:
+        number = (_db(Cycle, using).filter(ticket=ticket).order_by("-number")
+                  .values_list("number", flat=True).first() or 0) + 1
+    _db(Cycle, using).filter(ticket=ticket, is_current=True).update(is_current=False)
+    reaction_due = fields.pop(
+        "reaction_due", started + timedelta(minutes=level.reaction_minutes))
+    solution_due = fields.pop(
+        "solution_due", started + timedelta(minutes=level.solution_minutes))
+    queue = fields.pop("queue", getattr(ticket, "queue", None))
+    category = fields.pop("category", getattr(ticket, "category", None))
+    assignee = fields.pop("assignee", getattr(ticket, "assignee", None))
+    values = {
+        "ticket": ticket, "number": number, "is_current": True, "level": level,
+        "level_title": getattr(level, "title", ""), "queue": _unit_of(queue) if queue else None,
+        "queue_name": getattr(_unit_of(queue), "name", "") if queue else "",
+        "category": category, "category_name": getattr(category, "name", "") if category else "",
+        "assignee": assignee, "assignee_name": getattr(assignee, "full_name", "") if assignee else "",
+        "schedule": {
+            "workdays": list(level.workdays), "day_start": level.day_start.strftime("%H:%M"),
+            "day_end": level.day_end.strftime("%H:%M"), "all_day": level.all_day,
+            "days": {}, "extended": False,
+        },
+        "cycle_started_at": started, "reaction_due": reaction_due, "solution_due": solution_due,
+    }
+    values.update(fields)
+    return _db(Cycle, using).create(**values)
+
+
+def close_ticket(ticket, *, actor, via="manual"):
+    """Закрывает заявку через службу закрытия, не прямым обновлением модели."""
+    from apps.servicedesk.services import closing, dictionaries
+
+    if via == "autoclosed":
+        status = dictionaries.status_by_kind("closed") if hasattr(dictionaries, "status_by_kind") else None
+        if status is None:
+            status = dictionaries.closing_statuses()[0]
+    else:
+        status = dictionaries.closing_statuses()[0]
+    closing.close(ticket, status, "Тестовое решение", actor=actor)
+    ticket.refresh_from_db()
+    return ticket
+
+
+def reopen_ticket(ticket, *, actor=None, at=None):
+    """Открывает заявку заново через службу закрытия; старый цикл сохраняется."""
+    from apps.servicedesk.services import closing
+    import inspect
+
+    kwargs = {"actor": actor}
+    if "at" in inspect.signature(closing.reopen).parameters:
+        kwargs["at"] = at
+    closing.reopen(ticket, **kwargs)
+    ticket.refresh_from_db()
+    return ticket
+
+
+def report_numbers(response):
+    """Возвращает числа показателей из HTML отчёта или словаря контекста.
+
+    Страница отчёта обязана помечать строки `data-report-row`; ключ и значение
+    берутся из `data-key`/`data-value`, а числовые `data-*` сохраняются как
+    дополнительные показатели.
+    """
+    if isinstance(response, dict):
+        return {key: value for key, value in response.items() if isinstance(value, (int, float))}
+    html = getattr(response, "content", response)
+    if isinstance(html, bytes):
+        html = html.decode("utf-8")
+    result = {}
+    for attrs in re.findall(r"<[^>]*\bdata-report-row(?:\s*=\s*(?:\"[^\"]*\"|'[^']*'))?[^>]*>", html):
+        pairs = {key: value for key, _quote, value in
+                 re.findall(r'\b(data-[\w-]+)=(["\'])(.*?)\2', attrs)}
+        key = pairs.get("data-key") or pairs.get("data-report-row")
+        value = pairs.get("data-value") or pairs.get("data-report-value")
+        if key and value is not None:
+            try:
+                result[key] = float(value) if "." in value else int(value)
+            except ValueError:
+                pass
+    return result
+
+
+def notice_rows(*, recipient=None, deadline=None, kind=None, using="default"):
+    """Строки `SlaNotice` для проверок идемпотентности, без лишних ПДн."""
+    Notice = support.model("servicedesk.SlaNotice")
+    query = _db(Notice, using).select_related("cycle", "recipient").order_by("pk")
+    if recipient is not None:
+        query = query.filter(recipient=recipient)
+    if deadline is not None:
+        query = query.filter(deadline=deadline)
+    if kind is not None:
+        query = query.filter(kind=kind)
+    return [{"id": row.pk, "cycle": row.cycle_id, "deadline": row.deadline, "kind": row.kind,
+             "due_at": row.due_at, "recipient": row.recipient_id, "sent_at": row.sent_at}
+            for row in query]
 
 
 def make_entry(ticket, kind: str = "comment", *, author=None, text: str = "", using: str = "default", **over):
