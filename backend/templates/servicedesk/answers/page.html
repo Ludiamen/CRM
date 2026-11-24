@@ -1,0 +1,12 @@
+{% extends layout %}
+{% block title %}Частые ответы{% endblock %}
+{% block content %}
+<main class="container-fluid w-100 sd-mobile-page" data-answer-page="{% if form and form.answer %}edit{% elif form %}new{% else %}list{% endif %}">
+  <header class="page-head">
+    <h1 class="page-title">Частые ответы</h1>
+    {% if not form %}<a class="btn btn-primary" href="/servicedesk/answers/new/">Новый шаблон</a>{% endif %}
+  </header>
+  {% if form %}{% include "servicedesk/answers/_form.html" %}{% else %}{% include "servicedesk/answers/_list.html" %}{% endif %}
+  <p class="text-muted small" data-answers-timezone>Время — Москва</p>
+</main>
+{% endblock %}

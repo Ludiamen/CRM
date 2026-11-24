@@ -23,6 +23,7 @@ _RANGES = {
     "form_hourly_limit": ("порог формы в час", 1, 1000),
     "retention_years": ("срок хранения заявок, лет", 1, 10),
     "inbound_retention_days": ("срок хранения писем без заявки, дней", 1, 365),
+    "sla_reminder_hours": ("часы напоминания", 1, 24),
 }
 _FIELDS = {"domains", "default_priority", *_RANGES}
 

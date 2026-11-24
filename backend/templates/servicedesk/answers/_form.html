@@ -1,0 +1,29 @@
+<section class="card p-3" data-answer-id="{% if form.answer %}{{ form.answer.pk }}{% endif %}">
+  <h2>{% if form.answer %}Изменить шаблон{% else %}Новый шаблон{% endif %}</h2>
+  {% if form.error %}<div class="alert alert-danger" role="alert" data-code="{{ form.error.code }}"{% if form.error.field %} data-error="{{ form.error.field }}"{% endif %}>{{ form.error.message }}</div>{% endif %}
+  <form method="post" action="{% if form.answer %}/servicedesk/answers/{{ form.answer.pk }}/edit/{% else %}/servicedesk/answers/new/{% endif %}">
+    {% csrf_token %}
+    <label class="form-label">Название
+      <input class="form-control" name="title" maxlength="100" value="{{ form.values.title }}" required>
+    </label>
+    {% if not form.answer %}
+    <label class="form-label">Вид
+      <select class="form-select" name="kind">
+        <option value="personal"{% if form.values.kind != "common" %} selected{% endif %}>Личный</option>
+        <option value="common"{% if form.values.kind == "common" %} selected{% endif %}>Общий</option>
+      </select>
+    </label>
+    {% endif %}
+    <label class="form-label">Категория
+      <select class="form-select" name="category">
+        <option value="">Без категории</option>
+        {% for category in form.categories %}<option value="{{ category.pk }}"{% if form.values.category == category.pk|stringformat:"s" %} selected{% endif %}>{{ category.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="form-label">Текст
+      <textarea class="form-control" name="text" maxlength="10000" rows="8" required>{{ form.values.text }}</textarea>
+    </label>
+    <button class="btn btn-primary" type="submit">{% if form.answer %}Сохранить{% else %}Создать{% endif %}</button>
+    <a class="btn btn-outline-secondary" href="/servicedesk/answers/">Отмена</a>
+  </form>
+</section>

@@ -22,7 +22,10 @@ MANAGE = "servicedesk.manage"
 CONFIRM_REQUIRED = "Подтвердите действие"
 SETTINGS_URL = "/servicedesk/"
 QUEUES_URL = "/servicedesk/queues/"
-INT_FIELDS = ("autoclose_days", "reopen_days", "form_hourly_limit", "retention_years", "inbound_retention_days")
+INT_FIELDS = (
+    "autoclose_days", "reopen_days", "form_hourly_limit", "retention_years",
+    "inbound_retention_days", "sla_reminder_hours",
+)
 MAX_DEPTH = 8
 
 

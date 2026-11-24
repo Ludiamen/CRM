@@ -207,3 +207,18 @@ def calendar_notices(user) -> list[dict]:
     return [{"key": "calendar-year", "year": year, "level": "warning", "url": "/calendar/upload/",
              "link": "Загрузить файл", "text": f"Не загружен производственный календарь на {year} год."}
             for year in missing_years()]
+
+
+def work_settings() -> dict:
+    """Текущие настройки рабочего времени: дни недели и границы дня (для служб других модулей)."""
+    row = _settings()
+    return {"work_weekdays": sorted(int(day) for day in row.work_weekdays),
+            "day_start": row.day_start, "day_end": row.day_end}
+
+
+def day_window(day: datetime.date) -> tuple[datetime.time, datetime.time] | None:
+    """Границы рабочего дня календаря с учётом сокращённого дня; `None` — день нерабочий."""
+    kind = day_kind(day)
+    if kind in OFF_KINDS:
+        return None
+    return _bounds(kind, _settings())

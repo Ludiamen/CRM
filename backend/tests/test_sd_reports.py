@@ -4,6 +4,7 @@
 красными до реализации представления и службы отчётов; импорты кода среза
 выполняются только внутри тестов.
 """
+import re
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -45,6 +46,10 @@ def _body(response):
 
 def _numbers(response):
     return sd.report_numbers(response)
+
+
+def _tickets(response):
+    return {int(number) for number in re.findall(r'data-report-ticket="(\d+)"', _body(response))}
 
 
 def _closed_cycle(ticket, *, level, closed_at, assignee=None, **over):
@@ -89,11 +94,10 @@ def test_queue_manager_sees_only_own_units_and_descendants():
     foreign = sd.make_ticket(queue=tree["Чужая очередь"])
 
     response = _report(manager)
-    html = _body(response)
 
     assert response.status_code == 200
-    assert str(own.number) in html
-    assert str(foreign.number) not in html
+    assert own.number in _tickets(response)
+    assert foreign.number not in _tickets(response)
 
 
 def test_it_department_head_sees_all_queues():
@@ -104,11 +108,10 @@ def test_it_department_head_sees_all_queues():
     support_ticket = sd.make_ticket(queue=tree["Поддержка"])
 
     response = _report(manager)
-    html = _body(response)
 
     assert response.status_code == 200
-    assert str(network.number) in html
-    assert str(support_ticket.number) in html
+    assert network.number in _tickets(response)
+    assert support_ticket.number in _tickets(response)
 
 
 def test_month_counts_created_by_ticket_created_at_in_moscow():
@@ -119,11 +122,12 @@ def test_month_counts_created_by_ticket_created_at_in_moscow():
     inside = sd.make_ticket(queue=tree["ИТ"], created_at=now.replace(day=5))
     outside = sd.make_ticket(queue=tree["ИТ"], created_at=now - timedelta(days=40))
 
-    numbers = _numbers(_report(manager))
+    response = _report(manager)
+    numbers = _numbers(response)
 
     assert numbers["created"] == 1
-    assert str(inside.number) in _body(_report(manager))
-    assert str(outside.number) not in _body(_report(manager))
+    assert inside.number in _tickets(response)
+    assert outside.number not in _tickets(response)
 
 
 def test_closed_uses_closed_at_of_current_cycle_only_after_reopen():
@@ -299,10 +303,10 @@ def test_moscow_midnight_places_tickets_in_different_days():
         "period": "day", "date": "2026-03-11",
     })
 
-    assert str(late.number) in _body(previous_day)
-    assert str(early.number) not in _body(previous_day)
-    assert str(early.number) in _body(next_day)
-    assert str(late.number) not in _body(next_day)
+    assert late.number in _tickets(previous_day)
+    assert early.number not in _tickets(previous_day)
+    assert early.number in _tickets(next_day)
+    assert late.number not in _tickets(next_day)
 
 
 def test_report_history_uses_cycle_snapshots_after_mutations():

@@ -36,11 +36,22 @@ def _scene(*, started_at=None, assignee=None, level=None, **cycle_fields):
 def _cron_calls():
     source = (Path(__file__).resolve().parents[1] / "config" / "cron.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
+    constants = {node.targets[0].id: node.value.value for node in ast.walk(tree)
+                 if isinstance(node, ast.Assign) and len(node.targets) == 1
+                 and isinstance(node.targets[0], ast.Name) and isinstance(node.value, ast.Constant)}
+
+    def value(node):
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Name):
+            return constants.get(node.id)
+        return None
+
     result = {}
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name) or node.func.id != "register":
             continue
-        values = {arg.arg: ast.literal_eval(arg.value) for arg in node.keywords if arg.arg}
+        values = {arg.arg: value(arg.value) for arg in node.keywords if arg.arg}
         if "name" in values:
             result[values["name"]] = values
     return result

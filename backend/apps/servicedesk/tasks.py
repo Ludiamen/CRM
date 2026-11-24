@@ -9,7 +9,6 @@ from django.utils import timezone
 
 from apps.core.extensions import Draft
 from apps.notify.services import dispatch
-from apps.org.models import WorkCalendar
 from apps.org.services import calendar, structure
 
 from .models import Queue, SlaCycle, SlaDigest, SlaNotice, Ticket
@@ -141,8 +140,8 @@ def sla_digest(now=None):
     local = now
     if calendar.day_kind(local.date()) in {"off", "holiday", "day_off"}:
         return 0
-    workday = WorkCalendar.objects.first() or WorkCalendar.objects.create()
-    start = datetime.combine(local.date(), workday.day_start, tzinfo=local.tzinfo)
+    workday = calendar.work_settings()
+    start = datetime.combine(local.date(), workday["day_start"], tzinfo=local.tzinfo)
     if not start <= local < start + timedelta(hours=1):
         return 0
     sent = 0

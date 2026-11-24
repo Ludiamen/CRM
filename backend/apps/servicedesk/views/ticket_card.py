@@ -27,7 +27,7 @@ from apps.core.views.common import flash, is_fragment, render_page
 from ..audit_labels import VALUES
 from ..models import (Attachment, Category, ClientUnit, Complexity, InboundMail, Priority, SlaCycle, Status, Ticket,
                       TicketEntry, TicketParticipant)
-from ..services import (access, assignment, attachments, closing, dictionaries, events, queues, replies, tickets,
+from ..services import (access, answers, assignment, attachments, closing, dictionaries, events, queues, replies, tickets,
                         transfer)
 from ..services.errors import ServiceDeskError
 from ..services.letters import short_name
@@ -278,6 +278,7 @@ def _context(request, ticket, layout: str, *, alert=None, dialog=None, reply_tex
         "consent": ticket.consent_at,
         "card_parts": _card_parts(request, ticket),
         "sla_cycle": sla_cycle,
+        "answer_templates": answers.visible(user, include_archived=False),
     })
     return context
 

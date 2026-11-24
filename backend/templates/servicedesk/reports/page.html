@@ -1,0 +1,35 @@
+{% extends layout %}
+{% block content %}
+<main data-report-page style="max-width:100%;overflow-wrap:anywhere">
+  <h1>Отчёт по заявкам</h1>
+  <p data-report-period="{{ period.kind }}">Период: {{ period.date_from|date:"d.m.Y" }} — {{ period.date_to|date:"d.m.Y" }} (Москва)</p>
+  <form method="get">
+    <label>Период <select name="period">
+      <option value="day" {% if period.kind == "day" %}selected{% endif %}>День</option>
+      <option value="week" {% if period.kind == "week" %}selected{% endif %}>Неделя</option>
+      <option value="month" {% if period.kind == "month" %}selected{% endif %}>Месяц</option>
+      <option value="custom" {% if period.kind == "custom" %}selected{% endif %}>Свой диапазон</option>
+    </select></label>
+    <label>С <input type="date" name="from" value="{{ period.date_from|date:'Y-m-d' }}"></label>
+    <label>По <input type="date" name="to" value="{{ period.date_to|date:'Y-m-d' }}"></label>
+    {% for name, title, values in filter_fields %}
+      <label>{{ title }} <select name="{{ name }}"><option value="">Все</option>{% for item in values %}<option value="{{ item.pk }}">{% if item.full_name %}{{ item.full_name }}{% else %}{{ item.name }}{% endif %}</option>{% endfor %}</select></label>
+    {% endfor %}
+    <button type="submit">Показать</button>
+  </form>
+  <section aria-label="Показатели">
+    {% for key, title, value in metric_rows %}
+      <div data-report-row data-key="{{ key }}" data-value="{{ value }}"><span>{{ title }}</span>: <strong>{{ value|default:"—" }}</strong></div>
+    {% endfor %}
+  </section>
+  <h2>Просрочки по уровням</h2>
+  {% for title, amount in overdue %}<div data-report-row data-key="overdue_{{ forloop.counter }}" data-value="{{ amount }}">{{ title }}: {{ amount }}</div>{% empty %}<p>Нет просрочек.</p>{% endfor %}
+  <h2>Закрыто на исполнителя</h2>
+  {% for title, amount in load %}<div data-report-row data-key="load_{{ forloop.counter }}" data-value="{{ amount }}">{{ title }}: {{ amount }}</div>{% empty %}<p>Нет закрытых заявок.</p>{% endfor %}
+  <h2>Заявки</h2>
+  <ul>{% for row in tickets %}<li data-report-ticket="{{ row.number }}">#{{ row.number }}
+    — <span data-report-level>{{ row.level }}</span>,
+    <span data-report-category>{{ row.category|default:"без категории" }}</span>,
+    <span data-report-assignee>{{ row.assignee|default:"не назначен" }}</span></li>{% empty %}<li>Заявок нет.</li>{% endfor %}</ul>
+</main>
+{% endblock %}

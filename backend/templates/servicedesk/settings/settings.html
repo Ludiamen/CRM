@@ -39,6 +39,8 @@
         <input class="form-control" id="id_retention_years" name="retention_years" type="number" value="{{ values.retention_years }}"></div>
       <div class="col-12 col-md-6"><label class="form-label" for="id_inbound_retention_days">Срок хранения писем без заявки, дней (1–365)</label>
         <input class="form-control" id="id_inbound_retention_days" name="inbound_retention_days" type="number" value="{{ values.inbound_retention_days }}"></div>
+      <div class="col-12 col-md-6"><label class="form-label" for="id_sla_reminder_hours">Часы напоминания, 1–24</label>
+        <input class="form-control" id="id_sla_reminder_hours" name="sla_reminder_hours" type="number" min="1" max="24" value="{{ values.sla_reminder_hours }}"></div>
     </div>
     <div><button class="btn btn-primary" type="submit">Сохранить</button></div>
   </form>

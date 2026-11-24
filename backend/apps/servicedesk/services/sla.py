@@ -7,7 +7,6 @@ from django.utils import timezone
 
 from apps.core.services import audit
 from apps.org.services import calendar
-from apps.org.models import WorkCalendar
 
 from ..models import SlaBinding, SlaCycle, SlaLevel
 from .errors import ServiceDeskError
@@ -48,7 +47,7 @@ def _clean_level_values(values):
     if not 0 <= priority <= 99:
         _level_error("sla_priority_range", "Приоритет — от 0 до 99")
     try:
-        workdays = sorted({int(day) for day in (values.get("workdays") or [])})
+        workdays = sorted({int(day) for day in (values.get("workdays") or [0, 1, 2, 3, 4])})
     except (TypeError, ValueError):
         workdays = []
     if not workdays or any(day not in range(7) for day in workdays):
@@ -212,11 +211,12 @@ def day_intervals(level, day):
         return []
     if schedule.get("all_day"):
         return [(_at(day, time.min), _at(day + timedelta(days=1), time.min))]
-    row = WorkCalendar.objects.first() or WorkCalendar.objects.create()
-    start = max(time.fromisoformat(schedule["day_start"]), row.day_start)
-    end = min(time.fromisoformat(schedule["day_end"]), row.day_end)
-    if kind == "short":
-        end = min(end, (datetime.combine(day, row.day_end) - timedelta(hours=1)).time())
+    window = calendar.day_window(day)
+    if window is None:
+        return []
+    calendar_start, calendar_end = window
+    start = max(time.fromisoformat(schedule["day_start"]), calendar_start)
+    end = min(time.fromisoformat(schedule["day_end"]), calendar_end)
     if start >= end:
         return []
     return [(_at(day, start), _at(day, end))]

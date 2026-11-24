@@ -32,7 +32,11 @@ ACTIONS = dict([
     ("servicedesk.sla_level_created", "Уровень обслуживания создан"),
     ("servicedesk.sla_level_changed", "Уровень обслуживания изменён"),
     ("servicedesk.sla_level_archived", "Уровень обслуживания архивирован"),
-    ("servicedesk.binding_changed", "Привязка уровня изменена"),
+     ("servicedesk.binding_changed", "Привязка уровня изменена"),
+     ("servicedesk.answer_created", "Шаблон ответа создан"),
+     ("servicedesk.answer_changed", "Шаблон ответа изменён"),
+     ("servicedesk.answer_archived", "Шаблон ответа архивирован"),
+     ("servicedesk.report_exported", "Отчёт выгружен"),
     ("mailbox.connected", "Ящик заявок подключён"), ("mailbox.recreated", "Ящик заявок пересоздан"),
 ])
 FIELDS = dict([

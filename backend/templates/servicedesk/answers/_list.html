@@ -1,0 +1,21 @@
+<div class="table-responsive" data-answer-list>
+  <table class="table w-100">
+    <thead><tr><th>Название</th><th>Вид</th><th>Категория</th><th>Действия</th></tr></thead>
+    <tbody>
+    {% for answer in rows %}
+    <tr data-answer-id="{{ answer.pk }}">
+      <td data-label="Название">{{ answer.title }}{% if answer.archived %} <span class="badge text-bg-secondary">в архиве</span>{% endif %}</td>
+      <td data-label="Вид">{% if answer.owner_id %}личный{% else %}общий{% endif %}</td>
+      <td data-label="Категория">{{ answer.category.name|default:"—" }}</td>
+      <td data-label="Действия">
+        {% if not answer.archived %}<a href="/servicedesk/answers/{{ answer.pk }}/edit/">Изменить</a>{% endif %}
+        <form method="post" action="/servicedesk/answers/{{ answer.pk }}/archive/" class="d-inline">{% csrf_token %}
+          <button class="btn btn-link" type="submit">{% if answer.archived %}Вернуть{% else %}В архив{% endif %}</button>
+        </form>
+      </td>
+    </tr>
+    {% empty %}<tr><td colspan="4">Шаблонов пока нет.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>

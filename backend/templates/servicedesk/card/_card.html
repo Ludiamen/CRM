@@ -157,10 +157,23 @@
     <form class="card-form" data-form="ticket-reply" method="post" action="/tickets/{{ ticket.number }}/reply/" enctype="multipart/form-data" hx-post="/tickets/{{ ticket.number }}/reply/" hx-encoding="multipart/form-data" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
       {% csrf_token %}
       <input type="hidden" name="layout" value="{{ card_layout }}">
-      <label class="form-label small mb-1">Ответ заявителю
-        <textarea class="form-control" name="text" rows="4">{{ reply_text }}</textarea>
-      </label>
-      <label class="form-label small mb-1">Файлы
+       <label class="form-label small mb-1">Ответ заявителю
+         <textarea class="form-control" name="text" rows="4">{{ reply_text }}</textarea>
+       </label>
+       {% if answer_templates %}
+       <div class="card-form-answer-tools" data-answer-tools data-ticket="{{ ticket.number }}">
+         <label class="form-label small mb-1">Частый ответ
+           <select class="form-select form-select-sm" data-answer-select>
+             <option value="">Выберите шаблон</option>
+             {% for answer in answer_templates %}<option value="{{ answer.pk }}">{{ answer.title }}</option>{% endfor %}
+           </select>
+         </label>
+         <button class="btn btn-outline-secondary btn-sm" type="button" data-answer-insert
+                 hx-get="/servicedesk/answers/0/insert/?ticket={{ ticket.number }}" hx-target="[data-answer-result]" hx-swap="innerHTML">Вставить</button>
+         <span class="visually-hidden" data-answer-result></span>
+       </div>
+       {% endif %}
+       <label class="form-label small mb-1">Файлы
         <input class="form-control form-control-sm" type="file" name="files" multiple>
       </label>
       <div class="form-check mb-2">

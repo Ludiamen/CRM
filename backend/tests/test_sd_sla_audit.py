@@ -94,8 +94,12 @@ def test_answer_template_create_update_and_archive_are_audited():
 def test_report_export_is_audited_with_actor():
     from apps.servicedesk.services import reports
 
-    actor = support.make_employee()
-    reports.export(period="day", actor=actor)
+    from tests import support_org as org
+
+    actor = support.make_with_permissions("servicedesk.reports")
+    unit = org.make_unit()
+    org.make_member(actor, unit, mark="head")
+    reports.export(actor, {"period": "day"})
 
     event = _events("servicedesk.report_exported").latest("id")
     assert event.actor_id == actor.pk
@@ -118,10 +122,15 @@ def test_assignee_skipped_and_sla_close_fields_have_russian_audit_labels():
 def test_sla_report_and_answer_pages_are_russian_and_show_moscow_time(client, settings):
     from tests import support_servicedesk as sd
 
+    from tests import support_org as org
+
     actor = support.make_with_permissions(
         "servicedesk.sla", "servicedesk.reports", "servicedesk.answers",
     )
-    client.force_login(actor)
+    unit = org.make_unit()
+    org.make_member(actor, unit, mark="head")  # область отчёта — управляемый узел (FR-749)
+    sd.make_queue(unit=unit)  # очередь делает пункт «Заявки» видимым: участник сервис-деска
+    client = support.logged_in(actor)
     settings.TIME_ZONE = "Europe/Moscow"
     sd.make_level(title="Уровень для русской страницы")
     sd.make_answer(owner=actor, title="Шаблон для русской страницы")

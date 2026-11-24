@@ -50,7 +50,8 @@ def _xlsx(response):
 
 
 def _values(book):
-    return [cell.value for sheet in book.worksheets for row in sheet.iter_rows() for cell in row
+    sheets = book.worksheets if hasattr(book, "worksheets") else [book]
+    return [cell.value for sheet in sheets for row in sheet.iter_rows() for cell in row
             if cell.value is not None]
 
 
@@ -171,8 +172,9 @@ def test_report_export_20000_rows_finishes_within_nfr_731():
         sd.make_cycle(ticket, level=level, queue=managed)
 
     started = time.monotonic()
-    book = _xlsx(support.logged_in(manager).get(EXPORT, PERIOD))
-    elapsed = time.monotonic() - started
+    response = support.logged_in(manager).get(EXPORT, PERIOD)
+    elapsed = time.monotonic() - started  # NFR-731: строительство файла, без разбора его тестом
+    book = _xlsx(response)
 
     assert elapsed <= 10
     assert book["Заявки"].max_row - 1 <= 20_000

@@ -1,11 +1,12 @@
 {% extends layout %}
 {% block title %}Уровни обслуживания{% endblock %}
 {% block content %}
-<main class="container w-100" data-sla-page="{% if form and form.level %}edit{% elif form %}new{% else %}list{% endif %}">
+<main class="container-fluid w-100 sd-mobile-page" data-sla-page="{% if form and form.level %}edit{% elif form %}new{% else %}list{% endif %}">
   <header class="page-head"><h1 class="page-title">Уровни обслуживания</h1>
     {% if not form %}<a class="btn btn-primary" href="/servicedesk/sla/new/" data-action="sla-new">Новый уровень</a>{% endif %}
   </header>
   {% if form %}{% include "servicedesk/sla/_form.html" %}{% endif %}
   {% if not form %}<section aria-label="Уровни SLA">{% include "servicedesk/sla/_list.html" %}</section>{% endif %}
+  <p class="text-muted small" data-sla-timezone>Время — Москва</p>
 </main>
 {% endblock %}

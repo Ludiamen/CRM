@@ -3,7 +3,7 @@
 Тесты намеренно написаны до реализации ``servicedesk.tasks.sla_tick`` /
 ``sla_digest`` и видов уведомлений T-11207.
 """
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 import pytest
 from django.utils import timezone
@@ -39,7 +39,8 @@ def test_sla_notification_kinds_are_registered_with_russian_names_and_orders():
         "servicedesk.sla_overdue": 231,
         "servicedesk.sla_digest": 232,
     }
-    found = {kind.code: kind for kind in _catalog() if kind.code in expected}
+    kinds = [kind for factory in _catalog() for kind in factory()]
+    found = {kind.code: kind for kind in kinds if kind.code in expected}
 
     assert set(found) == set(expected)
     assert {code: found[code].order for code in expected} == expected
@@ -221,9 +222,13 @@ def test_sla_digest_is_sent_once_per_day_to_each_queue_head():
     unit, _, _, _, _ = _scene()
     head = support.make_employee()
     support_org.make_member(head, unit, mark="head")
-    now = timezone.now().replace(hour=10, minute=0, second=0, microsecond=0)
+    from zoneinfo import ZoneInfo
+
+    msk = ZoneInfo("Europe/Moscow")
+    day = timezone.now().astimezone(msk).date()
+    now = datetime.combine(day, time(9, 30), tzinfo=msk)  # первый час после начала рабочего дня
 
     tasks.sla_digest(now=now)
     tasks.sla_digest(now=now + timedelta(hours=1))
 
-    assert SlaDigest.objects.filter(recipient=head, day=now.date()).count() == 1
+    assert SlaDigest.objects.filter(recipient=head, day=day).count() == 1
