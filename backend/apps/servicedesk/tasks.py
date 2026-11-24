@@ -59,3 +59,16 @@ def purge_orphan_files(after=""):
     batch = retention.purge_orphan_files(size=50, after=after)
     if batch.more:
         django_rq.get_queue("maintenance").enqueue(purge_orphan_files, after=batch.last, job_timeout=600)
+
+
+def sla_tick():
+    """Напоминания о сроках SLA и отметка просрочки (срез 011; T-11207): тело появится в Этапе 3.
+
+    Заглушка Этапа 1: задание уже стоит в расписании, чтобы проверки cron были готовы к красным тестам.
+     """
+    return 0
+
+
+def sla_digest():
+    """Ежедневная сводка руководителям очередей (срез 011; T-11211): тело появится в Этапе 3."""
+    return 0

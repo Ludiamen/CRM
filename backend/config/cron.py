@@ -103,3 +103,10 @@ if apps.is_installed("apps.instructions") and apps.is_installed("apps.tasks"):
              job_timeout=300)
     register(instructions_retention, queue_name="maintenance", cron="43 23 * * *", name="instructions_retention",
              job_timeout=600)
+
+# Сроки и отчёты заявок (срез 011): напоминания SLA каждые 5 минут и ежечасная проверка окна сводки в
+# `maintenance`; тела заданий появятся в Этапе 3 (T-11207, T-11211).
+from apps.servicedesk.tasks import sla_digest, sla_tick  # noqa: E402
+
+register(sla_tick, queue_name="maintenance", cron="*/5 * * * *", name="servicedesk_sla_tick", job_timeout=300)
+register(sla_digest, queue_name="maintenance", cron="10 * * * *", name="servicedesk_sla_digest", job_timeout=300)
