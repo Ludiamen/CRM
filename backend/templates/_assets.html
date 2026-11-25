@@ -16,7 +16,6 @@
 {% if "/tasks/" in request.path %}<script src="{% static 'vendor/Sortable-1.15.6.min.js' %}" defer></script>
 <script src="{% static 'tasks/tasks.js' %}" defer></script>{% endif %}
 {% if '/instructions/' in request.path %}<script src="{% static 'instructions/instructions.js' %}" defer></script>{% endif %}
-{% if '/servicedesk/answers/' in request.path or '/tickets/' in request.path %}<script src="{% static 'servicedesk/answers.js' %}" defer></script>{% endif %}
 <script src="{% static 'vendor/bootstrap-5.3.8.bundle.min.js' %}" defer></script>
 <script src="{% static 'vendor/htmx-2.0.11.min.js' %}" defer></script>
 <script src="{% static 'vendor/htmx-ext-ws-2.0.4.min.js' %}" defer></script>

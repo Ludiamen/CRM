@@ -384,11 +384,21 @@ def _post_guard(view):
 @login_required
 @require_http_methods(["GET"])
 def ticket_card(request, number):
-    """Карточка: НХ — слайдер, прямой адрес — страница; нет заявки или она не видна — 404."""
+    """Карточка: НХ — слайдер, прямой адрес — страница; нет заявки или она не видна — 404.
+
+    `?insert=<pk>` — «Вставить» частый ответ: текст шаблона приходит в поле ответа (FR-753). Выбор шаблона
+    проверяет та же видимость, что и список: личный — только владельцу, общий — участнику сервис-деска.
+    """
     ticket = tickets.get_for(request.user, number)
     layout = "slider" if is_fragment(request) else "page"
+    reply_text = ""
+    raw = (request.GET.get("insert") or "").strip()
+    if raw.isdigit():
+        template = answers.get_visible(request.user, int(raw), active_only=True)
+        if template is not None:
+            reply_text = template.text
     events.object_viewed(request.user, ticket)
-    return _render_card(request, ticket, layout, panel=True)
+    return _render_card(request, ticket, layout, reply_text=reply_text, panel=True)
 
 
 @_post_guard

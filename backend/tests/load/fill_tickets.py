@@ -199,6 +199,15 @@ if os.environ.get("LOAD_TICKETS_SLA") == "1":
     admin_role = Role.objects.filter(name="Администратор портала").first()
     if reports and admin_role:
         admin_role.permissions.add(reports)
+    # Стенд нагрузки: все учётки нагрузки становятся руководителями первой очереди — только так у них есть
+    # область отчёта (FR-749) и страница отчёта измеряется, а не отдаёт 403
+    from apps.org.services import membership
+
+    first_unit = queue_units[0]
+    membership.add_members(first_unit, [User.objects.get(pk=pk) for pk in people], mode=membership.CONCURRENT,
+                           actor=User.objects.get(pk=people[0]))
+    membership.set_marks(first_unit, heads=[User.objects.get(pk=pk) for pk in people],
+                         actor=User.objects.get(pk=people[0]))
     critical, _ = SlaLevel.objects.get_or_create(
         title="Нагрузка: критичный", defaults={"priority": 0, "reaction_minutes": 60, "solution_minutes": 480})
     normal, _ = SlaLevel.objects.get_or_create(

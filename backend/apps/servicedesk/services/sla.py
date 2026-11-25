@@ -2,7 +2,7 @@
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.core.services import audit
@@ -178,8 +178,12 @@ def set_bindings(level, *, categories=(), priorities=(), actor=None, ip=None):
     for kind, category_id, priority_id in desired:
         if (kind, category_id, priority_id) in current:
             continue
-        row = SlaBinding.objects.create(level=level, kind=kind, category_id=category_id,
-                                        priority_id=priority_id)
+        try:
+            row = SlaBinding.objects.create(level=level, kind=kind, category_id=category_id,
+                                            priority_id=priority_id)
+        except IntegrityError:
+            # Одна привязка на категорию и на критичность: занятое значение — ошибка формы, а не 500.
+            raise ServiceDeskError("sla_binding_taken", "Эта привязка уже принадлежит другому уровню") from None
         audit.record("servicedesk.binding_changed", actor=actor, ip=ip,
                      object_type="servicedesk", object_id=level.pk,
                      after=_binding_snapshot(row))

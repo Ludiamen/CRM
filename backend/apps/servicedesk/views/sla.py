@@ -34,8 +34,9 @@ def _values(level=None):
 def _form_context(level, values, error=None):
     return {
         "level": level, "values": values, "error": error,
-        "categories": Category.objects.order_by("name"),
-        "priorities": Priority.objects.order_by("name"),
+        # Свободные привязки: категория и критичность принадлежат только одному уровню (уникальность в модели).
+        "categories": Category.objects.exclude(sla_bindings__isnull=False).order_by("name"),
+        "priorities": Priority.objects.exclude(sla_bindings__isnull=False).order_by("name"),
         "assignees": get_user_model().objects.filter(state="active").order_by("full_name", "id"),
         "workday_choices": ((0, "Пн"), (1, "Вт"), (2, "Ср"), (3, "Чт"), (4, "Пт"), (5, "Сб"), (6, "Вс")),
     }
@@ -85,8 +86,11 @@ def _save(request, level=None):
             level = sla.create_level(actor=request.user, ip=getattr(request, "client_ip", None), **fields)
         else:
             level = sla.update_level(level, actor=request.user, ip=getattr(request, "client_ip", None), **fields)
-        categories = Category.objects.filter(pk__in=values["categories"])
-        priorities = Priority.objects.filter(pk__in=values["priorities"])
+        # Неизвестные значения в списках (пустая строка из формы) игнорируются, а не роняют страницу.
+        category_ids = [value for value in values["categories"] if str(value).isdigit()]
+        priority_ids = [value for value in values["priorities"] if str(value).isdigit()]
+        categories = Category.objects.filter(pk__in=category_ids)
+        priorities = Priority.objects.filter(pk__in=priority_ids)
         sla.set_bindings(level, categories=categories, priorities=priorities,
                          actor=request.user, ip=getattr(request, "client_ip", None))
     except ServiceDeskError as error:
@@ -94,7 +98,7 @@ def _save(request, level=None):
             "sla_title_range": "title", "sla_minutes_range": "reaction_minutes",
             "sla_reaction_gt_solution": "reaction_minutes", "sla_days_empty": "workdays",
             "sla_interval_empty": "day_start", "sla_assignee_dismissed": "default_assignee",
-            "sla_priority_range": "priority",
+            "sla_priority_range": "priority", "sla_binding_taken": "category",
         }.get(error.code)
         return _form_response(request, level, values, {"code": error.code, "message": error.message, "field": field}, 400)
     if is_fragment(request):
