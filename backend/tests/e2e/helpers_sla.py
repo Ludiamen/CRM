@@ -9,7 +9,19 @@ from urllib.parse import urlencode
 
 from playwright.sync_api import expect
 
+import os
+import subprocess
+from pathlib import Path
+
 from tests.e2e import helpers, helpers_notify
+from tests.e2e.conftest import COMPOSE_FILE
+
+
+def _standtools_shell(code):
+    """`manage.py shell -c` в контейнере standtools: только там есть `E2E_STAND=1` для наполнения стенда."""
+    cmd = ["docker", "compose", "-f", str(COMPOSE_FILE), "--profile", "dev", "exec", "-T", "standtools",
+           "python", "manage.py", "shell", "-c", code]
+    return subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=120).stdout.strip()
 
 
 def _session(context, account):
@@ -117,4 +129,4 @@ def prepare_sla_stand(account):
         "queue = Queue.objects.select_related('unit').first(); "
         "membership.set_marks(queue.unit, heads=[user], actor=user); print('ok')"
     )
-    return helpers.stand_shell(code)
+    return _standtools_shell(code)
