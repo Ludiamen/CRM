@@ -1,4 +1,4 @@
-<section class="card p-3"{% if form.answer %} data-answer-id="{{ form.answer.pk }}"{% endif %}>
+<section class="card p-3"{% if form.answer.pk %} data-answer-id="{{ form.answer.pk }}"{% endif %}>
   <h2>{% if form.answer %}Изменить шаблон{% else %}Новый шаблон{% endif %}</h2>
   {% if form.error %}<div class="alert alert-danger" role="alert" data-code="{{ form.error.code }}"{% if form.error.field %} data-error="{{ form.error.field }}"{% endif %}>{{ form.error.message }}</div>{% endif %}
   <form method="post" action="{% if form.answer %}/servicedesk/answers/{{ form.answer.pk }}/edit/{% else %}/servicedesk/answers/new/{% endif %}">
