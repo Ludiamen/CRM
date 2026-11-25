@@ -1,0 +1,17 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,POST /tasks/<n>/comments/,CatchResponseError('/tasks/1/comments/: 404'),12,2026-11-25T04:32:52Z,2026-11-25T04:38:21Z
+GET,/tasks/<n>/,HTTPError('404 Client Error: Not Found for url: /tasks/<n>/'),28,2026-11-25T04:32:19Z,2026-11-25T04:38:33Z
+WS,/ws/notify/ connect,WebSocketTimeoutException('Connection timed out'),3,2026-11-25T04:32:52Z,2026-11-25T04:33:50Z
+POST,POST /request/,"CatchResponseError('/request/: 200, заявка не принята')",18,2026-11-25T04:32:29Z,2026-11-25T04:38:55Z
+WS,/ws/messenger/ connect,WebSocketTimeoutException('Connection timed out'),6,2026-11-25T04:33:21Z,2026-11-25T04:37:01Z
+WS,/ws/notify/ connect (messenger),WebSocketTimeoutException('Connection timed out'),3,2026-11-25T04:33:35Z,2026-11-25T04:38:06Z
+GET,/kb/<n>/history/,HTTPError('404 Client Error: Not Found for url: /kb/<n>/history/'),13,2026-11-25T04:32:37Z,2026-11-25T04:36:46Z
+GET,setup /instructions/<n>/,HTTPError('404 Client Error: Not Found for url: setup /instructions/<n>/'),3,2026-11-25T04:32:22Z,2026-11-25T04:32:27Z
+GET,/servicedesk/reports/?period,HTTPError('403 Client Error: Forbidden for url: /servicedesk/reports/?period'),17,2026-11-25T04:33:19Z,2026-11-25T04:38:32Z
+GET,/instructions/<n>/,HTTPError('404 Client Error: Not Found for url: /instructions/<n>/'),40,2026-11-25T04:32:24Z,2026-11-25T04:38:50Z
+GET,/lists/<n>/<n>/,HTTPError('404 Client Error: Not Found for url: /lists/<n>/<n>/'),25,2026-11-25T04:33:03Z,2026-11-25T04:38:53Z
+GET,/kb/<n>/,HTTPError('404 Client Error: Not Found for url: /kb/<n>/'),31,2026-11-25T04:33:04Z,2026-11-25T04:38:53Z
+WS,/ws/feed/ connect,WebSocketTimeoutException('Connection timed out'),3,2026-11-25T04:33:14Z,2026-11-25T04:36:57Z
+GET,/kb/<n>/compare/,HTTPError('404 Client Error: Not Found for url: /kb/<n>/compare/'),12,2026-11-25T04:32:41Z,2026-11-25T04:38:13Z
+POST,POST /tasks/<n>/move/,CatchResponseError('/tasks/1/move/: 404'),18,2026-11-25T04:32:24Z,2026-11-25T04:38:44Z
+WS,/ws/notify/ connect (feed),WebSocketTimeoutException('Connection timed out'),1,2026-11-25T04:32:57Z,2026-11-25T04:32:57Z

@@ -189,8 +189,8 @@ id: TASKS-011
   уведомлений, cron, стенда — список и числа в отчёте — (FR-741…758, NFR-734)
 - [x] T-11301 [arch] браузерные круги `t11` в Chromium, Firefox, Edge, Яндекс.Браузере; прежние срезы — `-k` —
   `backend/tests/e2e/` — (NFR-730, FR-757)
-- [ ] T-11302 [arch] ворота `tools/verify.sh --быстро`, `manage.py check`, `git diff --check` — (NFR-730, NFR-731)
-- [ ] T-11303 [arch] нагрузка NFR-730 на холодной машине по правилам T-7304: `fill_tickets.py` с SLA и класс
+- [x] T-11302 [arch] ворота `tools/verify.sh --быстро`, `manage.py check`, `git diff --check` — (NFR-730, NFR-731)
+- [x] T-11303 [arch] нагрузка NFR-730 на холодной машине по правилам T-7304: `fill_tickets.py` с SLA и класс
   `ServiceDeskUser` (страницы отчёта и `due=overdue`), L1 и L2; известные дефекты NFR-612/707 и стенд —
   `crm-work/slice011/stage4/load/` — (NFR-730)
 - [x] T-11304 [arch] наблюдения на стенде (с разрешения владельца): отказ слоя уведомлений при напоминании,
