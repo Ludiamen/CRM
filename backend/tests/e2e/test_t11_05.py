@@ -2,10 +2,13 @@
 import pytest
 from playwright.sync_api import expect
 
+from tests.e2e.helpers_sla import prepare_sla_stand
+
 pytestmark = pytest.mark.e2e
 
 
-def test_t11_05_answer_pages_and_insert_hook(admin_page):
+def test_t11_05_answer_pages_and_insert_hook(stand_admin, admin_page):
+    prepare_sla_stand(stand_admin)
     admin_page.goto("/servicedesk/answers/")
     expect(admin_page.locator('[data-answer-page="list"]')).to_be_visible()
     admin_page.goto("/servicedesk/answers/new/")

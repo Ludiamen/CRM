@@ -100,14 +100,16 @@ def check_360(page):
     return True
 
 
-def prepare_report_access(account):
-    """Стенд: делает вошедшего администратора руководителем первой очереди — иначе отчёт честно даёт 403.
+def prepare_sla_stand(account):
+    """Стенд: наполнение среза и права отчёта для вошедшего администратора.
 
-    В данных установки право `servicedesk.reports` есть у роли «Руководитель», а область отчёта — управляемые
-    узлы (FR-749). Круг e2e создаёт администратора уже после наполнения стенда, поэтому руководителем его
-    делает сама проверка.
+    Круг e2e создаёт администратора уже после сброса стенда, поэтому `e2e_sla_seed` вызывается здесь, а затем
+    администратор становится руководителем первой очереди (иначе отчёт честно даёт 403: область — управляемые
+    узлы, FR-749). Наполнение идемпотентно.
     """
     code = (
+        "from django.core.management import call_command; "
+        "call_command('e2e_sla_seed'); "
         "from django.contrib.auth import get_user_model; "
         "from apps.org.services import membership; "
         "from apps.servicedesk.models import Queue; "
