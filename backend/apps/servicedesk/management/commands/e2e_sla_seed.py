@@ -55,7 +55,7 @@ class Command(BaseCommand):
         self._stand_access(actor, queue)
         with transaction.atomic():
             priorities = [self._priority(name, actor) for name in ("Высокая", "Средняя")]
-            category = self._category(actor, queue.pk)
+            category = self._category(actor, queue.unit_id)
             levels = self._levels()
             self._bindings(levels, priorities, category)
             self._answers(actor, category)
@@ -82,7 +82,9 @@ class Command(BaseCommand):
         # руководителем очереди стенда становятся все администраторы портала: e2e-круг создаёт свою учётную
         # запись администратора до входа, и отчёт должен открываться у той, под которой вошёл браузер
         admins = list(get_user_model().objects.filter(roles=admin_role, state="active").distinct())
-        membership.set_marks(queue.unit, heads=admins or [actor], actor=actor)
+        people = admins or [actor]
+        membership.add_members(queue.unit, people, mode=membership.CONCURRENT, actor=actor)
+        membership.set_marks(queue.unit, heads=people, actor=actor)
 
     @classmethod
     def _queue(cls):
