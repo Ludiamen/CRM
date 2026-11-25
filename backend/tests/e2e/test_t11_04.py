@@ -12,5 +12,5 @@ def test_t11_04_manager_report_and_excel(stand_admin, new_context):
     page = open_report(new_context(), stand_admin, period="month")
     expect(page.locator("[data-report-page]")).to_be_visible()
     expect(page.locator('[data-report-period="month"]')).to_be_visible()
-    expect(page.locator("[data-report-row]")).to_be_visible()
+    expect(page.locator("[data-report-row]").first).to_be_visible()
     assert export_xlsx(page)

@@ -16,7 +16,7 @@ def test_t11_05_answer_pages_and_insert_hook(stand_admin, admin_page):
     expect(admin_page.locator("[data-answer-id]")).to_have_count(0)
 
     admin_page.goto("/tickets/?preset=all")
-    link = admin_page.locator('a[href^="/tickets/"]', has_text="E2E SLA").first
-    expect(link).to_be_visible()
-    admin_page.goto(link.get_attribute("href"))
+    row = admin_page.locator("tr", has_text="E2E SLA").first
+    expect(row).to_be_visible()
+    admin_page.goto(row.locator('a[href^="/tickets/"]').first.get_attribute("href"))
     expect(admin_page.locator("[data-answer-insert]")).to_be_visible()

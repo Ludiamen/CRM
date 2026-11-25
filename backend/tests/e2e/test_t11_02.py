@@ -10,10 +10,10 @@ pytestmark = pytest.mark.e2e
 def _open_seeded_card(page):
     """Открывает карточку заявки из наполнения `e2e_sla_seed` (тема начинается с «E2E SLA»)."""
     page.goto("/tickets/?preset=all")
-    link = page.locator('a[href^="/tickets/"]', has_text="E2E SLA").first
-    expect(link).to_be_visible()
-    href = link.get_attribute("href")
-    page.goto(href)
+    row = page.locator("tr", has_text="E2E SLA").first
+    expect(row).to_be_visible()
+    link = row.locator('a[href^="/tickets/"]').first
+    page.goto(link.get_attribute("href"))
     page.wait_for_load_state()
 
 
