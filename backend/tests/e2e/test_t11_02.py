@@ -5,9 +5,19 @@ from playwright.sync_api import expect
 pytestmark = pytest.mark.e2e
 
 
+def _open_seeded_card(page):
+    """Открывает карточку заявки из наполнения `e2e_sla_seed` (тема начинается с «E2E SLA»)."""
+    page.goto("/tickets/?preset=all")
+    link = page.locator('a[href^="/tickets/"]', has_text="E2E SLA").first
+    expect(link).to_be_visible()
+    href = link.get_attribute("href")
+    page.goto(href)
+    page.wait_for_load_state()
+
+
 def test_t11_02_sla_contract_hooks_are_defined(admin_page):
-    """Проверяет контрактные корни карточки; данные заявок создаются следующим этапом."""
-    admin_page.goto("/tickets/1/")
+    """FR-734…740, 742: блок SLA в карточке заявки из наполнения стенда."""
+    _open_seeded_card(admin_page)
     sla = admin_page.locator("[data-sla]")
     expect(sla).to_be_visible()
     for name in ("reaction-due", "solution-due", "reaction-fact", "solution-fact",

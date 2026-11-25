@@ -1,8 +1,7 @@
 <form method="post" class="sd-sla-form row g-3" data-sla-id="{{ form.level.pk|default:'' }}" action="{% if form.level %}/servicedesk/sla/{{ form.level.pk }}/{% else %}/servicedesk/sla/new/{% endif %}">
   {% csrf_token %}
-  {% if form.error %}<div role="alert" data-code="{{ form.error.code }}">{{ form.error.message }}</div><span data-error="{{ form.error.field }}" data-code="{{ form.error.code }}"></span>{% endif %}
+  {% if form.error %}<div class="col-12 text-danger" role="alert" data-error="{{ form.error.field }}" data-code="{{ form.error.code }}">{{ form.error.message }}</div>{% endif %}
   <label class="col-12 col-md-6">Название <input class="form-control" data-sla-field="title" name="title" value="{{ form.values.title }}" maxlength="100"></label>
-  {% if form.error.field == "title" %}<span data-error="title" data-code="{{ form.error.code }}"></span>{% endif %}
   <label class="col-12 col-md-6">Приоритет <input class="form-control" data-sla-field="priority" name="priority" type="number" min="0" max="99" value="{{ form.values.priority }}"></label>
   <label class="col-12 col-md-6">Реакция, минут <input class="form-control" data-sla-field="reaction_minutes" name="reaction_minutes" type="number" value="{{ form.values.reaction_minutes }}"></label>
   <label class="col-12 col-md-6">Решение, минут <input class="form-control" data-sla-field="solution_minutes" name="solution_minutes" type="number" value="{{ form.values.solution_minutes }}"></label>

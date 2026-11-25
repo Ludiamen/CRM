@@ -43,6 +43,7 @@ class Command(BaseCommand):
         if queue is None:
             self.stdout.write("e2e_sla_seed: levels=0 bindings=0 answers=0 tickets=0")
             return
+        self._stand_access(actor, queue)
         with transaction.atomic():
             priorities = [self._priority(name, actor) for name in ("Высокая", "Средняя")]
             category = self._category(actor, queue.pk)
@@ -51,6 +52,23 @@ class Command(BaseCommand):
             self._answers(actor, category)
             self._tickets(actor, queue, category, priorities, levels)
         self.stdout.write("e2e_sla_seed: levels=2 bindings=3 answers=3 tickets=3")
+
+    @staticmethod
+    def _stand_access(actor, queue):
+        """Стенд: администратор становится руководителем очереди и получает право отчёта.
+
+        В данных установки `servicedesk.reports` выдан только роли «Руководитель» (SPEC-011, решение 10),
+        а администратору он не нужен; для приёмки отчёта в браузере даём право администратору стенда и
+        делаем его руководителем очереди — так у него появляется область `managed_units`.
+        """
+        from apps.core.models import Permission, Role
+        from apps.org.services import membership
+
+        reports = Permission.objects.filter(code="servicedesk.reports").first()
+        admin_role = Role.objects.filter(name="Администратор портала").first()
+        if reports and admin_role:
+            admin_role.permissions.add(reports)
+        membership.set_marks(queue.unit, heads=[actor], actor=actor)
 
     @staticmethod
     def _queue():

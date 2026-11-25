@@ -1,26 +1,18 @@
-/* Вставка частого ответа в поле ответа карточки заявки. */
+/* Срез 011 (T-11217): вставка частого ответа в форму ответа карточки заявки. */
 (function () {
-  function setup(root) {
-    (root || document).querySelectorAll("[data-answer-tools]").forEach(function (tools) {
-      var select = tools.querySelector("[data-answer-select]");
-      var button = tools.querySelector("[data-answer-insert]");
-      if (!select || !button || button.dataset.answerReady) return;
-      button.dataset.answerReady = "1";
-      select.addEventListener("change", function () {
-        var id = select.value || "0";
-        button.setAttribute("hx-get", "/servicedesk/answers/" + id + "/insert/?ticket=" + tools.dataset.ticket);
-        if (window.htmx) window.htmx.process(button);
-      });
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", function () { setup(document); });
-  document.addEventListener("htmx:afterSwap", function (event) {
-    setup(event.target);
-    var tools = event.target.closest && event.target.closest("[data-answer-tools]");
-    if (!tools) return;
-    var result = tools.querySelector("[data-answer-result]");
-    var textarea = tools.closest("form").querySelector('textarea[name="text"]');
-    if (result && textarea && result.textContent) textarea.value = result.textContent;
+  "use strict";
+  document.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-answer-insert]");
+    if (!button) return;
+    var tools = button.closest("[data-answer-tools]");
+    var select = tools && tools.querySelector("[data-answer-select]");
+    var textarea = tools && tools.closest("form") && tools.closest("form").querySelector("textarea[name=text]");
+    if (!select || !select.value || !textarea) return;
+    var ticket = button.getAttribute("data-ticket") || "";
+    var url = "/servicedesk/answers/" + select.value + "/insert/?ticket=" + encodeURIComponent(ticket);
+    event.preventDefault();
+    fetch(url, {credentials: "same-origin", headers: {"X-Requested-With": "XMLHttpRequest"}})
+      .then(function (response) { return response.ok ? response.text() : ""; })
+      .then(function (text) { if (text) textarea.value = textarea.value ? textarea.value + "\n" + text : text; });
   });
 })();

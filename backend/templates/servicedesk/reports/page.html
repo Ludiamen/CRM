@@ -2,6 +2,8 @@
 {% block content %}
 <main data-report-page style="max-width:100%;overflow-wrap:anywhere">
   <h1>Отчёт по заявкам</h1>
+  <p><a class="btn btn-outline-secondary btn-sm" data-report-export
+     href="/servicedesk/reports/export/?{{ request.GET.urlencode }}">Скачать Excel</a></p>
   <p data-report-period="{{ period.kind }}">Период: {{ period.date_from|date:"d.m.Y" }} — {{ period.date_to|date:"d.m.Y" }} (Москва)</p>
   <form method="get">
     <label>Период <select name="period">

@@ -169,7 +169,7 @@
            </select>
          </label>
          <button class="btn btn-outline-secondary btn-sm" type="button" data-answer-insert
-                 hx-get="/servicedesk/answers/0/insert/?ticket={{ ticket.number }}" hx-target="[data-answer-result]" hx-swap="innerHTML">Вставить</button>
+                 data-ticket="{{ ticket.number }}">Вставить</button>
          <span class="visually-hidden" data-answer-result></span>
        </div>
        {% endif %}
