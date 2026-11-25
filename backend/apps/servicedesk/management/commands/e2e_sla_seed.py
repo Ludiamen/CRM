@@ -17,6 +17,15 @@ from apps.servicedesk.services import dictionaries, tickets
 
 
 REFUSAL = "Команда работает только на стенде приёмочных проходов (E2E_STAND=1); ничего не изменено."
+
+
+def get_user_model_admin():
+    """Первый действующий администратор портала стенда (создаётся e2e-кругом до входа)."""
+    from apps.core.models import Role
+    from django.contrib.auth import get_user_model
+
+    role = Role.objects.filter(name="Администратор портала").first()
+    return get_user_model().objects.filter(roles=role, state="active").order_by("pk").first() if role else None
 LEVELS = (("Критичный", 30, 240, 10), ("Обычный", 240, 1440, 20))
 TICKET_TITLES = ("E2E SLA: в срок", "E2E SLA: просроченная реакция", "E2E SLA: просроченное решение")
 
@@ -61,6 +70,8 @@ class Command(BaseCommand):
         а администратору он не нужен; для приёмки отчёта в браузере даём право администратору стенда и
         делаем его руководителем очереди — так у него появляется область `managed_units`.
         """
+        from django.contrib.auth import get_user_model
+
         from apps.core.models import Permission, Role
         from apps.org.services import membership
 
@@ -68,13 +79,28 @@ class Command(BaseCommand):
         admin_role = Role.objects.filter(name="Администратор портала").first()
         if reports and admin_role:
             admin_role.permissions.add(reports)
-        membership.set_marks(queue.unit, heads=[actor], actor=actor)
+        # руководителем очереди стенда становятся все администраторы портала: e2e-круг создаёт свою учётную
+        # запись администратора до входа, и отчёт должен открываться у той, под которой вошёл браузер
+        admins = list(get_user_model().objects.filter(roles=admin_role, state="active").distinct())
+        membership.set_marks(queue.unit, heads=admins or [actor], actor=actor)
 
-    @staticmethod
-    def _queue():
+    @classmethod
+    def _queue(cls):
+        """Первая отмеченная очередь; на свежем стенде создаёт узел-очередь для наполнения."""
+        from apps.org.services import structure
+
         from apps.servicedesk.models import Queue
+        from apps.servicedesk.services import queues
 
-        return Queue.objects.select_related("unit").order_by("pk").first()
+        queue = Queue.objects.select_related("unit").order_by("pk").first()
+        if queue is not None:
+            return queue
+        actor = get_user_model_admin()
+        if actor is None:
+            return None
+        unit = structure.create_unit(kind="department", name="Очередь стенда SLA",
+                                     parent=structure.root(), actor=actor)
+        return queues.mark(unit.pk, actor=actor)
 
     @staticmethod
     def _priority(name, actor):

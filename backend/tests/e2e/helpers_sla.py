@@ -98,3 +98,21 @@ def check_360(page):
     expect(page.locator("[data-sla-page], [data-report-page], [data-sla], [data-answer-page]").first).to_be_visible()
     assert helpers.no_horizontal_scroll(page), "на 360 px горизонтальная прокрутка страницы"
     return True
+
+
+def prepare_report_access(account):
+    """Стенд: делает вошедшего администратора руководителем первой очереди — иначе отчёт честно даёт 403.
+
+    В данных установки право `servicedesk.reports` есть у роли «Руководитель», а область отчёта — управляемые
+    узлы (FR-749). Круг e2e создаёт администратора уже после наполнения стенда, поэтому руководителем его
+    делает сама проверка.
+    """
+    code = (
+        "from django.contrib.auth import get_user_model; "
+        "from apps.org.services import membership; "
+        "from apps.servicedesk.models import Queue; "
+        f"user = get_user_model().objects.get(email={account.email!r}); "
+        "queue = Queue.objects.select_related('unit').first(); "
+        "membership.set_marks(queue.unit, heads=[user], actor=user); print('ok')"
+    )
+    return helpers.stand_shell(code)
