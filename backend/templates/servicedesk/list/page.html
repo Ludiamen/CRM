@@ -15,9 +15,9 @@
     </ul>
   </nav>
   <nav class="tickets-due-filters mb-2" aria-label="Сроки">
-    <a class="chip{% if due == 'overdue' %} active{% endif %}" data-due="overdue" data-due-count="overdue"
+    <a class="chip{% if due == 'overdue' %} active{% endif %}"{% if due == 'overdue' %} aria-current="page"{% endif %} data-due="overdue" data-due-count="overdue"
        href="/tickets/?preset={{ page.preset }}&due=overdue">Просроченные</a>
-    <a class="chip{% if due == 'today' %} active{% endif %}" data-due="today" data-due-count="today"
+    <a class="chip{% if due == 'today' %} active{% endif %}"{% if due == 'today' %} aria-current="page"{% endif %} data-due="today" data-due-count="today"
        href="/tickets/?preset={{ page.preset }}&due=today">Срок сегодня</a>
   </nav>
   <details data-filter-panel class="filter-panel mb-3" open{% if filtered %} data-filtered="true"{% endif %}>

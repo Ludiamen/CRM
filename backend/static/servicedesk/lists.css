@@ -1,0 +1,13 @@
+/* Срез 011: списки уровней и частых ответов на узком экране — строки-карточки без обрезки столбцов. */
+@media (max-width: 575.98px) {
+  [data-sla-list] table, [data-answer-list] table { display: block; }
+  [data-sla-list] thead, [data-answer-list] thead { display: none; }
+  [data-sla-list] tbody tr, [data-answer-list] tbody tr {
+    display: block; border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .5rem;
+    padding: .5rem .75rem; margin-bottom: .5rem;
+  }
+  [data-sla-list] tbody td, [data-answer-list] tbody td { display: block; border: 0; padding: .15rem 0; }
+  [data-sla-list] tbody td[data-label]::before, [data-answer-list] tbody td[data-label]::before {
+    content: attr(data-label) ": "; color: #5b6472;
+  }
+}
