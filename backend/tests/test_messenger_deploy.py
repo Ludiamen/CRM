@@ -477,8 +477,8 @@ def test_slice_numbers_nineteen_points_forty_kinds_eight_purposes_and_order_61()
     from apps.core.models.files import StoredFile
     from apps.notify.services import kinds as notify_kinds
 
-    assert len(extensions.POINTS) == 19, f"точек расширения {len(extensions.POINTS)}"
-    assert tuple(extensions.POINTS[-1:]) == messenger.POINTS_008
+    assert len(extensions.POINTS) == 23, f"точек расширения {len(extensions.POINTS)}"
+    assert tuple(extensions.POINTS[18:]) == messenger.POINTS_008
     assert set(extensions._registry) == set(extensions.POINTS)
     purposes = tuple(StoredFile.Purpose.values)
     assert purposes == messenger.PURPOSES_008, f"назначения файлов: {purposes}"

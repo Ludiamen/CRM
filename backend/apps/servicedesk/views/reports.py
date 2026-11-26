@@ -24,7 +24,11 @@ def report_list(request):
         return _error_response(exc)
     context.update(reports.choices(request.user))
     context["metric_rows"] = [
-        (key, title, "" if key == "requester_rating" else context["numbers"][key])
+        (key, title, (
+            f"{context['numbers'][key]:.1f}"
+            if key == "requester_rating" and context["numbers"][key] is not None
+            else context["numbers"][key]
+        ))
         for key, title in (
             ("created", "Создано"), ("closed", "Закрыто"),
             ("average_reaction_minutes", "Среднее время реакции, минут"),
@@ -33,6 +37,7 @@ def report_list(request):
             ("solution_on_time", "Решение в срок, %"),
             ("closed_without_response", "Закрыто без ответа"),
             ("requester_rating", "Оценка заявителей"),
+            ("requester_rating_count", "Количество оценок заявителей"),
         )
     ]
     context["filter_fields"] = [

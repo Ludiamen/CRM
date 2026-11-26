@@ -113,6 +113,7 @@ def protected_table(victim, role):
         ("get", "/staff/", "accounts.manage"), ("get", "/staff/new/", "accounts.manage"),
         ("post", "/staff/new/", "accounts.manage"), ("get", f"{s}/", "accounts.manage"),
         ("post", f"{s}/edit/", "accounts.manage"), ("post", f"{s}/roles/", "accounts.manage"),
+        ("post", f"{s}/availability/", "accounts.manage"),
         ("post", f"{s}/block/", "accounts.manage"), ("post", f"{s}/unblock/", "accounts.manage"),
         ("post", f"{s}/invite/", "accounts.manage"), ("post", f"{s}/unlock/", "accounts.manage"),
         ("get", "/staff/locks/", "accounts.manage"), ("post", "/staff/locks/", "accounts.manage"),

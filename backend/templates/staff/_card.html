@@ -34,6 +34,20 @@
 </section>
 
 <section class="slider-section">
+  <h3>Доступность для заявок</h3>
+  <form method="post" action="/staff/{{ target.pk }}/availability/" data-form="availability">
+    {% csrf_token %}
+    <div class="mb-2"><label class="form-label small mb-1" for="id_staff_unavailable_until">Недоступен до</label>
+      <input class="form-control" id="id_staff_unavailable_until" name="until" type="text" inputmode="numeric"
+             placeholder="ДД.ММ.ГГГГ" value="{{ target.unavailable_until|date:'d.m.Y' }}">
+      <div class="form-text">Дата включительно; пустое поле снимает отметку.</div></div>
+    <div class="mb-2"><label class="form-label small mb-1" for="id_staff_unavailable_note">Примечание</label>
+      <input class="form-control" id="id_staff_unavailable_note" name="note" maxlength="255" value="{{ target.unavailable_note }}"></div>
+    <button class="btn btn-outline-primary btn-sm" type="submit">Сохранить доступность</button>
+  </form>
+</section>
+
+<section class="slider-section">
   <h3>Роли</h3>
   <form method="post" action="/staff/{{ target.pk }}/roles/">
     {% csrf_token %}

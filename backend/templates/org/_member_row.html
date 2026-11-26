@@ -25,6 +25,13 @@
           <button class="btn btn-outline-danger btn-sm" type="submit">{% if unit.kind == "department" %}Удалить из отдела{% else %}Удалить из команды{% endif %}</button>
         </form>
       </div>
+      <div class="member-menu-item" data-menu-item="availability">
+        <form method="post" action="/structure/{{ unit.pk }}/members/{{ row.user.pk }}/availability/" data-form="member-availability">{% csrf_token %}
+          <label class="form-label small mb-1" for="availability-{{ row.user.pk }}">Недоступен до</label>
+          <input class="form-control form-control-sm mb-1" id="availability-{{ row.user.pk }}" name="until" type="text" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" value="{{ row.user.unavailable_until|date:'d.m.Y' }}">
+          <button class="btn btn-outline-secondary btn-sm" type="submit">Сохранить</button>
+        </form>
+      </div>
       <div class="member-menu-item" data-menu-item="dismiss">
         <a class="btn btn-outline-danger btn-sm w-100" href="/structure/people/{{ row.user.pk }}/dismiss/" hx-get="/structure/people/{{ row.user.pk }}/dismiss/" hx-target="#dialog-root" hx-swap="innerHTML">Уволить</a>
       </div>

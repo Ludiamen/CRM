@@ -151,6 +151,62 @@ class Queue(models.Model):
         verbose_name_plural = "очереди"
 
 
+class QueueRule(models.Model):
+    """Правило автораспределения заявок очереди (SPEC-012, FR-759…763)."""
+
+    class Mode(models.TextChoices):
+        OFF = "off", "выключен"
+        EVENLY = "evenly", "равномерно"
+        STRICTLY = "strictly", "строго по очереди"
+        ALL = "all", "одновременно всем"
+
+    queue = models.OneToOneField(Queue, on_delete=models.CASCADE, related_name="rule", verbose_name="очередь")
+    mode = models.CharField("режим", max_length=16, choices=Mode.choices, default=Mode.OFF)
+    last_assignee = models.ForeignKey("core.User", on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name="+", verbose_name="последний назначенный")
+    updated_by = models.ForeignKey("core.User", on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="+", verbose_name="кто изменил")
+    created_at = models.DateTimeField("создано", default=now)
+    updated_at = models.DateTimeField("изменено", auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        verbose_name = "правило очереди"
+        verbose_name_plural = "правила очередей"
+
+    def __str__(self) -> str:
+        return f"{self.queue_id}: {self.mode}"
+
+
+class QueueObserver(models.Model):
+    """Наблюдатель очереди: читает её заявки, но не работает с ними (SPEC-012, FR-766…768)."""
+
+    queue = models.ForeignKey(Queue, on_delete=models.CASCADE, related_name="observers", verbose_name="очередь")
+    user = models.ForeignKey("core.User", on_delete=models.CASCADE, related_name="+", verbose_name="сотрудник")
+    added_by = models.ForeignKey("core.User", on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name="+", verbose_name="кто добавил")
+    added_at = models.DateTimeField("добавлен", default=now)
+    removed_at = models.DateTimeField("снят", null=True, blank=True)
+    removed_by = models.ForeignKey("core.User", on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name="+", verbose_name="кто снял")
+
+    class Meta:
+        default_permissions = ()
+        verbose_name = "наблюдатель очереди"
+        verbose_name_plural = "наблюдатели очередей"
+        constraints = [
+            models.UniqueConstraint(fields=["queue", "user"], condition=Q(removed_at__isnull=True),
+                                    name="servicedesk_observer_active_uniq"),
+        ]
+        indexes = [
+            models.Index(fields=["queue", "removed_at"], name="sd_observer_queue_active"),
+            models.Index(fields=["user", "removed_at"], name="sd_observer_user_active"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.queue_id}: {self.user_id}"
+
+
 class ServiceDeskSettings(models.Model):
     """Настройки сервис-деска: одна строка, `pk=1`. Границы значений проверяет служба настроек."""
 
@@ -658,3 +714,46 @@ class Attachment(models.Model):
         default_permissions = ()
         verbose_name = "вложение"
         verbose_name_plural = "вложения"
+
+
+class TicketRating(models.Model):
+    """Оценка заявителя за цикл заявки и ссылка без входа (SPEC-012, FR-769…772)."""
+
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="ratings", verbose_name="заявка")
+    cycle_number = models.PositiveIntegerField("номер закрытия")
+    closed_at_snapshot = models.DateTimeField("закрыта")
+    token_hash = models.CharField("хеш кода", max_length=64, unique=True, null=True, blank=True)
+    score = models.PositiveSmallIntegerField("оценка", null=True, blank=True)
+    expires_at = models.DateTimeField("ссылка действует до")
+    is_current = models.BooleanField("текущая", default=True)
+    rated_at = models.DateTimeField("оценена", null=True, blank=True)
+    created_at = models.DateTimeField("создана", default=now)
+    updated_at = models.DateTimeField("изменена", auto_now=True)
+    # Снимки для отчёта: передача заявки и архивирование справочников не меняют историю.
+    queue_id = models.PositiveIntegerField("очередь, id", null=True, blank=True)
+    queue_name = models.CharField("очередь", max_length=255, blank=True, default="")
+    category_id = models.PositiveIntegerField("категория, id", null=True, blank=True)
+    category_name = models.CharField("категория", max_length=255, blank=True, default="")
+    assignee_id = models.PositiveIntegerField("исполнитель, id", null=True, blank=True)
+    assignee_name = models.CharField("исполнитель", max_length=255, blank=True, default="")
+    level_id = models.PositiveIntegerField("уровень, id", null=True, blank=True)
+    level_title = models.CharField("уровень", max_length=100, blank=True, default="")
+
+    class Meta:
+        default_permissions = ()
+        verbose_name = "оценка заявки"
+        verbose_name_plural = "оценки заявок"
+        constraints = [
+            models.UniqueConstraint(fields=["ticket", "cycle_number"], name="servicedesk_rating_ticket_cycle_uniq"),
+            models.UniqueConstraint(fields=["ticket"], condition=Q(is_current=True),
+                                    name="servicedesk_rating_current_uniq"),
+            models.CheckConstraint(condition=Q(score__isnull=True) | Q(score__gte=1, score__lte=5),
+                                   name="servicedesk_rating_score_1_5"),
+        ]
+        indexes = [
+            models.Index(fields=["is_current", "closed_at_snapshot"], name="sd_rating_current_closed"),
+            models.Index(fields=["queue_id", "closed_at_snapshot"], name="sd_rating_queue_closed"),
+        ]
+
+    def __str__(self) -> str:
+        return f"#{self.ticket_id}: {self.score or '—'}"

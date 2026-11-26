@@ -13,7 +13,7 @@ from django.utils import timezone
 from apps.core.services import audit
 
 from ..models import SlaCycle, Status, Ticket
-from . import access, assignment, dictionaries, events, letters, queues, replies, tickets
+from . import access, assignment, dictionaries, events, letters, queues, replies, tickets, rating
 from . import sla
 from . import settings as sd_settings
 from .errors import Batch, ServiceDeskError
@@ -110,6 +110,9 @@ def close(ticket, status, resolution, *, actor, ip=None) -> None:
                      before={"status": before.name}, after={"status": status.name, **cycle_data}, ip=ip)
         events.ticket_closed(ticket, actor_id=actor.pk if actor is not None else None)
         letters.send(ticket, "ticket.closed")
+        link = rating.create_link(ticket, closed_at=ticket.closed_at)
+        if link is not None:
+            letters.send(ticket, "ticket.rating", extra={"rating_id": link.pk, "code": link.test_code})
 
 
 def _final_queue(ticket):
@@ -157,6 +160,7 @@ def reopen(ticket, *, actor, ip=None, via="manual", at=None) -> None:
             assignment.clear_assignee(ticket, actor=actor, ip=ip,
                                        reason="queue_changed" if moved is not None else "not_participant")
         old_cycle = SlaCycle.objects.select_for_update().filter(ticket=ticket, is_current=True).first()
+        rating.on_reopen(ticket)
         if old_cycle is not None:
             old_cycle.is_current = False
             old_cycle.save(update_fields=["is_current"])

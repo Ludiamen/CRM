@@ -57,6 +57,22 @@
           </div>
           <button class="btn btn-primary" type="submit">Сохранить</button>
         </form>
+        <hr class="my-4">
+        <h2 class="h6 text-muted">Доступность для заявок</h2>
+        <form method="post" action="/me/availability/" data-form="availability">
+          {% csrf_token %}
+          <div class="mb-2">
+            <label class="form-label" for="id_unavailable_until">Недоступен до</label>
+            <input class="form-control" id="id_unavailable_until" name="until" type="text" inputmode="numeric"
+                   placeholder="ДД.ММ.ГГГГ" value="{{ target.unavailable_until|date:'d.m.Y' }}">
+            <div class="form-text">Дата включительно. Пустое поле снимает отметку.</div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label" for="id_unavailable_note">Примечание</label>
+            <input class="form-control" id="id_unavailable_note" name="note" maxlength="255" value="{{ target.unavailable_note }}">
+          </div>
+          <button class="btn btn-outline-primary btn-sm" type="submit">Сохранить доступность</button>
+        </form>
       </div>
     </div>
   </div>

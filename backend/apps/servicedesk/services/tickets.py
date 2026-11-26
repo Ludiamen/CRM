@@ -208,7 +208,7 @@ def create(*, channel, subject, text, requester_email, requester_name="", client
             ticket=ticket, kind=TicketEntry.Kind.INCOMING, at=moment, text=text, inbound_id=inbound_id,
             author=created_by if staff else None, author_email="" if staff else email,
              author_name="" if staff else name)
-        from . import assignment, sla
+        from . import assignment, distribution, sla
 
         sla.apply_level_to_ticket(ticket)
         level_assignee = ticket.sla.default_assignee if ticket.sla is not None else None
@@ -220,7 +220,9 @@ def create(*, channel, subject, text, requester_email, requester_name="", client
                 audit.record("ticket.assignee_skipped", actor=actor, object_type="ticket", object_id=number,
                              before={}, after={"assignee": level_assignee.full_name,
                                                "assignee_id": level_assignee.pk, "reason": "not_participant"},
-                             ip=ip)
+                              ip=ip)
+        if ticket.assignee_id is None:
+            distribution.assign_or_notify(ticket, actor=actor, ip=ip, reason="create")
         queue_name = ticket.queue.name
         after = {"number": number, "channel": channel, "queue": queue_name, "queue_id": unit_id,
                  "category": category.name if category else "", "priority": priority.name, "source": source.name}

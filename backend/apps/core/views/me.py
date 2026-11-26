@@ -133,6 +133,25 @@ def profile(request):
 
 
 @login_required
+@require_POST
+def availability(request):
+    """`/me/availability/` — сотрудник сам отмечает «недоступен до» или снимает отметку (FR-765)."""
+    raw = (request.POST.get("until") or "").strip()
+    until = parse_date(raw) if raw else None
+    if raw and until is None:
+        flash(request, "Дата недоступности: укажите дату как ДД.ММ.ГГГГ или оставьте поле пустым.", error=True)
+        return HttpResponseRedirect("/me/")
+    try:
+        accounts.set_availability(request.user, until, (request.POST.get("note") or "").strip(),
+                                  actor=request.user, ip=request.client_ip)
+    except accounts.AccountError as error:
+        flash(request, str(error), error=True)
+    else:
+        flash(request, "Недоступность сохранена." if until else "Отметка недоступности снята.")
+    return HttpResponseRedirect("/me/")
+
+
+@login_required
 @require_http_methods(["GET"])
 def security(request):
     user = request.user

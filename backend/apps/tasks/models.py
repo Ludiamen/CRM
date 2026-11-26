@@ -35,6 +35,8 @@ class Task(models.Model):
     updated_at = models.DateTimeField(default=now)
     completed_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    # Связь с заявкой сервис-деска — номером без внешнего ключа (SPEC-012, FR-776).
+    ticket_number = models.PositiveIntegerField("номер заявки", null=True, blank=True)
 
     class Meta:
         default_permissions = ()
@@ -45,6 +47,11 @@ class Task(models.Model):
             models.Index(fields=["plan_column"], name="tasks_task_plan_column"),
             models.Index(fields=["category"], name="tasks_task_category"),
             models.Index(fields=["deleted_at"], name="tasks_task_deleted_at"),
+            models.Index(fields=["ticket_number", "deleted_at"], name="tasks_task_ticket_number"),
+        ]
+        constraints = [
+            models.CheckConstraint(condition=Q(ticket_number__isnull=True) | Q(ticket_number__gt=0),
+                                   name="tasks_task_ticket_number_positive"),
         ]
 
     def __str__(self):

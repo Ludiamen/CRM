@@ -5,11 +5,12 @@
 from dataclasses import dataclass
 
 from django.db import transaction
+from django.utils import timezone
 
 from apps.core.services import audit
 from apps.org.services.refs import UnitRef
 
-from ..models import Category, InboundMail, Queue, ServiceDeskSettings, Status, Ticket
+from ..models import Category, InboundMail, Queue, QueueObserver, QueueRule, ServiceDeskSettings, Status, Ticket
 from . import access, intake
 from .errors import ServiceDeskError
 
@@ -33,6 +34,65 @@ def marked_units() -> list[UnitRef]:
 def is_queue(unit_id: int) -> bool:
     """Узел отмечен очередью."""
     return Queue.objects.filter(unit_id=unit_id).exists()
+
+
+def rule(unit_id: int):
+    """Правило очереди; при отсутствии возвращает None."""
+    return QueueRule.objects.filter(queue__unit_id=unit_id).first()
+
+
+def set_rule(unit_id: int, mode: str, *, actor, ip=None):
+    from . import distribution
+    return distribution.set_mode(unit_id, mode, actor=actor, ip=ip)
+
+
+def _can_manage(actor, unit_id):
+    from apps.core.services import permissions
+    from apps.org.services import structure
+    return permissions.has_permission(actor, "servicedesk.manage") or unit_id in structure.managed_units(actor)
+
+
+def observers(unit_id: int):
+    return QueueObserver.objects.filter(queue__unit_id=unit_id, removed_at__isnull=True).select_related("user").order_by(
+        "user__full_name", "user_id")
+
+
+def add_observer(unit_id: int, user, *, actor, ip=None):
+    if not _can_manage(actor, unit_id):
+        raise ServiceDeskError("no_access", "нет доступа")
+    with transaction.atomic():
+        queue = Queue.objects.select_for_update().get(unit_id=unit_id)
+        row = QueueObserver.objects.filter(queue=queue, user=user, removed_at__isnull=True).first()
+        if row is not None:
+            return row
+        row = QueueObserver.objects.filter(queue=queue, user=user).order_by("-added_at").first()
+        if row is not None:
+            row.removed_at = None
+            row.removed_by = None
+            row.added_by = actor
+            row.added_at = timezone.now()
+            row.save(update_fields=["removed_at", "removed_by", "added_by", "added_at"])
+        else:
+            row = QueueObserver.objects.create(queue=queue, user=user, added_by=actor)
+        audit.record("servicedesk.queue_observer_added", actor=actor, object_type="queue",
+                     object_id=unit_id, after={"user_id": user.pk}, ip=ip)
+        return row
+
+
+def remove_observer(unit_id: int, user_id: int, *, actor, ip=None):
+    if not _can_manage(actor, unit_id):
+        raise ServiceDeskError("no_access", "нет доступа")
+    with transaction.atomic():
+        row = QueueObserver.objects.select_for_update().filter(
+            queue__unit_id=unit_id, user_id=user_id, removed_at__isnull=True).first()
+        if row is None:
+            return False
+        row.removed_at = timezone.now()
+        row.removed_by = actor
+        row.save(update_fields=["removed_at", "removed_by"])
+        audit.record("servicedesk.queue_observer_removed", actor=actor, object_type="queue",
+                     object_id=unit_id, before={"user_id": user_id}, after={}, ip=ip)
+        return True
 
 
 def default_unit_id() -> int | None:

@@ -1,0 +1,17 @@
+{% csrf_token %}
+<main data-rating-page>
+  {% if error %}<p role="alert" data-code="{{ error_code }}">{{ error }}</p>
+  {% else %}<h1>Оценка заявки №{{ number }}</h1>{% endif %}
+  {% if success %}<p data-rating-state>Спасибо, ваша оценка сохранена.</p>{% elif not error %}
+  <form method="post" data-form="rating">
+    {% csrf_token %}
+    <input type="hidden" name="ticket" value="{{ number }}">
+    <label>Код <input name="code" data-rating-field="code" autocomplete="off"></label>
+    <fieldset data-rating-field="score">
+      <legend>Оценка</legend>
+      {% for score in "12345" %}<label><input type="radio" name="score" value="{{ score }}">{{ score }}</label>{% endfor %}
+    </fieldset>
+    <button type="submit">Отправить</button>
+  </form>
+  {% endif %}
+</main>

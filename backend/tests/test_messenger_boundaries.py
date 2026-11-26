@@ -518,8 +518,8 @@ def test_points_are_19_and_unit_form_parts_last():
     from apps.core import extensions
 
     assert tuple(extensions.POINTS) == POINTS_19
-    assert len(extensions.POINTS) == 19
-    assert extensions.POINTS[-1] == "unit_form_parts" and extensions.POINTS.index("unit_form_parts") == 18
+    assert len(extensions.POINTS) == len(POINTS_19)
+    assert extensions.POINTS[-1] == "ticket_task_list" and extensions.POINTS.index("unit_form_parts") == 18
     assert tuple(extensions.POINTS[:18]) == POINTS_18, "прежние точки изменили порядок"
     assert set(extensions._registry) == set(POINTS_19)
     assert dataclasses.is_dataclass(extensions.UnitFormPart)

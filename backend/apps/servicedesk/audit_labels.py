@@ -37,6 +37,13 @@ ACTIONS = dict([
      ("servicedesk.answer_changed", "Шаблон ответа изменён"),
      ("servicedesk.answer_archived", "Шаблон ответа архивирован"),
      ("servicedesk.report_exported", "Отчёт выгружен"),
+     ("servicedesk.queue_rule_changed", "Режим очереди изменён"),
+     ("servicedesk.queue_observer_added", "Наблюдатель очереди добавлен"),
+     ("servicedesk.queue_observer_removed", "Наблюдатель очереди снят"),
+     ("core.user_unavailable", "Сотрудник отмечен как недоступный"),
+     ("ticket.distributed", "Заявка распределена автоматически"),
+     ("servicedesk.rating_received", "Оценка заявителя получена"),
+     ("servicedesk.task_created", "Задача создана из заявки"),
     ("mailbox.connected", "Ящик заявок подключён"), ("mailbox.recreated", "Ящик заявок пересоздан"),
 ])
 FIELDS = dict([
@@ -59,6 +66,8 @@ FIELDS = dict([
     ("added", "добавлено"), ("updated", "обновлено"), ("unchanged", "без изменений"), ("deleted", "удалено"),
     ("origin_changed", "сменили отметку на «заявка»"),
     ("cycle", "номер цикла"), ("level", "уровень обслуживания"), ("archived", "в архиве"),
+    ("note", "примечание"), ("until", "недоступен до"), ("user_id", "сотрудник"),
+    ("mode", "режим"), ("score", "оценка"), ("task_id", "номер задачи"),
     ("reaction_due", "срок реакции"), ("solution_due", "срок решения"),
     ("verdicts", "вердикты сроков"), ("period", "период отчёта"), ("from", "с даты"), ("to", "по дату"),
 ])

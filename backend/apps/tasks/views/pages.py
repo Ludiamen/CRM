@@ -3,6 +3,7 @@
 Список с пресетами и фильтрами, карточка, форма создания и четыре доски. Права — `tasks.use`; видимость задачи
 проверяет `services.access` (чужая и удалённая — 404).
 """
+from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
@@ -70,6 +71,7 @@ def list_fragment(request):
 @permissions.require_permission("tasks.use")
 def card_page(request, task_id):
     task = _task_or_404(request.user, task_id)
+    from apps.tasks.services.task_links import ticket_for_task
     return render_page(request, "tasks/card.html", {
         "task": task,
         "feed": task_service.feed(task),
@@ -81,6 +83,7 @@ def card_page(request, task_id):
         "can_comment": access.can_comment(request.user, task),
         "columns": plan.columns_of(task.assignee),
         "categories": TaskCategory.objects.all(),
+        "ticket": ticket_for_task(request.user, task),
     })
 
 
@@ -92,15 +95,30 @@ def reminders_of(task):
 @require_http_methods(["GET", "POST"])
 @permissions.require_permission("tasks.use")
 def new_page(request):
+    ticket_number = request.GET.get("ticket") or request.POST.get("ticket")
+    ticket = None
+    seed = None
+    if ticket_number:
+        try:
+            ticket_number = int(ticket_number)
+        except (TypeError, ValueError):
+            raise Http404
+        from apps.tasks.services import task_links
+        seed = task_links.seed_for_ticket(request.user, ticket_number)
+        if seed is None:
+            raise PermissionDenied
+        ticket = {"number": seed["number"], "subject": seed["title"]}
     if request.method == "POST":
         from apps.tasks.views import actions
 
-        return actions.create(request)
+        return actions.create(request) if ticket is None else actions.create(request, ticket_number=ticket_number)
+    posted = seed or {}
     return render_page(request, "tasks/new.html", {
-        "assignee": request.user,
+        "assignee": posted.get("assignee") or request.user,
         "people": User.objects.exclude(state="dismissed").order_by("full_name", "pk"),
         "categories": TaskCategory.objects.order_by("position", "pk"),
         "today": moscow_today().isoformat(),
+        "posted": posted, "ticket": ticket,
     })
 
 

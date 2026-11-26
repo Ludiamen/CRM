@@ -7,8 +7,8 @@
 """
 from django.urls import path
 
-from .views import (answers, dictionaries, files, inbound, public_form, reports, requesters, settings, sla,
-                    ticket_card, ticket_new, tickets_list)
+from .views import (answers, dictionaries, files, inbound, public_form, rating, reports, requesters, settings,
+                    sla, ticket_card, ticket_new, tickets_list)
 
 urlpatterns = [
     # открытая форма
@@ -43,6 +43,8 @@ urlpatterns = [
     # настройки и справочники
     path("servicedesk/", settings.settings_page, name="sd-settings-page"),
     path("servicedesk/queues/", settings.queues_page, name="sd-queues-page"),
+    path("servicedesk/queues/<int:unit_id>/rule/", settings.queue_rule, name="sd-queue-rule"),
+    path("servicedesk/queues/<int:unit_id>/observers/", settings.queue_observers, name="sd-queue-observers"),
     path("servicedesk/dictionaries/<slug:kind>/", dictionaries.dictionary_list, name="sd-dictionary-list"),
     path("servicedesk/dictionaries/<slug:kind>/new/", dictionaries.dictionary_new, name="sd-dictionary-new"),
     path("servicedesk/dictionaries/<slug:kind>/<int:item_id>/edit/", dictionaries.dictionary_edit,
@@ -62,6 +64,8 @@ urlpatterns = [
     path("servicedesk/requesters/<int:requester_id>/edit/", requesters.requester_edit, name="sd-requester-edit"),
     path("servicedesk/requesters/<int:requester_id>/delete/", requesters.requester_delete,
          name="sd-requester-delete"),
+    # открытая оценка заявителя
+    path("rate/", rating.rating_page, name="sd-rating"),
     # входящие письма
     path("servicedesk/inbound/", inbound.inbound_list, name="sd-inbound-list"),
     path("servicedesk/inbound/<int:inbound_id>/retry/", inbound.inbound_retry, name="sd-inbound-retry"),

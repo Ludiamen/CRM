@@ -574,6 +574,7 @@ def _slice_routes():
         ("post", "/structure/{unit_id}/members/", ("org.manage",)),
         ("post", "/structure/{unit_id}/members/{user_id}/transfer/", ("org.manage",)),
         ("post", "/structure/{unit_id}/members/{user_id}/remove/", ("org.manage",)),
+        ("post", "/structure/{unit_id}/members/{user_id}/availability/", ("org.manage",)),
         ("post", "/structure/{unit_id}/marks/", ("org.manage",)),
         ("post", "/structure/{unit_id}/roles/", ("roles.manage",)),
         ("get", "/structure/people/{user_id}/dismiss/", ("org.manage",)),

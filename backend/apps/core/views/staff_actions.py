@@ -12,6 +12,7 @@ from apps.core.models import Role, User, UserState
 from apps.core.services import accounts, roles
 from apps.core.services.permissions import require_permission
 
+from apps.core.widgets import parse_date
 from .common import flash, render_page
 from .staff import card_context, slider_page
 
@@ -165,4 +166,26 @@ def staff_reset_2fa(request, user_id: int):
         flash(request, str(error), error=True)
     else:
         flash(request, "Второй фактор сброшен, сотруднику отправлено письмо. При следующем входе он подключит его заново.")
+    return _card(user_id)
+
+
+@require_permission("accounts.manage")
+@require_POST
+def staff_availability(request, user_id: int):
+    """`/staff/<id>/availability/` — администратор отмечает недоступность сотрудника (FR-765)."""
+    target = get_object_or_404(User, pk=user_id)
+    if (refused := _read_only(request, target)) is not None:
+        return refused
+    raw = (request.POST.get("until") or "").strip()
+    until = parse_date(raw) if raw else None
+    if raw and until is None:
+        flash(request, "Дата недоступности: укажите дату как ДД.ММ.ГГГГ.", error=True)
+        return _card(user_id)
+    try:
+        accounts.set_availability(target, until, (request.POST.get("note") or "").strip(),
+                                  actor=request.user, ip=request.client_ip)
+    except accounts.AccountError as error:
+        flash(request, str(error), error=True)
+    else:
+        flash(request, "Недоступность сохранена." if until else "Отметка недоступности снята.")
     return _card(user_id)

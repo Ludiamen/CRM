@@ -19,8 +19,8 @@ from apps.core.services import valkey
 from apps.integrations.mail import imap
 
 from .models import (AnswerTemplate, Category, ClientUnit, Complexity, InboundMail, MailboxState, Priority, Queue,
-                     Requester, RequesterImport, ServiceDeskSettings, SlaBinding, SlaCycle, SlaDigest, SlaLevel,
-                     SlaNotice, Source, Status, Ticket)
+                     QueueObserver, QueueRule, Requester, RequesterImport, ServiceDeskSettings, SlaBinding, SlaCycle,
+                     SlaDigest, SlaLevel, SlaNotice, Source, Status, Ticket, TicketRating)
 from .services import form
 
 # Начальные значения — константы миграции данных (имя модуля начинается с цифры, поэтому `importlib`)
@@ -42,9 +42,9 @@ def _clear_dir(root: pathlib.Path) -> None:
 
 def _erase(db: str) -> None:
     """Стирает данные среза в порядке зависимостей `PROTECT`: заявки раньше справочников, настройки раньше критичностей."""
-    for model in (Ticket, SlaDigest, SlaNotice, SlaCycle, AnswerTemplate, SlaBinding, SlaLevel, InboundMail,
-                  Requester, RequesterImport, ClientUnit, Queue, ServiceDeskSettings, Category, Source, Complexity,
-                  Status, Priority):
+    for model in (TicketRating, Ticket, SlaDigest, SlaNotice, SlaCycle, AnswerTemplate, SlaBinding, SlaLevel,
+                  InboundMail, Requester, RequesterImport, ClientUnit, QueueObserver, QueueRule, Queue,
+                  ServiceDeskSettings, Category, Source, Complexity, Status, Priority):
         model.objects.using(db).all().delete()
 
 
@@ -98,7 +98,7 @@ def stand_reset() -> None:
     for key in conn.scan_iter(match=f"{form.RATE_PREFIX}*", count=500):  # порог формы: заявки сверх него закрыли бы форму
         conn.delete(key)
     # Срез 011: замок напоминаний SLA и ключи сводки; сброс стенда возвращает состояние после миграций
-    for pattern in ("sla:tick", "servicedesk:sla:*", "servicedesk:digest:*"):
+    for pattern in ("sla:tick", "servicedesk:sla:*", "servicedesk:digest:*", "servicedesk:rating:*"):
         if "*" in pattern:
             keys = list(conn.scan_iter(match=pattern, count=500))
         else:

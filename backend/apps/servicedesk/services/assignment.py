@@ -106,6 +106,9 @@ def take(ticket, *, actor, ip=None) -> bool:
         _require_participant(actor, ticket)
         if ticket.assignee_id == actor.pk:
             return False
+        from . import distribution
+        if distribution.mode_for(ticket.queue_id) == "all" and ticket.assignee_id is not None:
+            raise _error("already_taken", "Заявка уже взята другим исполнителем")
         _set_assignee(ticket, actor, actor=actor, ip=ip)
     return True
 
@@ -125,7 +128,11 @@ def unassign(ticket, *, actor, ip=None) -> bool:
     """Снимает ответственного вручную: письма нет, `assigned_once` и статус не меняются; `False` — снимать некого."""
     with transaction.atomic():
         _guard(ticket, actor)
-        return clear_assignee(ticket, actor=actor, reason="manual", ip=ip)
+        changed = clear_assignee(ticket, actor=actor, reason="manual", ip=ip)
+        if changed:
+            from . import distribution
+            distribution.assign_or_notify(ticket, actor=actor, ip=ip, reason="manual")
+        return changed
 
 
 def apply_default_assignee(ticket, *, actor=None, ip=None) -> bool:

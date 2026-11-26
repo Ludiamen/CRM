@@ -17,7 +17,7 @@
 """
 import datetime
 import importlib
-from datetime import date, time
+from datetime import date, time, timedelta
 from html.parser import HTMLParser
 from zoneinfo import ZoneInfo
 
@@ -375,23 +375,35 @@ def test_deadline_change_recomputes_autos_and_days_keeps_on_date_and_removal_can
     days_task = tasks_helpers.make_task(author=author, assignee=assignee, deadline=DEADLINE, title="С пересчётом")
     date_task = tasks_helpers.make_task(author=author, assignee=assignee, deadline=DEADLINE, title="На дату")
     service, task_service = _svc("reminders"), _svc("tasks")
+    from apps.core.widgets import moscow_today
+
+    manual_on = moscow_today() + timedelta(days=40)
     service.set_manual(assignee, days_task, days=2)
-    service.set_manual(assignee, date_task, on=date(2026, 12, 1))
+    service.set_manual(assignee, date_task, on=manual_on)
     for task in (days_task, date_task):
         service.plan(task)
 
-    new_deadline = date(2026, 11, 25)                          # среда
+    new_deadline = moscow_today() + timedelta(days=30)
+    while new_deadline.weekday() not in (1, 2, 3, 4):
+        new_deadline += timedelta(days=1)
+    manual_day = new_deadline
+    for _ in range(2):
+        manual_day -= timedelta(days=1)
+        while manual_day.weekday() >= 5:
+            manual_day -= timedelta(days=1)
     task_service.update(author, days_task, deadline=new_deadline)
     task_service.update(author, date_task, deadline=new_deadline)
 
     recomputed = _by_kind(days_task)
-    assert recomputed["auto_due"][assignee.pk] == datetime.datetime(2026, 11, 25, 9, 0, tzinfo=MSK)
-    assert recomputed["auto_soon"][assignee.pk] == datetime.datetime(2026, 11, 24, 9, 0, tzinfo=MSK)
-    assert recomputed["auto_overdue"][assignee.pk] == datetime.datetime(2026, 11, 26, 9, 0, tzinfo=MSK)
+    def moments(day, hour=9):
+        return datetime.datetime.combine(day, datetime.time(hour), tzinfo=MSK)
+    assert recomputed["auto_due"][assignee.pk] == moments(new_deadline)
+    assert recomputed["auto_soon"][assignee.pk] == moments(new_deadline - timedelta(days=1))
+    assert recomputed["auto_overdue"][assignee.pk] == moments(new_deadline + timedelta(days=1))
     manual_days = [row for row in _rows(days_task) if row.kind == "manual"]
-    assert [row.moment for row in manual_days] == [datetime.datetime(2026, 11, 23, 9, 0, tzinfo=MSK)]
+    assert [row.moment for row in manual_days] == [moments(manual_day)]
     manual_date = [row for row in _rows(date_task) if row.kind == "manual"]
-    assert [row.moment for row in manual_date] == [datetime.datetime(2026, 12, 1, 9, 0, tzinfo=MSK)], (
+    assert [row.moment for row in manual_date] == [moments(manual_on)], (
         "ручное «на дату» пересчитано вместе со сроком")
 
     task_service.update(author, days_task, deadline=None)

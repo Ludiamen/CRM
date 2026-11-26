@@ -22,7 +22,8 @@ POINTS_15 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_
              "notification_kinds", "top_bar_items")
 POINTS_17 = POINTS_15 + ("search_providers", "ticket_card_parts")
 POINTS_18 = POINTS_17 + ("home_body",)
-POINTS_19 = POINTS_18 + ("unit_form_parts",)
+POINTS_19 = POINTS_18 + ("unit_form_parts", "ticket_task_seed", "ticket_task_brief",
+                          "ticket_task_create", "ticket_task_list")
 MODULE_PATH = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+")
 PUBLIC = "apps.servicedesk.services.public"
 KB_MODELS = ("Article", "ArticleVersion", "Rubric", "Tag", "ArticleFile", "TicketLink", "RubricSubscription",
@@ -358,7 +359,7 @@ def test_points_has_seventeen_names():
     from apps.core import extensions
 
     assert tuple(extensions.POINTS) == POINTS_19
-    assert len(extensions.POINTS) == 19
+    assert len(extensions.POINTS) == len(POINTS_19)
     assert set(extensions._registry) == set(POINTS_19)
 
 
@@ -369,8 +370,8 @@ def test_points_new_names_search_providers_and_ticket_card_parts_are_last_two():
     from apps.core import extensions
 
     assert tuple(extensions.POINTS[:15]) == POINTS_15
-    assert tuple(extensions.POINTS[-4:-2]) == ("search_providers", "ticket_card_parts") == support_kb.POINTS_005
-    assert extensions.POINTS[-1] == "unit_form_parts"
+    assert tuple(extensions.POINTS[15:17]) == ("search_providers", "ticket_card_parts") == support_kb.POINTS_005
+    assert extensions.POINTS[18] == "unit_form_parts"
     parts = extensions.registered("ticket_card_parts")
     assert parts, "knowledge не зарегистрировал части карточки"
     owners = {".".join(getattr(f, "__module__", "").split(".")[:2]) for f in parts}

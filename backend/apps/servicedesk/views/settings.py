@@ -5,7 +5,8 @@
 успех — 302 на тот же адрес и разовое сообщение.
 """
 from django.conf import settings as dj_settings
-from django.http import Http404, HttpResponseRedirect
+from django.contrib.auth import get_user_model
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
@@ -13,8 +14,8 @@ from apps.core.services.permissions import require_permission
 from apps.core.views.common import flash, is_fragment, render_page
 from apps.org.services import structure
 
-from ..models import Priority
-from ..services import mailbox, queues
+from ..models import Priority, Queue
+from ..services import distribution, mailbox, queues
 from ..services import settings as sd_settings
 from ..services.errors import ServiceDeskError
 
@@ -173,3 +174,70 @@ def queues_page(request):
         return _queues_response(request, error=_alert(error))
     flash(request, text)
     return _redirect(QUEUES_URL)
+
+
+@require_http_methods(["GET", "POST"])
+def queue_rule(request, unit_id: int):
+    """`/servicedesk/queues/<id>/rule/` — режим очереди; тело добавляет T-12219."""
+    if not request.user.is_authenticated:
+        return HttpResponse("нет доступа", status=403)
+    queue = Queue.objects.filter(unit_id=unit_id).first()
+    if queue is None:
+        raise Http404
+    if not distribution._can_manage(request.user, unit_id):
+        return HttpResponse("нет доступа", status=403)
+    error = None
+    if request.method == "POST":
+        try:
+            distribution.set_mode(unit_id, request.POST.get("mode", ""), actor=request.user,
+                                 ip=request.client_ip)
+        except ServiceDeskError as exc:
+            error = _alert(exc)
+            return render_page(request, "servicedesk/queues/rule.html",
+                               {"queue": queue, "mode": request.POST.get("mode", ""),
+                                "modes": distribution.MODES, "error": error}, status=400)
+        if is_fragment(request):
+            return render(request, "servicedesk/queues/_rule.html",
+                          {"queue": queue, "mode": distribution.mode_for(unit_id), "modes": distribution.MODES})
+        return _redirect(f"/servicedesk/queues/{unit_id}/rule/")
+    context = {"queue": queue, "mode": distribution.mode_for(unit_id), "modes": distribution.MODES, "error": error}
+    if is_fragment(request):
+        return render(request, "servicedesk/queues/_rule.html", context)
+    return render_page(request, "servicedesk/queues/rule.html", context)
+
+
+@require_http_methods(["GET", "POST"])
+def queue_observers(request, unit_id: int):
+    """`/servicedesk/queues/<id>/observers/` — наблюдатели очереди; тело добавляет T-12219."""
+    if not request.user.is_authenticated:
+        return HttpResponse("нет доступа", status=403)
+    queue = Queue.objects.filter(unit_id=unit_id).first()
+    if queue is None:
+        raise Http404
+    if not queues._can_manage(request.user, unit_id):
+        return HttpResponse("нет доступа", status=403)
+    if request.method == "POST":
+        try:
+            if request.POST.get("action") == "remove":
+                queues.remove_observer(unit_id, _int(request.POST.get("user")), actor=request.user,
+                                       ip=request.client_ip)
+            else:
+                user = get_user_model().objects.filter(pk=_int(request.POST.get("user"))).first()
+                if user is None:
+                    raise ServiceDeskError("user_required", "Выберите сотрудника")
+                queues.add_observer(unit_id, user, actor=request.user, ip=request.client_ip)
+        except ServiceDeskError as exc:
+            return render_page(request, "servicedesk/queues/observers.html",
+                               {"queue": queue, "observers": queues.observers(unit_id),
+                                "people": get_user_model().objects.filter(state="active").order_by("full_name", "pk"),
+                                "error": _alert(exc)}, status=400)
+        if is_fragment(request):
+            return render(request, "servicedesk/queues/_observers.html",
+                          {"queue": queue, "observers": queues.observers(unit_id)})
+        return _redirect(f"/servicedesk/queues/{unit_id}/observers/")
+    context = {"queue": queue, "observers": queues.observers(unit_id),
+               "people": get_user_model().objects.filter(state="active").order_by("full_name", "pk"),
+               "error": None}
+    if is_fragment(request):
+        return render(request, "servicedesk/queues/_observers.html", context)
+    return render_page(request, "servicedesk/queues/observers.html", context)

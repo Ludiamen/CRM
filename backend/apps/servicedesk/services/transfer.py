@@ -96,6 +96,9 @@ def transfer(ticket, queue_id, *, reason="", actor, ip=None) -> TransferResult:
             raise _error("reason_too_long", "Причина передачи не длиннее 500 знаков")
         removed = _move(ticket, queue_id, actor=actor, ip=ip, reason_text=reason)
         sla.recalculate(ticket)
+        if ticket.assignee_id is None:
+            from . import distribution
+            distribution.assign_or_notify(ticket, actor=actor, ip=ip, reason="transfer")
     return TransferResult(queue_changed=True, assignee_removed=removed, visible_after=access.can_work(actor, ticket))
 
 
@@ -134,4 +137,7 @@ def change_category(ticket, category, *, confirmed=False, actor, ip=None) -> Cat
         if ticket.assignee_id is None:
             assigned = assignment.apply_default_assignee(ticket, actor=actor, ip=ip)
         sla.recalculate(ticket)
+        if ticket.assignee_id is None:
+            from . import distribution
+            distribution.assign_or_notify(ticket, actor=actor, ip=ip, reason="category")
     return CategoryResult(False, new_queue_id, True, queue_changed, removed, assigned)

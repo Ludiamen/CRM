@@ -76,22 +76,33 @@ def _members(task, users, *, assignee, observers=()) -> list[TaskMember]:
     return result
 
 
-def _allowed_assignee(actor, assignee) -> None:
-    if not access.can_set_task(actor, assignee):
+def _allowed_assignee(actor, assignee, *, ticket_number=None, assignee_authorized=False) -> None:
+    authorized = False
+    if assignee_authorized and ticket_number:
+        from apps.core import extensions
+        providers = extensions.registered("ticket_task_seed")
+        seed = providers[0](actor, ticket_number) if providers else None
+        authorized = (seed is not None and getattr(seed.get("assignee"), "pk", None) == assignee.pk
+                      and getattr(assignee, "state", None) != "dismissed")
+    if not authorized and not access.can_set_task(actor, assignee):
         raise TasksError("assignee_forbidden", "assignee")
 
 
 @transaction.atomic
 def create(actor, *, title, description="", deadline=None, assignee, members=(), category=None,
-           plan_column=None) -> Task:
+           plan_column=None, assignee_authorized=False, ticket_number=None) -> Task:
     """Создать задачу; проверки текста, срока, исполнителя, состава и прав."""
-    _allowed_assignee(actor, assignee)
+    _allowed_assignee(actor, assignee, ticket_number=ticket_number,
+                      assignee_authorized=assignee_authorized)
     _active(assignee, "assignee_dismissed", "assignee")
     now = timezone.now()
     task = Task.objects.create(
         title=_clean_title(title), description=_clean_description(description),
         deadline=_clean_deadline(deadline), author=actor, assignee=assignee,
         status=Task.Status.NEW, category=category, plan_column=plan_column, created_at=now, updated_at=now)
+    task.ticket_number = ticket_number
+    if ticket_number is not None:
+        task.save(update_fields=["ticket_number"])
     TaskMember.objects.bulk_create(_members(task, members, assignee=assignee))
     audit.record("tasks.created", actor=actor, object_type="tasks.task", object_id=task.pk,
                  after={"title": task.title, "assignee": assignee.full_name, "deadline": _iso(task.deadline)})

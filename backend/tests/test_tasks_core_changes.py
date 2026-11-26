@@ -30,7 +30,8 @@ APP = "apps.tasks"
 POINTS_19 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_directory", "card_sections",
              "day_marks", "home_notices", "stand_reset", "unit_usage", "file_purposes", "mail_renderers",
              "login_links", "notification_kinds", "top_bar_items", "search_providers", "ticket_card_parts",
-             "home_body", "unit_form_parts")
+             "home_body", "unit_form_parts", "ticket_task_seed", "ticket_task_brief",
+             "ticket_task_create", "ticket_task_list")
 REGISTRATIONS = (
     ("menu_items", "apps.tasks.extensions", "menu_items"),
     ("notification_kinds", "apps.tasks.notify_kinds", "notification_kinds"),
@@ -263,7 +264,7 @@ def test_points_stay_19_and_tasks_registers_seven_points_with_stand_reset_last()
     регистрация точки; подписок на шину нет."""
     from apps.core import events, extensions
 
-    assert tuple(extensions.POINTS) == POINTS_19 and len(extensions.POINTS) == 19
+    assert tuple(extensions.POINTS) == POINTS_19 and len(extensions.POINTS) == len(POINTS_19)
     assert set(extensions._registry) == set(POINTS_19)
     for point, module, name in REGISTRATIONS:
         own = _own(point)

@@ -67,7 +67,7 @@ def _people(request):
     return [user for user in (_user(value) for value in request.POST.getlist("members")) if user is not None]
 
 
-def _form(request, error=None, task=None):
+def _form(request, error=None, task=None, ticket=None):
     from apps.core.models import User as People
     from apps.tasks.models import TaskCategory as Categories
 
@@ -79,6 +79,7 @@ def _form(request, error=None, task=None):
         "today": moscow_today().isoformat(),
         "posted": request.POST,
         "error": error,
+        "ticket": ticket,
     }
     return render_page(request, "tasks/new.html" if task is None else "tasks/card.html", context, status=200)
 
@@ -94,9 +95,18 @@ def tasks_root(request):
 
 @require_POST
 @permissions.require_permission("tasks.use")
-def create(request):
+def create(request, ticket_number=None):
     try:
-        task = service.create(
+        if ticket_number is not None:
+            from apps.tasks.services.task_links import create_from_ticket
+            task = create_from_ticket(
+                request.user, ticket_number, title=request.POST.get("title", ""),
+                description=request.POST.get("description", ""),
+                deadline=_deadline(request.POST.get("deadline")),
+                assignee=_user(request.POST.get("assignee"), request.user),
+                members=_people(request), category=_category(request.POST.get("category")))
+        else:
+            task = service.create(
             request.user, title=request.POST.get("title", ""), description=request.POST.get("description", ""),
             deadline=_deadline(request.POST.get("deadline")),
             assignee=_user(request.POST.get("assignee"), request.user),

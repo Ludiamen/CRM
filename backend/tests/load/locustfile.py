@@ -28,7 +28,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import gevent
-from locust import HttpUser, between, events, task
+from locust import HttpUser, between, events, tag, task
 
 P95_LIMIT_MS = 500
 _lock = threading.Lock()
@@ -281,6 +281,139 @@ def _check_sd_p95(environment, **_kwargs):
     if stats.total.num_failures or over:
         print(f"NFR-203 (срез 003) не выполнено: p95 выше {P95_LIMIT_MS} мс или нет замера {over}, "
               f"ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1
+
+
+# --- срез 012: очереди, карточка, настройка и публичная оценка -------------------------------
+
+
+@tag("slice012", "nfr737")
+class QueueLinksUser(HttpUser):
+    """NFR-737: 100 сотрудников читают очередь, карточку, правило и блок задач.
+
+    Запуск только этого класса:
+    ``LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py -u 100 -r 1
+    --headless --reset-stats QueueLinksUser``.
+    """
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        queues = self.client.get("/servicedesk/queues/", name="setup /servicedesk/queues/").text
+        self.queue_ids = sorted(set(re.findall(
+            r'href="/servicedesk/queues/(\d+)/(?:rule|observers)/"', queues,
+        ))) or sorted(set(re.findall(r"/servicedesk/queues/(\d+)/", queues))) or ["1"]
+        tickets = self.client.get("/tickets/?preset=all", name="setup /tickets/").text
+        self.ticket_numbers = sorted(set(re.findall(r'href="/tickets/(\d+)/"', tickets))) or ["1"]
+
+    @task(3)
+    def queue(self):
+        self.client.get("/servicedesk/queues/", name="/servicedesk/queues/")
+
+    @task(3)
+    def card(self):
+        self.client.get(f"/tickets/{random.choice(self.ticket_numbers)}/",
+                        name="/tickets/<n>/ (queue links card)")
+
+    @task(2)
+    def queue_settings(self):
+        queue_id = random.choice(self.queue_ids)
+        self.client.get(f"/servicedesk/queues/{queue_id}/rule/",
+                        name="/servicedesk/queues/<id>/rule/")
+
+    @task(2)
+    def tasks_block(self):
+        # Карточка серверно собирает блок связанных задач; HX-Request мерит именно
+        # фрагмент, не смешивая его с прежним именем карточки.
+        self.client.get(f"/tickets/{random.choice(self.ticket_numbers)}/",
+                        headers={"HX-Request": "true"},
+                        name="/tickets/<n>/ (tasks block)")
+
+
+QUEUE_LINKS_PAGES = (
+    ("/servicedesk/queues/", "GET"),
+    ("/tickets/<n>/ (queue links card)", "GET"),
+    ("/servicedesk/queues/<id>/rule/", "GET"),
+    ("/tickets/<n>/ (tasks block)", "GET"),
+)
+
+
+@events.quitting.add_listener
+def _check_queue_links_p95(environment, **_kwargs):
+    """NFR-737: все четыре независимых имени должны иметь p95 не более 500 мс."""
+    if QueueLinksUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    for name, method in QUEUE_LINKS_PAGES:
+        entry = stats.entries.get((name, method))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > P95_LIMIT_MS:
+            over[name] = p95
+    if stats.total.num_failures or over:
+        print(f"NFR-737 не выполнено: p95 {over}, ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1
+
+
+@tag("slice012", "nfr738")
+class RatingPublicUser(HttpUser):
+    """NFR-738: 50 заявителей открывают страницу оценки и отправляют код POST.
+
+    `LOAD_RATING_TICKET` задаёт закрытую заявку из профиля наполнения. Восемь
+    синтетических попыток на пользователя проверяют 5/15-минутный rate limit;
+    неверный код и 429 считаются ожидаемым ответом и не маскируются в логах.
+    """
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_RATING_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        self.client.verify = False
+        self.ticket_number = os.environ.get("LOAD_RATING_TICKET", "1")
+        path = f"/rate/?ticket={self.ticket_number}"
+        self.client.get(path, name="GET /rate/?ticket")
+        token = self.client.cookies.get("csrftoken", "")
+        for _ in range(6):
+            with self.client.post(
+                path,
+                data={"code": os.environ.get("LOAD_RATING_CODE", "LOADINVALID"),
+                      "score": "5", "csrfmiddlewaretoken": token},
+                headers={"Referer": self.host + path},
+                name="POST /rate/?ticket (code)",
+                catch_response=True,
+            ) as response:
+                # 2xx/4xx/429 are application outcomes for this probe; server
+                # errors remain Locust failures.
+                if response.status_code >= 500:
+                    response.failure(f"/rate/: {response.status_code}")
+                else:
+                    response.success()
+
+    @task
+    def rating_get(self):
+        self.client.get(f"/rate/?ticket={self.ticket_number}", name="GET /rate/?ticket")
+
+
+RATING_PAGES = (("GET /rate/?ticket", "GET"), ("POST /rate/?ticket (code)", "POST"))
+
+
+@events.quitting.add_listener
+def _check_rating_p95(environment, **_kwargs):
+    """NFR-738: публичные GET и POST с кодом — p95 не выше 500 мс."""
+    if RatingPublicUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    for name, method in RATING_PAGES:
+        entry = stats.entries.get((name, method))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > P95_LIMIT_MS:
+            over[name] = p95
+    if stats.total.num_failures or over:
+        print(f"NFR-738 не выполнено: p95 {over}, ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1
 
 

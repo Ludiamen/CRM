@@ -25,7 +25,7 @@
   </form>
   <section aria-label="Показатели">
     {% for key, title, value in metric_rows %}
-      <div data-report-row data-key="{{ key }}" data-value="{{ value }}"><span>{{ title }}</span>: <strong>{{ value|default_if_none:"—" }}</strong></div>
+      <div data-report-row data-key="{{ key }}" data-value="{% if value is None %}—{% else %}{{ value }}{% endif %}"{% if key == "requester_rating" %} data-count="{{ numbers.requester_rating_count }}"{% endif %}><span>{{ title }}</span>: <strong>{{ value|default_if_none:"—" }}</strong></div>
     {% endfor %}
   </section>
   <h2>Просрочки по уровням</h2>

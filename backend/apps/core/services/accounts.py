@@ -15,7 +15,7 @@ from apps.core import events
 from apps.core.models import BackupCodeDevice, EncryptedTOTPDevice, KnownDevice, Role, User, UserState
 from apps.integrations.mail import services as mail
 
-from . import audit, backup_codes, links, lockout, roles, sessions, totp
+from . import audit, backup_codes, links, lockout, permissions, roles, sessions, totp
 
 SORTABLE = {"full_name", "email", "position", "state", "created_at", "activated_at"}
 PROFILE_FIELDS = ("full_name", "position", "phone", "email", "contacts", "internal_phone", "workplace")
@@ -60,6 +60,38 @@ def _card_snapshot(user: User) -> dict:
 def _refuse_dismissed(user: User) -> None:
     if user.state == UserState.DISMISSED:
         raise AccountError("Запись уволена: её данные только для чтения. Можно вернуть сотрудника на работу.")
+
+
+AVAILABILITY_NOTE_LIMIT = 255
+
+
+def set_availability(target: User, until, note: str = "", *, actor: User, ip=None, allow_head: bool = False) -> User:
+    """Отметить сотрудника недоступным для автораспределения до даты включительно или снять отметку.
+
+    Сам сотрудник и держатель `accounts.manage` меняют отметку сами; руководителя узла проверяет служба
+    `org.services.availability` и передаёт `allow_head=True`. `until=None` снимает отметку.
+    """
+    _refuse_dismissed(target)
+    if not allow_head and actor.pk != target.pk and not permissions.has_permission(actor, "accounts.manage"):
+        raise AccountError("Отметить недоступность может сам сотрудник, администратор или руководитель узла.")
+    note = (note or "").strip()
+    if len(note) > AVAILABILITY_NOTE_LIMIT:
+        raise AccountError(f"Примечание недоступности: не больше {AVAILABILITY_NOTE_LIMIT} знаков.")
+    from apps.core.widgets import moscow_today
+
+    if until is not None and until < moscow_today():
+        raise AccountError("Дата недоступности не может быть в прошлом.")
+    before = {"until": str(target.unavailable_until or ""), "note": target.unavailable_note}
+    target.unavailable_until = until
+    target.unavailable_note = note if until is not None else ""
+    target.unavailable_by = actor if until is not None else None
+    target.unavailable_at = timezone.now() if until is not None else None
+    target.save(update_fields=["unavailable_until", "unavailable_note", "unavailable_by", "unavailable_at"])
+    audit.record("core.user_unavailable", actor=actor, object_type="user", object_id=target.pk, before=before,
+                 after={"until": str(until or ""), "note": target.unavailable_note}, ip=ip)
+    events.publish("availability.changed", user_id=target.pk,
+                   until=until.isoformat() if until else "", actor_id=actor.pk if actor else None)
+    return target
 
 
 def pickable(query: str = ""):

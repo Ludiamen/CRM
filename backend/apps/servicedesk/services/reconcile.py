@@ -38,6 +38,8 @@ def _reconcile_user(user_id: int) -> int:
                          before={"assignee": user.full_name, "assignee_id": user.pk},
                          after={"assignee": "", "assignee_id": None, "reason": "not_participant"})
             events.assignee_changed(ticket, before_id=user.pk, after_id=None, actor_id=None)
+            from . import distribution
+            distribution.assign_or_notify(ticket, actor=None, reason="reconcile")
             removed += 1
     return removed
 

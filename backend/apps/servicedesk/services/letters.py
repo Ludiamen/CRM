@@ -18,10 +18,11 @@ from . import mail_parse
 
 TEMPLATES = ("ticket.confirmation", "ticket.assigned", "ticket.closed", "ticket.autoclosed", "ticket.reopened",
              "ticket.reply")
+RATING_TEMPLATE = "ticket.rating"
 
 
 def _check(template: str) -> None:
-    if template not in TEMPLATES:
+    if template not in TEMPLATES and template != RATING_TEMPLATE:
         raise ValueError(f"неизвестный шаблон письма заявки: {template}")
 
 
@@ -36,7 +37,7 @@ def short_name(full_name: str) -> str:
 def recipients(ticket, template: str) -> tuple[str, list[str]]:
     """Пара (адрес заявителя, копия): подтверждение — без копии, остальные — неснятые участники без адреса заявителя."""
     to = ticket.requester_email
-    if template == "ticket.confirmation":
+    if template in ("ticket.confirmation", "ticket.rating"):
         return to, []
     emails = ticket.participants.filter(removed_at__isnull=True).order_by("id").values_list("email", flat=True)
     return to, [email for email in emails if email.lower() != to.lower()]
@@ -102,6 +103,15 @@ def unsent(entry) -> bool:
     return TicketEntry.objects.filter(pk=entry.pk, mail__status="failed").exists()
 
 
+def _context(ticket, entry, after_hours, template: str, extra) -> dict:
+    """Контекст задания письма: у оценки — id и код ссылки, у прочих писем — прежний набор ключей."""
+    values = {"ticket_id": ticket.pk, "entry_id": entry.pk if entry is not None else None,
+              "after_hours": after_hours}
+    if template == "ticket.rating":
+        values.update(rating_id=(extra or {}).get("rating_id"), rating_code=(extra or {}).get("code"))
+    return values
+
+
 def send(ticket, template: str, *, entry=None, extra=None) -> None:
     """Ставит письмо заявителю после фиксации: получатели и заголовки считаются в момент фиксации.
 
@@ -119,8 +129,7 @@ def send(ticket, template: str, *, entry=None, extra=None) -> None:
             message_id=new_message_id(), references=" ".join(references_of(ticket)),
             auto_submitted=auto_submitted(ticket, template), related_ref=f"ticket:{ticket.pk}",
             attachments=attachment_ids(entry) if template == "ticket.reply" else [],
-            context={"ticket_id": ticket.pk, "entry_id": entry.pk if entry is not None else None,
-                     "after_hours": after_hours})
+            context=_context(ticket, entry, after_hours, template, extra))
         if template == "ticket.reply" and entry is not None:
             TicketEntry.objects.filter(pk=entry.pk).update(mail=message)
 
@@ -155,7 +164,7 @@ def render(message, context: dict) -> Rendered:
 
     template = message.template
     _check(template)
-    ticket = Ticket.objects.select_related("assignee").get(pk=context["ticket_id"])
+    ticket = Ticket.objects.select_related("assignee", "queue", "category").get(pk=context["ticket_id"])
     entry = TicketEntry.objects.select_related("author").filter(pk=context.get("entry_id")).first()
     values = {"number": ticket.number}
     pairs: list[tuple[str, object]] = []
@@ -181,6 +190,11 @@ def render(message, context: dict) -> Rendered:
                       signature=short_name(author.full_name) if author is not None else "")
         if entry is not None:
             pairs = _reply_files(entry)
+    elif template == "ticket.rating":
+        values.update(
+            rating_url=f"{settings.PORTAL_URL.rstrip('/')}/rate/?ticket={ticket.number}",
+            code=context.get("rating_code", ""),
+        )
     return Rendered(body=_text_of(template, values), attachments=pairs)
 
 

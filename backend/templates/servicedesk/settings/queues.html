@@ -1,7 +1,7 @@
 {% extends layout %}
 {% block title %}Очереди сервис-деска{% endblock %}
 {% block content %}
-<div class="sd-queues">
+<div class="sd-queues" data-queues-page>
   <header class="page-head"><h1 class="page-title">Очереди сервис-деска</h1></header>
   {% include "servicedesk/settings/_nav.html" with active="queues" %}
   {% if not dialog %}{% include "servicedesk/settings/_alert.html" %}{% endif %}
@@ -16,6 +16,8 @@
         <input type="hidden" name="action" value="mark"><input type="hidden" name="unit" value="{{ node.id }}">
         <button class="btn btn-sm btn-outline-primary" type="submit">Отметить очередью</button></form>
       {% else %}
+      <a class="btn btn-sm btn-outline-primary" data-action="queue-rule" href="/servicedesk/queues/{{ node.id }}/rule/">Режим</a>
+      <a class="btn btn-sm btn-outline-secondary" data-action="queue-observers" href="/servicedesk/queues/{{ node.id }}/observers/">Наблюдатели</a>
       <a class="btn btn-sm btn-outline-secondary" data-action="queue-unmark" href="/servicedesk/queues/?unmark={{ node.id }}" hx-get="/servicedesk/queues/?unmark={{ node.id }}" hx-target="#dialog-root" hx-swap="innerHTML">Снять отметку</a>
       {% if not node.default %}
       <form class="d-inline" method="post" action="/servicedesk/queues/" data-form="queue-default">{% csrf_token %}

@@ -13,6 +13,7 @@
 """
 import email
 import email.policy
+import hashlib
 import imaplib
 import importlib
 import io
@@ -51,6 +52,12 @@ TITLES_011 = {
     "servicedesk.answers": "Общие частые ответы",
 }
 KINDS_011 = ("servicedesk.sla_due_soon", "servicedesk.sla_overdue", "servicedesk.sla_digest")
+
+# Срез 012 не добавляет глобальных прав; константы помогают сценариям не
+# дублировать коды режимов и случайно не выдавать новые permissions.
+PERMISSIONS_012 = ()
+TITLES_012 = {}
+MODES_012 = ("off", "evenly", "strictly", "all")
 
 
 # --- классы адаптера IMAP: настоящие, если код уже есть, иначе заглушки той же формы -----------------
@@ -777,6 +784,143 @@ def make_ticket(*, queue=None, requester=None, kind: str = "new", number: int | 
     if "status" in over and "kind" not in over:
         fields["kind"] = fields["status"].kind
     return _db(Ticket, using).create(**fields)
+
+
+# --- помощники среза 012: очередь, недоступность, рейтинг и связь с задачей ---------------------------
+
+def make_rule(queue, mode="evenly", last_assignee=None, actor=None, *, using="default"):
+    """Идемпотично создаёт правило очереди для тестовых сценариев 012."""
+    if mode not in MODES_012:
+        raise ValueError(f"режим {mode!r}: нужен один из {MODES_012}")
+    Rule = support.model("servicedesk.QueueRule")
+    rule, _ = _db(Rule, using).update_or_create(
+        queue=queue,
+        defaults={"mode": mode, "last_assignee": last_assignee, "updated_by": actor},
+    )
+    return rule
+
+
+def add_observer(queue, user, actor=None, *, using="default"):
+    """Возвращает активного наблюдателя, восстанавливая ранее снятую строку."""
+    Observer = support.model("servicedesk.QueueObserver")
+    row = _db(Observer, using).filter(queue=queue, user=user, removed_at__isnull=True).first()
+    if row is not None:
+        return row
+    row = _db(Observer, using).filter(queue=queue, user=user).order_by("-pk").first()
+    if row is not None:
+        row.removed_at = None
+        row.removed_by = None
+        row.added_by = actor
+        row.added_at = timezone.now()
+        row.save(using=using, update_fields=["removed_at", "removed_by", "added_by", "added_at"])
+        return row
+    return _db(Observer, using).create(queue=queue, user=user, added_by=actor, added_at=timezone.now())
+
+
+def set_unavailable(user, until, note="", actor=None, *, using="default"):
+    """Ставит поля недоступности напрямую; дата-время переводится в Москву."""
+    from zoneinfo import ZoneInfo
+
+    if isinstance(until, datetime):
+        if timezone.is_naive(until):
+            until = timezone.make_aware(until, timezone.get_current_timezone())
+        until = timezone.localtime(until, ZoneInfo("Europe/Moscow")).date()
+    User = support.model("core.User")
+    now = timezone.now()
+    values = {
+        "unavailable_until": until,
+        "unavailable_note": note,
+        "unavailable_by": actor or user,
+        "unavailable_at": now,
+    }
+    _db(User, using).filter(pk=user.pk).update(**values)
+    for field, value in values.items():
+        setattr(user, field, value)
+    return user
+
+
+def make_rating(ticket, *, score=None, closed_at=None, cycle_number=1, expires_in_days=7, code=None,
+                using="default", **fields):
+    """Создаёт снимок рейтинга; исходный код доступен только как `test_code` объекта."""
+    Rating = support.model("servicedesk.TicketRating")
+    closed_at = closed_at or getattr(ticket, "closed_at", None) or timezone.now()
+    code = code or secrets.token_urlsafe(9)
+    try:
+        from apps.servicedesk.services.rating import hash_code
+    except ImportError:
+        hash_code = lambda value: hashlib.sha256(value.upper().encode("ascii")).hexdigest()
+    values = {
+        "closed_at_snapshot": closed_at,
+        "token_hash": hash_code(code),
+        "score": score,
+        "expires_at": closed_at + timedelta(days=expires_in_days),
+        "is_current": True,
+        "rated_at": timezone.now() if score is not None else None,
+        "queue_id": getattr(ticket, "queue_id", None),
+        "queue_name": getattr(getattr(ticket, "queue", None), "name", ""),
+        "category_id": getattr(ticket, "category_id", None),
+        "category_name": getattr(getattr(ticket, "category", None), "name", ""),
+        "assignee_id": getattr(ticket, "assignee_id", None),
+        "assignee_name": getattr(getattr(ticket, "assignee", None), "full_name", ""),
+        "level_id": getattr(ticket, "sla_id", None),
+        "level_title": getattr(getattr(ticket, "sla", None), "title", ""),
+    }
+    values.update(fields)
+    _db(Rating, using).filter(ticket=ticket, is_current=True).exclude(
+        cycle_number=cycle_number).update(is_current=False)
+    rating, _ = _db(Rating, using).update_or_create(
+        ticket=ticket, cycle_number=cycle_number, defaults=values)
+    rating.test_code = code
+    return rating
+
+
+def make_task_link(ticket, task=None, *, using="default", **fields):
+    """Создаёт или обновляет задачу со слабой связью по номеру заявки."""
+    Task = support.model("tasks.Task")
+    assignee = fields.pop("assignee", None) or getattr(ticket, "assignee", None)
+    author = fields.pop("author", None) or getattr(ticket, "created_by", None) or assignee
+    if author is None:
+        author = _any_user(using)
+    assignee = assignee or author
+    values = {"ticket_number": ticket.number, "title": getattr(ticket, "subject", f"Заявка {ticket.number}"),
+              "description": f"Заявка #{ticket.number}", "author": author, "assignee": assignee}
+    values.update(fields)
+    if task is None:
+        return _db(Task, using).create(**values)
+    for name, value in values.items():
+        setattr(task, name, value)
+    task.save(using=using)
+    return task
+
+
+def open_ticket(*, queue=None, mode="evenly", assignee=None, actor=None, using="default", **fields):
+    """`make_ticket` с правилом очереди и удобным явным ответственным."""
+    if queue is not None:
+        make_rule(queue, mode=mode, actor=actor, using=using)
+    if assignee is not None:
+        fields["assignee"] = assignee
+    if actor is not None:
+        fields.setdefault("created_by", actor)
+    return make_ticket(queue=queue, using=using, **fields)
+
+
+def rate_ticket(ticket, score, code=None, *, using="default"):
+    """Создаёт либо обновляет текущую оценку тестовой заявки."""
+    Rating = support.model("servicedesk.TicketRating")
+    rating = _db(Rating, using).filter(ticket=ticket, is_current=True).order_by("-cycle_number").first()
+    if rating is None:
+        return make_rating(ticket, score=score, code=code, using=using)
+    if code is not None:
+        try:
+            from apps.servicedesk.services.rating import hash_code
+        except ImportError:
+            hash_code = lambda value: hashlib.sha256(value.upper().encode("ascii")).hexdigest()
+        rating.token_hash = hash_code(code)
+        rating.test_code = code
+    rating.score = score
+    rating.rated_at = timezone.now()
+    rating.save(using=using, update_fields=["token_hash", "score", "rated_at", "updated_at"])
+    return rating
 
 
 # --- помощники среза 011: уровни, циклы и отчёты ----------------------------------------------------

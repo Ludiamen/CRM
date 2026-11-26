@@ -255,7 +255,7 @@ def test_empty_report_returns_zero_metrics_without_error():
 
 
 def test_requester_rating_metric_is_present_and_empty():
-    """FR-750: показатель оценки заявителей предусмотрен, но остаётся пустым."""
+    """FR-750/FR-772: показатель оценки предусмотрен; без оценок — «—» и число 0."""
     tree = org.make_tree({"ИТ": {}})
     manager = _manager(tree["ИТ"], "servicedesk.reports")
 
@@ -264,7 +264,8 @@ def test_requester_rating_metric_is_present_and_empty():
 
     assert response.status_code == 200
     assert "requester_rating" in html or "оценка заявителей" in html.lower()
-    assert 'data-value=""' in html or 'data-value="null"' in html
+    assert 'data-value="—"' in html
+    assert 'data-count="0"' in html
 
 
 def test_custom_report_period_allows_370_days_but_rejects_371():

@@ -44,6 +44,12 @@ class User(AbstractBaseUser):
     internal_phone = models.CharField("внутренний телефон", max_length=32, blank=True)
     workplace = models.CharField("рабочее место", max_length=255, blank=True)
     birth_date = models.DateField("дата рождения", null=True, blank=True)
+    # Недоступность для автораспределения заявок (SPEC-012, FR-765): дата включительно, примечание и автор.
+    unavailable_until = models.DateField("недоступен до", null=True, blank=True)
+    unavailable_note = models.CharField("примечание недоступности", max_length=255, blank=True, default="")
+    unavailable_by = models.ForeignKey("self", on_delete=models.SET_NULL, null=True, blank=True,
+                                       related_name="+", verbose_name="кто отметил недоступность")
+    unavailable_at = models.DateTimeField("когда отмечена недоступность", null=True, blank=True)
     # photo — действующее чистое фото; photo_pending — последняя загрузка, пока её проверяют или она в карантине
     photo = models.ForeignKey("core.StoredFile", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
     photo_pending = models.ForeignKey("core.StoredFile", on_delete=models.SET_NULL, null=True, blank=True,

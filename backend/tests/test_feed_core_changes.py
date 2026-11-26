@@ -90,8 +90,8 @@ def test_points_end_with_home_body_as_eighteenth_point():
     from apps.core import extensions
     from tests.support_messenger import POINTS_008
 
-    assert len(extensions.POINTS) == 19
-    assert extensions.POINTS[-1] == "unit_form_parts" and tuple(extensions.POINTS[18:]) == POINTS_008
+    assert len(extensions.POINTS) == 23
+    assert extensions.POINTS[-1] == "ticket_task_list" and tuple(extensions.POINTS[18:]) == POINTS_008
     assert set(extensions._registry) == set(extensions.POINTS)
 
 

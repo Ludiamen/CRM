@@ -431,7 +431,9 @@ def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_
     в контракте, в том числе ровно четыре вида уведомлений с кодами CONTRACT-004 § 3.2."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_17 + ("home_body", "unit_form_parts")
+    assert tuple(extensions.POINTS) == POINTS_17 + (
+        "home_body", "unit_form_parts", "ticket_task_seed", "ticket_task_brief",
+        "ticket_task_create", "ticket_task_list")
 
     def owned(point, prefix):
         return [f for f in extensions.registered(point) if getattr(f, "__module__", "").startswith(prefix)]

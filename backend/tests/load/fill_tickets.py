@@ -18,10 +18,12 @@ LOAD_MESSAGES на все заявки) и столбец поиска. Заяв
 """
 import os
 import random
+import hashlib
 import sys
 from datetime import timedelta
 
 from django.db import connection, transaction
+from django.utils import timezone
 
 if os.environ.get("E2E_STAND") != "1":
     sys.exit("Скрипт работает только на стенде приёмочных проходов (E2E_STAND=1); ничего не изменено.")
@@ -257,3 +259,108 @@ if os.environ.get("LOAD_TICKETS_SLA") == "1":
 print(f"очередей: {Queue.objects.filter(unit__in=queue_units).count()}, заявок в очередях нагрузки: "
       f"{Ticket.objects.filter(queue_id__in=queue_ids).count()} (добавлено {missing}), сообщений добавлено {added_messages}"
       f"{f', циклов SLA {sla_rows}' if os.environ.get('LOAD_TICKETS_SLA') == '1' else ''}")
+
+
+def fill_t12_links():
+    """Добавить связи среза 012 без исходных кодов, адресов людей и cron.
+
+    Флаг намеренно отдельный: старый профиль наполнения (срезы 003/011) не требует
+    новых таблиц и сохраняет прежний контракт. Повторный запуск только добирает
+    заданное число задач и использует get_or_create/update_or_create для справочников.
+    """
+    from apps.servicedesk.models import QueueObserver, QueueRule, TicketRating
+    from apps.tasks.models import Task
+
+    target_tasks = int(os.environ.get("LOAD_T12_TASKS", "1000"))
+    target_ratings = int(os.environ.get("LOAD_T12_RATINGS", "10000"))
+    now = timezone.now()
+    load_people = list(User.objects.filter(
+        email__startswith="load-", email__endswith="@example.org", state="active",
+    ).order_by("email"))
+    if len(load_people) < 2:
+        print("срез 012: нужны минимум два сотрудника нагрузки; связи не добавлены")
+        return
+
+    # По одному режиму на очередь: так в одном наборе присутствуют все четыре
+    # варианта, а число очередей и заявок остаётся параметром старого скрипта.
+    for index, unit in enumerate(queue_units):
+        queue = Queue.objects.get(unit=unit)
+        QueueRule.objects.update_or_create(
+            queue=queue,
+            defaults={"mode": QueueRule.Mode.values[index % len(QueueRule.Mode.values)],
+                      "updated_by": load_people[0]},
+        )
+        observer = load_people[(index + 1) % len(load_people)]
+        QueueObserver.objects.get_or_create(
+            queue=queue, user=observer, removed_at=None,
+            defaults={"added_by": load_people[0]},
+        )
+
+    # Ручная недоступность живёт у сотрудника и не зависит от timer/cron.
+    unavailable = load_people[-1]
+    unavailable.unavailable_until = (timezone.localdate() + timedelta(days=2))
+    unavailable.unavailable_note = "Нагрузочный профиль: недоступен"
+    unavailable.unavailable_by = load_people[0]
+    unavailable.unavailable_at = now
+    unavailable.save(update_fields=["unavailable_until", "unavailable_note",
+                                   "unavailable_by", "unavailable_at"])
+
+    closed = list(Ticket.objects.filter(queue_id__in=queue_ids, kind="closed")
+                  .order_by("id").values("id", "number", "queue_id", "closed_at",
+                                         "assignee_id")[:target_ratings])
+    rating_count = 0
+    for row in closed:
+        if rating_count >= target_ratings:
+            break
+        TicketRating.objects.get_or_create(
+            ticket_id=row["id"], cycle_number=1,
+            defaults={
+                "closed_at_snapshot": row["closed_at"] or now,
+                # Это hash синтетического кода, сам код нигде не хранится и не печатается.
+                "token_hash": hashlib.sha256(
+                    f"load-rating-code-{row['number']}".encode("ascii")
+                ).hexdigest(),
+                "score": 1 + (row["number"] % 5),
+                "expires_at": now + timedelta(days=7),
+                "is_current": True,
+                "rated_at": now,
+                "queue_id": row["queue_id"],
+                "queue_name": f"Нагрузка очередь {row['queue_id']}",
+                "assignee_id": row["assignee_id"],
+                "assignee_name": "",
+            },
+        )
+        rating_count += 1
+
+    # Несколько задач на один номер допустимы; soft-delete не создаём.
+    existing_tasks = Task.objects.filter(
+        ticket_number__isnull=False, ticket_number__in=Ticket.objects.filter(
+            queue_id__in=queue_ids,
+        ).values("number"),
+    ).count()
+    task_rows = []
+    if existing_tasks < target_tasks:
+        numbers = list(Ticket.objects.filter(queue_id__in=queue_ids)
+                       .order_by("id").values_list("number", flat=True)
+                       [:max(target_tasks - existing_tasks, 0)])
+        for index, number in enumerate(numbers):
+            assignee = load_people[index % len(load_people)]
+            task_rows.append(Task(
+                title=f"Нагрузочная задача по заявке {number}",
+                description=f"Синтетическая связь с заявкой #{number}",
+                author=load_people[0],
+                assignee=assignee,
+                status=Task.Status.NEW if index % 3 else Task.Status.IN_PROGRESS,
+                ticket_number=number,
+            ))
+        if task_rows:
+            Task.objects.bulk_create(task_rows, batch_size=1000)
+
+    print(f"срез 012: правил {QueueRule.objects.filter(queue__unit__in=queue_units).count()}, "
+          f"наблюдателей {QueueObserver.objects.filter(queue__unit__in=queue_units, removed_at__isnull=True).count()}, "
+          f"оценок добавлено/найдено {rating_count}, задач добавлено {len(task_rows)}, "
+          f"недоступный сотрудник {unavailable.pk}")
+
+
+if os.environ.get("LOAD_T12_LINKS") == "1":
+    fill_t12_links()

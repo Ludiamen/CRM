@@ -2,7 +2,7 @@
 id: REF-SRC
 вид: эталон
 статус: утверждён
-версия: 8
+версия: 9
 зависит_от: SDD-PROCESS
 подпись: Максим | 2026-09-30T08:43+03:00 | sha256:b072d1f3cc0d04b2ac82cfbd9e432e7d90f03ce01c0fbccab60e590c21ab79c5
 подпись: Максим | 2026-10-01T07:09+03:00 | sha256:a526613c9e64e899d71e00936f99a3f3fc00cc582a28931159030d0de08578d0
@@ -13,6 +13,7 @@ id: REF-SRC
 подпись: Максим | 2026-10-05T23:36+03:00 | sha256:f372167ab8db2e365579a90f274caca7134d0f71a68bd47d36475fdfaa963bf6
 подпись: Максим | 2026-10-08T20:07+03:00 | sha256:b09cc076b8a9e45e0d5f76a47d3e20bc5f2b561753adea0e813a3398ed60d490
 подпись: Максим | 2026-11-21T21:45+03:00 | sha256:769f4fb723eb032cf878eb9bb0bd1bc443b45a91e41fae75798e32f3f3ca02c0
+подпись: Максим | 2026-11-25T21:46+03:00 | sha256:6139d523366f60fd2b34dfb7dd39ad5d3a321e5ad8b4cc792401864f7befc548
 ---
 
 # Реестр источников эталона
@@ -59,6 +60,10 @@ id: REF-SRC
   напоминаниях (ADR-0010): напоминание о задаче, «почти просрочена» и
   «просрочена», канал «Push уведомления» и push-сервер эталона. Опорные фразы
   сверены с дистрибутивом дословно.
+- **SRC-372…374 добавлены 2026-11-25** (срез 012, группа A) по возможностям
+  CAP-29/98/35/38: режимы распределения обращений и возврат в очередь, оценка
+  качества обслуживания, задача из чата. Опорные фразы сверены с дистрибутивом
+  дословно.
 - **SRC-104 — документация API для разработчика**, а не поведение для
   пользователя: как источник возможностей открытых линий не используется.
 - **Снимки SRC-538…704 — досъёмка пробелов REF-UX (2026-10-03).** Сняты
@@ -206,6 +211,9 @@ id: REF-SRC
 | SRC-369 | Push and Pull: для push-уведомлений нужен свой push-сервер, установленный локально, или облачный сервер 1С-Битрикс | pull/lang/ru/options.php ($MESS["PULL_OPTIONS_PUSH_SERVER_IS_REQUIRED"]) | коробка | 2026-10-08 | «необходимо либо установить и настроить сервер локально, либо воспользоваться облачным сервером» |
 | SRC-370 | Задачи: каталог видов уведомлений — «Создание или изменение задачи», «Новый комментарий к задаче», «Напоминание о задаче», «Вас назначили исполнителем», «Задача почти просрочена» | tasks/lang/ru/classes/general/tasks_notify_schema.php | коробка | 2026-11-21 | «Новый комментарий к задаче» |
 | SRC-371 | Задачи: события задачи в живой ленте — «Создана задача», «Задача изменена (#CHANGES#)», статусы, «Добавил комментарий к задаче» | tasks/lang/ru/lib/integration/socialnetwork/ui/task.php | коробка | 2026-11-21 | «Создана задача» |
+| SRC-372 | Открытые линии: очередь сотрудников — режимы распределения («Равномерно», «Строго по очереди», «Одновременно всем»), время до перехода к следующему сотруднику (от 1 минуты до 12 часов, «не переводить»), правило при отсутствии ответа «Вернуть обратно в очередь»; обращения направляются на всех участников очереди, следующему по правилам очереди или возвращаются в очередь без доступных операторов | imopenlines/install/components/bitrix/imopenlines.lines.edit/templates/.default/lang/ru/template.php ($MESS['IMOL_CONFIG_EDIT_QUEUE'], ['IMOL_CONFIG_EDIT_QUEUE_DESC_NEW'], ['IMOL_CONFIG_EDIT_QUEUE_TYPE_EVENLY'], ['IMOL_CONFIG_EDIT_QUEUE_TYPE_STRICTLY'], ['IMOL_CONFIG_EDIT_QUEUE_TYPE_ALL'], ['IMOL_CONFIG_EDIT_QUEUE_TYPE_TIP_ASTERISK_2'], ['IMOL_CONFIG_EDIT_QUEUE_TIME'], ['IMOL_CONFIG_EDIT_QUEUE_TIME_0'], ['IMOL_CONFIG_EDIT_NO_ANSWER_RULE_QUEUE']); imopenlines/lang/ru/lib/chat.php ($MESS['IMOL_CHAT_RETURNED_TO_QUEUE_NEW'], ['IMOL_CHAT_ASSIGN_OPERATOR_LIST_NEW'], ['IMOL_CHAT_NEXT_IN_QUEUE_NEW'], ['IMOL_CHAT_NO_OPERATOR_AVAILABLE_IN_QUEUE_NEW']) | коробка | 2026-11-25 | «Равномерно»; «Строго по очереди»; «Одновременно всем»; «Вернуть обратно в очередь» |
+| SRC-373 | Открытые линии: оценка качества обслуживания — запрос оценки при закрытии, оценка до окончания диалога, закрытие сессии сразу после оценки, две категории запроса с текстами, ответы «1 — хорошо, 0 — плохо», срок на оценку в днях, отчёт «Количество обращений с положительной оценкой», «с отрицательной оценкой», «без оценки», «Процент довольных клиентов» | imopenlines/lang/ru/lib/model/config.php ($MESS['CONFIG_ENTITY_VOTE_MESSAGE_FIELD'], ['CONFIG_ENTITY_VOTE_BEFORE_FINISH_FIELD'], ['CONFIG_ENTITY_VOTE_CLOSING_DELAY_FIELD_NEW'], ['CONFIG_ENTITY_VOTE_MESSAGE_1_TEXT_FIELD'], ['CONFIG_ENTITY_VOTE_MESSAGE_1_LIKE_FIELD'], ['CONFIG_ENTITY_VOTE_MESSAGE_1_DISLIKE_FIELD']); imopenlines/lang/ru/lib/config.php ($MESS['IMOL_CONFIG_VOTE_MESSAGE_1_TEXT'], ['IMOL_CONFIG_VOTE_MESSAGE_1_LIKE'], ['IMOL_CONFIG_VOTE_MESSAGE_1_DISLIKE'], ['IMOL_CONFIG_VOTE_MESSAGE_2_TEXT']); imopenlines/lang/ru/lib/im.php ($MESS['IMOL_IM_CLOSE_VOTE_MESSAGE']); imopenlines/lang/ru/lib/integrations/report/handlers/mark.php ($MESS['OPEN_LINES_MARKS']); imopenlines/lang/ru/lib/integrations/report/handlers/treatment.php ($MESS['WHAT_WILL_CALCULATE_POSITIVE_MARK'], ['WHAT_WILL_CALCULATE_NEGATIVE_MARK'], ['WHAT_WILL_CALCULATE_WITHOUT_MARK'], ['WHAT_WILL_CALCULATE_CONTENTMENT']) | коробка | 2026-11-25 | «Пожалуйста, оцените качество обслуживания.»; «Отправьте: 1 - хорошо, 0 - плохо»; «Количество обращений с положительной оценкой»; «время для оценки диалога закончилось» |
+| SRC-374 | Мессенджер: создание задачи из чата — пункт «Создать задачу» и название созданной задачи «Задача из чата "…"» | im/lang/ru/js_common.php ($MESS['IM_MENU_TO_TASK']); im/lang/ru/lib/V2/Link/Task/TaskService.php ($MESS['IM_CHAT_TASK_SERVICE_FROM_CHAT_NEW_TITLE']) | коробка | 2026-11-25 | «Создать задачу»; «Задача из чата "#CHAT_TITLE#"» |
 | SRC-276 | Мессенджер: пользователь сам выбирает каналы уведомлений | im/lang/ru/js_im.php (IM_SETTINGS_NC_1_NEW, IM_SETTINGS_NC_2, IM_SETTINGS_NC_4) | коробка | 2026-09-30 | «Получать стандартные уведомления на:» |
 
 ## Снимки экранов тестового портала

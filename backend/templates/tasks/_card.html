@@ -5,6 +5,7 @@
     <a class="btn btn-sm btn-outline-secondary" href="/tasks/">Назад</a>
   </header>
   <p class="text-muted mt-2 mb-2">Постановщик: {{ task.author.full_name }} · Исполнитель: <span data-task-assignee>{{ task.assignee.full_name }}</span> · Срок: <span data-deadline="{{ task.deadline|date:'Y-m-d' }}">{{ task.deadline|date:"d.m.Y"|default:"без срока" }}</span></p>
+  {% if ticket %}<section data-task-ticket><h2 class="h6">Заявка</h2><a data-task-link href="{{ ticket.url }}">№{{ ticket.number }} — {{ ticket.subject }}</a> <span>{{ ticket.status }}</span></section>{% endif %}
   {% if error %}<div class="text-danger" role="alert" data-error="{{ error.field }}" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
 
   {% if can_status %}

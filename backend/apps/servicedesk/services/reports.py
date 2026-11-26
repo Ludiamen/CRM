@@ -9,7 +9,7 @@ from apps.core.services import audit
 from django.db.models import Avg, Count, Q
 from apps.org.services import structure
 
-from ..models import Category, SlaCycle, SlaLevel, Ticket
+from ..models import Category, SlaCycle, SlaLevel, Ticket, TicketRating
 
 MOSCOW = ZoneInfo("Europe/Moscow")
 # Москва с 2014 года без перехода на летнее время: фиксированный сдвиг для быстрой записи дат в Excel.
@@ -82,7 +82,8 @@ def _int_param(params, name):
 def _empty_numbers():
     return {"created": 0, "closed": 0, "average_reaction_minutes": 0,
             "average_solution_minutes": 0, "reaction_on_time": 0,
-            "solution_on_time": 0, "closed_without_response": 0}
+            "solution_on_time": 0, "closed_without_response": 0,
+            "requester_rating": None, "requester_rating_count": 0}
 
 
 def _cycles(user, filters, params):
@@ -128,6 +129,24 @@ def build(user, params):
     numbers["reaction_on_time"] = round(100 * reaction["ok"] / reaction["total"]) if reaction["total"] else 0
     numbers["solution_on_time"] = round(100 * solution["ok"] / solution["total"]) if solution["total"] else 0
     numbers["closed_without_response"] = closed.filter(reaction_met__isnull=True).count()
+    ratings = TicketRating.objects.filter(
+        is_current=True, score__isnull=False,
+        closed_at_snapshot__gte=start, closed_at_snapshot__lt=end,
+        queue_id__in=managed,
+    )
+    if filters["queue"]:
+        ratings = ratings.filter(queue_id=filters["queue"])
+    if filters["sla"]:
+        ratings = ratings.filter(level_id=filters["sla"])
+    if filters["category"]:
+        ratings = ratings.filter(category_id=filters["category"])
+    if filters["assignee"]:
+        ratings = ratings.filter(assignee_id=filters["assignee"])
+    rating_stats = ratings.aggregate(average=Avg("score"), count=Count("pk"))
+    numbers["requester_rating"] = (
+        round(rating_stats["average"], 1) if rating_stats["count"] else None
+    )
+    numbers["requester_rating_count"] = rating_stats["count"]
     overdue = list(closed.filter(solution_met=False).values("level_title").annotate(amount=Count("pk"))
                    .order_by("-amount", "level_title").values_list("level_title", "amount"))
     load = list(closed.values("assignee_name").annotate(amount=Count("pk")).order_by("-amount", "assignee_name")
@@ -142,7 +161,7 @@ def build(user, params):
              "category": snapshots.get(pk, ("", "", ""))[1],
              "assignee": snapshots.get(pk, ("", "", ""))[2]} for number, pk in page_rows]
     return {"period": report_period, "numbers": numbers, "tickets": rows,
-            "overdue": overdue, "load": load, "managed_units": managed, "requester_rating": None,
+            "overdue": overdue, "load": load, "managed_units": managed,
             "filters": filters}
 
 
@@ -165,7 +184,9 @@ METRIC_TITLES = (
     ("average_reaction_minutes", "Среднее время реакции, минут"),
     ("average_solution_minutes", "Среднее время решения, минут"),
     ("reaction_on_time", "Реакция в срок, %"), ("solution_on_time", "Решение в срок, %"),
-    ("closed_without_response", "Закрыто без ответа"), ("requester_rating", "Оценка заявителей"),
+    ("closed_without_response", "Закрыто без ответа"),
+    ("requester_rating", "Оценка заявителей"),
+    ("requester_rating_count", "Количество оценок заявителей"),
 )
 
 
@@ -191,7 +212,10 @@ def export(user, params):
     metrics = workbook.create_sheet("Показатели")
     metrics.append(["показатель", "значение"])
     for key, title in METRIC_TITLES:
-        metrics.append([key, "" if key == "requester_rating" else numbers[key]])
+        value = numbers[key]
+        if key == "requester_rating" and value is not None:
+            value = float(f"{value:.1f}")
+        metrics.append([key, value if value is not None else "—"])
     tickets = workbook.create_sheet("Заявки")
     tickets.append(list(EXPORT_COLUMNS))
 

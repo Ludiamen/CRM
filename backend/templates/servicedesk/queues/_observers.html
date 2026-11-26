@@ -1,0 +1,22 @@
+<section data-observers-page>
+  <h1>Наблюдатели очереди «{{ queue.unit.name }}»</h1>
+  {% if error %}<div role="alert" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+  <div data-observer-list>
+    {% for row in observers %}
+    <div data-observer data-user-id="{{ row.user_id }}">{{ row.user.full_name }}
+      <form method="post" data-form="observer-remove" action="/servicedesk/queues/{{ queue.unit_id }}/observers/">
+        {% csrf_token %}<input type="hidden" name="action" value="remove"><input type="hidden" name="user" value="{{ row.user_id }}">
+        <button type="submit">Снять</button>
+      </form>
+    </div>
+    {% empty %}<p>Наблюдателей нет.</p>{% endfor %}
+  </div>
+  <form method="post" data-form="observer-add" action="/servicedesk/queues/{{ queue.unit_id }}/observers/">
+    {% csrf_token %}<label>Сотрудник
+      <select name="user" data-observer-field="user">
+        {% for person in people %}<option value="{{ person.pk }}">{{ person.full_name }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit">Добавить</button>
+  </form>
+</section>

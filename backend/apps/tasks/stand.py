@@ -2,7 +2,8 @@
 
 `stand_reset()` приводит данные задач к состоянию сразу после миграций:
 - стирает таблицы по `TABLES` (зависимые раньше: `TaskFile`, `TaskComment`, `TaskReminder`, `TaskMember`, `Task`,
-  `PlanColumn`, `TaskCategory`, `TaskSettings`);
+  `PlanColumn`, `TaskCategory`, `TaskSettings`); вместе с `Task` уходит и `ticket_number` связи с заявкой
+  (SPEC-012, FR-776) — отдельной очистки не нужно;
 - стирает строки `core.StoredFile` назначения `task`, собранные по строкам `TaskFile` до их удаления;
 - файлы оригиналов удаляет с диска после фиксации (`on_commit` того же алиаса);
 - возвращает данные установки: `TaskSettings(pk=1, retention_years=3)`.

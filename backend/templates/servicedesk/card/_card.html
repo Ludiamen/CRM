@@ -23,6 +23,7 @@
       <div class="card-field" data-field="resolution"><span class="card-field-label" data-field-label>Решение</span> <span class="card-field-value">{{ ticket.resolution|linebreaksbr }}</span></div>
       {% endif %}
       {% if consent %}<div class="card-field" data-field="consent"><span class="card-field-label" data-field-label>Согласие</span> <span class="card-field-value">согласие на обработку ПДн: <time data-at="{{ consent|date:'c' }}">{{ consent|date:'d.m.Y H:i' }}</time></span></div>{% endif %}
+      {% if rating and rating.score %}<div class="card-field" data-field="rating"><span class="card-field-label" data-field-label>Оценка</span> <span class="card-field-value">№{{ rating.cycle_number }}, {{ rating.score }}/5</span></div>{% endif %}
       {% if previous_link %}<div class="card-field">{% if previous_link.visible %}<a data-field="previous" href="/tickets/{{ previous_link.number }}/">продолжение заявки #{{ previous_link.number }}</a>{% else %}<span data-field="previous">продолжение заявки #{{ previous_link.number }}</span>{% endif %}</div>{% endif %}
       {% if continuation_link %}<div class="card-field">{% if continuation_link.visible %}<a data-field="continuation" href="/tickets/{{ continuation_link.number }}/">продолжение — заявка #{{ continuation_link.number }}</a>{% else %}<span data-field="continuation">продолжение — заявка #{{ continuation_link.number }}</span>{% endif %}</div>{% endif %}
     </div>
@@ -183,7 +184,7 @@
       <button class="btn btn-primary btn-sm" type="submit">Отправить ответ</button>
     </form>
     {% endif %}
-    <form class="card-form" data-form="ticket-comment" method="post" action="/tickets/{{ ticket.number }}/comment/" hx-post="/tickets/{{ ticket.number }}/comment/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
+       <form class="card-form" data-form="ticket-comment" method="post" action="/tickets/{{ ticket.number }}/comment/" hx-post="/tickets/{{ ticket.number }}/comment/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
       {% csrf_token %}
       <input type="hidden" name="layout" value="{{ card_layout }}">
       <label class="form-label small mb-1">Внутренний комментарий
@@ -191,7 +192,9 @@
       </label>
       {% for part in card_parts.comment_tool %}{{ part }}{% endfor %}
       <button class="btn btn-outline-primary btn-sm" type="submit">Добавить комментарий</button>
-    </form>
+     </form>
+    {% if can_task %}<p><a class="btn btn-outline-primary btn-sm" data-action="task-new-from-ticket" href="/tasks/new/?ticket={{ ticket.number }}">Поставить задачу</a></p>{% endif %}
+    {% if ticket_tasks %}<section data-ticket-tasks><h3>Задачи</h3><ul>{% for item in ticket_tasks %}<li data-task-link data-task-id="{{ item.id }}"><a data-task-link href="{{ item.link }}">№{{ item.number }} — {{ item.title }}</a> — {{ item.status }}</li>{% endfor %}</ul></section>{% endif %}
 
     <ol class="feed" data-feed>
       {% for item in feed %}

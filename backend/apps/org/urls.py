@@ -26,6 +26,8 @@ urlpatterns = [
     path("structure/<int:unit_id>/members/<int:user_id>/transfer/", members.member_transfer,
          name="unit-member-transfer"),
     path("structure/<int:unit_id>/members/<int:user_id>/remove/", members.member_remove, name="unit-member-remove"),
+    path("structure/<int:unit_id>/members/<int:user_id>/availability/", members.availability,
+         name="unit-member-availability"),
     path("structure/<int:unit_id>/marks/", members.marks, name="unit-marks"),
     path("structure/<int:unit_id>/roles/", members.unit_roles, name="unit-roles"),
     # календарь

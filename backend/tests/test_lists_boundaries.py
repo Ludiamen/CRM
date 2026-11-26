@@ -23,7 +23,8 @@ POINTS_15 = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_
              "notification_kinds", "top_bar_items")
 POINTS_17 = POINTS_15 + ("search_providers", "ticket_card_parts")
 POINTS_18 = POINTS_17 + ("home_body",)
-POINTS_19 = POINTS_18 + ("unit_form_parts",)
+POINTS_19 = POINTS_18 + ("unit_form_parts", "ticket_task_seed", "ticket_task_brief",
+                          "ticket_task_create", "ticket_task_list")
 MODULE_PATH = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+")
 PUBLIC = "apps.servicedesk.services.public"
 DISPATCH = "apps.notify.services.dispatch"
@@ -258,7 +259,7 @@ def test_points_still_have_seventeen_names():
     from apps.core import extensions
 
     assert tuple(extensions.POINTS) == POINTS_19
-    assert len(extensions.POINTS) == 19
+    assert len(extensions.POINTS) == len(POINTS_19)
     assert set(extensions._registry) == set(POINTS_19)
 
 

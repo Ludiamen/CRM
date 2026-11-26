@@ -11,7 +11,7 @@ from django.contrib.auth import get_user_model
 from apps.core.extensions import Draft, NotificationKind
 from apps.org.services import structure
 
-from .models import Queue, Ticket
+from .models import Queue, QueueObserver, QueueRule, Ticket
 
 NEW_IN_QUEUE = "servicedesk.new_in_queue"
 ASSIGNED = "servicedesk.assigned"
@@ -59,18 +59,30 @@ def _drafts(ticket, user_ids, text: str, *, skip=None) -> list[Draft]:
     by_id = {user.pk: user for user in users}
     url, ref = f"/tickets/{ticket.number}/", f"{OBJECT_PREFIX}{ticket.pk}"
     return [Draft(user_id=pk, text=text, url=url, object_ref=ref)
-            for pk in wanted if pk in by_id and access.can_work(by_id[pk], ticket)]
+            for pk in wanted if pk in by_id and access.can_view(by_id[pk], ticket)]
+
+
+def _observer_ids(ticket) -> list[int]:
+    return list(QueueObserver.objects.filter(
+        queue__unit_id=ticket.queue_id, removed_at__isnull=True,
+    ).values_list("user_id", flat=True))
 
 
 def _new_in_queue(event: str, data: dict) -> list[Draft]:
     if event not in NEW_IN_QUEUE_EVENTS:
         return []
     ticket = _ticket(data)
-    if ticket is None or ticket.assignee_id is not None:
+    if ticket is None:
         return []
     text = f"Новая заявка #{ticket.number} в очереди «{ticket.queue.name}»: {_subject(ticket.subject)}"
-    members = [person.id for person in structure.direct_members(ticket.queue_id)]
-    return _drafts(ticket, members, text, skip=data.get("actor_id"))
+    observers = _observer_ids(ticket)
+    mode = QueueRule.objects.filter(queue__unit_id=ticket.queue_id).values_list("mode", flat=True).first()
+    members = []
+    if mode == QueueRule.Mode.ALL:
+        members = [person.id for person in structure.queue_people(ticket.queue_id)]
+    elif ticket.assignee_id is None:
+        members = [person.id for person in structure.direct_members(ticket.queue_id)]
+    return _drafts(ticket, members + observers, text, skip=data.get("actor_id"))
 
 
 def _assigned(event: str, data: dict) -> list[Draft]:
@@ -118,12 +130,13 @@ def _sla(event: str, data: dict) -> list[Draft]:
         return []
     code = event
     text = "Срок заявки приближается" if code == SLA_DUE_SOON else "Заявка просрочена"
+    observers = _observer_ids(ticket)
     if data.get("recipient_id"):
-        recipients = [data["recipient_id"]]
+        recipients = [data["recipient_id"]] + observers
     else:
         recipients = ([ticket.assignee_id] if ticket.assignee_id else []) + [
             person.pk for person in structure.heads_of_unit(ticket.queue_id)
-        ]
+        ] + observers
     return _drafts(ticket, recipients, text, skip=data.get("actor_id"))
 
 
@@ -165,7 +178,7 @@ def _still_relevant(user_id: int, object_ref: str, *, unassigned_only: bool) -> 
     if ticket is None:
         return False
     access.scope(user, fresh=True)
-    if not access.can_work(user, ticket):
+    if not access.can_view(user, ticket):
         return False
     if unassigned_only:
         return ticket.assignee_id is None and ticket.kind != "closed"
@@ -187,7 +200,7 @@ def notification_kinds() -> list[NotificationKind]:
             code=NEW_IN_QUEUE, title="Новая заявка в моей очереди", module="Сервис-деск",
             events=NEW_IN_QUEUE_EVENTS, build=_new_in_queue, external_text="Новая заявка в вашей очереди",
             default_channels=ALL_CHANNELS, available=_new_in_queue_available,
-            still_relevant=_relevant_new_in_queue, order=10),
+            still_relevant=_relevant_new_in_queue, coalesce=True, order=10),
         NotificationKind(
             code=ASSIGNED, title="Мне назначили заявку", module="Сервис-деск",
             events=("servicedesk.ticket_created", "servicedesk.assignee_changed"), build=_assigned,
@@ -210,7 +223,8 @@ def notification_kinds() -> list[NotificationKind]:
         NotificationKind(
             code=SLA_OVERDUE, title="Заявка просрочена", module="Сервис-деск",
             events=(SLA_OVERDUE,), build=_sla, external_text="Заявка просрочена",
-            default_channels=ALL_CHANNELS, available=_menu_available, still_relevant=_relevant_other, order=231),
+            default_channels=ALL_CHANNELS, available=_menu_available, still_relevant=_relevant_other,
+            coalesce=True, order=231),
         NotificationKind(
             code=SLA_DIGEST, title="Сводка по срокам заявок", module="Сервис-деск",
             events=(SLA_DIGEST,), build=_sla_digest, external_text="Сводка по срокам заявок",

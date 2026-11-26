@@ -4,6 +4,8 @@
 `[role=alert]` и страницей карточки целиком (CONTRACT-002, § 8.3, дополнения 51, 54). Правила и журнал — в службах
 `org.services`; здесь разбор формы и тексты ответа. Права проверяют декораторы (T-2230a).
 """
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_GET, require_POST
@@ -154,3 +156,35 @@ def unit_roles(request, unit_id: int):
         return _refused(request, unit, error)
     flash(request, "Роли узла сохранены.")
     return _back(unit)
+
+
+@login_required
+@require_POST
+def availability(request, unit_id: int, user_id: int):
+    """`/structure/<unit>/members/<user>/availability/` — руководитель узла отмечает недоступность (FR-765)."""
+    from apps.core.widgets import parse_date
+    from apps.org.services import availability as availability_service
+
+    from apps.core.services.permissions import has_permission
+
+    unit = _unit(unit_id)
+    target = get_object_or_404(User, pk=user_id)
+    if not has_permission(request.user, "org.manage") and not availability_service.can_set_for(request.user, target):
+        raise PermissionDenied
+    raw = (request.POST.get("until") or "").strip()
+    until = parse_date(raw) if raw else None
+    if raw and until is None:
+        flash(request, "Дата недоступности: укажите дату как ДД.ММ.ГГГГ.", error=True)
+        return HttpResponseRedirect(f"/structure/{unit.pk}/")
+    try:
+        if has_permission(request.user, "org.manage"):
+            accounts.set_availability(target, until, (request.POST.get("note") or "").strip(),
+                                      actor=request.user, ip=request.client_ip, allow_head=True)
+        else:
+            availability_service.set_for_head(request.user, target, until, (request.POST.get("note") or "").strip(),
+                                              ip=request.client_ip)
+    except accounts.AccountError as error:
+        flash(request, str(error), error=True)
+    else:
+        flash(request, "Недоступность сохранена." if until else "Отметка недоступности снята.")
+    return HttpResponseRedirect(f"/structure/{unit.pk}/")

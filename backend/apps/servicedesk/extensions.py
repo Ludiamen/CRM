@@ -24,7 +24,7 @@ def register_all() -> None:
     """
     from apps.core import extensions
     from apps.servicedesk import audit_labels, notify_kinds, stand
-    from apps.servicedesk.services import attachments, form, letters, listing, queues, search_provider
+    from apps.servicedesk.services import attachments, form, letters, listing, queues, search_provider, task_links
     from apps.servicedesk.services import settings as sd_settings
 
     extensions.register("unit_usage", queues.unit_usage)
@@ -38,3 +38,5 @@ def register_all() -> None:
     extensions.register("stand_reset", stand.stand_reset)
     extensions.register("notification_kinds", notify_kinds.notification_kinds)
     extensions.register("search_providers", search_provider.search_providers)
+    extensions.register("ticket_task_seed", task_links.seed)
+    extensions.register("ticket_task_brief", task_links.brief)

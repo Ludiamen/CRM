@@ -1,0 +1,15 @@
+<section data-queue-rule-page data-queue-rule="{{ queue.unit_id }}">
+  <h1>Правило очереди «{{ queue.unit.name }}»</h1>
+  {% if error %}<div role="alert" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
+  <form method="post" action="/servicedesk/queues/{{ queue.unit_id }}/rule/" data-form="queue-rule"
+        hx-post="/servicedesk/queues/{{ queue.unit_id }}/rule/" hx-target="[data-queue-rule]" hx-swap="outerHTML">
+    {% csrf_token %}
+    <label>Режим
+      <select name="mode" data-queue-rule-field="mode">
+        {% for value in modes %}<option value="{{ value }}"{% if value == mode %} selected{% endif %}>{{ value }}</option>{% endfor %}
+      </select>
+    </label>
+    {% if error %}<span data-error="mode" data-code="{{ error.code }}">{{ error.message }}</span>{% endif %}
+    <button type="submit">Сохранить</button>
+  </form>
+</section>

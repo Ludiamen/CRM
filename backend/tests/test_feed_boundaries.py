@@ -265,8 +265,10 @@ def test_points_tuple_has_eighteen_names_and_feed_uses_home_body_last():
     функция `feed` (`apps.feed.views.home.body`); `feed` использует новую точку одну."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_17 + feed.POINTS_007 + ("unit_form_parts",)
-    assert len(extensions.POINTS) == 19 and extensions.POINTS[-1] == "unit_form_parts"
+    assert tuple(extensions.POINTS) == POINTS_17 + feed.POINTS_007 + (
+        "unit_form_parts", "ticket_task_seed", "ticket_task_brief", "ticket_task_create", "ticket_task_list")
+    assert len(extensions.POINTS) == 23 and extensions.POINTS[18] == "unit_form_parts"
+    assert extensions.POINTS[-1] == "ticket_task_list"
     assert set(extensions._registry) == set(extensions.POINTS)
     own = _own("home_body")
     assert [(f.__module__, f.__name__) for f in own] == [("apps.feed.views.home", "body")]

@@ -449,8 +449,9 @@ def test_invited_employee_who_never_logged_in_gets_no_record():
     ids = _dispatch().create(NEW_IN_QUEUE, [draft(invited), draft(world.worker)])
     assert len(ids) == 1
     assert _notes(invited) == [] and len(_notes(world.worker)) == 1
-    ids = _event("servicedesk.ticket_created", **_created_data(world.ticket))
-    assert len(ids) == 2 and _notes(invited) == []
+    _event("servicedesk.ticket_created", **_created_data(world.ticket))
+    assert _notes(invited) == []
+    assert len(_notes(world.worker)) == 1 and len(_notes(world.colleague)) == 1
 
 
 def test_blocked_employee_gets_portal_record_without_external_deliveries(
