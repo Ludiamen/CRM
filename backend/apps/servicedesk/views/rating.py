@@ -43,14 +43,16 @@ def rating_page(request):
         return _failure(request, ERROR_TEXT, 400, number, "rating_code")
 
     score = request.POST.get("score")
+    before_score = verified.score
     try:
         rating.submit(verified, score)
     except ValueError:
         return _failure(request, ERROR_TEXT, 400, number, "rating_code")
     request.session[SESSION_KEY] = {"rating_id": verified.pk, "expires": verified.expires_at.isoformat()}
     request.session.set_expiry(rating.RATE_WINDOW_SECONDS)
-    audit.record("servicedesk.rating_received", actor=None, object_type="ticket",
-                 object_id=str(verified.ticket.number),
+    action = "servicedesk.rating_changed" if before_score is not None else "servicedesk.rating_received"
+    audit.record(action, actor=None, object_type="ticket", object_id=str(verified.ticket.number),
+                 before={"score": before_score},
                  after={"score": verified.score, "cycle": verified.cycle_number}, ip=ip)
     return render(request, "servicedesk/rating/page.html", {"number": number, "success": True})
 

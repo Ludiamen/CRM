@@ -264,7 +264,7 @@ id: TASKS-012
   перебор кода невозможен, пять неверных вводов за 15 минут на IP+заявку; systemd-файлы
   `load738.status`, `load738.log`, `load738.exit` — `backend/tests/load/locustfile.py`,
   `crm-work/slice012/stage4/load/` — (NFR-738)
-- [ ] T-12305 [человек] ручной проход без ПДн: создать заявку во всех режимах, проверить observer,
+- [x] T-12305 [человек] ручной проход без ПДн: создать заявку во всех режимах, проверить observer,
   unavailable, rating manual/autoclose/reopen, задачу с обеих сторон, права и прямой отказ —
   `crm-work/slice012/stage4/manual/` — (FR-759 / FR-765 / FR-768 / FR-770 / FR-776 / FR-780)
 - [x] T-12306 [arch] отчёт приёмки: среднее/число/«—», период по `closed_at_snapshot`, фильтры,

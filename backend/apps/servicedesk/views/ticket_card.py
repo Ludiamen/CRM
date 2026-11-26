@@ -266,7 +266,7 @@ def _context(request, ticket, layout: str, *, alert=None, dialog=None, reply_tex
     continuation = Ticket.objects.filter(previous=ticket).order_by("id").first()
     context.update({
         "ticket": ticket, "card_layout": layout, "alert": alert, "dialog": dialog, "reply_text": reply_text,
-        "open": open_ticket, "participants": participants,
+        "open": open_ticket, "can_work": access.can_work(user, ticket), "participants": participants,
         "can_take": open_ticket and access.is_participant(user, ticket.queue_id) and ticket.assignee_id != user.pk,
         "closed_by_name": short_name(ticket.closed_by.full_name) if ticket.closed_by_id else "",
         "closed_by_dismissed": bool(ticket.closed_by_id) and ticket.closed_by.state == "dismissed",

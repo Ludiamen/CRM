@@ -1,4 +1,5 @@
 <section data-queue-rule-page data-queue-rule="{{ queue.unit_id }}">
+  <p><a href="/servicedesk/queues/">К очередям</a> · <a href="/servicedesk/queues/{{ queue.unit_id }}/observers/">Наблюдатели</a></p>
   <h1>Правило очереди «{{ queue.unit.name }}»</h1>
   {% if error %}<div role="alert" data-code="{{ error.code }}">{{ error.message }}</div>{% endif %}
   <form method="post" action="/servicedesk/queues/{{ queue.unit_id }}/rule/" data-form="queue-rule"
@@ -6,7 +7,7 @@
     {% csrf_token %}
     <label>Режим
       <select name="mode" data-queue-rule-field="mode">
-        {% for value in modes %}<option value="{{ value }}"{% if value == mode %} selected{% endif %}>{{ value }}</option>{% endfor %}
+        {% for value in modes %}<option value="{{ value }}"{% if value == mode %} selected{% endif %}>{% if value == "off" %}выключен{% elif value == "evenly" %}равномерно{% elif value == "strictly" %}строго по очереди{% else %}одновременно всем{% endif %}</option>{% endfor %}
       </select>
     </label>
     {% if error %}<span data-error="mode" data-code="{{ error.code }}">{{ error.message }}</span>{% endif %}

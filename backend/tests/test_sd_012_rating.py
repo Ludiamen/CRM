@@ -133,3 +133,21 @@ def test_reopen_does_not_leave_an_unused_link_current():
     rating.refresh_from_db()
     assert rating.is_current is False
     assert rating.expires_at > timezone.now()
+
+
+def test_rating_change_is_audited_as_changed_not_new():
+    """FR-779: изменение оценки пишется отдельным действием с прежним и новым баллом."""
+    from tests.support import model
+
+    _, ticket = _fixture()
+    rating = sd.make_rating(ticket, code="0123456789AB")
+    client = Client()
+    assert client.post("/rate/", {"ticket": ticket.number, "code": rating.test_code, "score": "5"}).status_code == 200
+    assert client.post("/rate/", {"ticket": ticket.number, "code": rating.test_code, "score": "4"}).status_code == 200
+    Audit = model("core.AuditEvent")
+    changed = Audit.objects.filter(action="servicedesk.rating_changed", object_id=str(ticket.number))
+    assert changed.count() == 1
+    event = changed.get()
+    assert event.before.get("score") == 5 and event.after.get("score") == 4
+    assert Audit.objects.filter(action="servicedesk.rating_received",
+                                object_id=str(ticket.number)).count() == 1

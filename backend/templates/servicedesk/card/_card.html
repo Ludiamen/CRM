@@ -29,7 +29,7 @@
     </div>
     {% include "servicedesk/card/_sla.html" %}
 
-    {% if open %}
+    {% if open and can_work %}
     <div class="card-actions">
       {% if can_take %}
       <form class="card-form" data-form="ticket-take" method="post" action="/tickets/{{ ticket.number }}/take/" hx-post="/tickets/{{ ticket.number }}/take/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
@@ -110,7 +110,7 @@
         <button class="btn btn-outline-primary btn-sm" type="submit">Сменить статус</button>
       </form>
     </div>
-    {% else %}
+    {% elif can_work %}
     <div class="card-actions">
       <form class="card-form" data-form="ticket-reopen" method="post" action="/tickets/{{ ticket.number }}/reopen/" hx-post="/tickets/{{ ticket.number }}/reopen/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
         {% csrf_token %}
@@ -125,7 +125,7 @@
     <section class="card-section" data-section="participants">
       <h3 class="card-section-title">Участники переписки</h3>
       <ul class="card-list">
-        {% for item in participants %}<li data-participant data-participant-id="{{ item.id }}"{% if item.removed %} data-removed="true"{% endif %}>{{ item.email }}{% if item.name %} ({{ item.name }}){% endif %}{% if item.removed %} — снят{% elif open %} <a data-action="participant-remove" href="/tickets/{{ ticket.number }}/participants/{{ item.id }}/remove/" hx-get="/tickets/{{ ticket.number }}/participants/{{ item.id }}/remove/" hx-vals='{"layout": "{{ card_layout }}"}' hx-target="#dialog-root" hx-swap="innerHTML">снять</a>{% endif %}</li>
+        {% for item in participants %}<li data-participant data-participant-id="{{ item.id }}"{% if item.removed %} data-removed="true"{% endif %}>{{ item.email }}{% if item.name %} ({{ item.name }}){% endif %}{% if item.removed %} — снят{% elif open and can_work %} <a data-action="participant-remove" href="/tickets/{{ ticket.number }}/participants/{{ item.id }}/remove/" hx-get="/tickets/{{ ticket.number }}/participants/{{ item.id }}/remove/" hx-vals='{"layout": "{{ card_layout }}"}' hx-target="#dialog-root" hx-swap="innerHTML">снять</a>{% endif %}</li>
         {% endfor %}
       </ul>
     </section>
@@ -150,11 +150,11 @@
       {% endif %}
     </section>
     {% endif %}
-    {% for part in card_parts.section %}{{ part }}{% endfor %}
+    {% if can_work %}{% for part in card_parts.section %}{{ part }}{% endfor %}{% endif %}
   </div>
 
   <div class="ticket-card-feed" data-card-feed>
-    {% if open %}
+    {% if open and can_work %}
        {% if answer_templates %}
        <form class="card-form-answer-tools" method="get" action="/tickets/{{ ticket.number }}/"
              data-answer-tools data-ticket="{{ ticket.number }}">
@@ -184,6 +184,7 @@
       <button class="btn btn-primary btn-sm" type="submit">Отправить ответ</button>
     </form>
     {% endif %}
+    {% if can_work %}
        <form class="card-form" data-form="ticket-comment" method="post" action="/tickets/{{ ticket.number }}/comment/" hx-post="/tickets/{{ ticket.number }}/comment/" hx-target="closest [data-ticket-card]" hx-swap="outerHTML">
       {% csrf_token %}
       <input type="hidden" name="layout" value="{{ card_layout }}">
@@ -193,6 +194,7 @@
       {% for part in card_parts.comment_tool %}{{ part }}{% endfor %}
       <button class="btn btn-outline-primary btn-sm" type="submit">Добавить комментарий</button>
      </form>
+    {% endif %}
     {% if can_task %}<p><a class="btn btn-outline-primary btn-sm" data-action="task-new-from-ticket" href="/tasks/new/?ticket={{ ticket.number }}">Поставить задачу</a></p>{% endif %}
     {% if ticket_tasks %}<section data-ticket-tasks><h3>Задачи</h3><ul>{% for item in ticket_tasks %}<li data-task-link data-task-id="{{ item.id }}"><a data-task-link href="{{ item.link }}">№{{ item.number }} — {{ item.title }}</a> — {{ item.status }}</li>{% endfor %}</ul></section>{% endif %}
 

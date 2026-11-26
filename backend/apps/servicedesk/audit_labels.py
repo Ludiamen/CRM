@@ -43,6 +43,7 @@ ACTIONS = dict([
      ("core.user_unavailable", "Сотрудник отмечен как недоступный"),
      ("ticket.distributed", "Заявка распределена автоматически"),
      ("servicedesk.rating_received", "Оценка заявителя получена"),
+     ("servicedesk.rating_changed", "Оценка заявителя изменена"),
      ("servicedesk.task_created", "Задача создана из заявки"),
     ("mailbox.connected", "Ящик заявок подключён"), ("mailbox.recreated", "Ящик заявок пересоздан"),
 ])
