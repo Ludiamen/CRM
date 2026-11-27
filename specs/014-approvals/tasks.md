@@ -204,7 +204,7 @@ id: TASKS-014
 
 ## Этап 6 — приёмка
 
-- [ ] T-14050 [arch] Полный серверный прогон `systemd-run --user` с `*.status`/`*.log`/`*.exit` —
+- [x] T-14050 [arch] Полный серверный прогон `systemd-run --user` с `*.status`/`*.log`/`*.exit` —
   все тесты — (FR-820–850)
 - [ ] T-14051 [arch] Браузеры `test_t14_*`: Chromium, Firefox, Edge, Яндекс.Браузер — (FR-820–850,
   NFR-749)
