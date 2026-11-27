@@ -52,8 +52,8 @@ CAP-67, второй срез группы B. Основание — ADR-0022, �
    миграция `approvals 0001`.
 5. **Тесты:** `backend/tests/test_approvals_*.py` — 34+ теста; CONTRACT-014; e2e `test_t14_*`.
    Затронутые регрессии (`POINTS`, `INSTALLED_APPS`, `cron`, меню, каталог уведомлений, журнал, задачи,
-   сервис-деск, границы модулей) проходят. Полный прогон шёл в `crm-work/slice014/stage1/`; на 51% одна
-   задержка в `test_notify_boundaries` (внешние fakebots), остальные проверенные наборы зелёные.
+   сервис-деск, границы модулей) проходят. `approvals.stand_reset` переведён на соединение `migrate` — это сняло
+   зависание `test_notify_boundaries`/`test_sd_stand_restore` (30 passed). Полный прогон — `crm-t14-full5`.
 6. **Стенд:** собран `web`/`nginx`, миграция `approvals 0001` применена без reset; `/approvals/` отвечает 302
    (вход). Браузеры, нагрузка и ручной проход — T-14051…T-14053.
 
