@@ -14,6 +14,7 @@ from apps.core.models import User
 from apps.core.widgets import moscow_today
 from apps.tasks.models import Task, TaskCategory
 from apps.tasks.services import access, boards, list as task_list, plan
+from apps.tasks.services import card
 from apps.tasks.services import reminders, tasks as task_service
 
 PRESETS = (("mine", "Мои"), ("authored", "Поставленные мной"), ("subordinate", "Задачи подчинённых"),
@@ -84,6 +85,7 @@ def card_page(request, task_id):
         "columns": plan.columns_of(task.assignee),
         "categories": TaskCategory.objects.all(),
         "ticket": ticket_for_task(request.user, task),
+        "card_parts": card.card_parts(request, task),
     })
 
 

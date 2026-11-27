@@ -65,7 +65,7 @@ def test_action_registry_has_all_five_codes():
     """FR-799: форма и проверка видят пять действий."""
     from apps.automation.extensions import actions
 
-    assert set(actions()) == {"notify", "assign", "create_task", "change_status", "comment"}
+    assert set(actions()) == {"notify", "assign", "create_task", "change_status", "comment", "start_approval"}
 
 
 def test_run_keeps_root_uuid_for_chain():

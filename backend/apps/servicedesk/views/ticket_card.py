@@ -239,7 +239,7 @@ def _card_parts(request, ticket) -> dict:
     if not records:
         return parts
     ref = extensions.TicketRef(number=ticket.number, closed=_closed(ticket),
-                               has_resolution=bool(ticket.resolution.strip()))
+                               has_resolution=bool(ticket.resolution.strip()), pk=ticket.pk)
     for record in sorted(records, key=lambda item: item.order):
         try:
             html = record.render(request, ref)

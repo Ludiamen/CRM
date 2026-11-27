@@ -30,6 +30,9 @@ if apps.is_installed("apps.instructions"):
 if apps.is_installed("apps.automation"):
     urlpatterns.append(path("", include("apps.automation.urls")))  # /automation/…
 
+if apps.is_installed("apps.approvals"):
+    urlpatterns.append(path("", include("apps.approvals.urls")))  # /approvals/…
+
 handler400 = "apps.core.views.pages.bad_request"
 handler403 = "apps.core.views.pages.forbidden"
 handler404 = "apps.core.views.pages.not_found"

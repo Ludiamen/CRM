@@ -98,6 +98,17 @@ TABLE = [
     # вид автоматизации (CONTRACT-013, 3.1): order 240, каналы «На портале» и «Почта»
     ("automation.rule_notice", "Сообщение правила", "Автоматизация", 240, False, ("portal", "email"), (),
      "Сработало правило автоматизации"),
+    # пять видов согласований (CONTRACT-014, 9.1): order 250–254, каналы «На портале» и «Почта»
+    ("approvals.assignment", "Задание согласования", "Согласования", 250, False, ("portal", "email"), (),
+     "Вам назначено задание согласования"),
+    ("approvals.decision", "Решение по согласованию", "Согласования", 251, False, ("portal", "email"), (),
+     "По маршруту согласования принято решение"),
+    ("approvals.returned", "Возврат на доработку", "Согласования", 252, False, ("portal", "email"), (),
+     "Маршрут согласования возвращён"),
+    ("approvals.reminder", "Напоминание о сроке задания", "Согласования", 253, False, ("portal", "email"), (),
+     "Приближается срок задания согласования"),
+    ("approvals.overdue", "Просроченное задание согласования", "Согласования", 254, False, ("portal", "email"), (),
+     "Срок задания согласования наступил"),
 ]
 MANDATORY_CODES = {row[0] for row in TABLE if row[4]}
 
@@ -161,7 +172,7 @@ def test_catalog_contains_eight_kinds_from_three_modules():
     catalog = _kinds().catalog()
     assert [kind.code for kind in catalog] == [row[0] for row in TABLE]
     assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления", "База знаний", "Списки", "Лента",
-                                                 "Мессенджер", "Задачи", "Поручения", "Автоматизация"}
+                                                 "Мессенджер", "Задачи", "Поручения", "Автоматизация", "Согласования"}
     assert [kind.module for kind in catalog].count("Сервис-деск") == 7
     assert [kind.module for kind in catalog].count("Ядро") == 3
     assert [kind.module for kind in catalog].count("Уведомления") == 1

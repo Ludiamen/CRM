@@ -21,8 +21,14 @@ class ActionSkip(Exception):
 def _handlers():
     from . import assign, comment, notify, status, task
 
-    return {"notify": notify.run, "assign": assign.run, "create_task": task.run,
-            "change_status": status.run, "comment": comment.run}
+    handlers = {"notify": notify.run, "assign": assign.run, "create_task": task.run,
+                "change_status": status.run, "comment": comment.run}
+    from ... import extensions
+
+    for descriptor in extensions.actions().values():
+        if descriptor.handler is not None:
+            handlers[descriptor.code] = descriptor.handler
+    return handlers
 
 
 def run_rule(run: RuleRun, rule, obj, subject) -> None:

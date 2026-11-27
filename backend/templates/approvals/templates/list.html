@@ -1,0 +1,33 @@
+{% extends layout %}
+{% block title %}Согласования{% endblock %}
+{% block content %}
+<div class="page-head d-flex justify-content-between align-items-center">
+  <h1 class="page-title">Согласования</h1>
+  <a class="btn btn-primary" href="/approvals/templates/new/">Новый шаблон</a>
+</div>
+{% if templates %}
+<div class="table-responsive">
+  <table class="table align-middle" data-approval-templates>
+    <thead><tr><th>Название</th><th>Субъект</th><th>Этапы</th><th>Состояние</th><th>Автор</th><th></th></tr></thead>
+    <tbody>
+    {% for template in templates %}
+      <tr data-template-id="{{ template.pk }}">
+        <td><a href="/approvals/templates/{{ template.pk }}/edit/">{{ template.name }}</a></td>
+        <td>{{ template.get_subject_type_display }}</td>
+        <td>{{ template.stages.count }}</td>
+        <td>{% if template.enabled %}<span class="badge text-bg-success">включён</span>{% else %}<span class="badge text-bg-secondary">выключен</span>{% endif %}</td>
+        <td>{{ template.author.full_name }}</td>
+        <td class="text-end">
+          <form method="post" action="/approvals/templates/{{ template.pk }}/toggle/" class="d-inline">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-secondary" type="submit">{% if template.enabled %}Выключить{% else %}Включить{% endif %}</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">Шаблонов пока нет.</p>
+{% endif %}
+{% endblock %}

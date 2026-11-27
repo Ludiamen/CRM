@@ -26,6 +26,7 @@ def register_all() -> None:
     """Зарегистрировать точки задач (T-9214/T-9217; сброс стенда — последним)."""
     from apps.core import extensions
     from apps.tasks import audit_labels, automation as automation_ext, notify_kinds, stand
+    from apps.tasks import approval as approval_ext
     from apps.tasks.services import files, search, task_links
 
     extensions.register("menu_items", menu_items)
@@ -40,4 +41,5 @@ def register_all() -> None:
     extensions.register("automation_triggers", automation_ext.triggers)
     extensions.register("automation_actions", automation_ext.actions)
     extensions.register("automation_recipients", automation_ext.recipients)
+    extensions.register("approval_subjects", approval_ext.approval_subject)
     extensions.register("stand_reset", stand.stand_reset)

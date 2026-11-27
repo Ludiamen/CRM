@@ -17,6 +17,12 @@ TRIGGERS = (
     ("ticket_transferred", "Заявка передана"),
     ("ticket_closed", "Заявка закрыта"),
     ("sla_threshold", "Порог SLA"),
+    ("approval_started", "Согласование запущено"),
+    ("approval_stage_completed", "Этап согласования завершён"),
+    ("approval_completed", "Маршрут согласован"),
+    ("approval_rejected", "Маршрут отклонён"),
+    ("approval_returned", "Маршрут возвращён"),
+    ("approval_cancelled", "Маршрут отменён"),
 )
 
 

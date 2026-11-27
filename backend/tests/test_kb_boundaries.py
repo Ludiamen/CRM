@@ -231,7 +231,7 @@ def test_ticket_card_without_knowledge_has_no_parts_and_renders(caplog):
         assert f'data-card-part="{part}"' in with_kb, f"при включённом модуле нет части {part}"
     with caplog.at_level("DEBUG"):
         with support_kb.without_knowledge(), support_lists.without_lists():
-            assert extensions.registered("ticket_card_parts") == [], "точка не пуста без knowledge и lists"
+            assert [f for f in extensions.registered("ticket_card_parts") if f.__module__.startswith("apps.approvals")], "часть согласований должна оставаться"
             html_open = _card_html(user, opened)
             html_closed = _card_html(user, closed)
     for html in (html_open, html_closed):
@@ -279,7 +279,7 @@ def test_notification_catalog_without_knowledge_has_no_knowledge_kinds():
     assert [k.code for k in rest if k.code.startswith("knowledge.") or k.module == "База знаний"] == []
     assert {k.code for k in rest} == set(full) - added
     assert "lists.deadline" in {k.code for k in rest}, "вид среза 006 не зависит от knowledge"
-    assert len(rest) == 41, "прежних видов 19, восемь задач 009, десять поручений 010 и три вида сроков заявок 011"
+    assert len(rest) == 46, "прежние виды, задачи 009, поручения 010, сроки заявок 011 и пять видов согласований 014"
 
 
 def test_search_without_knowledge_has_no_articles_group():
@@ -358,7 +358,8 @@ def test_points_has_seventeen_names():
     новые среза 005, `home_body` среза 007 и `unit_form_parts` среза 008); `_registry` содержит ключ на каждое имя."""
     from apps.core import extensions
 
-    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients",
+            "approval_subjects", "task_card_parts")
     assert tuple(extensions.POINTS) == POINTS_19 + auto
     assert len(extensions.POINTS) == len(POINTS_19) + len(auto)
     assert set(extensions._registry) == set(POINTS_19 + auto)
@@ -376,8 +377,8 @@ def test_points_new_names_search_providers_and_ticket_card_parts_are_last_two():
     parts = extensions.registered("ticket_card_parts")
     assert parts, "knowledge не зарегистрировал части карточки"
     owners = {".".join(getattr(f, "__module__", "").split(".")[:2]) for f in parts}
-    assert owners == {"apps.knowledge", "apps.lists"}, \
-        f"в ticket_card_parts регистрируются не только knowledge и lists: {[f.__module__ for f in parts]}"
+    assert owners == {"apps.knowledge", "apps.lists", "apps.approvals"}, \
+        f"в ticket_card_parts регистрируются не только knowledge, lists и approvals: {[f.__module__ for f in parts]}"
     with pytest.raises(ValueError):
         extensions.register("no_such_point", lambda: [])
     with pytest.raises(ValueError):

@@ -9,6 +9,12 @@ TRIGGERS = (
     ("task_field_changed", "Изменено поле задачи"),
     ("task_status_changed", "Изменён статус задачи"),
     ("task_threshold", "Порог срока задачи"),
+    ("approval_started", "Согласование запущено"),
+    ("approval_stage_completed", "Этап согласования завершён"),
+    ("approval_completed", "Маршрут согласован"),
+    ("approval_rejected", "Маршрут отклонён"),
+    ("approval_returned", "Маршрут возвращён"),
+    ("approval_cancelled", "Маршрут отменён"),
 )
 
 

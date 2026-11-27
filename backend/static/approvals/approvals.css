@@ -1,0 +1,7 @@
+/* Согласования: узкие экраны и таблицы (PLAN-014, T-14044). */
+.approval-page .table-responsive { overflow-x: auto; }
+.approval-page .list-group-item { overflow-wrap: anywhere; }
+@media (max-width: 400px) {
+  .approval-page .page-title { font-size: 1.25rem; }
+  .approval-page .btn { white-space: normal; }
+}

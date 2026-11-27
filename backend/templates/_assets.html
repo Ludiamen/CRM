@@ -3,6 +3,7 @@
 <link rel="stylesheet" href="{% static 'theme/portal.css' %}">
 {% if "messenger" in request.path %}<link rel="stylesheet" href="{% static 'messenger/messenger.css' %}">{% endif %}
 {% if "/tasks/" in request.path %}<link rel="stylesheet" href="{% static 'tasks/tasks.css' %}">{% endif %}
+{% if "/approvals/" in request.path %}<link rel="stylesheet" href="{% static 'approvals/approvals.css' %}">{% endif %}
 {% if '/instructions/' in request.path %}<link rel="stylesheet" href="{% static 'instructions/instructions.css' %}">{% endif %}
 <script src="{% static 'js/shell-init.js' %}"></script>
 <script src="{% static 'js/shell.js' %}" defer></script>

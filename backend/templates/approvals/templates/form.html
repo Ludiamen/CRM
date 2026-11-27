@@ -1,0 +1,13 @@
+{% extends layout %}
+{% block title %}{% if template %}Шаблон согласования{% else %}Новый шаблон{% endif %}{% endblock %}
+{% block content %}
+<h1 class="page-title">{% if template %}Шаблон согласования{% else %}Новый шаблон{% endif %}</h1>
+<form method="post" class="card card-body" data-approval-template-form>
+  {% csrf_token %}
+  {{ form.as_p }}
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+    <a class="btn btn-outline-secondary" href="/approvals/">Отмена</a>
+  </div>
+</form>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends layout %}
+{% block title %}Маршрут согласования{% endblock %}
+{% block content %}
+<h1 class="page-title">Согласование: {{ brief.title }}</h1>
+<div class="card card-body mb-3" data-approval-brief>
+  <p class="mb-1"><strong>{% if brief.number %}№{{ brief.number }}{% endif %}</strong> {{ brief.title }}</p>
+  <p class="mb-1">Статус: {{ brief.status }}{% if brief.queue %} · {{ brief.queue }}{% endif %}</p>
+  {% if brief.description %}<p class="mb-1">{{ brief.description }}</p>{% endif %}
+  <p class="mb-0">Маршрут: {{ route.template_name }} · {{ route.get_status_display }} · инициатор {{ route.initiator.full_name }}</p>
+</div>
+{% if can_cancel %}
+<form method="post" action="/approvals/routes/{{ route.pk }}/cancel/" class="mb-3">{% csrf_token %}
+  <button class="btn btn-outline-danger" type="submit" data-action="approval-cancel">Отменить маршрут</button>
+</form>
+{% endif %}
+{% for row in stages %}
+<section class="card card-body mb-3" data-stage-run="{{ row.stage.pk }}">
+  <h2 class="h5">{{ row.stage.order }}. {{ row.stage.title }} <span class="badge text-bg-light">{{ row.stage.get_status_display }}</span></h2>
+  <ul class="list-unstyled">
+  {% for assignment in row.assignments %}
+    <li data-assignment-id="{{ assignment.pk }}" data-status="{{ assignment.status }}">
+      {{ assignment.user.full_name }} — {{ assignment.get_status_display }}
+      {% if assignment.comment %}<div class="text-muted">{{ assignment.comment }}</div>{% endif %}
+      {% if assignment.pk in row.active_ids and assignment.user_id == request.user.pk and route.status == "running" %}
+      <form method="post" action="/approvals/assignments/{{ assignment.pk }}/decide/" class="mt-2" data-form="approval-decision">
+        {% csrf_token %}
+        <div class="d-flex gap-2 flex-wrap">
+          <select name="decision" class="form-select form-select-sm w-auto">
+            <option value="approved">Согласовано</option>
+            <option value="rejected">Отклонено</option>
+            <option value="returned">На доработку</option>
+          </select>
+          <input class="form-control form-control-sm w-auto" name="comment" maxlength="4000" placeholder="Комментарий">
+          <button class="btn btn-sm btn-primary" type="submit">Принять решение</button>
+        </div>
+      </form>
+      {% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+<p><a href="/approvals/my/">Мои задания</a></p>
+{% endblock %}

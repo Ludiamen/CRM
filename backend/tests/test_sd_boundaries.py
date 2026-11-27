@@ -447,7 +447,8 @@ def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_
     assert tuple(extensions.POINTS) == POINTS_17 + (
         "home_body", "unit_form_parts", "ticket_task_seed", "ticket_task_brief",
         "ticket_task_create", "ticket_task_list",
-        "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+        "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients",
+        "approval_subjects", "task_card_parts")
 
     def owned(point, prefix):
         return [f for f in extensions.registered(point) if getattr(f, "__module__", "").startswith(prefix)]

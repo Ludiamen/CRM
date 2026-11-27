@@ -117,7 +117,7 @@ def test_cron_has_27_registers_and_three_guarded_instructions_jobs():
     """FR-711, NFR-729: три задания поручений в cron с расписанием и очередью `maintenance`, под проверкой
     установки; всего 27 вызовов."""
     calls = _cron_calls()
-    assert len(calls) == 31, f"вызовов register {len(calls)}"
+    assert len(calls) == 32, f"вызовов register {len(calls)}"
     expected = {
         "instructions_reminders": ("apps.instructions.tasks.instructions_reminders", "*/5 * * * *", 300),
         "instructions_digest": ("apps.instructions.tasks.instructions_digest", "*/15 * * * *", 300),
@@ -137,7 +137,8 @@ def test_points_stay_19_and_instructions_register_expected_points():
     подписи, назначение файла и сброс стенда; `stand_reset` — последняя запись точки."""
     from apps.core import extensions
 
-    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients",
+            "approval_subjects", "task_card_parts")
     assert tuple(extensions.POINTS) == POINTS_19 + auto and len(extensions.POINTS) == len(POINTS_19) + len(auto)
     assert set(extensions._registry) == set(POINTS_19 + auto)
     for point, (module, name) in REGISTRATIONS.items():

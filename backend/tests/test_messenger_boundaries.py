@@ -517,10 +517,11 @@ def test_points_are_19_and_unit_form_parts_last():
     `key`, `order`, `render`, `on_saved`; неизвестная точка отказывает `ValueError`."""
     from apps.core import extensions
 
-    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients",
+            "approval_subjects", "task_card_parts")
     assert tuple(extensions.POINTS) == POINTS_19 + auto
     assert len(extensions.POINTS) == len(POINTS_19) + len(auto)
-    assert extensions.POINTS[-1] == "automation_recipients" and extensions.POINTS.index("unit_form_parts") == 18
+    assert extensions.POINTS[-1] == "task_card_parts" and extensions.POINTS.index("unit_form_parts") == 18
     assert tuple(extensions.POINTS[:18]) == POINTS_18, "прежние точки изменили порядок"
     assert set(extensions._registry) == set(POINTS_19 + auto)
     assert dataclasses.is_dataclass(extensions.UnitFormPart)

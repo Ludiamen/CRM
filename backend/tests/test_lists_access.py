@@ -861,7 +861,7 @@ def test_menu_item_lists_has_order_8_empty_permissions_and_is_visible_by_sees_se
         assert nav and 'href="/lists/"' in nav.group(0), "в левом меню нет ссылки на /lists/"
     assert not [e for e in permissions.menu_for(_fresh(nobody.user)) if e["title"] == "Списки"]
     titles = [e["title"] for e in permissions.menu_for(_fresh(support.make_admin()))]
-    assert len(titles) == 22, titles
+    assert len(titles) == 23, titles
     assert titles.index("База знаний") < titles.index("Списки") < titles.index("Сотрудники")
 
 

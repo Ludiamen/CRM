@@ -6,8 +6,12 @@ TICKET_FIELDS = {"queue", "category", "priority", "status", "status_kind", "assi
 TASK_FIELDS = {"status", "category", "assignee", "author", "has_deadline", "changed_field"}
 TRIGGERS = {
     "ticket": {"ticket_created", "reply_received", "ticket_field_changed", "ticket_status_changed",
-               "ticket_transferred", "ticket_closed", "sla_threshold"},
-    "task": {"task_created", "task_field_changed", "task_status_changed", "task_threshold"},
+               "ticket_transferred", "ticket_closed", "sla_threshold",
+               "approval_started", "approval_stage_completed", "approval_completed",
+               "approval_rejected", "approval_returned", "approval_cancelled"},
+    "task": {"task_created", "task_field_changed", "task_status_changed", "task_threshold",
+             "approval_started", "approval_stage_completed", "approval_completed",
+             "approval_rejected", "approval_returned", "approval_cancelled"},
 }
 SCOPES = {"ticket": {"global", "queue"}, "task": {"global", "task_author"}}
 ACTION_SCHEMAS = {
@@ -104,11 +108,16 @@ def _validate_condition(condition, rule, fields, subject) -> None:
 
 
 def _validate_action(action, registered: dict) -> None:
-    if action.kind not in ACTION_SCHEMAS:
+    schemas = dict(ACTION_SCHEMAS)
+    for code, descriptor in (registered or {}).items():
+        params = getattr(descriptor, "params", {}) or {}
+        required = set(params.get("required", []))
+        schemas[code] = (required, required | set(params.get("optional", [])))
+    if action.kind not in schemas:
         raise RuleError("unknown_action", "Неизвестное действие")
     if registered and action.kind not in registered:
         raise RuleError("unknown_action", "Действие недоступно: приложение не установлено")
-    required, allowed = ACTION_SCHEMAS[action.kind]
+    required, allowed = schemas[action.kind]
     params = action.params if isinstance(action.params, dict) else {}
     if not required <= set(params):
         raise RuleError("rule_invalid", "У действия не хватает параметров")

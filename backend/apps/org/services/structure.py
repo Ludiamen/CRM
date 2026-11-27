@@ -407,6 +407,15 @@ def heads_of_unit(unit_id: int) -> list:
     return sorted(people.values(), key=lambda person: (person.full_name, person.pk))
 
 
+def unit_heads(unit_id: int) -> list:
+    """Руководитель и заместители **только этого** узла, без предков и уволенных."""
+    found = Membership.objects.filter(
+        unit_id=unit_id, mark__in=[Membership.Mark.HEAD, Membership.Mark.DEPUTY]
+    ).exclude(user__state="dismissed").select_related("user")
+    people = {row.user_id: row.user for row in found}
+    return sorted(people.values(), key=lambda person: (person.full_name, person.pk))
+
+
 def direct_members(unit_id: int) -> list[PersonRef]:
     """Прямые участники узла: члены самого узла, без вложенных и вышестоящих (получатели уведомлений).
 

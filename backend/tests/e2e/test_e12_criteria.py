@@ -123,6 +123,12 @@ EXPECTED_CATALOG = {  # § 3.2: код → (название, модуль, mand
     "instructions.report_returned": ("Отчёт возвращён", "Поручения", False, "Отчёт возвращён"),
     "instructions.transfer": ("Перенос срока", "Поручения", False, "Перенос срока поручения"),
     "instructions.digest": ("Сводка по поручениям", "Поручения", False, "Сводка по поручениям"),
+    "automation.rule_notice": ("Сообщение правила", "Автоматизация", False, "Сработало правило автоматизации"),
+    "approvals.assignment": ("Задание согласования", "Согласования", False, "Вам назначено задание согласования"),
+    "approvals.decision": ("Решение по согласованию", "Согласования", False, "По маршруту согласования принято решение"),
+    "approvals.returned": ("Возврат на доработку", "Согласования", False, "Маршрут согласования возвращён"),
+    "approvals.reminder": ("Напоминание о сроке задания", "Согласования", False, "Приближается срок задания согласования"),
+    "approvals.overdue": ("Просроченное задание согласования", "Согласования", False, "Срок задания согласования наступил"),
     "core.new_device": ("Вход с нового устройства", "Ядро", True, ""),
     "core.password_changed": ("Пароль изменён", "Ядро", True, ""),
     "core.second_factor_reset": ("Второй фактор сброшен", "Ядро", True, ""),
@@ -1009,7 +1015,7 @@ def test_e12_catalog_shows_four_service_desk_kinds_three_security_kinds_and_chan
     page.goto("/settings/notifications/")
     expect(page.locator("table[data-defaults-table] tr[data-notify-kind]")).to_have_count(
         len(KINDS) + len(KB_KINDS) + len(LISTS_KINDS) + len(FEED_KINDS_E2E) + len(MESSENGER_KINDS_E2E)
-        + len(TASKS_KINDS_E2E) + len(INSTRUCTIONS_KINDS_E2E))
+        + len(TASKS_KINDS_E2E) + len(INSTRUCTIONS_KINDS_E2E) + 6)
     for code, _title in KINDS + KB_KINDS + LISTS_KINDS + FEED_KINDS_E2E + MESSENGER_KINDS_E2E:
         expect(page.locator(f'table[data-defaults-table] tr[data-notify-kind="{code}"]')).to_have_count(1)
     expect(member.page.locator('tr[data-notify-fixed="security"]')).to_contain_text(FIXED_SECURITY)

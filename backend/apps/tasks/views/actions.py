@@ -15,6 +15,7 @@ from apps.core.views.common import is_fragment, render_page
 from apps.core.widgets import moscow_today
 from apps.tasks.models import Task, TaskCategory
 from apps.tasks.services import access, boards, plan
+from apps.tasks.services import card
 from apps.tasks.services import tasks as service
 from apps.tasks.services.errors import TasksError
 
@@ -173,6 +174,7 @@ def _card(request, task, error=None):
         "can_comment": access.can_comment(request.user, task),
         "columns": plan.columns_of(task.assignee), "categories": TaskCategory.objects.order_by("position", "pk"),
         "error": error,
+        "card_parts": card.card_parts(request, task),
     }, status=200)
 
 

@@ -14,8 +14,20 @@ TRIGGER_LABELS = {"ticket_created": "Заявка создана", "reply_receiv
                   "ticket_transferred": "Заявка передана", "ticket_closed": "Заявка закрыта",
                   "sla_threshold": "Порог SLA", "task_created": "Задача создана",
                   "task_field_changed": "Изменено поле задачи", "task_status_changed": "Изменён статус задачи",
-                  "task_threshold": "Порог срока задачи"}
+                  "task_threshold": "Порог срока задачи",
+                  "approval_started": "Согласование запущено", "approval_stage_completed": "Этап согласования завершён",
+                  "approval_completed": "Маршрут согласован", "approval_rejected": "Маршрут отклонён",
+                  "approval_returned": "Маршрут возвращён", "approval_cancelled": "Маршрут отменён"}
 ACTION_LABELS = {code: title for code, title, _ in ACTIONS}
+
+
+def _action_choices() -> list[tuple[str, str]]:
+    from apps.automation import extensions
+
+    choices = {code: title for code, title in ACTION_LABELS.items()}
+    for descriptor in extensions.actions().values():
+        choices[descriptor.code] = descriptor.title
+    return list(choices.items())
 
 
 
@@ -45,6 +57,9 @@ class RuleForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         from apps.servicedesk.services import queues
 
+        self.fields["trigger"].choices = [
+            (code, TRIGGER_LABELS.get(code, code))
+            for codes in TRIGGERS.values() for code in sorted(codes)]
         self.fields["queue"].choices = [("", "—")] + [(unit.id, unit.name) for unit in queues.marked_units()]
         _bootstrap(self)
         if self.instance and self.instance.pk and not self.is_bound:
@@ -81,6 +96,7 @@ class RuleActionForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["kind"].choices = _action_choices()
         _bootstrap(self)
         if self.instance and self.instance.pk and not self.is_bound:
             self.fields["params_text"].initial = json.dumps(self.instance.params, ensure_ascii=False)

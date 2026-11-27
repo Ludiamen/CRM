@@ -24,6 +24,7 @@ def register_all() -> None:
     """
     from apps.core import extensions
     from apps.servicedesk import audit_labels, automation as automation_ext, notify_kinds, stand
+    from apps.servicedesk import approval as approval_ext
     from apps.servicedesk.services import attachments, form, letters, listing, queues, search_provider, task_links
     from apps.servicedesk.services import settings as sd_settings
 
@@ -44,3 +45,4 @@ def register_all() -> None:
     extensions.register("automation_triggers", automation_ext.triggers)
     extensions.register("automation_actions", automation_ext.actions)
     extensions.register("automation_recipients", automation_ext.recipients)
+    extensions.register("approval_subjects", approval_ext.approval_subject)

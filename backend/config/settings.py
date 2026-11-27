@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "django_rq",
     "apps.core",
     "apps.org",
+    "apps.approvals",
     "apps.integrations.mail",
     "apps.servicedesk",
     "apps.notify",

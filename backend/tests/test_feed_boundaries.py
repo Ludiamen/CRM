@@ -267,9 +267,10 @@ def test_points_tuple_has_eighteen_names_and_feed_uses_home_body_last():
 
     assert tuple(extensions.POINTS) == POINTS_17 + feed.POINTS_007 + (
         "unit_form_parts", "ticket_task_seed", "ticket_task_brief", "ticket_task_create", "ticket_task_list",
-        "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
-    assert len(extensions.POINTS) == 27 and extensions.POINTS[18] == "unit_form_parts"
-    assert extensions.POINTS[-1] == "automation_recipients"
+        "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients",
+        "approval_subjects", "task_card_parts")
+    assert len(extensions.POINTS) == 29 and extensions.POINTS[18] == "unit_form_parts"
+    assert extensions.POINTS[-1] == "task_card_parts"
     assert set(extensions._registry) == set(extensions.POINTS)
     own = _own("home_body")
     assert [(f.__module__, f.__name__) for f in own] == [("apps.feed.views.home", "body")]

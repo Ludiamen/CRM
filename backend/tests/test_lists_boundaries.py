@@ -258,7 +258,8 @@ def test_points_still_have_seventeen_names():
     на каждое имя (срез 006 новых точек не вводит; срез 007 вводит `home_body`, срез 008 — `unit_form_parts`)."""
     from apps.core import extensions
 
-    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients",
+            "approval_subjects", "task_card_parts")
     assert tuple(extensions.POINTS) == POINTS_19 + auto
     assert len(extensions.POINTS) == len(POINTS_19) + len(auto)
     assert set(extensions._registry) == set(POINTS_19 + auto)

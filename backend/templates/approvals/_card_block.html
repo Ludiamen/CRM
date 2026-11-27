@@ -1,0 +1,26 @@
+{% if route or templates %}
+<section class="mt-3" aria-label="Согласования" data-approval-card>
+  <h2 class="h6">Согласования</h2>
+  {% if route %}
+  <p class="mb-1">
+    <a href="/approvals/routes/{{ route.pk }}/">Маршрут {{ route.template_name }}</a>
+    — {{ route.get_status_display }}
+    {% if route.status == "running" %}· идёт{% endif %}
+  </p>
+  {% else %}
+  <p class="text-muted mb-1">Активного маршрута нет.</p>
+  {% endif %}
+  {% if templates %}
+  <form method="post" action="/approvals/start/" class="d-flex gap-2 flex-wrap" data-form="approval-start">
+    {% csrf_token %}
+    <input type="hidden" name="subject_type" value="{{ subject_type }}">
+    <input type="hidden" name="subject_id" value="{{ subject_id }}">
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <select name="template" class="form-select form-select-sm w-auto">
+      {% for template in templates %}<option value="{{ template.pk }}">{{ template.name }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-sm btn-primary" type="submit">Запустить согласование</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}

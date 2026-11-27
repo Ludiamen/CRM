@@ -21,7 +21,8 @@ POINTS = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_dir
           "notification_kinds", "top_bar_items", "search_providers", "ticket_card_parts",
           "home_body", "unit_form_parts",
           "ticket_task_seed", "ticket_task_brief", "ticket_task_create", "ticket_task_list",
-          "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+          "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients",
+          "approval_subjects", "task_card_parts")
 
 _registry: dict[str, list] = {point: [] for point in POINTS}
 
@@ -248,6 +249,7 @@ class TicketRef:
     number: int
     closed: bool
     has_resolution: bool
+    pk: int = 0
 
 
 @dataclass(frozen=True)
@@ -260,3 +262,21 @@ class TicketCardPart:
     kind: Literal["section", "closed_action", "comment_tool"]
     order: int
     render: Callable[[HttpRequest, TicketRef], str | None]
+
+
+@dataclass(frozen=True)
+class TaskRef:
+    """Задача для частей карточки: номер и признак удаления, без модели `Task`."""
+    number: int
+    deleted: bool = False
+
+
+@dataclass(frozen=True)
+class TaskCardPart:
+    """Часть карточки задачи: раздел, который рисует чужое приложение.
+
+    `render(request, task_ref)` возвращает фрагмент HTML или `None` (пустую строку) — «ничего».
+    """
+    key: str
+    order: int
+    render: Callable[[HttpRequest, TaskRef], str | None]

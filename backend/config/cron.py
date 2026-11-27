@@ -119,3 +119,9 @@ if apps.is_installed("apps.automation"):
     register(automation_tick, queue_name="notify", cron="* * * * *", name="automation_tick", job_timeout=120)
     register(tasks_automation_tick, queue_name="maintenance", cron="*/5 * * * *", name="tasks_automation_tick",
              job_timeout=300)
+
+# Согласования (срез 014): напоминания о сроке и выбывшие участники — каждую минуту в `notify`.
+if apps.is_installed("apps.approvals"):
+    from apps.approvals.tasks import approvals_tick  # noqa: E402
+
+    register(approvals_tick, queue_name="notify", cron="* * * * *", name="approvals_tick", job_timeout=120)

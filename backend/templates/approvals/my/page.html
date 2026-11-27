@@ -1,0 +1,21 @@
+{% extends layout %}
+{% block title %}Мои задания{% endblock %}
+{% block content %}
+<h1 class="page-title">Мои задания</h1>
+{% if rows %}
+<div class="list-group" data-approval-my>
+  {% for row in rows %}
+  <a class="list-group-item list-group-item-action{% if row.overdue %} list-group-item-danger{% endif %}"
+     href="/approvals/routes/{{ row.route.pk }}/" data-assignment-id="{{ row.assignment.pk }}"
+     data-overdue="{% if row.overdue %}1{% else %}0{% endif %}">
+    <strong>{% if row.brief.number %}№{{ row.brief.number }}{% endif %} {{ row.brief.title }}</strong>
+    <span class="text-muted">— {{ row.stage.title }}</span>
+    {% if row.due_at %}<span class="badge text-bg-light">до {{ row.due_at|date:"d.m.Y H:i" }}</span>{% endif %}
+    {% if row.overdue %}<span class="badge text-bg-danger">просрочено</span>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<p class="text-muted" data-empty-state="assignments">Ожидающих заданий нет.</p>
+{% endif %}
+{% endblock %}

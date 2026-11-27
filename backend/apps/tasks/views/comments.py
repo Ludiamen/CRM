@@ -8,6 +8,7 @@ from apps.core.services import permissions
 from apps.core.views.common import is_fragment, render_page
 from apps.tasks.models import Task, TaskCategory, TaskComment
 from apps.tasks.services import access, comments as service, plan
+from apps.tasks.services import card
 from apps.tasks.services import tasks as task_service
 from apps.tasks.services.errors import TasksError
 
@@ -29,7 +30,7 @@ def _card(request, task, error=None):
         "can_delete": access.can_delete(request.user, task), "can_comment": access.can_comment(request.user, task),
         "columns": plan.columns_of(task.assignee),
         "categories": TaskCategory.objects.all(),
-        "error": error}, status=200)
+        "error": error, "card_parts": card.card_parts(request, task)}, status=200)
 
 
 @require_POST
