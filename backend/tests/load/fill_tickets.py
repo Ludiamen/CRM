@@ -87,7 +87,7 @@ def make_requesters(count: int) -> list:
 TICKET_SQL = """
 INSERT INTO servicedesk_ticket (
     number, subject, requester_id, requester_email, requester_name, client_unit_id, category_id, queue_id, priority_id,
-    complexity_id, status_id, kind, source_id, assignee_id, assigned_once, created_at, created_by_id, closed_at, closed_by_id,
+    priority_order, complexity_id, status_id, kind, source_id, assignee_id, assigned_once, created_at, created_by_id, closed_at, closed_by_id,
     resolution, previous_id, consent_at, waiting_since, last_message_at, last_message_from, search, search_len,
     anonymized_at, updated_at)
 SELECT s.number,
@@ -95,6 +95,7 @@ SELECT s.number,
        r.id, r.email, r.full_name, NULL, NULL,
        (%(queues)s::bigint[])[1 + floor(random() * cardinality(%(queues)s::bigint[]))::int],
        (%(priorities)s::bigint[])[1 + floor(random() * cardinality(%(priorities)s::bigint[]))::int],
+       0,
        NULL,
        CASE s.kind WHEN 'new' THEN %(new)s::bigint WHEN 'in_progress' THEN %(in_progress)s::bigint
             WHEN 'waiting' THEN %(waiting)s::bigint ELSE %(closed)s::bigint END,

@@ -21,7 +21,7 @@ def _bootstrap(form) -> None:
 
 class TemplateForm(forms.ModelForm):
     stages_text = forms.CharField(
-        label="Этапы (JSON)", required=True, widget=forms.Textarea(attrs={"rows": 12}),
+        label="Этапы (JSON)", required=False, widget=forms.Textarea(attrs={"rows": 12}),
         help_text='[{"title": "...", "mode": "sequential", "rule": "all", "deadline_hours": 24, '
                   '"participants": [{"kind": "employee", "user_id": 1}]}]')
 

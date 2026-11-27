@@ -37,3 +37,28 @@ def test_template_create_and_my_page():
     assert page.status_code == 200
     assert participant.full_name.encode() in page.content
 
+
+
+def test_empty_template_form_shows_server_validation():
+    client = support.logged_in(support.make_admin())
+    response = client.post("/approvals/templates/new/", {
+        "name": "Пустой", "subject_type": "ticket", "description": "", "enabled": "on", "stages_text": ""})
+    assert response.status_code == 200
+    assert "Добавьте хотя бы один этап" in response.content.decode()
+
+
+def test_future_stage_has_no_decision_form():
+    from apps.approvals.models import ApprovalStage, ApprovalStageParticipant, ApprovalTemplate
+    from apps.approvals.services import routes
+
+    admin_user = support.make_admin()
+    participant = support.make_employee()
+    template = ApprovalTemplate.objects.create(name="Два этапа", subject_type="ticket", author=admin_user)
+    first = ApprovalStage.objects.create(template=template, order=1, title="Первый", mode="parallel", rule="all")
+    ApprovalStageParticipant.objects.create(stage=first, kind="employee", user=admin_user)
+    second = ApprovalStage.objects.create(template=template, order=2, title="Второй", mode="parallel", rule="all")
+    ApprovalStageParticipant.objects.create(stage=second, kind="employee", user=admin_user)
+    ticket = sd.make_ticket(queue=sd.make_queue())
+    route = routes.start(admin_user, subject_type="ticket", subject_id=ticket.pk, template_id=template.pk)
+    page = support.logged_in(admin_user).get(f"/approvals/routes/{route.pk}/")
+    assert page.content.decode().count('data-form="approval-decision"') == 1

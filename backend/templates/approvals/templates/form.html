@@ -2,7 +2,7 @@
 {% block title %}{% if template %}Шаблон согласования{% else %}Новый шаблон{% endif %}{% endblock %}
 {% block content %}
 <h1 class="page-title">{% if template %}Шаблон согласования{% else %}Новый шаблон{% endif %}</h1>
-<form method="post" class="card card-body" data-approval-template-form>
+<form method="post" class="card card-body" data-approval-template-form novalidate>
   {% csrf_token %}
   {{ form.as_p }}
   <div class="d-flex gap-2">

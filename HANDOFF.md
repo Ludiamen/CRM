@@ -55,6 +55,7 @@ CAP-67, второй срез группы B. Основание — ADR-0022, �
    сервис-деск, границы модулей) проходят. `approvals.stand_reset` переведён на соединение `migrate` — это сняло
    зависание `test_notify_boundaries`/`test_sd_stand_restore` (30 passed). Полный прогон — **5066 passed, 0 failed, 3 deselected**, 57:28 (`crm-work/slice014/stage1/full.log`).
    Браузеры — Chromium, Firefox, Edge, Яндекс: по **6 passed, 1 skipped** (карточка без заявок на стенде).
+   Ручной проход — 4 браузера, `crm-work/slice014/stage6/manual/checklist.md`; нагрузка NFR-746/747 не принята, нужен повторный замер.
 6. **Стенд:** собран `web`/`nginx`, миграция `approvals 0001` применена без reset; `/approvals/` отвечает 302
    (вход). Браузеры, нагрузка и ручной проход — T-14051…T-14053. Для `test_t14_*` нужен сброс стенда
    (`e2e_reset_stand`): `create_first_admin` отказывает при уже существующем администраторе; сброс — решение

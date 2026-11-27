@@ -105,6 +105,16 @@ def decide(actor, assignment_id: int, decision: str, comment: str = ""):
         raise ApprovalError("comment_required", "Комментарий обязателен")
     if len(comment) > COMMENT_MAX:
         raise ApprovalError("comment_too_long", "Комментарий — не длиннее 4 000 знаков")
+    # Быстрый идемпотентный путь: повтор уже принятого решения не берёт блокировки и не пишет.
+    replay = ApprovalAssignment.objects.filter(pk=assignment_id).values(
+        "status", "decision", "comment", "user_id").first()
+    if replay is not None and replay["status"] != ApprovalAssignment.Status.PENDING:
+        if (replay["user_id"] == actor.pk and replay["decision"] == decision
+                and (replay["comment"] or "").strip() == comment):
+            return ApprovalAssignment.objects.get(pk=assignment_id)
+        if replay["status"] == ApprovalAssignment.Status.CANCELLED:
+            raise ApprovalError("assignment_cancelled", "Задание отменено")
+        raise ApprovalError("already_decided", "Решение уже принято")
     with transaction.atomic():
         route, assignment = _locked(assignment_id)
         if assignment.status != ApprovalAssignment.Status.PENDING:

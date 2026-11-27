@@ -28,11 +28,12 @@ def route_page(request, pk: int):
     stages = route.stages.prefetch_related("assignments__user").order_by("order")
     rows = []
     for stage in stages:
-        active = stage.assignments.filter(status=ApprovalAssignment.Status.PENDING).order_by("order", "pk")
-        if stage.mode == "sequential":
-            active = active[:1]
-        rows.append({"stage": stage, "assignments": stage.assignments.order_by("order", "pk"),
-                     "active_ids": {item.pk for item in active}})
+        assignments = list(stage.assignments.all())
+        pending = [item for item in assignments if item.status == "pending"] if stage.status == "running" else []
+        if stage.mode == "sequential" and pending:
+            pending = sorted(pending, key=lambda item: (item.order, item.pk))[:1]
+        rows.append({"stage": stage, "assignments": assignments,
+                     "active_ids": {item.pk for item in pending}})
     return render_page(request, "approvals/routes/page.html", {
         "route": route, "stages": rows, "brief": access.brief(route),
         "can_cancel": access.can_cancel(request.user, route),

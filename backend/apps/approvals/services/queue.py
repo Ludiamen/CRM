@@ -1,7 +1,7 @@
 """«Мои задания» и просрочка (PLAN-014, T-14030/T-14031)."""
 from django.utils import timezone
 
-from ..models import ApprovalAssignment, ApprovalRoute
+from ..models import ApprovalAssignment, ApprovalRoute, ApprovalStageRun
 from . import access, stages
 
 
@@ -9,13 +9,11 @@ def active_for(user):
     """Ожидающие задания, которые сейчас видны участнику (sequential — только текущее)."""
     rows = (ApprovalAssignment.objects.filter(
         user=user, status=ApprovalAssignment.Status.PENDING,
-        stage_run__route__status=ApprovalRoute.Status.RUNNING)
+        stage_run__route__status=ApprovalRoute.Status.RUNNING,
+        stage_run__status=ApprovalStageRun.Status.RUNNING)
         .select_related("stage_run", "stage_run__route", "user").order_by("due_at", "pk"))
-    result = []
-    for assignment in rows:
-        if assignment in stages.current_assignments(assignment.stage_run):
-            result.append(assignment)
-    return result
+    return [assignment for assignment in rows
+            if assignment in stages.current_assignments(assignment.stage_run)]
 
 
 def rows(user):

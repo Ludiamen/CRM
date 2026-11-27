@@ -1938,3 +1938,72 @@ def _check_board_p95(environment, **_kwargs):
     if stats.total.num_failures or over:
         print(f"NFR-742 не выполнено: p95 {over}, ошибок {stats.total.num_failures}", file=sys.stderr)
         environment.process_exit_code = 1
+
+
+class ApprovalsUser(HttpUser):
+    """Срез 014 (NFR-746/747): 100 сотрудников открывают «Мои задания», маршрут и принимают решение.
+
+    Данные — `prepare_users.py` (LOAD_USERS=2000), `fill_tickets.py` (110k заявок),
+    `fill_tasks.py` (20k задач) и `fill_approvals.py` (5k маршрутов, 25k заданий).
+    Запуск только этого класса:
+        LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py --headless -u 100 -r 1 -t 6m \
+            --reset-stats --host https://127.0.0.1:8031 ApprovalsUser
+    """
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        page = self.client.get("/approvals/my/", name="setup /approvals/my/").text
+        self.routes = sorted(set(re.findall(r'href="/approvals/routes/(\d+)/"', page)))
+        self.assignments = sorted(set(re.findall(r'data-assignment-id="(\d+)"', page)))
+
+    @task(4)
+    def my_assignments(self):
+        self.client.get("/approvals/my/", name="/approvals/my/")
+
+    @task(3)
+    def route(self):
+        if self.routes:
+            self.client.get(f"/approvals/routes/{random.choice(self.routes)}/",
+                            name="/approvals/routes/<id>/")
+
+    @task(1)
+    def decide(self):
+        if not self.assignments:
+            return
+        assignment = random.choice(self.assignments)
+        path = f"/approvals/assignments/{assignment}/decide/"
+        token = self.client.cookies.get("csrftoken", "")
+        with self.client.post(path, data={"decision": "approved", "comment": "",
+                                          "csrfmiddlewaretoken": token},
+                              headers={"Referer": self.host + path},
+                              name="POST /approvals/assignments/<id>/decide/",
+                              allow_redirects=False, catch_response=True) as response:
+            if response.status_code >= 400:
+                response.failure(f"decision: {response.status_code}")
+
+
+@events.quitting.add_listener
+def _check_approvals_p95(environment, **_kwargs):
+    """NFR-746/747: p95 списка и маршрута ≤500 мс, решения ≤300 мс, ошибок нет."""
+    if ApprovalsUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    for name, limit in (("/approvals/my/", 500), ("/approvals/routes/<id>/", 500),
+                        ("POST /approvals/assignments/<id>/decide/", 300)):
+        entry = None
+        for (entry_name, method), candidate in stats.entries.items():
+            if entry_name == name:
+                entry = candidate
+                break
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > limit:
+            over[name] = (p95, limit)
+    if stats.total.num_failures or over:
+        print(f"NFR-746/747 не выполнено: {over}, ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1
