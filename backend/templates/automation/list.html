@@ -1,0 +1,35 @@
+{% extends layout %}
+{% block title %}Автоматизация{% endblock %}
+{% block content %}
+<div class="page-head d-flex justify-content-between align-items-center">
+  <h1 class="page-title">Автоматизация</h1>
+  <a class="btn btn-primary" href="/automation/new/">Новое правило</a>
+</div>
+{% if rules %}
+<div class="table-responsive">
+  <table class="table align-middle">
+    <thead><tr><th>Название</th><th>Субъект</th><th>Область</th><th>Событие</th><th>Приоритет</th><th>Состояние</th><th></th></tr></thead>
+    <tbody>
+      {% for rule in rules %}
+      <tr>
+        <td><a href="/automation/{{ rule.pk }}/edit/">{{ rule.name }}</a></td>
+        <td>{{ rule.get_subject_type_display }}</td>
+        <td>{% if rule.scope == "queue" %}{{ rule.queue.name|default:"—" }}{% else %}{{ rule.get_scope_display }}{% endif %}</td>
+        <td>{{ rule.trigger }}</td>
+        <td>{{ rule.priority }}</td>
+        <td>{% if rule.enabled %}<span class="badge text-bg-success">включено</span>{% else %}<span class="badge text-bg-secondary">выключено</span>{% endif %}</td>
+        <td class="text-end">
+          <form method="post" action="/automation/{{ rule.pk }}/toggle/" class="d-inline">{% csrf_token %}
+            <button class="btn btn-sm btn-outline-secondary" type="submit">{% if rule.enabled %}Выключить{% else %}Включить{% endif %}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<p class="text-muted">Правил пока нет. Создайте первое правило.</p>
+{% endif %}
+<p><a href="/automation/runs/">Журнал запусков</a></p>
+{% endblock %}

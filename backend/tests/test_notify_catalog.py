@@ -95,6 +95,9 @@ TABLE = [
     ("servicedesk.sla_digest", "Сводка по срокам заявок", "Сервис-деск", 232, False, ALL_CHANNELS,
      ("servicedesk.sla_digest",),
      "Сводка по срокам заявок"),
+    # вид автоматизации (CONTRACT-013, 3.1): order 240, каналы «На портале» и «Почта»
+    ("automation.rule_notice", "Сообщение правила", "Автоматизация", 240, False, ("portal", "email"), (),
+     "Сработало правило автоматизации"),
 ]
 MANDATORY_CODES = {row[0] for row in TABLE if row[4]}
 
@@ -158,7 +161,7 @@ def test_catalog_contains_eight_kinds_from_three_modules():
     catalog = _kinds().catalog()
     assert [kind.code for kind in catalog] == [row[0] for row in TABLE]
     assert {kind.module for kind in catalog} == {"Сервис-деск", "Ядро", "Уведомления", "База знаний", "Списки", "Лента",
-                                                 "Мессенджер", "Задачи", "Поручения"}
+                                                 "Мессенджер", "Задачи", "Поручения", "Автоматизация"}
     assert [kind.module for kind in catalog].count("Сервис-деск") == 7
     assert [kind.module for kind in catalog].count("Ядро") == 3
     assert [kind.module for kind in catalog].count("Уведомления") == 1
@@ -168,6 +171,7 @@ def test_catalog_contains_eight_kinds_from_three_modules():
     assert [kind.module for kind in catalog].count("Мессенджер") == 2
     assert [kind.module for kind in catalog].count("Задачи") == 8
     assert [kind.module for kind in catalog].count("Поручения") == 10
+    assert [kind.module for kind in catalog].count("Автоматизация") == 1
 
 
 def test_catalog_kind_codes_titles_and_modules_match_plan_table():
@@ -539,7 +543,7 @@ def test_notification_record_has_kind_recipient_created_text_url_and_read_at():
     assert note.object_ref == ""
     meta = Notification._meta
     assert meta.get_field("kind").max_length == 64
-    assert meta.get_field("text").max_length == 300
+    assert meta.get_field("text").max_length == 500
     assert meta.get_field("url").max_length == 300
     assert meta.get_field("object_ref").max_length == 64
     assert meta.get_field("read_at").null is True

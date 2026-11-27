@@ -381,9 +381,12 @@ def test_close_publishes_ticket_closed_to_bus_and_writes_journal(bus_spy, django
     chosen = _default_closed()
     _close(ticket, chosen, "Уникальное решение 4711", user, django_capture_on_commit_callbacks)
 
+    ticket.refresh_from_db()
     calls = bus_spy.calls("servicedesk.ticket_closed")
-    assert calls == [{"number": ticket.number, "queue_id": queue.unit_id,
-                      "assignee_before_id": user.pk, "assignee_after_id": user.pk, "actor_id": user.pk}]
+    assert calls == [{"pk": ticket.pk, "number": ticket.number, "queue_id": queue.unit_id,
+                      "assignee_before_id": user.pk, "assignee_after_id": user.pk, "actor_id": user.pk,
+                      "closed_at": ticket.closed_at.isoformat(),
+                      "event_id": f"close:{ticket.number}:{ticket.closed_at.isoformat()}"}]
 
     (row,) = _journal("ticket.closed", ticket)
     assert row.actor_id == user.pk

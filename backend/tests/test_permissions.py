@@ -38,7 +38,7 @@ def test_three_builtin_roles_with_initial_permissions():
     assert set(builtin[support.ADMIN_ROLE].permissions.values_list("code", flat=True)) == set(
         PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003 + PERMISSIONS_004 + PERMISSIONS_005 + PERMISSIONS_006
         + PERMISSIONS_007 + PERMISSIONS_009 + PERMISSIONS_010
-        + tuple(code for code in PERMISSIONS_011 if code != "servicedesk.reports"))
+        + tuple(code for code in PERMISSIONS_011 if code != "servicedesk.reports") + ("automation.manage",))
     assert set(builtin[support.MANAGER_ROLE].permissions.values_list("code", flat=True)) == {
         "staff.view", "feed.post_all", "servicedesk.reports"}
     assert set(builtin[support.STAFF_ROLE].permissions.values_list("code", flat=True)) == {

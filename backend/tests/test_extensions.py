@@ -73,8 +73,10 @@ def test_org_registers_all_nine_extension_points():
     from tests.support_messenger import POINTS_008
     from tests.support_notify import POINTS_004
 
-    assert tuple(extensions.POINTS) == POINTS + POINTS_003 + POINTS_004 + POINTS_005 + POINTS_007 + POINTS_008
-    all_points = POINTS + POINTS_003 + POINTS_004 + POINTS_005 + POINTS_007 + POINTS_008
+    assert tuple(extensions.POINTS) == POINTS + POINTS_003 + POINTS_004 + POINTS_005 + POINTS_007 + POINTS_008 + (
+        "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    all_points = POINTS + POINTS_003 + POINTS_004 + POINTS_005 + POINTS_007 + POINTS_008 + (
+        "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
     for point in POINTS:
         funcs = extensions.registered(point)
         # в реестре могут быть и функции ядра; от `org` нужна хотя бы одна обычная функция модуля apps.org (доп. 39)

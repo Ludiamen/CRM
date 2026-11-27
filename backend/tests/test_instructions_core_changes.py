@@ -91,7 +91,7 @@ def test_settings_tail_and_instructions_urls_are_guarded():
     from django.conf import settings
 
     installed = list(settings.INSTALLED_APPS)
-    assert installed[-1] == APP and installed[-2] == "apps.tasks"
+    assert installed[-1] == "apps.automation" and installed[-2] == APP and installed[-3] == "apps.tasks"
 
     path = support.BACKEND_DIR / "config" / "urls.py"
     tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -117,7 +117,7 @@ def test_cron_has_27_registers_and_three_guarded_instructions_jobs():
     """FR-711, NFR-729: три задания поручений в cron с расписанием и очередью `maintenance`, под проверкой
     установки; всего 27 вызовов."""
     calls = _cron_calls()
-    assert len(calls) == 29, f"вызовов register {len(calls)}"
+    assert len(calls) == 31, f"вызовов register {len(calls)}"
     expected = {
         "instructions_reminders": ("apps.instructions.tasks.instructions_reminders", "*/5 * * * *", 300),
         "instructions_digest": ("apps.instructions.tasks.instructions_digest", "*/15 * * * *", 300),
@@ -137,11 +137,12 @@ def test_points_stay_19_and_instructions_register_expected_points():
     подписи, назначение файла и сброс стенда; `stand_reset` — последняя запись точки."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_19 and len(extensions.POINTS) == len(POINTS_19)
-    assert set(extensions._registry) == set(POINTS_19)
+    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    assert tuple(extensions.POINTS) == POINTS_19 + auto and len(extensions.POINTS) == len(POINTS_19) + len(auto)
+    assert set(extensions._registry) == set(POINTS_19 + auto)
     for point, (module, name) in REGISTRATIONS.items():
         own = _own(point)
         assert [(func.__module__, func.__name__) for func in own] == [(module, name)], point
     assert _own("search_providers") == [], "поручения не регистрируют поиск"
     assert _own("card_sections") == [], "поручения не регистрируют раздел карточки"
-    assert extensions.registered("stand_reset")[-1].__module__ == "apps.instructions.stand"
+    assert extensions.registered("stand_reset")[-2].__module__ == "apps.instructions.stand"

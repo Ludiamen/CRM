@@ -27,6 +27,9 @@ if apps.is_installed("apps.instructions"):
     # Адреса поручений — только у установленного модуля (T-10001, Этап 1).
     urlpatterns.append(path("", include("apps.instructions.urls")))  # /instructions/…, /settings/instructions/…
 
+if apps.is_installed("apps.automation"):
+    urlpatterns.append(path("", include("apps.automation.urls")))  # /automation/…
+
 handler400 = "apps.core.views.pages.bad_request"
 handler403 = "apps.core.views.pages.forbidden"
 handler404 = "apps.core.views.pages.not_found"

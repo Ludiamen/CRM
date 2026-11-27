@@ -12,6 +12,7 @@ from urllib.parse import urlencode
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.http import Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
@@ -202,6 +203,8 @@ def _context(request, bulk=None) -> dict:
 @require_GET
 def ticket_list(request):
     """Список заявок: страница, страница-фрагмент или только сетка (`HX-Target: tickets-grid`)."""
+    if request.GET.get("view") == "board":
+        return ticket_board(request)
     context = _context(request)
     if is_fragment(request) and request.headers.get("HX-Target") == GRID_ID:
         response = render(request, "servicedesk/list/_grid.html", context)
@@ -266,3 +269,95 @@ def ticket_bulk(request):
         response["Vary"] = "HX-Request"
         return response
     return render_page(request, "servicedesk/list/page.html", _context(request, bulk=bulk))
+
+
+# --- Доска заявок (срез 013, T-13011/T-13012) ---------------------------------------------------------
+
+def _board_read(request):
+    """Параметры доски: те же фильтры, что у списка."""
+    return _read(request.GET)
+
+
+def _board_columns(request, read=None):
+    from ..services import board
+
+    read = read or _board_read(request)
+    preset = read["preset"] if read["preset"] in listing.PRESETS else None
+    return board.columns(request.user, read["filters"], preset=preset)
+
+
+@menu_required
+@require_GET
+def ticket_board(request):
+    """Режим «Канбан»: колонки-статусы, карточки и фильтры списка."""
+    read = _board_read(request)
+    values = read["values"]
+    marked = queues.marked_units()
+    context = {
+        "board_columns": _board_columns(request, read),
+        "board_params": urlencode({**read["params"], "view": "board"}),
+        "board_view": True,
+        "board_statuses": list(dictionaries.manual_statuses()),
+        "queue_choices": [{"id": unit.id, "name": unit.name, "selected": unit.id == values.get("queue")}
+                          for unit in marked],
+        "priority_choices": _choices("priority", values.get("priority")),
+        "status_choices": _choices("status", values.get("status")),
+        "can_create": access.can_create(request.user),
+    }
+    return render_page(request, "servicedesk/board/page.html", context)
+
+
+@menu_required
+@require_GET
+def ticket_board_column(request, key: str):
+    """Следующая порция колонки для «Показать ещё»."""
+    from ..services import board
+
+    read = _board_read(request)
+    offset = _number(request.GET.get("offset", "")) or 0
+    try:
+        preset = read["preset"] if read["preset"] in listing.PRESETS else None
+        found = board.column(request.user, key, read["filters"], offset=offset, preset=preset)
+    except board.BoardError as exc:
+        if exc.code == "no_access":
+            raise PermissionDenied from exc
+        raise Http404 from exc
+    return render(request, "servicedesk/board/_column.html",
+                  {"column": found, "board_params": urlencode({**read["params"], "view": "board"}),
+                   "board_statuses": list(dictionaries.manual_statuses())})
+
+
+@menu_required
+@require_POST
+def ticket_board_move(request):
+    """Перенос карточки; закрытие — только через форму решения."""
+    from django.http import JsonResponse
+    from django.http.request import QueryDict
+
+    from ..services import board, tickets
+
+    number = _number(request.POST.get("number", ""))
+    if number is None:
+        return JsonResponse({"error": "Заявка не найдена"}, status=404)
+    ticket = tickets.get_for(request.user, number)
+    key = (request.POST.get("status") or "").strip()
+    if key == board.CLOSED_KEY:
+        return JsonResponse({"error": "Закройте заявку через форму решения", "code": "close_required"}, status=409)
+    status = Status.objects.filter(pk=_number(key) or 0).first()
+    if status is None:
+        return JsonResponse({"error": "Колонка не найдена", "code": "bad_column"}, status=400)
+    query = QueryDict(request.POST.get("query") or "")
+    read = _read(query)
+    try:
+        board.move(request.user, ticket, status, expected=request.POST.get("expected"))
+    except board.BoardError as exc:
+        return JsonResponse({"error": exc.message, "code": exc.code}, status=409)
+    preset = read["preset"] if read["preset"] in listing.PRESETS else None
+    columns = board.columns(request.user, read["filters"], preset=preset)
+    if not request.headers.get("HX-Request"):
+        from django.shortcuts import redirect
+
+        return redirect("/tickets/board/?" + urlencode({**read["params"], "view": "board"}))
+    return render(request, "servicedesk/board/_board.html",
+                  {"board_columns": columns, "board_params": urlencode({**read["params"], "view": "board"}),
+                   "board_statuses": list(dictionaries.manual_statuses())})

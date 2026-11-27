@@ -171,9 +171,9 @@ def test_portal_has_twenty_permissions_after_seed():
     порядку создания (раздел 1.4 контракта)."""
     _start()
     Permission = _model("core.Permission")
-    assert Permission.objects.count() == 24
-    ls.run_seed(using="default")
     assert Permission.objects.count() == 25
+    ls.run_seed(using="default")
+    assert Permission.objects.count() == 26
     assert Permission.objects.order_by("-pk").first().code == "lists.manage"
 
 

@@ -368,6 +368,7 @@ class Ticket(models.Model):
                                  verbose_name="категория")
     queue = models.ForeignKey("org.Unit", on_delete=models.PROTECT, related_name="+", verbose_name="очередь")
     priority = models.ForeignKey(Priority, on_delete=models.PROTECT, related_name="+", verbose_name="критичность")
+    priority_order = models.PositiveSmallIntegerField("порядок критичности", default=0)
     complexity = models.ForeignKey(Complexity, on_delete=models.PROTECT, null=True, blank=True, related_name="+",
                                    verbose_name="сложность")
     status = models.ForeignKey(Status, on_delete=models.PROTECT, related_name="+", verbose_name="статус")
@@ -407,6 +408,10 @@ class Ticket(models.Model):
         verbose_name_plural = "заявки"
         indexes = [
             models.Index(fields=["queue", "kind"], name="servicedesk_ticket_queue_kind"),
+            models.Index(fields=["queue", "kind", "sla_solution_due"], name="servicedesk_ticket_board_sort"),
+            models.Index(fields=["status", "sla_solution_due"], name="sd_ticket_board_status"),
+            models.Index(fields=["status", "sla_solution_due", "priority_order", "-last_message_at", "number"],
+                         name="sd_ticket_board_sort2"),
             models.Index(fields=["assignee", "kind"], name="servicedesk_ticket_asg_kind"),
             models.Index(fields=["queue"], name="servicedesk_ticket_unassigned",
                          condition=Q(assignee__isnull=True) & ~Q(kind="closed")),

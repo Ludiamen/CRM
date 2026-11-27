@@ -1,0 +1,41 @@
+<section class="ticket-board-column" id="board-column-{{ column.key }}" data-column="{{ column.key }}">
+  <header class="ticket-board-column-head">
+    <span class="ticket-board-title">{{ column.title }}</span>
+    <span class="badge text-bg-secondary" data-count>{{ column.count }}</span>
+  </header>
+  <ol class="ticket-board-list" data-drop="{{ column.key }}">
+    {% for ticket in column.tickets %}
+    <li class="ticket-board-card" data-ticket-card data-number="{{ ticket.number }}"
+        data-expected="{{ ticket.updated_at.isoformat }}" draggable="{% if ticket.can_work %}true{% else %}false{% endif %}">
+      <a class="ticket-board-card-title" href="/tickets/{{ ticket.number }}/">#{{ ticket.number }} {{ ticket.subject }}</a>
+      <div class="ticket-board-card-meta">
+        <span>{{ ticket.requester_name|default:ticket.requester_email }}</span>
+        <span>{{ ticket.priority.name }}</span>
+        <span>{% if ticket.assignee_id %}{{ ticket.assignee.full_name }}{% else %}Без ответственного{% endif %}</span>
+        <span>{% if ticket.sla_solution_due %}до {{ ticket.sla_solution_due|date:"d.m.Y H:i" }}{% else %}Без срока{% endif %}</span>
+      </div>
+      {% if column.key != "closed" and ticket.can_work %}
+      <form class="ticket-board-card-menu" method="post" action="/tickets/board/move/">
+        {% csrf_token %}
+        <input type="hidden" name="number" value="{{ ticket.number }}">
+        <input type="hidden" name="expected" value="{{ ticket.updated_at.isoformat }}">
+        <input type="hidden" name="query" value="{{ board_params }}">
+        <label class="visually-hidden" for="move-{{ ticket.number }}">Сменить статус</label>
+        <select class="form-select form-select-sm" id="move-{{ ticket.number }}" name="status">
+          <option value="">Сменить статус</option>
+          {% for status in board_statuses %}<option value="{{ status.pk }}">{{ status.name }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-sm btn-outline-secondary" type="submit">Перенести</button>
+      </form>
+      {% endif %}
+    </li>
+    {% empty %}
+    <li class="ticket-board-empty text-muted">Нет заявок</li>
+    {% endfor %}
+  </ol>
+  {% if column.has_more %}
+  <button class="btn btn-sm btn-outline-secondary ticket-board-more" type="button"
+          hx-get="/tickets/board/column/{{ column.key }}/?offset={{ column.offset }}&{{ board_params }}"
+          hx-target="#board-column-{{ column.key }}" hx-swap="outerHTML">Показать ещё</button>
+  {% endif %}
+</section>

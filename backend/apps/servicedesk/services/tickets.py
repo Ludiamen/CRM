@@ -201,6 +201,7 @@ def create(*, channel, subject, text, requester_email, requester_name="", client
             number=number, subject=mail_parse.clean_subject(subject), requester=record, requester_email=email,
             requester_name=name, client_unit=ticket_unit, category=category, queue_id=unit_id, priority=priority,
             complexity=complexity, status=status, kind=status.kind, source=source, assignee=assignee,
+            priority_order=priority.order,
             assigned_once=assignee is not None, created_by=created_by if staff else None,
             consent_at=consent_at if channel == FORM else None, previous=previous, last_message_at=moment,
             last_message_from=Ticket.MessageFrom.STAFF if staff else Ticket.MessageFrom.REQUESTER)
@@ -268,12 +269,14 @@ def set_status(ticket, status, *, actor, reason, ip=None, start_countdown=True) 
         elif not was_waiting and start_countdown:
             ticket.waiting_since = timezone.now()
         ticket.save(update_fields=["status", "kind", "waiting_since", "updated_at"])
-        replies.add_event(ticket, "status_changed", actor=actor, data={
+        entry = replies.add_event(ticket, "status_changed", actor=actor, data={
             "before": before.name, "after": status.name, "before_id": before.pk, "after_id": status.pk,
             "reason": reason})
         if reason not in _CLOSING_REASONS:
             audit.record("ticket.updated", actor=actor, object_type="ticket", object_id=ticket.number,
                          before={"status": before.name}, after={"status": status.name}, ip=ip)
+        events.ticket_status_changed(ticket, before_id=before.pk, after_id=status.pk, entry_id=entry.pk,
+                                     actor_id=actor.pk if actor is not None else None, reason=reason)
     return True
 
 
@@ -382,8 +385,10 @@ def update_fields(ticket, *, actor, ip=None, priority=UNSET, complexity=UNSET, c
                 "before": old.name, "after": priority.name, "before_id": old.pk, "after_id": priority.pk})
             before["priority"], after["priority"] = old.name, priority.name
             ticket.priority = priority
+            ticket.priority_order = priority.order
             changed.append("priority")
             saved.append("priority")
+            saved.append("priority_order")
         if complexity is not UNSET and (complexity.pk if complexity else None) != ticket.complexity_id:
             old = ticket.complexity
             replies.add_event(ticket, "complexity_changed", actor=actor, data={
@@ -411,8 +416,10 @@ def update_fields(ticket, *, actor, ip=None, priority=UNSET, complexity=UNSET, c
             saved.append("requester_name")
         if saved:
             ticket.save(update_fields=saved + ["updated_at"])
-            audit.record("ticket.updated", actor=actor, object_type="ticket", object_id=ticket.number, before=before,
-                         after=after, ip=ip)
+            event = audit.record("ticket.updated", actor=actor, object_type="ticket", object_id=ticket.number,
+                                 before=before, after=after, ip=ip)
+            events.ticket_field_changed(ticket, changed=changed, audit_id=event.pk,
+                                        actor_id=actor.pk if actor is not None else None)
             from . import sla
             sla.recalculate(ticket)
         _sync_requester_record(ticket, unit=unit, set_unit=client_unit_id is not UNSET, name=name,

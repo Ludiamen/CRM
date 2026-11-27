@@ -1,0 +1,8 @@
+<div data-ticket-board data-move-url="/tickets/board/move/" class="ticket-board">
+  <div class="ticket-board-columns">
+    {% for column in board_columns %}
+      {% include "servicedesk/board/_column.html" %}
+    {% endfor %}
+  </div>
+  <p class="text-muted small mt-2">Перетащите карточку в другую колонку или выберите статус в карточке. Закрытие — только через форму решения в карточке заявки.</p>
+</div>

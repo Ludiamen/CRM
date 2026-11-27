@@ -106,6 +106,9 @@ def create(actor, *, title, description="", deadline=None, assignee, members=(),
     TaskMember.objects.bulk_create(_members(task, members, assignee=assignee))
     audit.record("tasks.created", actor=actor, object_type="tasks.task", object_id=task.pk,
                  after={"title": task.title, "assignee": assignee.full_name, "deadline": _iso(task.deadline)})
+    from . import events as task_events
+
+    task_events.task_created(task)
     if task.deadline is not None:
         from apps.tasks.services import reminders
 
@@ -176,8 +179,11 @@ def update(actor, task, **fields) -> Task:
     if after:
         task.updated_at = timezone.now()
         task.save()
-        audit.record("tasks.changed", actor=actor, object_type="tasks.task", object_id=task.pk,
-                     before=before, after=after)
+        event = audit.record("tasks.changed", actor=actor, object_type="tasks.task", object_id=task.pk,
+                             before=before, after=after)
+        from . import events as task_events
+
+        task_events.task_field_changed(task, changed=list(after), audit_id=event.pk)
     if {"deadline", "assignee", "members"} & set(after):
         from apps.tasks.services import reminders
 
@@ -199,8 +205,11 @@ def change_status(actor, task, status) -> Task:
     task.completed_at = timezone.now() if status == Task.Status.DONE else None
     task.updated_at = timezone.now()
     task.save(update_fields=["status", "completed_at", "updated_at"])
-    audit.record("tasks.changed", actor=actor, object_type="tasks.task", object_id=task.pk,
-                 before={"status": before}, after={"status": status})
+    event = audit.record("tasks.changed", actor=actor, object_type="tasks.task", object_id=task.pk,
+                         before={"status": before}, after={"status": status})
+    from . import events as task_events
+
+    task_events.task_status_changed(task, before=before, after=status, audit_id=event.pk)
     if status == Task.Status.DONE:
         from apps.tasks.services import reminders
 

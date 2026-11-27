@@ -32,7 +32,7 @@ def test_sla_permissions_and_initial_role_grants():
     assert dict(Permission.objects.filter(code__in=PERMISSIONS).values_list("code", "title")) == TITLES
     admin = Role.objects.get(name="Администратор портала", is_builtin=True)
     manager = Role.objects.get(name="Руководитель", is_builtin=True)
-    assert len(admin.permissions.all()) == 24
+    assert len(admin.permissions.all()) == 25
     assert "servicedesk.reports" not in admin.permissions.values_list("code", flat=True)
     assert "servicedesk.reports" in manager.permissions.values_list("code", flat=True)
 
@@ -161,8 +161,9 @@ def test_installed_apps_tail_keeps_instructions_last():
     from django.conf import settings
 
     installed = list(settings.INSTALLED_APPS)
-    assert installed[-1] == "apps.instructions"
-    assert installed[-2] == "apps.tasks"
+    assert installed[-1] == "apps.automation"
+    assert installed[-2] == "apps.instructions"
+    assert installed[-3] == "apps.tasks"
 
 
 def test_servicedesk_0004_depends_on_core_0016():

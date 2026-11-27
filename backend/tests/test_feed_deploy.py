@@ -171,11 +171,12 @@ def test_feed_is_in_installed_apps_tail_after_search():
     from django.apps import apps
     from django.conf import settings
 
-    assert list(settings.INSTALLED_APPS)[-9:] == feed.APPS_TAIL
-    assert list(settings.INSTALLED_APPS)[-4] == "apps.feed"
-    assert list(settings.INSTALLED_APPS)[-3] == "apps.messenger"
-    assert list(settings.INSTALLED_APPS)[-2] == "apps.tasks"
-    assert list(settings.INSTALLED_APPS)[-1] == "apps.instructions"
+    assert list(settings.INSTALLED_APPS)[-10:] == feed.APPS_TAIL + ["apps.automation"]
+    assert list(settings.INSTALLED_APPS)[-5] == "apps.feed"
+    assert list(settings.INSTALLED_APPS)[-4] == "apps.messenger"
+    assert list(settings.INSTALLED_APPS)[-3] == "apps.tasks"
+    assert list(settings.INSTALLED_APPS)[-2] == "apps.instructions"
+    assert list(settings.INSTALLED_APPS)[-1] == "apps.automation"
     config = apps.get_app_config("feed")
     assert type(config).__name__ == "FeedConfig"
     assert config.label == "feed"
@@ -242,7 +243,7 @@ def test_cron_module_has_twenty_seven_register_calls():
     """FR-618, FR-638: в `config/cron.py` двадцать девять вызовов `register` (восемнадцать прежних, `feed_reminders`,
     `feed_retention`, `messenger_retention` среза 008, три задания среза 009, три среза 010 и два среза 011)."""
     entries = cron_registrations()
-    assert len(entries) == 29, (
+    assert len(entries) == 31, (
         f"вызовов register {len(entries)}, ожидается 29 (18 прежних, две записи ленты, "
         "messenger_retention среза 008, три задания срезов 009 и 010 и два среза 011)")
     assert {"feed_reminders", "feed_retention"} <= {item["name"] for item in entries}
@@ -259,7 +260,7 @@ def test_previous_eighteen_cron_entries_keep_names_and_minutes():
             assert item["interval"] == expected and item["cron"] is None, f"{name}: интервал {item['interval']}"
         else:
             assert item["cron"] == expected and item["interval"] is None, f"{name}: cron {item['cron']!r}"
-    assert len(entries) - len(PREVIOUS_CRON) == 11, (
+    assert len(entries) - len(PREVIOUS_CRON) == 13, (
         "кроме прежних: две записи ленты, одна мессенджера, три задач, три поручений и две сроков заявок")
 
 

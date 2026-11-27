@@ -5,6 +5,7 @@
 <div data-tickets-list class="tickets-list">
   <header class="page-head">
     <h1 class="page-title">Заявки</h1>
+    <a class="btn btn-outline-secondary" data-board-toggle="board" href="/tickets/board/">Канбан</a>
     {% if can_create %}<a class="btn btn-primary" data-action="ticket-new" href="/tickets/new/">Новая заявка</a>{% endif %}
   </header>
   <nav data-presets class="tickets-presets" aria-label="Готовые выборки">

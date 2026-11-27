@@ -116,9 +116,9 @@ def test_knowledge_and_search_are_in_installed_apps_after_notify():
     from django.conf import settings
     from tests.support_feed import APPS_TAIL
 
-    assert list(settings.INSTALLED_APPS)[-8:] == APPS_TAIL[1:] == [
+    assert list(settings.INSTALLED_APPS)[-9:] == APPS_TAIL[1:] + ["apps.automation"] == [
         "apps.notify", "apps.knowledge", "apps.lists", "apps.search", "apps.feed", "apps.messenger", "apps.tasks",
-        "apps.instructions"]
+        "apps.instructions", "apps.automation"]
     assert apps.get_app_config("knowledge").label == "knowledge"
     assert apps.get_app_config("search").label == "search"
     assert apps.get_app_config("knowledge").verbose_name == "База знаний"
@@ -131,7 +131,7 @@ def test_purge_trash_is_registered_in_cron_with_45_23_maintenance_timeout_600():
     двадцать первая — `messenger_retention` среза 008 (CONTRACT-008, раздел 1.2), двадцать вторая…двадцать
     четвёртая — задания задач среза 009, двадцать пятая…двадцать седьмая — задания поручений среза 010."""
     registrations = cron_registrations()
-    assert len(registrations) == 29, (
+    assert len(registrations) == 31, (
         f"вызовов register {len(registrations)}, ожидается 29 (16 прежних, purge_trash, lists_reminders, два задания "
         "среза 007, messenger_retention среза 008, три задания среза 009, три среза 010 и два среза 011)")
     by_name = {item["name"]: item for item in registrations}
@@ -594,12 +594,13 @@ def test_stand_reset_knowledge_restores_general_rubric_and_role_permissions():
     assert "apps.messenger.stand" in names, "stand_reset модуля messenger не зарегистрирован в точке"
     assert "apps.tasks.stand" in names, "stand_reset модуля tasks не зарегистрирован в точке"
     assert "apps.instructions.stand" in names, "stand_reset модуля instructions не зарегистрирован в точке"
-    assert names.index("apps.instructions.stand") == len(names) - 1
-    assert names.index("apps.tasks.stand") == len(names) - 2
-    assert names.index("apps.messenger.stand") == len(names) - 3
-    assert names.index("apps.feed.stand") == len(names) - 4
-    assert names.index("apps.lists.stand") == len(names) - 5
-    assert names.index("apps.knowledge.stand") == len(names) - 6
+    assert names.index("apps.instructions.stand") == len(names) - 2
+    assert names.index("apps.automation.stand") == len(names) - 1
+    assert names.index("apps.tasks.stand") == len(names) - 3
+    assert names.index("apps.messenger.stand") == len(names) - 4
+    assert names.index("apps.feed.stand") == len(names) - 5
+    assert names.index("apps.lists.stand") == len(names) - 6
+    assert names.index("apps.knowledge.stand") == len(names) - 7
     for rubric in _on("knowledge.Rubric").order_by("-depth"):
         rubric.delete()
     _on("knowledge.KnowledgeSettings").all().delete()

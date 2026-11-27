@@ -18,6 +18,10 @@ urlpatterns = [
     path("tickets/", tickets_list.ticket_list, name="sd-ticket-list"),
     path("tickets/count/", tickets_list.ticket_count, name="sd-ticket-count"),
     path("tickets/bulk/", tickets_list.ticket_bulk, name="sd-ticket-bulk"),
+    # доска заявок (срез 013); до `tickets/<int:number>/`
+    path("tickets/board/", tickets_list.ticket_board, name="sd-ticket-board"),
+    path("tickets/board/column/<str:key>/", tickets_list.ticket_board_column, name="sd-ticket-board-column"),
+    path("tickets/board/move/", tickets_list.ticket_board_move, name="sd-ticket-board-move"),
     # заявка от исполнителя
     path("tickets/new/", ticket_new.ticket_new, name="sd-ticket-new"),
     path("tickets/new/requester/", ticket_new.requester_fields, name="sd-requester-fields"),

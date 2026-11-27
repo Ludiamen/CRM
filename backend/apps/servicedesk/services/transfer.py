@@ -63,9 +63,9 @@ def _move(ticket, queue_id: int, *, actor, ip, reason_text, event_extra=None) ->
     ticket.save(update_fields=["queue", "updated_at"])
     data = {"from": old_name, "to": new_name, "from_id": old_id, "to_id": queue_id}
     if reason_text is None:
-        replies.add_event(ticket, "queue_changed", actor=actor, data=data)
+        event = replies.add_event(ticket, "queue_changed", actor=actor, data=data)
     else:
-        replies.add_event(ticket, "transferred", actor=actor, data={**data, "reason_text": reason_text})
+        event = replies.add_event(ticket, "transferred", actor=actor, data={**data, "reason_text": reason_text})
     audit.record("ticket.transferred", actor=actor, object_type="ticket", object_id=ticket.number,
                  before={"queue": old_name, "queue_id": old_id},
                  after={"queue": new_name, "queue_id": queue_id, "reason_given": bool(reason_text)}, ip=ip)
@@ -74,7 +74,8 @@ def _move(ticket, queue_id: int, *, actor, ip, reason_text, event_extra=None) ->
     removed = False
     if assignee is not None and not access.is_participant(assignee, queue_id):
         removed = assignment.clear_assignee(ticket, actor=actor, reason="queue_changed", ip=ip)
-    events.ticket_transferred(ticket, from_queue_id=old_id, actor_id=actor.pk if actor is not None else None)
+    events.ticket_transferred(ticket, from_queue_id=old_id, actor_id=actor.pk if actor is not None else None,
+                              entry_id=event.pk)
     return removed
 
 

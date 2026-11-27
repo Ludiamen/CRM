@@ -1891,3 +1891,50 @@ class InstructionUser(HttpUser):
                 response.success()
             else:
                 response.failure(f"Excel: {response.status_code}")
+
+
+@tag("slice013", "nfr742")
+class AutomationBoardUser(HttpUser):
+    """NFR-742: 100 сотрудников открывают канбан заявок и следующую порцию колонки.
+
+    Запуск только этого класса:
+    ``LOAD_CREDENTIALS=creds.csv locust -f tests/load/locustfile.py -u 100 -r 1 --headless --reset-stats AutomationBoardUser``.
+    """
+
+    wait_time = between(*(float(x) for x in os.environ.get("LOAD_WAIT", "5,15").split(",")))
+
+    def on_start(self):
+        self.client.verify = False
+        self.email, self.password, self.key = _next_credentials()
+        StaffAuditHistoryUser._post_form(self, "/login/", {"email": self.email, "password": self.password})
+        StaffAuditHistoryUser._post_form(self, "/login/code/", {"code": _totp(self.key)})
+        board = self.client.get("/tickets/board/", name="setup /tickets/board/").text
+        self.columns = sorted(set(re.findall(r'data-column="([^"]+)"', board))) or ["closed"]
+
+    @task(3)
+    def board(self):
+        self.client.get("/tickets/board/", name="/tickets/board/")
+
+    @task(2)
+    def column(self):
+        key = random.choice(self.columns)
+        self.client.get(f"/tickets/board/column/{key}/?offset=0", name="/tickets/board/column/<key>/")
+
+
+BOARD_PAGES = (("/tickets/board/", "GET"), ("/tickets/board/column/<key>/", "GET"))
+
+
+@events.quitting.add_listener
+def _check_board_p95(environment, **_kwargs):
+    if AutomationBoardUser not in environment.user_classes:
+        return
+    stats = environment.stats
+    over = {}
+    for name, method in BOARD_PAGES:
+        entry = stats.entries.get((name, method))
+        p95 = entry.get_response_time_percentile(0.95) if entry and entry.num_requests else None
+        if p95 is None or p95 > P95_LIMIT_MS:
+            over[name] = p95
+    if stats.total.num_failures or over:
+        print(f"NFR-742 не выполнено: p95 {over}, ошибок {stats.total.num_failures}", file=sys.stderr)
+        environment.process_exit_code = 1

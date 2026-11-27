@@ -24,8 +24,9 @@ def test_instructions_stand_reset_is_registered_last_after_tasks():
 
     funcs = extensions.registered("stand_reset")
     assert funcs, "нет зарегистрированных функций сброса стенда"
-    assert funcs[-1] is instructions_stand.stand_reset
-    assert funcs[-2] is tasks_stand.stand_reset
+    assert funcs[-2] is instructions_stand.stand_reset
+    assert funcs[-3] is tasks_stand.stand_reset
+    assert funcs[-1].__module__ == "apps.automation.stand"
 
 
 @pytest.mark.django_db

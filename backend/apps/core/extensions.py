@@ -20,7 +20,8 @@ POINTS = ("menu_items", "role_sources", "role_usage", "audit_labels", "staff_dir
           "unit_usage", "file_purposes", "mail_renderers", "login_links",
           "notification_kinds", "top_bar_items", "search_providers", "ticket_card_parts",
           "home_body", "unit_form_parts",
-          "ticket_task_seed", "ticket_task_brief", "ticket_task_create", "ticket_task_list")
+          "ticket_task_seed", "ticket_task_brief", "ticket_task_create", "ticket_task_list",
+          "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
 
 _registry: dict[str, list] = {point: [] for point in POINTS}
 

@@ -279,7 +279,7 @@ def test_notification_catalog_without_knowledge_has_no_knowledge_kinds():
     assert [k.code for k in rest if k.code.startswith("knowledge.") or k.module == "База знаний"] == []
     assert {k.code for k in rest} == set(full) - added
     assert "lists.deadline" in {k.code for k in rest}, "вид среза 006 не зависит от knowledge"
-    assert len(rest) == 40, "прежних видов 19, восемь задач 009, десять поручений 010 и три вида сроков заявок 011"
+    assert len(rest) == 41, "прежних видов 19, восемь задач 009, десять поручений 010 и три вида сроков заявок 011"
 
 
 def test_search_without_knowledge_has_no_articles_group():
@@ -358,9 +358,10 @@ def test_points_has_seventeen_names():
     новые среза 005, `home_body` среза 007 и `unit_form_parts` среза 008); `_registry` содержит ключ на каждое имя."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_19
-    assert len(extensions.POINTS) == len(POINTS_19)
-    assert set(extensions._registry) == set(POINTS_19)
+    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    assert tuple(extensions.POINTS) == POINTS_19 + auto
+    assert len(extensions.POINTS) == len(POINTS_19) + len(auto)
+    assert set(extensions._registry) == set(POINTS_19 + auto)
 
 
 def test_points_new_names_search_providers_and_ticket_card_parts_are_last_two():

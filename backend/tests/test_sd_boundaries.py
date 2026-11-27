@@ -29,7 +29,7 @@ SERVICEDESK_POINTS = ("menu_items", "unit_usage", "file_purposes", "mail_rendere
 CORE_MENU_TITLES = ["Сотрудники", "Роли и права", "Журнал событий", "Настройки портала", "Безопасность и политика"]
 FOUR = ("servicedesk.ticket_created", "servicedesk.assignee_changed", "servicedesk.reply_received",
         "servicedesk.ticket_closed")
-EVENT_KEYS = {"number", "queue_id", "assignee_before_id", "assignee_after_id"}
+EVENT_KEYS = {"pk", "number", "queue_id", "assignee_before_id", "assignee_after_id", "event_id"}
 
 
 # --- помощники только этого файла -------------------------------------------------------------------
@@ -368,16 +368,21 @@ def test_servicedesk_events_carry_ticket_number_queue_and_assignees(bus, django_
         sd_events.assignee_changed(ticket, before_id=assignee.pk, after_id=other.pk, actor_id=other.pk)
         sd_events.reply_received(ticket, via="appended", author_kind="requester", entry_id=4711)
         sd_events.ticket_closed(ticket, actor_id=assignee.pk)
-    assert bus.calls(FOUR[0]) == [{**base, "assignee_before_id": None, "assignee_after_id": assignee.pk,
+    stamp = ticket.updated_at.isoformat()
+    assert bus.calls(FOUR[0]) == [{**base, "pk": ticket.pk, "event_id": f"created:{ticket.number}",
+                                   "assignee_before_id": None, "assignee_after_id": assignee.pk,
                                    "actor_id": other.pk, "channel": "staff"}]
-    assert bus.calls(FOUR[1]) == [{**base, "assignee_before_id": assignee.pk, "assignee_after_id": other.pk,
+    assert bus.calls(FOUR[1]) == [{**base, "pk": ticket.pk, "event_id": f"assignee:{ticket.number}:{stamp}",
+                                   "assignee_before_id": assignee.pk, "assignee_after_id": other.pk,
                                    "actor_id": other.pk}]
-    assert bus.calls(FOUR[2]) == [{**base, "assignee_before_id": assignee.pk, "assignee_after_id": assignee.pk,
+    assert bus.calls(FOUR[2]) == [{**base, "pk": ticket.pk, "event_id": "reply:4711",
+                                   "assignee_before_id": assignee.pk, "assignee_after_id": assignee.pk,
                                    "actor_id": None, "via": "appended", "author_kind": "requester", "entry_id": 4711}]
-    assert bus.calls(FOUR[3]) == [{**base, "assignee_before_id": assignee.pk, "assignee_after_id": assignee.pk,
-                                   "actor_id": assignee.pk}]
+    assert bus.calls(FOUR[3]) == [{**base, "pk": ticket.pk, "event_id": f"close:{ticket.number}:{stamp}",
+                                   "assignee_before_id": assignee.pk, "assignee_after_id": assignee.pk,
+                                   "actor_id": assignee.pk, "closed_at": stamp}]
     new_keys = {FOUR[0]: {"actor_id", "channel"}, FOUR[1]: {"actor_id"},
-                FOUR[2]: {"actor_id", "via", "author_kind", "entry_id"}, FOUR[3]: {"actor_id"}}
+                FOUR[2]: {"actor_id", "via", "author_kind", "entry_id"}, FOUR[3]: {"actor_id", "closed_at"}}
     assert all(set(data) == EVENT_KEYS | new_keys[name] for name, data in bus.all())
     assert base["queue_id"] == queue.unit_id
 
@@ -397,20 +402,25 @@ def test_four_servicedesk_events_are_published_by_ticket_services(bus_spy, djang
                                  requester_email=email, category=category, inbound_id=sd.make_inbound().pk)
     ticket = model("servicedesk.Ticket").objects.get(pk=created.ticket.pk)
     base = {"number": ticket.number, "queue_id": queue.unit_id}
-    assert bus_spy.calls(FOUR[0]) == [{**base, "assignee_before_id": None, "assignee_after_id": first.pk,
+    assert bus_spy.calls(FOUR[0]) == [{**base, "pk": ticket.pk, "event_id": f"created:{ticket.number}",
+                                       "assignee_before_id": None, "assignee_after_id": first.pk,
                                        "actor_id": None, "channel": "mail"}]
     assert bus_spy.calls(FOUR[1]) == [], "при создании шина получает только ticket_created (дополнение 7)"
 
     with django_capture_on_commit_callbacks(execute=True):
         assert assignment.assign(ticket, second, actor=second) is True
-    assert bus_spy.calls(FOUR[1]) == [{**base, "assignee_before_id": first.pk, "assignee_after_id": second.pk,
+    ticket.refresh_from_db()
+    assert bus_spy.calls(FOUR[1]) == [{**base, "pk": ticket.pk,
+                                       "event_id": f"assignee:{ticket.number}:{ticket.updated_at.isoformat()}",
+                                       "assignee_before_id": first.pk, "assignee_after_id": second.pk,
                                        "actor_id": second.pk}]
 
     ticket.refresh_from_db()
     with django_capture_on_commit_callbacks(execute=True):
         tickets.add_incoming(ticket, author_email=email, text="Добавляю подробности")
     entry = model("servicedesk.TicketEntry").objects.get(ticket=ticket, kind="incoming", text="Добавляю подробности")
-    assert bus_spy.calls(FOUR[2]) == [{**base, "assignee_before_id": second.pk, "assignee_after_id": second.pk,
+    assert bus_spy.calls(FOUR[2]) == [{**base, "pk": ticket.pk, "event_id": f"reply:{entry.pk}",
+                                       "assignee_before_id": second.pk, "assignee_after_id": second.pk,
                                        "actor_id": None, "via": "appended", "author_kind": "requester",
                                        "entry_id": entry.pk}]
 
@@ -418,8 +428,11 @@ def test_four_servicedesk_events_are_published_by_ticket_services(bus_spy, djang
     closed = model("servicedesk.Status").objects.get(kind="closed", is_default=True)
     with django_capture_on_commit_callbacks(execute=True):
         closing.close(ticket, closed, "Заменили картридж", actor=second)
-    assert bus_spy.calls(FOUR[3]) == [{**base, "assignee_before_id": second.pk, "assignee_after_id": second.pk,
-                                       "actor_id": second.pk}]
+    ticket.refresh_from_db()
+    assert bus_spy.calls(FOUR[3]) == [{**base, "pk": ticket.pk,
+                                       "event_id": f"close:{ticket.number}:{ticket.closed_at.isoformat()}",
+                                       "assignee_before_id": second.pk, "assignee_after_id": second.pk,
+                                       "actor_id": second.pk, "closed_at": ticket.closed_at.isoformat()}]
     assert len(bus_spy.calls(FOUR[0])) == 1 and len(bus_spy.calls(FOUR[1])) == 1 and len(bus_spy.calls(FOUR[2])) == 1
 
 
@@ -433,7 +446,8 @@ def test_extension_points_include_unit_usage_file_purposes_mail_renderers_login_
 
     assert tuple(extensions.POINTS) == POINTS_17 + (
         "home_body", "unit_form_parts", "ticket_task_seed", "ticket_task_brief",
-        "ticket_task_create", "ticket_task_list")
+        "ticket_task_create", "ticket_task_list",
+        "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
 
     def owned(point, prefix):
         return [f for f in extensions.registered(point) if getattr(f, "__module__", "").startswith(prefix)]

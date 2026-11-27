@@ -316,9 +316,11 @@ def test_removed_assignee_leaves_feed_event_journal_entry_and_bus_event(bus_spy,
     assert journal[0].before["assignee"] == user.full_name and journal[0].before["assignee_id"] == user.pk
     assert journal[0].after["assignee"] == "" and journal[0].after["assignee_id"] is None
     assert journal[0].after["reason"] == "not_participant"
+    ticket.refresh_from_db()
     assert bus_spy.calls("servicedesk.assignee_changed") == [
-        {"number": ticket.number, "queue_id": queue.pk, "assignee_before_id": user.pk, "assignee_after_id": None,
-         "actor_id": None}]
+        {"pk": ticket.pk, "number": ticket.number, "queue_id": queue.pk, "assignee_before_id": user.pk,
+         "assignee_after_id": None, "actor_id": None,
+         "event_id": f"assignee:{ticket.number}:{ticket.updated_at.isoformat()}"}]
 
 
 # --- кто остаётся участником ---------------------------------------------------------------------------

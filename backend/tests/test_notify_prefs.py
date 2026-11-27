@@ -31,12 +31,13 @@ SLA_KINDS = ("servicedesk.sla_due_soon", "servicedesk.sla_overdue", "servicedesk
 SLA_DUE, SLA_OVERDUE, SLA_DIGEST = SLA_KINDS
 RUBRIC_KIND = "knowledge.rubric_subscription"   # пятая строка таблицы участника очереди: вид доступен всем (срез 005)
 LISTS_KIND = "lists.deadline"   # шестая строка таблицы: вид доступен всем (срез 006, CONTRACT-006, раздел 7.3)
+AUTOMATION_KIND = "automation.rule_notice"  # срез 013, order 240
 TITLES = {NEW_IN_QUEUE: "Новая заявка в моей очереди", ASSIGNED: "Мне назначили заявку",
           REPLIED: "Заявитель ответил", FAILED: "Ответ заявителю не ушёл",
           RUBRIC_KIND: "Статья в рубрике по подписке", LISTS_KIND: "Срок в записи списка", **FEED_TITLES,
           **MESSENGER_TITLES,
           "servicedesk.sla_due_soon": "Срок заявки приближается",
-          "servicedesk.sla_overdue": "Заявка просрочена", "servicedesk.sla_digest": "Сводка по срокам заявок"}
+          "servicedesk.sla_overdue": "Заявка просрочена", "servicedesk.sla_digest": "Сводка по срокам заявок", AUTOMATION_KIND: "Сообщение правила"}
 EXTERNAL = ["email", "push", "telegram", "max"]     # `default_channels` видов сервис-деска без `portal`
 
 
@@ -213,13 +214,13 @@ def test_table_rows_show_kind_title_and_module():
     doc = _get(client)
     table = one(doc, "table", {"data-notify-table": True})
     rows = find(doc, "tr", {"data-notify-kind": True}, within=table)
-    assert [r.attrs["data-notify-kind"] for r in rows] == list(SD_KINDS) + [RUBRIC_KIND, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES) + list(SLA_KINDS), (
+    assert [r.attrs["data-notify-kind"] for r in rows] == list(SD_KINDS) + [RUBRIC_KIND, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES) + list(SLA_KINDS) + [AUTOMATION_KIND], (
         "строки видов или их порядок")
     for row in rows:
         code = row.attrs["data-notify-kind"]
         assert one(doc, None, {"data-field": "title"}, within=row).text == TITLES[code]
         modules = {RUBRIC_KIND: "База знаний", LISTS_KIND: "Списки", **{c: FEED_MODULE for c in FEED_CODES},
-                   **{c: MESSENGER_MODULE for c in MESSENGER_CODES}}
+                   **{c: MESSENGER_MODULE for c in MESSENGER_CODES}, AUTOMATION_KIND: "Автоматизация"}
         expected_module = modules.get(code, "Сервис-деск")  # CONTRACT-006, 7.3; CONTRACT-007, 7.1; CONTRACT-008, 7.4
         assert one(doc, None, {"data-field": "module"}, within=row).text == expected_module
     assert not find(doc, "tr", {"data-notify-kind": "core.new_device"})
@@ -247,7 +248,7 @@ def test_table_has_five_channel_columns_in_order():
     doc = _get(support.logged_in(plain))
     table = one(doc, "table", {"data-notify-table": True})
     assert [h.attrs["data-channel"] for h in find(doc, "th", {"data-channel": True}, within=table)] == list(CHANNELS)
-    assert [r.attrs["data-notify-kind"] for r in find(doc, "tr", {"data-notify-kind": True})] == [RUBRIC_KIND, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES), (
+    assert [r.attrs["data-notify-kind"] for r in find(doc, "tr", {"data-notify-kind": True})] == [RUBRIC_KIND, LISTS_KIND] + FEED_CODES + list(MESSENGER_CODES) + [AUTOMATION_KIND], (
         "у сотрудника без прав и очередей в таблице ровно двенадцать строк — виды «по подписке», «Срок в записи списка», "
         "восемь видов ленты и два вида мессенджера (доступны всем)")
     one(doc, "tbody", {"data-fixed-rows": True})
@@ -516,7 +517,8 @@ def test_save_with_changed_cell_writes_matrix():
                           # виды сроков SLA (срез 011): умолчание — все пять, в снимке без `portal`
                           **{code: EXTERNAL for code in SLA_KINDS},
                           # виды мессенджера (CONTRACT-008, 7.1): умолчание ("portal", "email") без `portal`
-                          **{code: ["email"] for code in MESSENGER_CODES}}
+                          **{code: ["email"] for code in MESSENGER_CODES},
+                          AUTOMATION_KIND: ["email"]}
     assert _audit_count(user) == before + 1, "ждали одну запись журнала на сохранение"
 
 

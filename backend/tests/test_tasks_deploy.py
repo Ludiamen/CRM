@@ -197,8 +197,8 @@ def test_tasks_is_in_installed_apps_tail_with_config_label_and_name():
     from django.apps import apps as registry
 
     installed = list(django_settings.INSTALLED_APPS)
-    assert installed[-4:] == ["apps.feed", "apps.messenger", "apps.tasks", "apps.instructions"], f"хвост INSTALLED_APPS: {installed[-4:]}"
-    assert installed.count("apps.tasks") == 1 and installed.index("apps.tasks") == len(installed) - 2
+    assert installed[-5:] == ["apps.feed", "apps.messenger", "apps.tasks", "apps.instructions", "apps.automation"], f"хвост INSTALLED_APPS: {installed[-5:]}"
+    assert installed.count("apps.tasks") == 1 and installed.index("apps.tasks") == len(installed) - 3
     config = registry.get_app_config("tasks")
     assert type(config).__name__ == "TasksConfig"
     assert (config.label, config.verbose_name) == ("tasks", "Задачи")
@@ -240,7 +240,7 @@ def test_cron_has_27_registers_and_three_tasks_jobs_under_is_installed():
     очереди `maintenance`, под `apps.is_installed("apps.tasks")` вместе со своим импортом; `42 23` ни у кого
     больше нет; прежние двадцать одна запись та же."""
     entries = cron_registrations()
-    assert len(entries) == 29, f"вызовов register {len(entries)}, ожидается 29"
+    assert len(entries) == 31, f"вызовов register {len(entries)}, ожидается 31"
     by_name = cron_by_name()
     for name, (function, queue, cron, timeout) in TASKS_JOBS.items():
         item = by_name.get(name)
@@ -292,7 +292,7 @@ def test_menu_items_tasks_order_2_and_settings_order_65_before_servicedesk():
     admin = support.make_admin(full_name="Администратор Меню")
     menu = permissions.menu_for(admin)
     titles = [item["title"] for item in menu]
-    assert len(menu) == 21, f"пунктов меню у администратора: {len(menu)} — {titles}"
+    assert len(menu) == 22, f"пунктов меню у администратора: {len(menu)} — {titles}"
     assert titles[:4] == ["Лента", "Мессенджер", "Задачи", "Поручения"], titles[:4]
     assert titles.index("Настройки задач") < titles.index("Настройки поручений") < titles.index("Безопасность и политика")
     assert "Настройки задач" in titles and "Сервис-деск" in titles

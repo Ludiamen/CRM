@@ -13,7 +13,7 @@ from apps.core.extensions import Draft
 from apps.org.services import calendar, structure
 
 from .models import Queue, SlaCycle, SlaDigest, SlaNotice, Ticket
-from .services import closing, intake, mailbox, reconcile, retention
+from .services import closing, events as sd_events, intake, mailbox, reconcile, retention
 
 
 def process_inbound(inbound_id):
@@ -103,6 +103,7 @@ def sla_tick(now=None):
         reminder_hours = getattr(sd_settings.get(), "sla_reminder_hours", 1)
         created = 0
         cycles = SlaCycle.objects.filter(is_current=True).select_related("ticket", "ticket__assignee", "level", "queue")
+        emitted = set()
         for cycle in cycles:
             ticket = cycle.ticket
             if ticket.kind == "closed" and cycle.closed_at is not None:
@@ -123,6 +124,11 @@ def sla_tick(now=None):
                     kind = SlaNotice.Kind.DUE_SOON
                 else:
                     continue
+                threshold = (cycle.pk, deadline, kind)
+                marker = f"automation:sla:{cycle.pk}:{deadline}:{kind}"
+                if threshold not in emitted and cache.add(marker, 1, timeout=90 * 24 * 3600):
+                    sd_events.sla_threshold(ticket, cycle_id=cycle.pk, deadline=deadline, kind=kind)
+                    emitted.add(threshold)
                 recipients = ([ticket.assignee] if ticket.assignee_id else []) + structure.heads_of_unit(ticket.queue_id)
                 for recipient in {person.pk: person for person in recipients}.values():
                     if _notice(cycle, deadline, kind, due_at, recipient, now, ticket.number):

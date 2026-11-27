@@ -103,9 +103,9 @@ def test_point_unit_form_parts_is_nineteenth_and_dataclass_fields():
     from apps.core import extensions
     from tests.support_messenger import POINTS_008
 
-    assert len(extensions.POINTS) == 23
-    assert extensions.POINTS[-1] == "ticket_task_list"
-    assert tuple(extensions.POINTS[18:]) == POINTS_008
+    assert len(extensions.POINTS) == 27
+    assert extensions.POINTS[-1] == "automation_recipients"
+    assert tuple(extensions.POINTS[18:23]) == POINTS_008
     assert tuple(extensions.POINTS[:18]) == POINTS_18
     assert set(extensions._registry) == set(extensions.POINTS)
 

@@ -136,7 +136,7 @@ def test_instructions_is_last_in_installed_apps_with_config():
     from django.apps import apps as registry
 
     installed = list(django_settings.INSTALLED_APPS)
-    assert installed[-1] == APP and installed[-2] == "apps.tasks"
+    assert installed[-1] == "apps.automation" and installed[-2] == APP and installed[-3] == "apps.tasks"
     config = registry.get_app_config("instructions")
     assert type(config).__name__ == "InstructionsConfig"
     assert (config.label, config.verbose_name) == ("instructions", "Поручения")
@@ -185,7 +185,7 @@ def test_cron_has_27_registers_and_three_instructions_jobs():
     """План: три задания — `*/5`, `*/15`, `43 23`, очередь `maintenance`, таймауты 300/300/600, под проверкой
     установки; всего 29 вызовов (два задания среза 011)."""
     entries = cron_registrations()
-    assert len(entries) == 29, f"вызовов register {len(entries)}"
+    assert len(entries) == 31, f"вызовов register {len(entries)}"
     by_name = cron_by_name()
     for name, (function, queue, cron, timeout) in INSTRUCTIONS_JOBS.items():
         item = by_name.get(name)
@@ -211,7 +211,7 @@ def test_menu_has_two_items_with_orders_three_and_sixty_six():
         ("/instructions/", "Поручения", 3, ("instructions.use",)),
         ("/settings/instructions/", "Настройки поручений", 66, ("settings.portal",)),
     ]
-    assert len(permissions.menu_for(admin)) == 21
+    assert len(permissions.menu_for(admin)) == 22
 
 
 # --- статика, CSP, nginx -------------------------------------------------------------------------
@@ -260,7 +260,7 @@ def test_permissions_and_purpose_are_installed():
     Permission = support.model("core.Permission")
     assert set(Permission.objects.filter(code__in=("instructions.use", "instructions.assign"))
                .values_list("code", flat=True)) == {"instructions.use", "instructions.assign"}
-    assert Permission.objects.count() == 25
+    assert Permission.objects.count() == 26
     assert tuple(StoredFile.Purpose.values)[-1] == "instruction"
 
 

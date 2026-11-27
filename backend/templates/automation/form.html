@@ -1,0 +1,49 @@
+{% extends layout %}
+{% block title %}{% if rule %}Правило{% else %}Новое правило{% endif %}{% endblock %}
+{% block content %}
+<h1 class="page-title">{% if rule %}Правило{% else %}Новое правило{% endif %}</h1>
+{% if form.non_field_errors %}<div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+<form method="post" class="card card-body automation-form">
+  {% csrf_token %}
+  {% for field in form.visible_fields %}
+  <div class="mb-3">
+    <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+    {{ field }}
+    {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+    {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+  </div>
+  {% endfor %}
+  {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+  <h2 class="h5">Действия</h2>
+  {{ formset.management_form }}
+  {% for row in formset %}
+  <div class="border rounded p-3 mb-2 automation-action-row">
+    {% for hidden in row.hidden_fields %}{{ hidden }}{% endfor %}
+    <div class="row g-2 align-items-end">
+      <div class="col-4 col-md-2">
+        <label class="form-label small" for="{{ row.order.id_for_label }}">Порядок</label>
+        {{ row.order }}
+      </div>
+      <div class="col-8 col-md-4">
+        <label class="form-label small" for="{{ row.kind.id_for_label }}">Действие</label>
+        {{ row.kind }}
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small" for="{{ row.delay_seconds.id_for_label }}">Задержка, секунд</label>
+        {{ row.delay_seconds }}
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label small" for="{{ row.params_text.id_for_label }}">Параметры (JSON)</label>
+        {{ row.params_text }}
+      </div>
+    </div>
+    {% if row.DELETE %}<label class="small mt-2">{{ row.DELETE }} удалить действие</label>{% endif %}
+    {% for error in row.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+  </div>
+  {% endfor %}
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+    <a class="btn btn-outline-secondary" href="/automation/">Отмена</a>
+  </div>
+</form>
+{% endblock %}

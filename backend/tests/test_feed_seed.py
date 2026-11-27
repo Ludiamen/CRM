@@ -62,7 +62,7 @@ def test_seed_on_slice_006_base_creates_post_all_and_moderate_permissions_with_r
     строке каждого (раздел 2.3)."""
     _clear()
     Permission = _model("core.Permission")
-    assert Permission.objects.count() == 23
+    assert Permission.objects.count() == 24
     fd.run_seed(using="default")
     for code in fd.PERMISSIONS_007:
         rows = list(Permission.objects.filter(code=code))
@@ -140,9 +140,9 @@ def test_portal_has_twenty_permissions_after_seed():
     между собой не проверяется)."""
     _clear()
     Permission = _model("core.Permission")
-    assert Permission.objects.count() == 23
+    assert Permission.objects.count() == 24
     fd.run_seed(using="default")
-    assert Permission.objects.count() == 25
+    assert Permission.objects.count() == 26
     assert set(Permission.objects.order_by("-pk").values_list("code", flat=True)[:2]) == set(fd.PERMISSIONS_007)
 
 

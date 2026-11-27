@@ -542,8 +542,8 @@ def test_all_tickets_and_manage_rights_only_for_portal_admin_after_install():
     assert set(roles.permission_codes(admin)) == set(
         support.PERMISSIONS + support.PERMISSIONS_002 + sd.PERMISSIONS_003 + PERMISSIONS_004 + PERMISSIONS_005
         + PERMISSIONS_006 + PERMISSIONS_007 + PERMISSIONS_009 + PERMISSIONS_010
-        + tuple(code for code in PERMISSIONS_011 if code != "servicedesk.reports"))
-    assert len(roles.permission_codes(admin)) == 24
+        + tuple(code for code in PERMISSIONS_011 if code != "servicedesk.reports") + ("automation.manage",))
+    assert len(roles.permission_codes(admin)) == 25
     for name in (support.MANAGER_ROLE, support.STAFF_ROLE):
         assert not set(roles.permission_codes(support.role_by_name(name))) & set(sd.PERMISSIONS_003), name
     holders = Role.objects.filter(permissions__code__in=sd.PERMISSIONS_003).distinct()

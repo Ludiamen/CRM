@@ -376,14 +376,15 @@ def test_feed_stand_reset_is_registered_last_and_runs_first():
     registered = list(extensions.registered("stand_reset"))
     names = [func.__module__ for func in registered]
     assert registered.count(stand_reset) == 1, "stand_reset модуля feed не зарегистрирован ровно один раз"
-    assert registered[-4] is stand_reset, "stand_reset модуля feed не четвёртый с конца"
-    assert names[-5] == "apps.lists.stand", f"перед feed стоит {names[-5]}, а не lists"
-    assert names[-3:] == ["apps.messenger.stand", "apps.tasks.stand", "apps.instructions.stand"], f"после feed: {names[-3:]}"
+    assert registered[-5] is stand_reset, "stand_reset модуля feed не пятый с конца"
+    assert names[-6] == "apps.lists.stand", f"перед feed стоит {names[-6]}, а не lists"
+    assert names[-4:] == ["apps.messenger.stand", "apps.tasks.stand", "apps.instructions.stand", "apps.automation.stand"], f"после feed: {names[-4:]}"
     call_order = [func.__module__ for func in reversed(registered)]
-    assert call_order[0] == "apps.instructions.stand", "instructions вызывается не первым"
-    assert call_order[1] == "apps.tasks.stand", "tasks вызывается не вторым"
-    assert call_order[2] == "apps.messenger.stand", "messenger вызывается не третьим"
-    assert call_order[3] == "apps.feed.stand", "feed вызывается не четвёртым"
+    assert call_order[0] == "apps.automation.stand", "automation вызывается первым"
+    assert call_order[1] == "apps.instructions.stand", "instructions вызывается не вторым"
+    assert call_order[2] == "apps.tasks.stand", "tasks вызывается не третьим"
+    assert call_order[3] == "apps.messenger.stand", "messenger вызывается не четвёртым"
+    assert call_order[4] == "apps.feed.stand", "feed вызывается не пятым"
 
 
 @PLAIN

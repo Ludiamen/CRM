@@ -205,7 +205,7 @@ def test_settings_tail_and_tasks_urls_are_guarded():
     from django.conf import settings
 
     installed = list(settings.INSTALLED_APPS)
-    assert installed[-1] == "apps.instructions" and installed[-2] == "apps.tasks" and installed[-3] == "apps.messenger"
+    assert installed[-1] == "apps.automation" and installed[-2] == "apps.instructions" and installed[-3] == "apps.tasks" and installed[-4] == "apps.messenger"
 
     path = support.BACKEND_DIR / "config" / "urls.py"
     source = path.read_text(encoding="utf-8")
@@ -239,7 +239,7 @@ def test_cron_has_27_registers_and_three_guarded_tasks_jobs():
                 aliases[alias.asname or alias.name] = f"{node.module}.{alias.name}"
     calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
              and isinstance(node.func, ast.Name) and node.func.id == "register"]
-    assert len(calls) == 29, f"вызовов register {len(calls)}, ожидается 29"
+    assert len(calls) == 31, f"вызовов register {len(calls)}, ожидается 31"
     found = {}
     for node in calls:
         options = {kw.arg: (ast.literal_eval(kw.value) if isinstance(kw.value, ast.Constant) else None)
@@ -264,15 +264,16 @@ def test_points_stay_19_and_tasks_registers_seven_points_with_stand_reset_last()
     регистрация точки; подписок на шину нет."""
     from apps.core import events, extensions
 
-    assert tuple(extensions.POINTS) == POINTS_19 and len(extensions.POINTS) == len(POINTS_19)
-    assert set(extensions._registry) == set(POINTS_19)
+    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    assert tuple(extensions.POINTS) == POINTS_19 + auto and len(extensions.POINTS) == len(POINTS_19) + len(auto)
+    assert set(extensions._registry) == set(POINTS_19 + auto)
     for point, module, name in REGISTRATIONS:
         own = _own(point)
         assert [(func.__module__, func.__name__) for func in own] == [(module, name)], f"точка {point}: {own}"
     assert _own("role_sources") == [], "tasks регистрирует role_sources"
-    assert extensions.registered("stand_reset")[-2].__module__ == "apps.tasks.stand"
-    assert extensions.registered("stand_reset")[-2].__name__ == "stand_reset"
-    assert extensions.registered("stand_reset")[-1].__module__ == "apps.instructions.stand"
+    assert extensions.registered("stand_reset")[-3].__module__ == "apps.tasks.stand"
+    assert extensions.registered("stand_reset")[-3].__name__ == "stand_reset"
+    assert extensions.registered("stand_reset")[-2].__module__ == "apps.instructions.stand"
 
     own_bus = [handler for handlers in events._registry.values() for handler in handlers
                if getattr(handler, "__module__", "").startswith(APP)]
@@ -293,7 +294,7 @@ def test_previous_menu_search_card_and_file_purposes_without_tasks():
     support_tasks.make_task("Задача прежнего поведения", author=person, assignee=person)
 
     full_menu = permissions.menu_for(admin)
-    assert len(full_menu) == 21, f"пунктов меню с задачами и поручениями: {len(full_menu)}"
+    assert len(full_menu) == 22, f"пунктов меню с задачами и поручениями: {len(full_menu)}"
     assert "tasks" in [provider.key for func in extensions.registered("search_providers") for provider in func()]
 
     with _without_tasks():
@@ -302,7 +303,7 @@ def test_previous_menu_search_card_and_file_purposes_without_tasks():
         purposes = [purpose.purpose for func in _own("file_purposes") for purpose in func()]
         sections = [section for func in _own("card_sections") for section in func(person, person)]
 
-    assert len(menu) == 17, f"пунктов меню без задач: {len(menu)}"
+    assert len(menu) == 18, f"пунктов меню без задач: {len(menu)}"
     assert [item for item in full_menu
             if item["url"] not in ("/tasks/", "/settings/tasks/", "/instructions/",
                                     "/settings/instructions/")] == menu

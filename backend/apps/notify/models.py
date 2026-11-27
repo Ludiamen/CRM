@@ -69,7 +69,7 @@ class Notification(models.Model):
 
     user = models.ForeignKey("core.User", on_delete=models.CASCADE, related_name="+")
     kind = models.CharField("вид", max_length=64)
-    text = models.CharField("текст", max_length=300)
+    text = models.CharField("текст", max_length=500)
     url = models.CharField("адрес", max_length=300)
     object_ref = models.CharField("объект", max_length=64, blank=True, default="")
     created_at = models.DateTimeField("создано", default=now)

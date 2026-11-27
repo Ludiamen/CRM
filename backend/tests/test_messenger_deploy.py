@@ -274,10 +274,10 @@ def test_messenger_is_last_in_installed_apps():
     from django.conf import settings
 
     installed = list(settings.INSTALLED_APPS)
-    assert tuple(installed[-9:]) == APPS_TAIL, f"хвост INSTALLED_APPS: {installed[-9:]}"
-    assert (installed[-4] == "apps.feed" and installed[-3] == APP and installed[-2] == "apps.tasks"
-            and installed[-1] == "apps.instructions")
-    assert len(installed) == installed.index("apps.messenger") + 3, "после apps.messenger ровно tasks и instructions"
+    assert tuple(installed[-10:]) == tuple(APPS_TAIL) + ("apps.automation",), f"хвост INSTALLED_APPS: {installed[-10:]}"
+    assert (installed[-5] == "apps.feed" and installed[-4] == APP and installed[-3] == "apps.tasks"
+            and installed[-2] == "apps.instructions" and installed[-1] == "apps.automation")
+    assert len(installed) == installed.index("apps.messenger") + 4, "после apps.messenger tasks, instructions и automation"
     config = apps.get_app_config("messenger")
     assert type(config).__name__ == "MessengerConfig"
     assert config.label == "messenger"
@@ -337,7 +337,7 @@ def test_cron_has_27_registers_and_messenger_retention_55_23_maintenance():
     прежних записей, одна мессенджера и три задач среза 009 — те же имена и минуты (CONTRACT-008, 1.2, 1.4;
     CONTRACT-009, 1.2)."""
     entries = cron_registrations()
-    assert len(entries) == 29, (
+    assert len(entries) == 31, (
         f"вызовов register {len(entries)}, ожидается 29 (двадцать прежних, messenger_retention среза 008, три "
         "задания среза 009, три задания среза 010 и два задания среза 011)")
     function, queue, interval, cron, timeout = messenger.JOBS_008["messenger_retention"]
@@ -370,7 +370,7 @@ def test_cron_has_27_registers_and_messenger_retention_55_23_maintenance():
         else:
             assert row["cron"] == expected and row["interval"] is None, f"{name}: cron {row['cron']!r}"
         assert not row["guarded"], f"прежняя запись {name} оказалась под проверкой apps.messenger"
-    assert len(entries) - len(PREVIOUS_CRON) == 9, (
+    assert len(entries) - len(PREVIOUS_CRON) == 11, (
         "кроме прежних: одна запись мессенджера, три задач среза 009, три поручений среза 010 и две сроков заявок")
 
 
@@ -477,13 +477,13 @@ def test_slice_numbers_nineteen_points_forty_kinds_eight_purposes_and_order_61()
     from apps.core.models.files import StoredFile
     from apps.notify.services import kinds as notify_kinds
 
-    assert len(extensions.POINTS) == 23, f"точек расширения {len(extensions.POINTS)}"
-    assert tuple(extensions.POINTS[18:]) == messenger.POINTS_008
+    assert len(extensions.POINTS) == 27, f"точек расширения {len(extensions.POINTS)}"
+    assert tuple(extensions.POINTS[18:23]) == messenger.POINTS_008
     assert set(extensions._registry) == set(extensions.POINTS)
     purposes = tuple(StoredFile.Purpose.values)
     assert purposes == messenger.PURPOSES_008, f"назначения файлов: {purposes}"
     catalog = notify_kinds.catalog()
-    assert len(catalog) == 43, f"видов уведомлений {len(catalog)}"
+    assert len(catalog) == 44, f"видов уведомлений {len(catalog)}"
     orders = {kind.code: kind.order for kind in catalog}
     assert (orders.get("messenger.message"), orders.get("messenger.mention")) == (80, 81), orders
     providers = {provider.key: provider for func in extensions.registered("search_providers") for provider in func()}
@@ -503,7 +503,7 @@ def test_admin_menu_has_16_items_with_messenger_second_and_settings_order_64():
     admin, _chat = _messenger_session()
     items = permissions.menu_for(admin.user)
     titles = [item["title"] for item in items]
-    assert len(items) == 21, f"пунктов меню у администратора: {len(items)} — {titles}"
+    assert len(items) == 22, f"пунктов меню у администратора: {len(items)} — {titles}"
     assert titles[:3] == ["Лента", "Мессенджер", "Задачи"], f"первые пункты: {titles[:3]}"
     by_url = {item["url"]: item for item in items}
     assert by_url["/messenger/"]["order"] == 1

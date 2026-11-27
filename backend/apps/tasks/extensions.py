@@ -25,7 +25,7 @@ def card_sections(viewer, person) -> list:
 def register_all() -> None:
     """Зарегистрировать точки задач (T-9214/T-9217; сброс стенда — последним)."""
     from apps.core import extensions
-    from apps.tasks import audit_labels, notify_kinds, stand
+    from apps.tasks import audit_labels, automation as automation_ext, notify_kinds, stand
     from apps.tasks.services import files, search, task_links
 
     extensions.register("menu_items", menu_items)
@@ -36,4 +36,8 @@ def register_all() -> None:
     extensions.register("file_purposes", files.file_purposes)
     extensions.register("ticket_task_create", task_links.create_from_ticket)
     extensions.register("ticket_task_list", task_links.list_tasks)
+    extensions.register("automation_subjects", automation_ext.subject)
+    extensions.register("automation_triggers", automation_ext.triggers)
+    extensions.register("automation_actions", automation_ext.actions)
+    extensions.register("automation_recipients", automation_ext.recipients)
     extensions.register("stand_reset", stand.stand_reset)

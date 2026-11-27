@@ -48,10 +48,13 @@ def scope(user, *, fresh: bool = False) -> Scope:
         result = _NO_SCOPE
     else:
         has_all = ALL_PERMISSION in permissions.permissions_of(user, fresh=fresh)
-        observe_units = frozenset(
-            QueueObserver.objects.filter(user=user, removed_at__isnull=True)
-            .values_list("queue__unit_id", flat=True))
-        result = Scope(has_all, structure.work_units_of(user), observe_units)
+        if has_all:
+            result = Scope(True, frozenset())
+        else:
+            observe_units = frozenset(
+                QueueObserver.objects.filter(user=user, removed_at__isnull=True)
+                .values_list("queue__unit_id", flat=True))
+            result = Scope(False, structure.work_units_of(user), observe_units)
     user._sd_scope = result
     return result
 

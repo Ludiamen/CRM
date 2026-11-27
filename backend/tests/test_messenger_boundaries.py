@@ -373,7 +373,7 @@ def test_messenger_registers_points_and_no_top_bar_items(monkeypatch):
     assert extensions.registered("unit_form_parts")[-1] is parts[0], "поле формы узла не последнее в точке"
 
     stand = _own("stand_reset")
-    assert extensions.registered("stand_reset")[-3] is stand[0], "stand_reset мессенджера не третья с конца запись точки"
+    assert extensions.registered("stand_reset")[-4] is stand[0], "stand_reset мессенджера не четвёртая с конца запись точки"
     assert (stand[0].__module__, stand[0].__name__) == ("apps.messenger.stand", "stand_reset")
 
     for point in UNUSED_POINTS:
@@ -517,11 +517,12 @@ def test_points_are_19_and_unit_form_parts_last():
     `key`, `order`, `render`, `on_saved`; неизвестная точка отказывает `ValueError`."""
     from apps.core import extensions
 
-    assert tuple(extensions.POINTS) == POINTS_19
-    assert len(extensions.POINTS) == len(POINTS_19)
-    assert extensions.POINTS[-1] == "ticket_task_list" and extensions.POINTS.index("unit_form_parts") == 18
+    auto = ("automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    assert tuple(extensions.POINTS) == POINTS_19 + auto
+    assert len(extensions.POINTS) == len(POINTS_19) + len(auto)
+    assert extensions.POINTS[-1] == "automation_recipients" and extensions.POINTS.index("unit_form_parts") == 18
     assert tuple(extensions.POINTS[:18]) == POINTS_18, "прежние точки изменили порядок"
-    assert set(extensions._registry) == set(POINTS_19)
+    assert set(extensions._registry) == set(POINTS_19 + auto)
     assert dataclasses.is_dataclass(extensions.UnitFormPart)
     assert [field.name for field in dataclasses.fields(extensions.UnitFormPart)] == ["key", "order", "render", "on_saved"]
     sample = extensions.UnitFormPart(key="проба", order=5, render=lambda request, unit: "",

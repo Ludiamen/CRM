@@ -46,10 +46,14 @@ def set_rule(unit_id: int, mode: str, *, actor, ip=None):
     return distribution.set_mode(unit_id, mode, actor=actor, ip=ip)
 
 
-def _can_manage(actor, unit_id):
+def can_manage(actor, unit_id) -> bool:
+    """Руководитель/заместитель узла очереди или вышестоящего, либо администратор сервис-деска."""
     from apps.core.services import permissions
     from apps.org.services import structure
     return permissions.has_permission(actor, "servicedesk.manage") or unit_id in structure.managed_units(actor)
+
+
+_can_manage = can_manage
 
 
 def observers(unit_id: int):

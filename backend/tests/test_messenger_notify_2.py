@@ -46,7 +46,7 @@ MY_PAGE = "/me/notifications/"
 EXTERNAL_CHANNELS = ("email", "push", "telegram", "max")
 # таблица «код вида → модуль» (CONTRACT-008, 7.4): двадцать два вида семи модулей
 MODULE_COUNTS = {"Сервис-деск": 7, "База знаний": 3, "Списки": 1, "Лента": 8, "Мессенджер": 2, "Задачи": 8,
-                 "Поручения": 10, "Ядро": 3, "Уведомления": 1}
+                 "Поручения": 10, "Ядро": 3, "Уведомления": 1, "Автоматизация": 1}
 
 _VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"}
 
@@ -245,8 +245,8 @@ def test_catalog_has_40_kinds_and_two_messenger_rows():
     catalog = notify_kinds.catalog()
     employee = _employee("Проверяющий Каталог")
 
-    assert len(catalog) == 43, f"видов в каталоге: {len(catalog)}"
-    assert len({kind.code for kind in catalog}) == 43, "коды видов в каталоге повторяются"
+    assert len(catalog) == 44, f"видов в каталоге: {len(catalog)}"
+    assert len({kind.code for kind in catalog}) == 44, "коды видов в каталоге повторяются"
     modules = [kind.module for kind in catalog]
     for module, count in MODULE_COUNTS.items():
         assert modules.count(module) == count, f"видов модуля «{module}»: {modules.count(module)}"
@@ -289,8 +289,8 @@ def test_my_notifications_lists_two_rows_with_email_and_external_channels(bots_o
     doc = _page(user, MY_PAGE)
     rows = {row.attrs["data-notify-kind"]: row
             for row in _find(doc, "tr", {"data-notify-kind": True})}
-    assert list(rows)[-2:] == list(messenger.MESSENGER_CODES), (
-        f"строки «Мессенджер» в таблице: {list(rows)[-2:]}")
+    assert [code for code in rows if code in messenger.MESSENGER_CODES] == list(messenger.MESSENGER_CODES), (
+        f"строки «Мессенджер» в таблице: {[code for code in rows if code in messenger.MESSENGER_CODES]}")
 
     for code in messenger.MESSENGER_CODES:
         row = rows[code]

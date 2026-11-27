@@ -266,9 +266,10 @@ def test_points_tuple_has_eighteen_names_and_feed_uses_home_body_last():
     from apps.core import extensions
 
     assert tuple(extensions.POINTS) == POINTS_17 + feed.POINTS_007 + (
-        "unit_form_parts", "ticket_task_seed", "ticket_task_brief", "ticket_task_create", "ticket_task_list")
-    assert len(extensions.POINTS) == 23 and extensions.POINTS[18] == "unit_form_parts"
-    assert extensions.POINTS[-1] == "ticket_task_list"
+        "unit_form_parts", "ticket_task_seed", "ticket_task_brief", "ticket_task_create", "ticket_task_list",
+        "automation_subjects", "automation_triggers", "automation_actions", "automation_recipients")
+    assert len(extensions.POINTS) == 27 and extensions.POINTS[18] == "unit_form_parts"
+    assert extensions.POINTS[-1] == "automation_recipients"
     assert set(extensions._registry) == set(extensions.POINTS)
     own = _own("home_body")
     assert [(f.__module__, f.__name__) for f in own] == [("apps.feed.views.home", "body")]
@@ -338,7 +339,7 @@ def test_feed_registers_eight_notification_kinds_file_purpose_audit_labels_and_s
     assert {k.module for k in kinds} == {feed.FEED_MODULE}
     assert [p.purpose for p in _own("file_purposes")[0]()] == ["feed"]
     assert set(_own("audit_labels")[0]()) >= {"actions", "fields", "object_types", "values"}
-    assert extensions.registered("stand_reset")[-4] is _own("stand_reset")[0], "stand_reset ленты не четвёртый с конца"
+    assert extensions.registered("stand_reset")[-5] is _own("stand_reset")[0], "stand_reset ленты не пятый с конца"
     used = {point for point in extensions.POINTS if _own(point)}
     assert used == FEED_POINTS, f"точки с регистрациями feed: {sorted(used)}"
 

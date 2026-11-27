@@ -115,3 +115,32 @@ def tasks_retention(now=None) -> dict:
     from apps.tasks.services import retention
 
     return retention.purge(now)
+
+
+def tasks_automation_tick(now=None):
+    """Пороги задач для автоматизации: «скоро» и «просрочена» один раз на задачу, срок и порог."""
+    import datetime
+
+    from django.core.cache import cache
+    from django.utils import timezone as dj_timezone
+
+    from apps.tasks.models import Task
+    from apps.tasks.services import events, reminders
+
+    now = now or dj_timezone.now()
+    today = now.date()
+    horizon = today + datetime.timedelta(days=7)
+    sent = 0
+    queryset = Task.objects.filter(deleted_at__isnull=True, deadline__isnull=False, deadline__lte=horizon).exclude(
+        status=Task.Status.DONE).select_related("assignee", "author")
+    for task in queryset.iterator(chunk_size=500):
+        moments = reminders.moments(task.deadline)
+        if now >= moments["auto_overdue"]:
+            if cache.add(f"automation:task:{task.pk}:overdue:{task.deadline}", 1, timeout=90 * 24 * 3600):
+                events.task_threshold(task, deadline=task.deadline, kind="overdue")
+                sent += 1
+        elif now >= moments["auto_soon"]:
+            if cache.add(f"automation:task:{task.pk}:soon:{task.deadline}", 1, timeout=90 * 24 * 3600):
+                events.task_threshold(task, deadline=task.deadline, kind="soon")
+                sent += 1
+    return sent

@@ -110,3 +110,12 @@ from apps.servicedesk.tasks import sla_digest, sla_tick  # noqa: E402
 
 register(sla_tick, queue_name="maintenance", cron="*/5 * * * *", name="servicedesk_sla_tick", job_timeout=300)
 register(sla_digest, queue_name="maintenance", cron="10 * * * *", name="servicedesk_sla_digest", job_timeout=300)
+
+# Автоматизация (срез 013): отложенные действия — каждую минуту в `notify`, пороги задач — каждые 5 минут в
+# `maintenance`. Модуль отключаемый: без `apps.automation` расписание прежних заданий не меняется.
+if apps.is_installed("apps.automation"):
+    from apps.automation.tasks import automation_tick, tasks_automation_tick  # noqa: E402
+
+    register(automation_tick, queue_name="notify", cron="* * * * *", name="automation_tick", job_timeout=120)
+    register(tasks_automation_tick, queue_name="maintenance", cron="*/5 * * * *", name="tasks_automation_tick",
+             job_timeout=300)
