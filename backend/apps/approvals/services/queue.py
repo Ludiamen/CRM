@@ -7,13 +7,26 @@ from . import access, stages
 
 def active_for(user):
     """Ожидающие задания, которые сейчас видны участнику (sequential — только текущее)."""
-    rows = (ApprovalAssignment.objects.filter(
+    from django.db.models import Prefetch
+
+    rows = list(ApprovalAssignment.objects.filter(
         user=user, status=ApprovalAssignment.Status.PENDING,
         stage_run__route__status=ApprovalRoute.Status.RUNNING,
         stage_run__status=ApprovalStageRun.Status.RUNNING)
-        .select_related("stage_run", "stage_run__route", "user").order_by("due_at", "pk"))
-    return [assignment for assignment in rows
-            if assignment in stages.current_assignments(assignment.stage_run)]
+        .select_related("stage_run", "stage_run__route", "user")
+        .prefetch_related(Prefetch(
+            "stage_run__assignments",
+            queryset=ApprovalAssignment.objects.filter(status=ApprovalAssignment.Status.PENDING).order_by("order", "pk")))
+        .order_by("due_at", "pk"))
+    result = []
+    for assignment in rows:
+        stage = assignment.stage_run
+        if stage.mode == "sequential":
+            current = next(iter(stage.assignments.all()), None)
+            if current is None or current.pk != assignment.pk:
+                continue
+        result.append(assignment)
+    return result
 
 
 def rows(user):

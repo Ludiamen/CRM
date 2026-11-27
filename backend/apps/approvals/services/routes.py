@@ -84,13 +84,13 @@ def start(actor, *, subject_type: str, subject_id: int, template_id: int):
 
 
 def _locked(assignment_id: int):
-    route_id = ApprovalAssignment.objects.filter(pk=assignment_id).values_list("stage_run__route_id", flat=True).first()
-    if route_id is None:
+    route = (ApprovalRoute.objects.select_for_update(of=("self",))
+             .filter(stages__assignments__pk=assignment_id).first())
+    if route is None:
         raise ApprovalError("assignment_not_found", "Задание не найдено")
-    route = ApprovalRoute.objects.select_for_update().filter(pk=route_id).first()
-    assignment = (ApprovalAssignment.objects.select_for_update()
+    assignment = (ApprovalAssignment.objects.select_for_update(of=("self",))
                   .select_related("stage_run__route", "user").filter(pk=assignment_id).first())
-    if route is None or assignment is None:
+    if assignment is None:
         raise ApprovalError("assignment_not_found", "Задание не найдено")
     return route, assignment
 

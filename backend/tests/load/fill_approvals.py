@@ -32,6 +32,12 @@ ASSIGNMENTS = 25_000
 admin = (User.objects.filter(roles__name="Администратор портала").order_by("pk").first()
          or User.objects.order_by("pk").first())
 users = list(User.objects.filter(state="active", email__startswith="load-").order_by("pk")[:2000])
+if len(users) < 2000:
+    extra = [User(email=f"load-extra-014-{index:04d}@example.org", full_name=f"Нагрузка 014 {index:04d}",
+                  state="active", activated_at=timezone.now())
+             for index in range(2000 - len(users))]
+    User.objects.bulk_create(extra, batch_size=500)
+    users = list(User.objects.filter(state="active", email__startswith="load-").order_by("pk")[:2000])
 tickets = list(Ticket.objects.order_by("pk").values_list("pk", "number")[:ROUTES])
 if not users or not tickets:
     print("fill_approvals: нет load-пользователей или заявок")
