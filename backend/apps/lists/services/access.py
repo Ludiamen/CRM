@@ -222,6 +222,12 @@ def can_edit_record(user, record) -> bool:
     return current is None or record.stage_id in current.edit
 
 
+def can_read_stage(user, lst, stage_id) -> bool:
+    """Стадия видна: ограничений нет или она в наборе чтения/правки."""
+    current = stage_scope(user, lst)
+    return current is None or stage_id in current.read or stage_id in current.edit
+
+
 def record_condition(user, lst):
     """Условие выборки записей по правам стадий: `None` — ограничений нет, иначе `Q` для фильтра."""
     current = stage_scope(user, lst)

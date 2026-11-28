@@ -59,3 +59,25 @@ class VersionConflict(ListsError):
         self.when = when
         moment = when.astimezone(MOSCOW).strftime("%d.%m.%Y %H:%M") if when else ""
         super().__init__("version_conflict", params={"who": getattr(who, "full_name", "") or "", "when": moment})
+
+
+class StageChanged(ListsError):
+    """Ожидаемая текущая стадия не совпала с фактической."""
+
+    def __init__(self):
+        super().__init__("stage_changed")
+
+
+class StageForbidden(ListsError):
+    """Нет права записи текущей стадии или целевая стадия не видна."""
+
+    def __init__(self):
+        super().__init__("stage_forbidden")
+
+
+class StageRequired(ListsError):
+    """Обязательные поля стадии не заполнены: `fields` — названия полей."""
+
+    def __init__(self, fields):
+        self.fields = list(fields)
+        super().__init__("stage_required", params={"fields": ", ".join(self.fields)})
