@@ -1,10 +1,11 @@
 ---
 id: PLAN-015
 вид: план
-статус: на-проверке
+статус: утверждён
 версия: 1
 зависит_от: SPEC-015, CONST, ADR-0002, ADR-0004, ADR-0014, ADR-0020, ADR-0022, REF-CAP, REF-UX, REF-SRC, TGT-ARCH, TGT-NFR, SPEC-002, SPEC-004, SPEC-006, SPEC-013
 основан_на: SPEC-015 sha256:621fafa9b9477bbed407db305e5405e1612cbea57c54a7bbb8c9f375d4a946da
+подпись: Максим | 2026-11-28T10:10+03:00 | sha256:385b34e4fa712b02e1227344e86bf17cc0a8e2c98bb2a102d6de0a372aa597ce
 ---
 
 # План среза 015: Конструктор процессов
