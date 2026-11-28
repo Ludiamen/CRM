@@ -334,7 +334,9 @@ def records(lst, viewer, gp: GridParams):
     if found is not None:
         queryset = queryset.filter(found)
     if gp.sort == "stage":
-        return queryset.order_by(("stage__order" if gp.dir == "asc" else "-stage__order"), "number")
+        key = F("stage__order").asc(nulls_first=True) if gp.dir == "asc" \
+            else F("stage__order").desc(nulls_first=True)
+        return queryset.order_by(key, "number")
     if gp.sort in ("", "number"):
         return queryset.order_by("-number" if gp.sort and gp.dir == "desc" else "number")
     if gp.sort == "title":

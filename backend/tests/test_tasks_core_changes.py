@@ -239,7 +239,7 @@ def test_cron_has_27_registers_and_three_guarded_tasks_jobs():
                 aliases[alias.asname or alias.name] = f"{node.module}.{alias.name}"
     calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
              and isinstance(node.func, ast.Name) and node.func.id == "register"]
-    assert len(calls) == 32, f"вызовов register {len(calls)}, ожидается 32"
+    assert len(calls) == 33, f"вызовов register {len(calls)}, ожидается 32"
     found = {}
     for node in calls:
         options = {kw.arg: (ast.literal_eval(kw.value) if isinstance(kw.value, ast.Constant) else None)

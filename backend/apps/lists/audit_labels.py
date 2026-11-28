@@ -37,7 +37,7 @@ FIELDS = dict([
     ("readers", "читают"), ("editors", "правят"), ("file", "файл"),
     ("stage", "стадия"), ("order", "порядок"), ("kind", "вид"), ("period", "период"), ("reason", "причина"),
     ("narrow", "сужает права"), ("fields", "поля"), ("moved", "переведено"), ("stages", "стадии"),
-    ("enabled", "включён"), ("launch_mode", "запуск"),
+    ("enabled", "включено"), ("launch_mode", "запуск"), ("missed", "пропущено"),
 ])
 OBJECT_TYPES = dict([
     ("lists.list", "список"), ("lists.field", "поле списка"), ("lists.record", "запись списка"),

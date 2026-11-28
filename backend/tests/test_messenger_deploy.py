@@ -337,7 +337,7 @@ def test_cron_has_27_registers_and_messenger_retention_55_23_maintenance():
     прежних записей, одна мессенджера и три задач среза 009 — те же имена и минуты (CONTRACT-008, 1.2, 1.4;
     CONTRACT-009, 1.2)."""
     entries = cron_registrations()
-    assert len(entries) == 32, (
+    assert len(entries) == 33, (
         f"вызовов register {len(entries)}, ожидается 29 (двадцать прежних, messenger_retention среза 008, три "
         "задания среза 009, три задания среза 010 и два задания среза 011)")
     function, queue, interval, cron, timeout = messenger.JOBS_008["messenger_retention"]
@@ -370,7 +370,7 @@ def test_cron_has_27_registers_and_messenger_retention_55_23_maintenance():
         else:
             assert row["cron"] == expected and row["interval"] is None, f"{name}: cron {row['cron']!r}"
         assert not row["guarded"], f"прежняя запись {name} оказалась под проверкой apps.messenger"
-    assert len(entries) - len(PREVIOUS_CRON) == 12, (
+    assert len(entries) - len(PREVIOUS_CRON) == 13, (
         "кроме прежних: одна запись мессенджера, три задач среза 009, три поручений среза 010 и две сроков заявок")
 
 

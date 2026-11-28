@@ -185,7 +185,7 @@ def test_cron_has_27_registers_and_three_instructions_jobs():
     """План: три задания — `*/5`, `*/15`, `43 23`, очередь `maintenance`, таймауты 300/300/600, под проверкой
     установки; всего 29 вызовов (два задания среза 011)."""
     entries = cron_registrations()
-    assert len(entries) == 32, f"вызовов register {len(entries)}"
+    assert len(entries) == 33, f"вызовов register {len(entries)}"
     by_name = cron_by_name()
     for name, (function, queue, cron, timeout) in INSTRUCTIONS_JOBS.items():
         item = by_name.get(name)

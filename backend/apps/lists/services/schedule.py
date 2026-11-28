@@ -27,8 +27,7 @@ def period_start(process_row: ListProcess, now: datetime) -> date:
     if process_row.schedule_period == ListProcess.Period.DAILY:
         return today
     if process_row.schedule_period == ListProcess.Period.WEEKLY:
-        target = int(process_row.schedule_weekday or 1)
-        return today - timedelta(days=(today.isoweekday() - target) % WEEKDAYS)
+        return today - timedelta(days=today.isoweekday() - 1)
     return today.replace(day=1)
 
 
@@ -60,9 +59,11 @@ def _defaults(lst, actor):
             continue
         if isinstance(field.default, dict) and field.default.get("today"):
             data[field.code] = _moscow_now().strftime("%d.%m.%Y")
-        elif field.type in ("person", "unit", "record"):
+        elif field.type in ("person", "unit", "record", "choice"):
             raw = field.default if isinstance(field.default, list) else [field.default]
             data[field.code] = [str(pk) for pk in raw if pk not in (None, "")]
+        elif field.type == "money":
+            data[field.code] = str(field.default).replace(".", ",")
         else:
             data[field.code] = values_service.display(field, field.default, actor)
     return data
@@ -133,9 +134,9 @@ def launch(process_row: ListProcess, period: date, due_date: date, now: datetime
                                  object_id=process_row.list_id,
                                  after={"period": period.isoformat(), "reason": reason})
                     return row
-                title = (process_row.title_template or "").replace("{дата}", period.strftime("%d.%m.%Y")).strip()
+                title = (process_row.title_template or "").replace("{дата}", due_date.strftime("%d.%m.%Y")).strip()
                 if not title:
-                    title = f"{process.process_title(process_row, process_row.list)} — {period.strftime('%d.%m.%Y')}"
+                    title = f"{process.process_title(process_row, process_row.list)} — {due_date.strftime('%d.%m.%Y')}"
                 data["title"] = title
                 author = process_row.author or process_row.list.created_by
                 record = records.create_system(process_row.list, data, author, stage=first)

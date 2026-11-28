@@ -835,7 +835,7 @@ def test_archived_record_history_and_files_remain_after_nightly_lists_job_years_
     cron = ast.parse((support.BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8"))
     imported = {alias.name for node in ast.walk(cron) if isinstance(node, ast.ImportFrom)
                 and (node.module or "").startswith("apps.lists") for alias in node.names}
-    assert imported == {"remind_deadlines"}, f"в расписании у списков только напоминания: {sorted(imported)}"
+    assert imported == {"remind_deadlines", "process_launch_tick"}, f"в расписании у списков: {sorted(imported)}"
     module = ast.parse((support.BACKEND_DIR / "apps" / "lists" / "tasks.py").read_text(encoding="utf-8"))
     names = [node.name for node in ast.walk(module) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
     assert not [name for name in names if re.search(r"purge|clean|retention|anonym|delete", name, re.I)], names

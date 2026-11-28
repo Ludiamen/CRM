@@ -240,7 +240,7 @@ def test_cron_has_27_registers_and_three_tasks_jobs_under_is_installed():
     очереди `maintenance`, под `apps.is_installed("apps.tasks")` вместе со своим импортом; `42 23` ни у кого
     больше нет; прежние двадцать одна запись та же."""
     entries = cron_registrations()
-    assert len(entries) == 32, f"вызовов register {len(entries)}, ожидается 32"
+    assert len(entries) == 33, f"вызовов register {len(entries)}, ожидается 32"
     by_name = cron_by_name()
     for name, (function, queue, cron, timeout) in TASKS_JOBS.items():
         item = by_name.get(name)

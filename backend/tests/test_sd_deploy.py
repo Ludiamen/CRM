@@ -421,7 +421,7 @@ def test_cron_has_eight_new_jobs_with_expected_queues_and_poll_mailbox_every_min
         assert registered[name]["interval"] == interval, f"{name}: interval={registered[name]['interval']!r}"
         assert registered[name]["cron"] == cron, f"{name}: cron={registered[name]['cron']!r}"
         assert registered[name]["job_timeout"] == timeout, f"{name}: job_timeout={registered[name]['job_timeout']!r}"
-    assert len(cron_registrations()) == 32, (
+    assert len(cron_registrations()) == 33, (
         "шесть прежних, восемь среза 003, два среза 004, один среза 005, один среза 006, два среза 007, один среза 008, "
         "три среза 009, три среза 010 и два среза 011")
     source = (BACKEND_DIR / "config" / "cron.py").read_text(encoding="utf-8")

@@ -131,7 +131,7 @@ def test_purge_trash_is_registered_in_cron_with_45_23_maintenance_timeout_600():
     двадцать первая — `messenger_retention` среза 008 (CONTRACT-008, раздел 1.2), двадцать вторая…двадцать
     четвёртая — задания задач среза 009, двадцать пятая…двадцать седьмая — задания поручений среза 010."""
     registrations = cron_registrations()
-    assert len(registrations) == 32, (
+    assert len(registrations) == 33, (
         f"вызовов register {len(registrations)}, ожидается 29 (16 прежних, purge_trash, lists_reminders, два задания "
         "среза 007, messenger_retention среза 008, три задания среза 009, три среза 010 и два среза 011)")
     by_name = {item["name"]: item for item in registrations}

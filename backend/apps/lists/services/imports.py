@@ -282,7 +282,8 @@ def _apply_row(locked, entry, result, actor, every, batch: _Batch, counter: list
         batch.touched.append(record.pk)
         batch.created += 1
         return
-    record = Record.objects.select_for_update().filter(pk=entry["owner"].pk, list_id=locked.pk).first()
+    record = (Record.objects.select_for_update(of=("self",)).select_related("stage")
+              .filter(pk=entry["owner"].pk, list_id=locked.pk).first())
     if record is None or record.archived:
         raise ListsError("record_archived")
     if not access.can_edit_record(actor, record):
@@ -299,9 +300,17 @@ def _apply_row(locked, entry, result, actor, every, batch: _Batch, counter: list
     title = entry["title"] or record.title
     from apps.lists.services import process as process_service
 
-    proc = process_service.get_process(locked)
-    if record.stage is not None and proc is not None and proc.enabled:
-        for item in record.stage.required_fields.select_related("field"):
+    if not hasattr(locked, "_process_enabled"):
+        proc = process_service.get_process(locked)
+        locked._process_enabled = bool(proc is not None and proc.enabled)
+    if record.stage is not None and locked._process_enabled:
+        cache = getattr(locked, "_stage_required", None)
+        if cache is None:
+            cache = {}
+            locked._stage_required = cache
+        if record.stage_id not in cache:
+            cache[record.stage_id] = list(record.stage.required_fields.select_related("field"))
+        for item in cache[record.stage_id]:
             field = item.field
             if field.type == "file":
                 exists = RecordFile.objects.filter(record=record, field=field).exists()
