@@ -227,3 +227,32 @@ def update_locked(record, title: str, new_values: dict, actor) -> None:
     record.version += 1
     record.updated_by, record.updated_at = actor, timezone.now()
     record.save(update_fields=["title", "values", "version", "updated_by", "updated_at"])
+
+
+def create_system(lst, data: dict, actor, *, stage=None) -> Record:
+    """Создаёт запись от имени системы (плановый запуск): без проверки права правки, с обычными проверками
+    значений, уникальности, вектора и истории."""
+    with transaction.atomic():
+        access.lock_list(lst.pk, shared=True)
+        locked = List.objects.select_for_update().filter(pk=lst.pk).first()
+        if locked is None:
+            raise Http404
+        every = schema.all_fields(locked)
+        visible = [field for field in every if not field.hidden]
+        hidden = [field for field in every if field.hidden]
+        title, title_error = _parse_title(data)
+        new_values, errors = _parse_values(data, visible, hidden, {}, actor, source="form")
+        stored = {code: value for code, value in new_values.items() if value is not None}
+        _precheck_unique(None, locked, visible, stored, errors)
+        if title_error is not None or errors:
+            raise ValuesInvalid(_ordered(errors, title_error))
+        number = locked.next_number
+        List.objects.filter(pk=locked.pk).update(next_number=number + 1)
+        now = timezone.now()
+        record = Record.objects.create(
+            list=locked, number=number, title=title, values=stored, stage=stage, created_at=now,
+            created_by=actor, updated_at=now, updated_by=actor)
+        _sync_unique(record, every)
+        vectors.refresh([record.pk])
+        history.write(record, "created", [], actor)
+    return record

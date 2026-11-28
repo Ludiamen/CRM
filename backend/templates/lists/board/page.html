@@ -1,0 +1,28 @@
+{% extends layout %}
+{% load static %}
+{% block title %}{{ lst.name }} — стадии{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<link rel="stylesheet" href="{% static 'lists/board.css' %}">
+<div class="lists-page" data-lists-board-page>
+  <div class="page-head">
+    <h1 class="page-title">{{ lst.name }}</h1>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:grid' lst.pk %}">Таблица</a>
+      {% if can_create %}<a class="btn btn-primary btn-sm" href="{% url 'lists:add' lst.pk %}">Добавить запись</a>{% endif %}
+    </div>
+  </div>
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  <form class="filter-bar card card-body mb-3" method="get" action="{% url 'lists:board' lst.pk %}">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-8">
+        <label class="form-label small mb-1" for="board-q">Поиск</label>
+        <input class="form-control" id="board-q" name="q" value="{{ request.GET.q }}">
+      </div>
+      <div class="col-12 col-md-4"><button class="btn btn-primary" type="submit">Показать</button></div>
+    </div>
+  </form>
+  {% include "lists/board/_board.html" %}
+</div>
+<script src="{% static 'lists/lists-board.js' %}" defer></script>
+{% endblock %}

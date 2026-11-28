@@ -1,0 +1,18 @@
+<section class="lists-board-column" data-column="{{ column.key }}" data-drop>
+  <header class="lists-board-head">
+    <h2 class="h6 mb-0">{{ column.title }}</h2>
+    <span class="badge text-bg-secondary">{{ column.count }}</span>
+    {% if column.kind == 'closed' %}<span class="badge text-bg-secondary">завершено</span>{% endif %}
+  </header>
+  <div class="lists-board-cards">
+    {% for row in column.rows %}
+    <article class="lists-board-card" draggable="true" data-card="{{ row.number }}" data-number="{{ row.number }}" data-version="{{ row.version }}">
+      <a href="{% url 'lists:record' lst.pk row.number %}">{{ row.title }}</a>
+      <span class="small text-muted">№{{ row.number }}</span>
+    </article>
+    {% empty %}<p class="small text-muted">Пусто</p>{% endfor %}
+  </div>
+  {% if column.has_next %}
+  <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:board_column' lst.pk column.key %}?offset={{ column.offset|add:50 }}&{{ board_params }}">Показать ещё</a>
+  {% endif %}
+</section>

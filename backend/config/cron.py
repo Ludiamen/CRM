@@ -19,7 +19,7 @@ from apps.core.services.retention import (  # noqa: E402
     purge_expired_links, purge_expired_sessions, purge_login_history)
 from apps.core.tasks import purge_quarantine, requeue_pending_scans  # noqa: E402
 from apps.knowledge.tasks import purge_trash  # noqa: E402
-from apps.lists.tasks import remind_deadlines  # noqa: E402
+from apps.lists.tasks import process_launch_tick, remind_deadlines  # noqa: E402
 from apps.notify.tasks import notify_retention, notify_tick  # noqa: E402
 from apps.org.tasks import purge_previews  # noqa: E402
 from apps.servicedesk.tasks import (  # noqa: E402
@@ -64,6 +64,7 @@ register(purge_trash, queue_name="maintenance", cron="45 23 * * *", name="purge_
 # Списки (срез 006, T-6240, FR-530). Напоминания о сроках — 05:00 по UTC (08:00 по Москве), когда резервная копия и ночные
 # очистки уже закончились; записи списков хранятся без срока, поэтому задания их очистки нет.
 register(remind_deadlines, queue_name="maintenance", cron="0 5 * * *", name="lists_reminders", job_timeout=600)
+register(process_launch_tick, queue_name="maintenance", cron="* * * * *", name="lists_process_launch", job_timeout=300)
 
 # Лента (срез 007, T-7233, FR-618, FR-638). Напоминания о событиях — каждую минуту в очереди `notify` (её читают две
 # копии worker-notify); очистка по сроку хранения — 23:35 по UTC (02:35 по Москве), между `purge_requester_previews`

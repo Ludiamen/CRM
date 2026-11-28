@@ -162,25 +162,25 @@ def test_cron_has_no_other_maintenance_entry_at_0_5():
     assert len(own) == 1 and own[0]["cron"] == "0 5 * * *" and own[0]["queue"] == "maintenance"
 
 
-def test_cron_module_has_twenty_seven_register_calls():
-    """FR-530: в `config/cron.py` тридцать два вызовов `register` (семнадцать прежних, `lists_reminders`, два
-    задания среза 007, `messenger_retention` среза 008, три задания среза 009, три задания среза 010 и два среза 011)."""
+def test_cron_module_has_thirty_three_register_calls():
+    """FR-875, FR-890: в `config/cron.py` тридцать три вызова `register` (прежние 32 и `lists_process_launch`
+    среза 015)."""
     entries = cron_registrations()
-    assert len(entries) == 32, (
-        f"вызовов register {len(entries)}, ожидается 29 (17 прежних, lists_reminders, два задания среза 007, "
-        "messenger_retention среза 008, три задания срезов 009 и 010 и два среза 011)")
+    assert len(entries) == 33, (
+        f"вызовов register {len(entries)}, ожидается 33 (прежние 32 и lists_process_launch среза 015)")
     assert "lists_reminders" in {item["name"] for item in entries}
 
 
 def test_cron_has_no_cleanup_job_for_list_records():
-    """FR-544: записи списков хранятся без срока — в cron есть одно задание модуля `lists` (`remind_deadlines`) и
-    нет заданий очистки записей: ни одной другой функции из `apps.lists`, ни имени с `lists` кроме `lists_reminders`."""
+    """FR-544, FR-875: в cron два задания модуля `lists` — `remind_deadlines` и `process_launch_tick`; заданий
+    очистки записей нет."""
     entries = cron_registrations()
     own = [item for item in entries if (item["target"] or "").startswith("apps.lists.")]
-    assert [item["target"] for item in own] == ["apps.lists.tasks.remind_deadlines"], \
+    assert sorted(item["target"] for item in own) == [
+        "apps.lists.tasks.process_launch_tick", "apps.lists.tasks.remind_deadlines"], \
         f"задания модуля lists в cron: {[item['target'] for item in own]}"
     extra = [item["name"] for item in entries
-             if item["name"] != "lists_reminders" and "list" in (item["name"] or "").lower()]
+             if item["name"] not in {"lists_reminders", "lists_process_launch"} and "list" in (item["name"] or "").lower()]
     assert not extra, f"лишние задания со словом list в имени: {extra}"
     assert not [item["name"] for item in entries
                 if re.search(r"(purge|cleanup|retention|trash)", item["name"] or "") and "lists" in (item["target"] or "")]
@@ -835,3 +835,20 @@ def test_lists_texts_dictionary_contains_every_key_and_text_of_contract_12_1_to_
         elif shown != wanted:
             problems.append(f"{code}: {shown!r} вместо {wanted!r}")
     assert not problems, "тексты словаря расходятся с контрактом:\n" + "\n".join(problems)
+
+
+def test_lists_process_launch_cron_entry():
+    """FR-875, FR-878, NFR-752: `lists_process_launch` — `process_launch_tick`, очередь `maintenance`,
+    каждую минуту, `job_timeout=300`; ровно одна запись; импорт выше первого `register`."""
+    entries = [item for item in cron_registrations() if item["name"] == "lists_process_launch"]
+    assert len(entries) == 1
+    item = entries[0]
+    assert item["target"] == "apps.lists.tasks.process_launch_tick"
+    assert item["queue"] == "maintenance"
+    assert item["cron"] == "* * * * *"
+    assert item["job_timeout"] == 300
+    tree = ast.parse(cron_source())
+    imports = [node.lineno for node in tree.body if isinstance(node, ast.ImportFrom)
+               and node.module == "apps.lists.tasks" and any(a.name == "process_launch_tick" for a in node.names)]
+    assert imports, "в cron.py нет `from apps.lists.tasks import process_launch_tick`"
+    assert imports[0] < min(entry["line"] for entry in cron_registrations())

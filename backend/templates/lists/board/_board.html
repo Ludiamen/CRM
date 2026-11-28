@@ -1,0 +1,3 @@
+<div class="lists-board" data-lists-board data-move-url="{% url 'lists:board_move' lst.pk %}">
+  {% for column in board_columns %}{% include "lists/board/_column.html" %}{% endfor %}
+</div>

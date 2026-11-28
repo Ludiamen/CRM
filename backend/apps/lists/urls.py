@@ -6,7 +6,7 @@
 """
 from django.urls import path
 
-from apps.lists.views import files, grid, home, imports, labels, pickers, records, settings, tickets
+from apps.lists.views import board, files, grid, home, imports, labels, pickers, records, settings, tickets
 
 app_name = "lists"
 
@@ -50,6 +50,10 @@ urlpatterns = [
     path("<int:list_id>/add/", records.add, name="add"),
     path("<int:list_id>/<int:number>/", records.record, name="record"),
     path("<int:list_id>/<int:number>/edit/", records.edit, name="edit"),
+    path("<int:list_id>/board/", board.board, name="board"),
+    path("<int:list_id>/board/column/<str:key>/", board.column, name="board_column"),
+    path("<int:list_id>/board/move/", board.move, name="board_move"),
+    path("<int:list_id>/<int:number>/stage/", records.stage_move_record, name="stage_move_record"),
     path("<int:list_id>/<int:number>/history/", records.history, name="history"),
     path("<int:list_id>/<int:number>/archive/", records.archive, name="archive"),
     path("<int:list_id>/<int:number>/restore/", records.restore, name="restore"),

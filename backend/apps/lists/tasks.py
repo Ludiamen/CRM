@@ -43,3 +43,10 @@ def remind_deadlines() -> None:
     result = reminders.run(moscow_today())
     if result.failed:
         raise RuntimeError("Напоминания о сроках: сбой по записям " + ", ".join(str(pk) for pk in result.failed))
+
+
+def process_launch_tick() -> None:
+    """Минутное задание плановых запусков процессов (срез 015): период по Москве, строка запуска, запись."""
+    from apps.lists.services import schedule
+
+    schedule.tick()
