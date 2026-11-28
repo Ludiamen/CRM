@@ -13,6 +13,6 @@
     {% empty %}<p class="small text-muted">Пусто</p>{% endfor %}
   </div>
   {% if column.has_next %}
-  <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:board_column' lst.pk column.key %}?offset={{ column.offset|add:50 }}&{{ board_params }}">Показать ещё</a>
+  <a class="btn btn-outline-secondary btn-sm" data-show-more href="{% url 'lists:board_column' lst.pk column.key %}?offset={{ column.offset|add:50 }}&{{ board_params }}">Показать ещё</a>
   {% endif %}
 </section>

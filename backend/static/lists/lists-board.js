@@ -38,6 +38,27 @@
     });
   }
 
+  document.addEventListener("click", function (event) {
+    var link = event.target.closest("[data-show-more]");
+    if (!link) return;
+    event.preventDefault();
+    fetch(link.getAttribute("href"), {credentials: "same-origin", headers: {"HX-Request": "true"}})
+      .then(function (response) { return response.ok ? response.text() : ""; })
+      .then(function (html) {
+        if (!html) return;
+        var box = document.createElement("div");
+        box.innerHTML = html;
+        var fresh = box.querySelector("[data-column]");
+        var current = link.closest("[data-column]");
+        if (!fresh || !current) return;
+        var cards = current.querySelector(".lists-board-cards");
+        fresh.querySelectorAll(".lists-board-card").forEach(function (card) { cards.appendChild(card); });
+        var next = fresh.querySelector("[data-show-more]");
+        if (next) link.setAttribute("href", next.getAttribute("href"));
+        else link.remove();
+      });
+  });
+
   document.addEventListener("dragstart", function (event) {
     var card = event.target.closest("[data-card]");
     if (card && event.dataTransfer) event.dataTransfer.setData("text/plain", card.getAttribute("data-number"));
