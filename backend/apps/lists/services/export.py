@@ -80,10 +80,11 @@ class _Labels:
                 refs = structure.unit_refs(fresh)
             found = {pk: refs[pk].name if pk in refs else f"узел №{pk}" for pk in fresh}
         else:
-            for pk, title, list_id in Record.objects.filter(pk__in=fresh).values_list("pk", "title", "list_id"):
-                if list_id not in self.readable:
-                    self.readable[list_id] = access.can_read(self.viewer, List(pk=list_id))
-                found[pk] = title if self.readable[list_id] else UNAVAILABLE
+            for record in Record.objects.filter(pk__in=fresh).select_related("list"):
+                if record.list_id not in self.readable:
+                    self.readable[record.list_id] = access.can_read(self.viewer, record.list)
+                visible = self.readable[record.list_id] and access.can_read_record(self.viewer, record)
+                found[record.pk] = record.title if visible else UNAVAILABLE
         for pk in fresh:
             self.cache[self._key(field, pk)] = found.get(pk)
 

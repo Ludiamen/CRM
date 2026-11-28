@@ -27,6 +27,18 @@ class MoveResult(NamedTuple):
     repeated: bool
 
 
+def _expected(value):
+    """Ожидаемая стадия: отсутствие — `None`, пустая строка — тоже `None` (ожидали «без стадии»), цифры — номер."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, int):
+        return value
+    text = str(value)
+    if text.isascii() and text.isdigit():
+        return int(text)
+    raise StageChanged()
+
+
 def _filled(value) -> bool:
     if value is None:
         return False
@@ -92,7 +104,7 @@ def move(record, target_stage, *, base_version: int, expected_stage, values=None
 
         if locked.version != base_version:
             raise VersionConflict(locked.updated_by, locked.updated_at)
-        if (locked.stage_id or None) != (expected_stage or None):
+        if (locked.stage_id or None) != _expected(expected_stage):
             raise StageChanged()
         target_stage = (ProcessStage.objects.select_related("process")
                         .filter(pk=target_key, process__list_id=locked.list_id).first())

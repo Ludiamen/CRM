@@ -22,7 +22,8 @@ from apps.lists.services import process as process_service
 from apps.lists.services import records as records_service
 from apps.lists.services import transitions
 from apps.lists.services import values as values_service
-from apps.lists.services.errors import (ListsError, RecordArchived, RecordGone, ValuesInvalid, VersionConflict)
+from apps.lists.services.errors import (ListsError, RecordArchived, RecordGone, StageRequired, ValuesInvalid,
+                                       VersionConflict)
 from apps.lists.texts import TEXTS
 
 from .home import done
@@ -342,24 +343,43 @@ def stage_form(request, list_id: int, number: int, stage_id: int):
     record = Record.objects.filter(list=lst, number=number).first()
     if record is None or not access.can_read_record(request.user, record):
         raise Http404("Запись не найдена")
-    target = process_service.stage_of(lst, stage_id)
+    if not access.can_edit_record(request.user, record):
+        raise PermissionDenied
+    form_action = f"/lists/{lst.pk}/{number}/stage/{stage_id}/"
     if request.method == "GET":
+        target = process_service.stage_of(lst, stage_id)
+        if not access.can_read_stage(request.user, lst, target.pk):
+            raise Http404("Стадия не найдена")
         return _form_page(request, lst, record=record, number=number, base_version=record.version,
-                          form_action=f"/lists/{lst.pk}/{number}/stage/{target.pk}/", stage_target=target)
+                          form_action=form_action, stage_target=target)
+    base = _ascii_int(request.POST.get("base_version"), -1)
+    expected_raw = request.POST.get("expected")
+    expected = record.stage_id if expected_raw is None else expected_raw
     try:
-        transitions.move(record, target.pk, base_version=_ascii_int(request.POST.get("base_version"), -1),
-                         expected_stage=request.POST.get("expected") or record.stage_id,
+        transitions.move(record, stage_id, base_version=base, expected_stage=expected,
                          values=_post_data(lst, request.POST), title=request.POST.get("title") or None,
                          actor=request.user)
     except ValuesInvalid as refused:
         return _form_page(request, lst, record=record, number=number, post=request.POST, errors=refused.errors,
-                          base_version=record.version, form_action=f"/lists/{lst.pk}/{number}/stage/{target.pk}/",
-                          stage_target=target)
+                          base_version=base, form_action=form_action, stage_target=_target_or_none(lst, stage_id))
+    except StageRequired as refused:
+        codes = {field.code: ListsError("required", field=field.code)
+                 for field in schema.visible_fields(lst) if field.name in refused.fields}
+        return _form_page(request, lst, record=record, number=number, post=request.POST, errors=codes,
+                          base_version=base, form_action=form_action, stage_target=_target_or_none(lst, stage_id))
     except ListsError as refused:
+        target = _target_or_none(lst, stage_id)
+        if target is None:
+            return _card_page(request, lst, record, alert=refused)
         return _form_page(request, lst, record=record, number=number, post=request.POST, alert=refused,
-                          base_version=record.version, form_action=f"/lists/{lst.pk}/{number}/stage/{target.pk}/",
-                          stage_target=target)
+                          base_version=base, form_action=form_action, stage_target=target)
     return done(request, _record_url(lst, number))
+
+
+def _target_or_none(lst, stage_id: int):
+    from apps.lists.models import ProcessStage
+
+    return ProcessStage.objects.filter(pk=stage_id, process__list_id=lst.pk).first()
 
 
 @login_required
@@ -373,10 +393,12 @@ def stage_move_record(request, list_id: int, number: int):
     raw_stage = str(request.POST.get("stage", ""))
     if not raw_stage.isdigit():
         raise Http404("Стадия не найдена")
+    expected_raw = request.POST.get("expected")
+    expected = record.stage_id if expected_raw is None else expected_raw
     try:
         transitions.move(record, int(raw_stage),
                          base_version=_ascii_int(request.POST.get("base_version"), -1),
-                         expected_stage=request.POST.get("expected") or record.stage_id,
+                         expected_stage=expected,
                          title=request.POST.get("title") or None, actor=request.user)
     except ListsError as refused:
         return _card_page(request, lst, record, alert=refused)

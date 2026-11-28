@@ -68,18 +68,36 @@ def page(record, offset: int = 0) -> HistoryPage:
 
 def for_viewer(rows, lst, viewer) -> list:
     """Строки истории для смотрящего: ссылки на записи нечитаемого списка **или стадии** заменяются
-    «запись недоступного списка» с пометкой `unavailable` (FR-514, FR-527, FR-861)."""
+    «запись недоступного списка» с пометкой `unavailable` (FR-514, FR-527, FR-861).
+
+    Для старых строк без `ids` безопасная политика — маскировать все значения поля-ссылки: какая именно
+    запись была названа, неизвестно. Цели загружаются одним запросом; отсутствующая запись тоже считается
+    недоступной."""
+    record_codes = {field.code for field in Field.objects.filter(list=lst, type="record")}
     closed = {field.code for field in Field.objects.filter(list=lst, type="record").select_related("target")
               if not access.can_read(viewer, field.target)}
-    hidden_ids: set[int] = set()
-    for row in rows:
-        for item in row.changes or []:
-            for pk in item.get("ids") or ():
-                record = Record.objects.filter(pk=pk).select_related("list").first()
-                if record is not None and not access.can_read_record(viewer, record):
-                    hidden_ids.add(pk)
-    if not closed and not hidden_ids:
+    ids = {pk for row in rows for item in row.changes or [] for pk in item.get("ids") or ()}
+    found = {record.pk: record for record in Record.objects.filter(pk__in=ids).select_related("list")}
+    hidden_ids = {pk for pk, record in found.items() if not access.can_read_record(viewer, record)}
+    ids_without_record = ids - set(found)
+    if not closed and not hidden_ids and not ids_without_record:
         return rows
+    def hide(item):
+        code = item.get("field")
+        if code in closed:
+            return True
+        if code in record_codes and "ids" not in item:
+            return True
+        return bool((set(item.get("ids") or ()) & (hidden_ids | ids_without_record)))
+    for row in rows:
+        if not any(hide(item) for item in row.changes or []):
+            continue
+        row.changes = [
+            {**item, "before": UNAVAILABLE if item.get("before") else "",
+             "after": UNAVAILABLE if item.get("after") else "", "unavailable": True}
+            if hide(item) else item
+            for item in row.changes]
+    return rows
     for row in rows:
         if not any(item.get("field") in closed or hidden_ids.intersection(item.get("ids") or ())
                    for item in row.changes or []):

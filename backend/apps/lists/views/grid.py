@@ -170,7 +170,7 @@ def _filters(lst, gp, viewer) -> list[dict]:
     return rows
 
 
-def _stage_choices(lst, gp) -> list[dict]:
+def _stage_choices(lst, gp, viewer) -> list[dict]:
     """Варианты фильтра стадий: читаемые стадии и «Без стадии»."""
     from apps.lists.services import process as process_service
 
@@ -178,7 +178,7 @@ def _stage_choices(lst, gp) -> list[dict]:
     if proc is None or not proc.enabled:
         return []
     choices = [{"value": str(stage.pk), "title": stage.title, "selected": gp.stage == stage.pk}
-               for stage in process_service.visible_stages(lst)]
+               for stage in process_service.visible_stages(lst) if access.can_read_stage(viewer, lst, stage.pk)]
     choices.append({"value": "none", "title": "Без стадии", "selected": gp.stage == "none"})
     return choices
 
@@ -213,7 +213,7 @@ def _render(request, lst, params, *, notice=None, alert=None):
         "presets": [{"code": code, "name": PRESET_TITLES[code], "current": code == gp.preset,
                      "href": _url(lst, gp, preset=code, page=None)} for code in grid_service.presets(gp.fields)],
         "filters": _filters(lst, gp, viewer),
-        "stage_choices": _stage_choices(lst, gp),
+        "stage_choices": _stage_choices(lst, gp, viewer),
         "reset_url": f"/lists/{lst.pk}/" + (
             f"?preset={gp.preset}" if gp.preset != "all" else ""),
         "column_choices": [{"field": field, "checked": field.code in chosen} for field in columns + spare],

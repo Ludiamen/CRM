@@ -88,34 +88,44 @@ def launch(process_row: ListProcess, period: date, now: datetime) -> ProcessLaun
             process=process_row, period_start=period, defaults={"status": ProcessLaunch.Status.SKIPPED})
         if not created:
             return row
+        current_due = due(process_row, now)
+        if current_due is None or current_due[0] != period:
+            row.reason = "срок или режим изменились"
+            row.save(update_fields=["reason"])
+            audit.record("lists.process_launch_skipped", actor=None, object_type="lists.process",
+                         object_id=process_row.list_id,
+                         after={"period": period.isoformat(), "reason": row.reason})
+            return row
         try:
-            first = process.first_open(process_row.list)
-            data = _defaults(process_row.list, process_row.author)
-            reason = ""
-            if not process_row.enabled:
-                reason = "процесс выключен"
-            elif first is None:
-                reason = "нет открытой стадии"
-            elif not _can_fill(first, data, process_row.list):
-                reason = "не заполнены обязательные поля первой стадии"
-            if reason:
-                row.reason = reason
-                row.save(update_fields=["reason"])
-                audit.record("lists.process_launch_skipped", actor=None, object_type="lists.process",
-                             object_id=process_row.list_id, after={"period": period.isoformat(), "reason": reason})
-                return row
-            title = (process_row.title_template or "").replace("{дата}", period.strftime("%d.%m.%Y")).strip()
-            if not title:
-                title = f"{process.process_title(process_row, process_row.list)} — {period.strftime('%d.%m.%Y')}"
-            data["title"] = title
-            author = process_row.author or process_row.list.created_by
-            record = records.create_system(process_row.list, data, author, stage=first)
-            row.status = ProcessLaunch.Status.CREATED
-            row.record = record
-            row.save(update_fields=["status", "record"])
+            with transaction.atomic():
+                first = process.first_open(process_row.list)
+                data = _defaults(process_row.list, process_row.author)
+                reason = ""
+                if not process_row.enabled:
+                    reason = "процесс выключен"
+                elif first is None:
+                    reason = "нет открытой стадии"
+                elif not _can_fill(first, data, process_row.list):
+                    reason = "не заполнены обязательные поля первой стадии"
+                if reason:
+                    row.reason = reason
+                    row.save(update_fields=["reason"])
+                    audit.record("lists.process_launch_skipped", actor=None, object_type="lists.process",
+                                 object_id=process_row.list_id,
+                                 after={"period": period.isoformat(), "reason": reason})
+                    return row
+                title = (process_row.title_template or "").replace("{дата}", period.strftime("%d.%m.%Y")).strip()
+                if not title:
+                    title = f"{process.process_title(process_row, process_row.list)} — {period.strftime('%d.%m.%Y')}"
+                data["title"] = title
+                author = process_row.author or process_row.list.created_by
+                record = records.create_system(process_row.list, data, author, stage=first)
+                row.status = ProcessLaunch.Status.CREATED
+                row.record = record
+                row.save(update_fields=["status", "record"])
         except Exception as error:  # noqa: BLE001 — строка запуска обязана получить финальный статус
             row.status = ProcessLaunch.Status.FAILED
-            row.reason = error.message if isinstance(error, ListsError) else "ошибка создания записи"[:200]
+            row.reason = error.message if isinstance(error, ListsError) else "ошибка создания записи"
             row.save(update_fields=["status", "reason"])
             audit.record("lists.process_launch_failed", actor=None, object_type="lists.process",
                          object_id=process_row.list_id,

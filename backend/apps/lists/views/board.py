@@ -61,9 +61,11 @@ def move(request, list_id: int):
     raw_stage = str(request.POST.get("stage", ""))
     if not raw_stage.isdigit():
         return JsonResponse({"error": "Стадия не найдена", "code": "stage_absent"}, status=404)
+    expected_raw = request.POST.get("expected")
+    expected = record.stage_id if expected_raw is None else expected_raw
     try:
         transitions.move(record, int(raw_stage), base_version=int(request.POST.get("base_version", "0") or 0),
-                         expected_stage=request.POST.get("expected") or record.stage_id, actor=request.user)
+                         expected_stage=expected, actor=request.user)
     except ListsError as refused:
         if request.headers.get("Accept", "").startswith("application/json"):
             return JsonResponse({"error": refused.message, "code": refused.code}, status=409)

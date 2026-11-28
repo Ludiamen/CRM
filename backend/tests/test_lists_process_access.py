@@ -165,3 +165,39 @@ def test_grid_and_direct_views_hide_unreadable_stage():
     assert reader.client.get(f"/lists/{lst.pk}/{hidden.number}/").status_code == 404
     assert reader.client.get(f"/lists/{lst.pk}/{hidden.number}/history/").status_code == 404
     assert reader.client.get(f"/lists/{lst.pk}/{visible.number}/").status_code == 200
+
+
+def test_stage_filter_does_not_list_unreadable_stage():
+    lst = ll.make_list()
+    process = make_process(lst)
+    hidden = make_stage(process, "Секретная стадия", 1)
+    allow(hidden, factories.make_role(), "read")
+    reader = ll.as_reader(lst)
+    body = reader.client.get(f"/lists/{lst.pk}/").content.decode()
+    assert "Секретная стадия" not in body
+
+
+def test_legacy_history_without_ids_is_masked():
+    from apps.lists.services import history as history_service
+
+    lst = ll.make_list()
+    target_list = ll.make_list()
+    process = make_process(target_list)
+    hidden_stage = make_stage(process, "Скрыта", 1)
+    allow(hidden_stage, factories.make_role(), "read")
+    hidden = record_at(target_list, hidden_stage, "Секретная цель")
+    field = ll.add_field(lst, "record", "Ссылка", target=target_list)
+    record = ll.make_record(lst, values={field.code: [hidden.pk]})
+    role = factories.make_role()
+    ll.grant_list(target_list, role, "read")
+    reader = ll.as_reader(lst)
+    reader.user.roles.add(role)
+    from apps.core.services import permissions
+    from django.core.cache import cache
+
+    cache.delete(permissions._key(reader.user.pk))
+    history_service.write(record, "changed", [{"field": field.code, "name": field.name,
+                                                "before": "Секретная цель — №1", "after": ""}], record.updated_by)
+    rows = list(support.model("lists.Change").objects.filter(record=record))
+    shown = history_service.for_viewer(rows, lst, reader.user)
+    assert shown[0].changes[0]["before"] == "запись недоступного списка"
