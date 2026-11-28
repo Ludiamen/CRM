@@ -97,7 +97,8 @@ def _cells(rows, fields, viewer) -> list[dict]:
                 text = values_service.display(field, stored, viewer)
             # `parts` — значения ссылочного поля по одному: запись нечитаемого списка выводится с пометкой (11.5)
             cells.append({"code": field.code, "text": text, "long": field.type == "text", "parts": parts})
-        result.append({"record": row, "cells": cells})
+        result.append({"record": row, "cells": cells,
+                       "stage": row.stage.title if row.stage_id else ""})
     return result
 
 
@@ -105,7 +106,8 @@ def _cells(rows, fields, viewer) -> list[dict]:
 
 def _pairs(gp, **over) -> list[tuple[str, str]]:
     """Параметры адреса таблицы по разобранным: отбор, поиск, фильтры, порядок; `over` заменяет или (`None`) убирает."""
-    data: dict = {"preset": gp.preset, "q": gp.q, "sort": gp.sort, "dir": gp.dir if gp.sort else ""}
+    data: dict = {"preset": gp.preset, "q": gp.q, "sort": gp.sort, "dir": gp.dir if gp.sort else "",
+                  "stage": "" if gp.stage is None else gp.stage}
     data.update(over)
     pairs = [(name, str(value)) for name, value in data.items() if value not in (None, "") and
              not (name == "preset" and value == "all")]
@@ -122,6 +124,8 @@ def _url(lst, gp, **over) -> str:
 def _headers(lst, gp, columns, viewer) -> list[dict]:
     """Заголовки: «Название» и столбцы; у сортируемых — ссылка (повторное нажатие меняет направление)."""
     heads = [{"code": "title", "name": "Название", "sortable": True}]
+    if getattr(lst, "process", None) is not None and lst.process.enabled:
+        heads.append({"code": "stage", "name": "Стадия", "sortable": True})
     heads += [{"code": field.code, "name": field.name, "sortable": grid_service.sortable(field, viewer)}
               for field in columns]
     for head in heads:
@@ -166,6 +170,19 @@ def _filters(lst, gp, viewer) -> list[dict]:
     return rows
 
 
+def _stage_choices(lst, gp) -> list[dict]:
+    """Варианты фильтра стадий: читаемые стадии и «Без стадии»."""
+    from apps.lists.services import process as process_service
+
+    proc = process_service.get_process(lst)
+    if proc is None or not proc.enabled:
+        return []
+    choices = [{"value": str(stage.pk), "title": stage.title, "selected": gp.stage == stage.pk}
+               for stage in process_service.visible_stages(lst)]
+    choices.append({"value": "none", "title": "Без стадии", "selected": gp.stage == "none"})
+    return choices
+
+
 def _selected(field, items, viewer) -> list[dict]:
     ids = [int(item) for item in items if item.isascii() and item.isdigit()]
     if not ids:
@@ -195,7 +212,9 @@ def _render(request, lst, params, *, notice=None, alert=None):
         "next_url": _url(lst, gp, page=gp.page + 1), "prev_url": _url(lst, gp, page=gp.page - 1 or None),
         "presets": [{"code": code, "name": PRESET_TITLES[code], "current": code == gp.preset,
                      "href": _url(lst, gp, preset=code, page=None)} for code in grid_service.presets(gp.fields)],
-        "filters": _filters(lst, gp, viewer), "reset_url": f"/lists/{lst.pk}/" + (
+        "filters": _filters(lst, gp, viewer),
+        "stage_choices": _stage_choices(lst, gp),
+        "reset_url": f"/lists/{lst.pk}/" + (
             f"?preset={gp.preset}" if gp.preset != "all" else ""),
         "column_choices": [{"field": field, "checked": field.code in chosen} for field in columns + spare],
         "hint": hint, "can_edit": can_edit, "can_manage": access.can_manage(viewer),

@@ -161,6 +161,10 @@ def build(lst, viewer, params) -> HttpResponse:
     by_code = {field.code: field for field in schema.visible_fields(lst)}
     columns = [None if code == "title" else by_code[code] for code in grid.columns(lst, viewer)
                if code == "title" or code in by_code]
+    from apps.lists.services import process as process_service
+
+    proc = process_service.get_process(lst)
+    stage_column = bool(proc and proc.enabled)
     fields = [field for field in columns if field is not None]
     reference_fields = [field for field in fields if field.type in REFERENCE_TYPES]
     file_fields = [field.pk for field in fields if field.type == "file"]
@@ -170,7 +174,8 @@ def build(lst, viewer, params) -> HttpResponse:
     sheet = book.create_sheet("Список")
     for index, field in enumerate(columns, start=1):
         sheet.column_dimensions[get_column_letter(index)].width = _width(field)
-    sheet.append([_text_cell(sheet, TITLE_HEADER if field is None else field.name) for field in columns])
+    header = [TITLE_HEADER] + (["Стадия"] if stage_column else []) + [field.name for field in columns if field is not None]
+    sheet.append([_text_cell(sheet, name) for name in header])
     for part in _chunks(queryset):
         for field in reference_fields:
             ids = {pk for row in part for pk in (row.values or {}).get(field.code) or [] if isinstance(pk, int)}
@@ -183,9 +188,12 @@ def build(lst, viewer, params) -> HttpResponse:
                 files.setdefault(record_id, {}).setdefault(field_id, []).append(name)
         for row in part:
             stored = row.values or {}
-            sheet.append([_text_cell(sheet, row.title) if field is None else
-                          _cell(sheet, field, stored.get(field.code), labels, files.get(row.pk, {}))
-                          for field in columns])
+            values = [_text_cell(sheet, row.title)]
+            if stage_column:
+                values.append(_text_cell(sheet, row.stage.title if row.stage_id else ""))
+            values += [_cell(sheet, field, stored.get(field.code), labels, files.get(row.pk, {}))
+                       for field in columns if field is not None]
+            sheet.append(values)
     buffer = io.BytesIO()
     book.save(buffer)
     response = HttpResponse(buffer.getvalue(), content_type=XLSX_TYPE)

@@ -16,6 +16,16 @@ ACTIONS = dict([
     ("lists.field_deleted", "Удалено поле списка"), ("lists.choices_changed", "Изменены значения поля списка"),
     ("lists.record_archived", "Запись перенесена в архив"), ("lists.record_restored", "Запись возвращена из архива"),
     ("lists.record_purged", "Запись удалена навсегда"), ("lists.import_done", "Загрузка в список"),
+    ("lists.process_changed", "Изменён процесс списка"), ("lists.process_enabled", "Процесс включён"),
+    ("lists.process_disabled", "Процесс выключен"), ("lists.process_stage_changed", "Изменена стадия процесса"),
+    ("lists.process_stage_deleted", "Удалена стадия процесса"), ("lists.process_stage_moved", "Изменён порядок стадий"),
+    ("lists.process_stage_access_changed", "Изменены права стадии"),
+    ("lists.process_stage_fields_changed", "Изменены обязательные поля стадии"),
+    ("lists.record_stage_changed", "Запись перешла на стадию"),
+    ("lists.process_launch_created", "Плановый запуск процесса"),
+    ("lists.process_launch_skipped", "Плановый запуск пропущен"),
+    ("lists.process_launch_failed", "Плановый запуск с ошибкой"),
+    ("lists.process_launch_missed", "Пропущены плановые запуски"),
 ])
 FIELDS = dict([
     ("name", "название"), ("description", "описание"), ("number", "номер"), ("title", "заголовок"),
@@ -25,10 +35,13 @@ FIELDS = dict([
     ("hidden", "скрыто"), ("default", "значение по умолчанию"), ("hint", "подсказка"), ("currency", "валюта"),
     ("target", "целевой список"), ("thresholds", "пороги срока"), ("choices", "значения"),
     ("readers", "читают"), ("editors", "правят"), ("file", "файл"),
+    ("stage", "стадия"), ("order", "порядок"), ("kind", "вид"), ("period", "период"), ("reason", "причина"),
+    ("narrow", "сужает права"), ("fields", "поля"), ("moved", "переведено"), ("stages", "стадии"),
+    ("enabled", "включён"), ("launch_mode", "запуск"),
 ])
 OBJECT_TYPES = dict([
     ("lists.list", "список"), ("lists.field", "поле списка"), ("lists.record", "запись списка"),
-    ("lists.import", "загрузка в список"),
+    ("lists.import", "загрузка в список"), ("lists.process", "процесс списка"),
 ])
 
 

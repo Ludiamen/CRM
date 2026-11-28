@@ -27,6 +27,15 @@
       <a class="btn btn-outline-secondary" data-action="filters-reset" href="{{ reset_url }}">Сбросить</a>
     </div>
     {% if hint %}<div class="form-text" data-lists-search-hint>{{ hint }}</div>{% endif %}
+    {% if stage_choices %}
+    <div class="lists-filter" data-lists-filter="stage">
+      <label class="form-label small" for="lists-filter-stage">Стадия</label>
+      <select class="form-select form-select-sm" id="lists-filter-stage" name="stage">
+        <option value="">Все</option>
+        {% for item in stage_choices %}<option value="{{ item.value }}"{% if item.selected %} selected{% endif %}>{{ item.title }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
     <div class="lists-filters" data-lists-filters>
       {% for item in filters %}
       <div class="lists-filter" data-lists-filter="{{ item.code }}">

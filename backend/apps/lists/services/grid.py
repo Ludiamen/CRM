@@ -66,6 +66,7 @@ class GridParams:
     filters: tuple = ()
     fields: tuple = ()
     values: dict | None = None
+    stage: object = None
 
 
 @dataclass(frozen=True)
@@ -203,10 +204,20 @@ def read(params, lst, viewer) -> GridParams:
     parsed = search.parse_local(text) if text else None
     page = params.get("page", "")
     filters, shown = _read_filters(params, fields)
+    raw_stage = str(params.get("stage", "") or "")
+    if raw_stage == "none":
+        stage = "none"
+    elif raw_stage.isascii() and raw_stage.isdigit():
+        from apps.lists.models import ProcessStage
+        from apps.lists.services import process as process_service
+
+        stage = int(raw_stage) if ProcessStage.objects.filter(pk=int(raw_stage), process__list_id=lst.pk).exists() else None
+    else:
+        stage = None
     return GridParams(
         preset=preset, sort=sort, dir=direction, q=text, search=parsed,
         page=int(page) if _PAGE.fullmatch(page) and int(page) >= 1 else 1,
-        filters=tuple(filters), fields=tuple(fields), values=shown)
+        filters=tuple(filters), fields=tuple(fields), values=shown, stage=stage)
 
 
 # --- набор записей ---------------------------------------------------------------------------------------
@@ -306,12 +317,18 @@ def records(lst, viewer, gp: GridParams):
     stage_condition = access.record_condition(viewer, lst)
     if stage_condition is not None:
         queryset = queryset.filter(stage_condition)
+    if gp.stage == "none":
+        queryset = queryset.filter(stage__isnull=True)
+    elif gp.stage is not None:
+        queryset = queryset.filter(stage_id=gp.stage)
     for index, item in enumerate(gp.filters):
         queryset = _apply_filter(queryset, index, item)
     found = None if gp.search is None else search.record_condition(
         gp.search, [lst.pk], archived=gp.preset == "archive")
     if found is not None:
         queryset = queryset.filter(found)
+    if gp.sort == "stage":
+        return queryset.order_by(("stage__order" if gp.dir == "asc" else "-stage__order"), "number")
     if gp.sort in ("", "number"):
         return queryset.order_by("-number" if gp.sort and gp.dir == "desc" else "number")
     if gp.sort == "title":
