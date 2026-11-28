@@ -11,7 +11,7 @@ from django.http import Http404
 
 from apps.core.models import UserState
 from apps.core.services import permissions
-from apps.lists.models import Access, List, Record
+from apps.lists.models import Access, List, ListProcess, ProcessStage, ProcessStageAccess, Record
 
 MANAGE_PERMISSION = "lists.manage"
 
@@ -25,6 +25,13 @@ class Scope(NamedTuple):
 
 
 _EMPTY = Scope(False, frozenset(), frozenset())
+
+
+class StageScope(NamedTuple):
+    """Права на стадии списка: номера стадий, которые сотрудник читает и правит."""
+
+    read: frozenset
+    edit: frozenset
 
 
 def lock_list(list_id: int, *, shared: bool) -> None:
@@ -132,3 +139,92 @@ def get_record(user, list_id: int, number: int) -> Record:
     if record is None:
         raise Http404("Запись не найдена")
     return record
+
+
+# --- права стадий (срез 015) -----------------------------------------------------------------------------
+
+def stage_scope(user, lst):
+    """Права на стадии списка или `None`, если ограничений нет (управляющий, процесс выключен).
+
+    Кэш на запрос: `user._lists_stage_scope` — словарь `id списка → StageScope | None`. Пустой набор прав
+    стадии наследует права списка; явный набор только сужает. Считается по ролям и цепочке узлов, как `scope`.
+    """
+    cache = getattr(user, "_lists_stage_scope", None)
+    if cache is None:
+        cache = {}
+        try:
+            user._lists_stage_scope = cache
+        except AttributeError:
+            pass
+    if lst.pk in cache:
+        return cache[lst.pk]
+    result = _stage_count(user, lst)
+    cache[lst.pk] = result
+    return result
+
+
+def _stage_count(user, lst):
+    current = scope(user)
+    if current.manage:
+        return None
+    if not getattr(user, "is_authenticated", False) or getattr(user, "state", None) != UserState.ACTIVE:
+        return StageScope(frozenset(), frozenset())
+    if not ListProcess.objects.filter(list_id=lst.pk, enabled=True).exists():
+        return None
+    role_ids = permissions.role_ids(user)
+    units: frozenset = frozenset()
+    if apps.is_installed("apps.org"):
+        from apps.org.services import structure
+
+        units = structure.unit_chain_ids(user)
+    stages = list(ProcessStage.objects.filter(process__list_id=lst.pk).values_list("pk", flat=True))
+    rows = list(ProcessStageAccess.objects.filter(stage_id__in=stages).values_list("stage_id", "level", "role_id", "unit_id"))
+    by_stage: dict[int, list] = {}
+    for stage_id, level, role_id, unit_id in rows:
+        by_stage.setdefault(stage_id, []).append((level, role_id, unit_id))
+    readable: set[int] = set()
+    editable: set[int] = set()
+    for stage_id in stages:
+        accesses = by_stage.get(stage_id, [])
+        if not accesses:
+            readable.add(stage_id)
+            editable.add(stage_id)
+            continue
+        for level, role_id, unit_id in accesses:
+            matches = (role_id is not None and role_id in role_ids) or (unit_id is not None and unit_id in units)
+            if not matches:
+                continue
+            readable.add(stage_id)
+            if level == ProcessStageAccess.Level.EDIT:
+                editable.add(stage_id)
+    return StageScope(frozenset(readable), frozenset(editable))
+
+
+def can_read_record(user, record) -> bool:
+    """Запись читается: список читается и стадия доступна (запись без стадии — по правам списка)."""
+    lst = record.list
+    if not can_read(user, lst):
+        return False
+    if record.stage_id is None:
+        return True
+    current = stage_scope(user, lst)
+    return current is None or record.stage_id in current.read or record.stage_id in current.edit
+
+
+def can_edit_record(user, record) -> bool:
+    """Запись правится: список правится и стадия в наборе правки (запись без стадии — по правам списка)."""
+    lst = record.list
+    if not can_edit(user, lst):
+        return False
+    if record.stage_id is None:
+        return True
+    current = stage_scope(user, lst)
+    return current is None or record.stage_id in current.edit
+
+
+def record_condition(user, lst):
+    """Условие выборки записей по правам стадий: `None` — ограничений нет, иначе `Q` для фильтра."""
+    current = stage_scope(user, lst)
+    if current is None:
+        return None
+    return Q(stage__isnull=True) | Q(stage_id__in=current.read | current.edit)
