@@ -143,3 +143,16 @@ def test_move_from_no_stage_and_repeat_after_target_deleted():
     process.delete_stage(first, manager.user)
     again = transitions.move(record, first, base_version=1, expected_stage=None, actor=manager.user)
     assert again.repeated is True
+
+
+def test_card_move_view():
+    lst, manager, proc, (first, second) = setup_list("Новая", "Работа")
+    record = place(ll.make_record(lst), first)
+    page = manager.client.get(f"/lists/{lst.pk}/{record.number}/")
+    assert page.status_code == 200
+    assert "Перейти на стадию" in page.content.decode()
+    response = manager.client.post(f"/lists/{lst.pk}/{record.number}/stage/",
+                                   {"stage": second.pk, "base_version": record.version})
+    assert response.status_code == 302
+    record.refresh_from_db()
+    assert record.stage_id == second.pk

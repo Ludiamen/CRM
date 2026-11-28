@@ -10,6 +10,7 @@
     <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:grid' lst.pk %}">{{ lst.name }}</a>
   </div>
   {% if alert %}{% include "lists/_record_alert.html" %}{% endif %}
+  {% if stage_enabled %}{% include "lists/_record_stage.html" %}{% endif %}
   <div class="d-flex flex-wrap gap-2 mb-3 lists-record-actions">
     {% if can_edit and not record.archived %}<a class="btn btn-outline-primary btn-sm" data-action="record-edit" href="{% url 'lists:edit' lst.pk record.number %}">Изменить</a>{% endif %}
     {% include "lists/_record_label_button.html" %}

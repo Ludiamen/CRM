@@ -1,0 +1,21 @@
+<section class="mb-3" data-lists-stage>
+  <h2 class="h5">Стадия</h2>
+  <p class="mb-2">
+    {% if record.stage %}
+      <span class="badge text-bg-primary">{{ record.stage.title }}</span>
+      {% if record.stage.kind == 'closed' %}<span class="badge text-bg-secondary">завершено</span>{% endif %}
+    {% else %}<span class="text-muted">Без стадии</span>{% endif %}
+  </p>
+  {% if can_move and stage_targets %}
+  <form class="d-flex flex-wrap gap-2 align-items-end" method="post" action="{% url 'lists:stage_move_record' lst.pk record.number %}">{% csrf_token %}
+    <input type="hidden" name="base_version" value="{{ record.version }}">
+    <div>
+      <label class="form-label small mb-1" for="record-stage-target">Перейти на стадию</label>
+      <select class="form-select form-select-sm" id="record-stage-target" name="stage" required>
+        {% for stage in stage_targets %}<option value="{{ stage.pk }}">{{ stage.title }}{% if stage.kind == 'closed' %} (завершить){% endif %}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-primary btn-sm" type="submit">Перейти</button>
+  </form>
+  {% endif %}
+</section>

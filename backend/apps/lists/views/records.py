@@ -18,7 +18,9 @@ from apps.core.widgets import PortalDateInput, moscow_today
 from apps.lists.models import Choice, Field, Record, RecordFile
 from apps.lists.services import access, archive as archive_service, history as history_service, links, schema
 from apps.lists.services import tickets as tickets_service
+from apps.lists.services import process as process_service
 from apps.lists.services import records as records_service
+from apps.lists.services import transitions
 from apps.lists.services import values as values_service
 from apps.lists.services.errors import (ListsError, RecordArchived, RecordGone, ValuesInvalid, VersionConflict)
 from apps.lists.texts import TEXTS
@@ -291,8 +293,18 @@ def _card_context(request, lst, record, *, alert=None) -> dict:
     page = history_service.page(record, 0)
     # файлы карточки — одним запросом вместе с `StoredFile` (блок «Файлы», T-6222; сборка Opus)
     prefetch_related_objects([record], Prefetch("files", queryset=RecordFile.objects.select_related("file")))
+    proc = process_service.get_process(lst)
+    stage_enabled = bool(proc and proc.enabled)
+    can_move = stage_enabled and access.can_edit_record(user, record)
+    stage_targets = []
+    if can_move:
+        scope = access.stage_scope(user, lst)
+        stage_targets = [stage for stage in process_service.visible_stages(lst)
+                         if stage.pk != record.stage_id
+                         and (scope is None or stage.pk in scope.read or stage.pk in scope.edit)]
     return {
         "lst": lst, "record": record, "can_edit": can_edit,
+        "stage_enabled": stage_enabled, "can_move": can_move, "stage_targets": stage_targets,
         "can_purge": record.archived and access.can_manage(user),
         "cells": [_value_cell(f, stored.get(f.code), user) for f in fields if f.type != "file"],
         "file_fields": [f for f in fields if f.type == "file"],
@@ -318,6 +330,24 @@ def record(request, list_id: int, number: int):
     if not access.can_read_record(request.user, found):
         raise Http404("Запись не найдена")
     return _card_page(request, lst, found)
+
+
+@login_required
+@require_POST
+def stage_move_record(request, list_id: int, number: int):
+    """Переход записи на выбранную стадию из карточки."""
+    lst = access.get_list(request.user, list_id)
+    record = Record.objects.filter(list=lst, number=number).first()
+    if record is None or not access.can_read_record(request.user, record):
+        raise Http404("Запись не найдена")
+    target = process_service.stage_of(lst, request.POST.get("stage"))
+    try:
+        transitions.move(record, target, base_version=_ascii_int(request.POST.get("base_version"), -1),
+                         expected_stage=record.stage_id, title=request.POST.get("title") or None,
+                         actor=request.user)
+    except ListsError as refused:
+        return _card_page(request, lst, record, alert=refused)
+    return done(request, _record_url(lst, number))
 
 
 # --- история ------------------------------------------------------------------------------------------------
