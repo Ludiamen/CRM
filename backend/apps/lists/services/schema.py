@@ -635,6 +635,10 @@ def _set_hidden(field, hidden: bool, *, actor) -> None:
             field.hidden = hidden
             return
         Field.objects.filter(pk=current.pk).update(hidden=hidden)
+        if hidden:
+            from apps.lists.services import process as process_service
+
+            process_service.hide_field(current, actor)
         if current.type in _VECTOR_TYPES:
             List.objects.filter(pk=current.list_id).update(vectors_stale_since=timezone.now())
             transaction.on_commit(lambda: _enqueue_refresh(current.list_id, current.pk))

@@ -33,6 +33,11 @@ urlpatterns = [
     path("<int:list_id>/settings/fields/<str:code>/down/", settings.field_down, name="field_down"),
     path("<int:list_id>/settings/fields/<str:code>/choices/", settings.field_choices, name="field_choices"),
     path("<int:list_id>/settings/access/", settings.access_tab, name="access"),
+    path("<int:list_id>/settings/process/", settings.process_tab, name="process"),
+    path("<int:list_id>/settings/process/stages/new/", settings.stage_new, name="stage_new"),
+    path("<int:list_id>/settings/process/stages/<int:stage_id>/", settings.stage_edit, name="stage_edit"),
+    path("<int:list_id>/settings/process/stages/<int:stage_id>/move/", settings.stage_move, name="stage_move"),
+    path("<int:list_id>/settings/process/stages/<int:stage_id>/delete/", settings.stage_delete, name="stage_delete"),
     path("<int:list_id>/delete/", settings.delete, name="delete"),
     # Таблица (T-6216; выгрузка — T-6220)
     path("<int:list_id>/", grid.grid, name="grid"),

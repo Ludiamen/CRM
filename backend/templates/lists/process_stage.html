@@ -1,0 +1,70 @@
+{% extends layout %}
+{% block title %}{{ lst.name }} — стадия{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="process-stage" class="lists-page">
+  {% include "lists/_settings_head.html" %}
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  <form class="lists-form" method="post" action="{% if stage %}{% url 'lists:stage_edit' lst.pk stage.pk %}{% else %}{% url 'lists:stage_new' lst.pk %}{% endif %}">{% csrf_token %}
+    <div class="row g-2 mb-3">
+      <div class="col-12 col-md-6">
+        <label class="form-label" for="stage-title">Название</label>
+        <input class="form-control" id="stage-title" name="title" maxlength="100" value="{{ values.title }}" required>
+      </div>
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="stage-kind">Вид</label>
+        <select class="form-select" id="stage-kind" name="kind">
+          <option value="open"{% if values.kind == 'open' %} selected{% endif %}>Открыта</option>
+          <option value="closed"{% if values.kind == 'closed' %} selected{% endif %}>Закрыта</option>
+        </select>
+      </div>
+    </div>
+
+    <fieldset class="mb-3">
+      <legend class="h6">Права стадии</legend>
+      <div class="form-check mb-2">
+        <input class="form-check-input" type="checkbox" name="narrow" id="stage-narrow"{% if narrow %} checked{% endif %}>
+        <label class="form-check-label" for="stage-narrow">Сузить права списка</label>
+        <div class="form-text">Без отметки стадия доступна всем, кому доступен список.</div>
+      </div>
+      <div class="row g-3">
+        <div class="col-12 col-md-6" data-lists-access="read">
+          <h3 class="h6">Читают</h3>
+          <ul class="list-unstyled" data-lists-subjects>
+            {% for item in readers %}<li data-subject="{{ item.value }}"><span data-field="name">{{ item.name }}</span><input type="hidden" name="readers" value="{{ item.value }}"><button type="button" class="btn btn-outline-secondary btn-sm" data-action="access-remove">Убрать</button></li>{% endfor %}
+          </ul>
+          <div class="lists-access-add">
+            <input type="text" class="form-control" data-lists-picker="units" data-pick-url="{% url 'lists:units' %}" placeholder="Подразделение" autocomplete="off">
+            <select class="form-select" data-lists-role-select><option value="">Роль</option>{% for role in roles %}<option value="{{ role.pk }}">{{ role.name }}</option>{% endfor %}</select>
+            <button type="button" class="btn btn-outline-secondary" data-action="access-add">Добавить</button>
+          </div>
+        </div>
+        <div class="col-12 col-md-6" data-lists-access="edit">
+          <h3 class="h6">Правят</h3>
+          <ul class="list-unstyled" data-lists-subjects>
+            {% for item in editors %}<li data-subject="{{ item.value }}"><span data-field="name">{{ item.name }}</span><input type="hidden" name="editors" value="{{ item.value }}"><button type="button" class="btn btn-outline-secondary btn-sm" data-action="access-remove">Убрать</button></li>{% endfor %}
+          </ul>
+          <div class="lists-access-add">
+            <input type="text" class="form-control" data-lists-picker="units" data-pick-url="{% url 'lists:units' %}" placeholder="Подразделение" autocomplete="off">
+            <select class="form-select" data-lists-role-select><option value="">Роль</option>{% for role in roles %}<option value="{{ role.pk }}">{{ role.name }}</option>{% endfor %}</select>
+            <button type="button" class="btn btn-outline-secondary" data-action="access-add">Добавить</button>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="mb-3">
+      <legend class="h6">Обязательные поля на стадии</legend>
+      {% for field in fields %}
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="fields" value="{{ field.code }}" id="stage-field-{{ field.code }}"{% if field.code in chosen %} checked{% endif %}>
+        <label class="form-check-label" for="stage-field-{{ field.code }}">{{ field.name }}{% if field.required %} <span class="text-muted">(обязательное в списке)</span>{% endif %}</label>
+      </div>
+      {% empty %}<p class="text-muted">В списке нет видимых полей.</p>{% endfor %}
+    </fieldset>
+
+    <button class="btn btn-primary" type="submit">Сохранить стадию</button>
+    <a class="btn btn-outline-secondary" href="{% url 'lists:process' lst.pk %}">К процессу</a>
+  </form>
+</div>
+{% endblock %}

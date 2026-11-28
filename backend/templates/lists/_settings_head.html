@@ -10,4 +10,5 @@
   <a class="lists-tab{% if tab == 'main' %} active{% endif %}" data-tab="main" href="{% url 'lists:settings' lst.pk %}"{% if tab == 'main' %} aria-current="page"{% endif %}>Основное</a>
   <a class="lists-tab{% if tab == 'fields' %} active{% endif %}" data-tab="fields" href="{% url 'lists:fields' lst.pk %}"{% if tab == 'fields' %} aria-current="page"{% endif %}>Поля</a>
   <a class="lists-tab{% if tab == 'access' %} active{% endif %}" data-tab="access" href="{% url 'lists:access' lst.pk %}"{% if tab == 'access' %} aria-current="page"{% endif %}>Права</a>
+  <a class="lists-tab{% if tab == 'process' %} active{% endif %}" data-tab="process" href="{% url 'lists:process' lst.pk %}"{% if tab == 'process' %} aria-current="page"{% endif %}>Процесс</a>
 </nav>

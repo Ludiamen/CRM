@@ -7,6 +7,7 @@
 from django.apps import apps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db.models import Count
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils.cache import patch_vary_headers
@@ -14,8 +15,9 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.core.models import Role
 from apps.core.views.common import is_fragment, render_page
-from apps.lists.models import Access, Choice, Field, List
-from apps.lists.services import access, schema, values as list_values
+from apps.lists.models import (Access, Choice, Field, List, ProcessStage, ProcessStageAccess, ProcessStageField,
+                               Record)
+from apps.lists.services import access, process as process_service, schema, values as list_values
 from apps.lists.services.errors import ListsError
 
 from .home import done
@@ -513,3 +515,172 @@ def field_choices(request, list_id: int, code: str):
         return _field_page(request, lst, field=field, kind=field.type, form_values=_values_of_field(field, field.type),
                            errors=errors, alert=alert)
     return done(request, f"{_fields_url(lst)}{field.code}/")
+
+
+# --- вкладка «Процесс» (срез 015) ---------------------------------------------------------------------------
+
+PERIOD_TITLES = (("daily", "Ежедневно"), ("weekly", "Еженедельно"), ("monthly", "Ежемесячно"))
+WEEKDAYS = ((1, "Понедельник"), (2, "Вторник"), (3, "Среда"), (4, "Четверг"), (5, "Пятница"),
+            (6, "Суббота"), (7, "Воскресенье"))
+
+
+def _stage_subjects(stage, level: str) -> list[dict]:
+    rows = list(ProcessStageAccess.objects.filter(stage=stage, level=level))
+    roles = {role.pk: role.name for role in Role.objects.filter(pk__in=[r.role_id for r in rows if r.role_id])}
+    refs = {}
+    unit_ids = [r.unit_id for r in rows if r.unit_id]
+    if unit_ids and apps.is_installed("apps.org"):
+        from apps.org.services import structure
+
+        refs = structure.unit_refs(unit_ids)
+    items = []
+    for row in rows:
+        if row.role_id:
+            items.append({"value": f"role:{row.role_id}", "name": roles.get(row.role_id, "")})
+        else:
+            items.append({"value": f"unit:{row.unit_id}",
+                          "name": refs[row.unit_id].name if row.unit_id in refs else f"узел №{row.unit_id}"})
+    return sorted(items, key=lambda item: (item["name"].casefold(), item["value"]))
+
+
+def _stage_rows(lst):
+    stages = process_service.visible_stages(lst)
+    counts = {row["stage_id"]: row["total"] for row in
+              Record.objects.filter(stage__in=stages).values("stage_id").annotate(total=Count("pk"))}
+    fields = {}
+    for row in ProcessStageField.objects.filter(stage__in=stages).values("stage_id"):
+        fields[row["stage_id"]] = fields.get(row["stage_id"], 0) + 1
+    accesses = {}
+    for row in ProcessStageAccess.objects.filter(stage__in=stages).values("stage_id"):
+        accesses[row["stage_id"]] = accesses.get(row["stage_id"], 0) + 1
+    return [{"stage": stage, "records": counts.get(stage.pk, 0), "fields": fields.get(stage.pk, 0),
+             "access": accesses.get(stage.pk, 0)} for stage in stages]
+
+
+def _process_values(proc, lst):
+    return {
+        "title": proc.title if proc else "",
+        "enabled": bool(proc and proc.enabled),
+        "launch_mode": proc.launch_mode if proc else "manual",
+        "period": proc.schedule_period if proc else "",
+        "weekday": proc.schedule_weekday if proc else "",
+        "monthday": proc.schedule_monthday if proc else "",
+        "time": proc.schedule_time.strftime("%H:%M") if proc and proc.schedule_time else "",
+        "template": proc.title_template if proc else "",
+    }
+
+
+def _process_page(request, lst, *, values=None, alert=None):
+    proc = process_service.get_process(lst)
+    return render_page(request, "lists/settings_process.html", {
+        "lst": lst, "tab": "process", "proc": proc, "values": values or _process_values(proc, lst),
+        "process_title": process_service.process_title(proc, lst) if proc else lst.name,
+        "stages": _stage_rows(lst), "alert": alert,
+        "periods": [{"value": value, "title": title} for value, title in PERIOD_TITLES],
+        "weekdays": [{"value": value, "title": title} for value, title in WEEKDAYS],
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def process_tab(request, list_id: int):
+    """Настройка процесса: название, режим, расписание, включение; стадии — отдельными страницами."""
+    lst = _manage_list(request, list_id)
+    if request.method == "POST":
+        values = {
+            "title": request.POST.get("title", ""),
+            "enabled": request.POST.get("enabled") == "on",
+            "launch_mode": request.POST.get("launch_mode", "manual"),
+            "period": request.POST.get("period", ""),
+            "weekday": request.POST.get("weekday", ""),
+            "monthday": request.POST.get("monthday", ""),
+            "time": request.POST.get("time", ""),
+            "template": request.POST.get("template", ""),
+        }
+        try:
+            process_service.save_settings(
+                lst, request.user, title=values["title"], launch_mode=values["launch_mode"],
+                period=values["period"], weekday=values["weekday"] or None,
+                monthday=values["monthday"] or None, time_value=values["time"] or None,
+                template=values["template"], enabled=values["enabled"])
+        except ListsError as refused:
+            return _process_page(request, lst, values=values, alert=refused)
+        return done(request, f"/lists/{lst.pk}/settings/process/")
+    return _process_page(request, lst)
+
+
+def _visible_fields(lst):
+    return list(Field.objects.filter(list=lst, hidden=False).order_by("order", "pk"))
+
+
+def _stage_page(request, lst, stage=None, *, values=None, alert=None, errors=None):
+    if stage is None:
+        values = values or {"title": "", "kind": "open"}
+    else:
+        values = values or {"title": stage.title, "kind": stage.kind}
+    readers = _stage_subjects(stage, "read") if stage else []
+    editors = _stage_subjects(stage, "edit") if stage else []
+    chosen = set(ProcessStageField.objects.filter(stage=stage).values_list("field__code", flat=True)) if stage else set()
+    return render_page(request, "lists/process_stage.html", {
+        "lst": lst, "tab": "process", "stage": stage, "values": values, "alert": alert, "errors": errors or {},
+        "readers": readers, "editors": editors, "narrow": bool(stage and (readers or editors)),
+        "roles": list(Role.objects.order_by("name", "pk")), "fields": _visible_fields(lst),
+        "chosen": chosen,
+    })
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def stage_new(request, list_id: int):
+    lst = _manage_list(request, list_id)
+    if request.method == "POST":
+        values = {"title": request.POST.get("title", ""), "kind": request.POST.get("kind", "open")}
+        try:
+            process_service.add_stage(lst, request.user, title=values["title"], kind=values["kind"])
+        except ListsError as refused:
+            return _stage_page(request, lst, values=values, alert=refused)
+        return done(request, f"/lists/{lst.pk}/settings/process/")
+    return _stage_page(request, lst)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def stage_edit(request, list_id: int, stage_id: int):
+    lst = _manage_list(request, list_id)
+    stage = process_service.stage_of(lst, stage_id)
+    if request.method == "POST":
+        values = {"title": request.POST.get("title", ""), "kind": request.POST.get("kind", "open")}
+        try:
+            stage = process_service.update_stage(stage, request.user, title=values["title"], kind=values["kind"])
+            process_service.save_stage_access(
+                stage, request.user, narrow=request.POST.get("narrow") == "on",
+                read=request.POST.getlist("readers"), edit=request.POST.getlist("editors"))
+            process_service.save_stage_fields(stage, request.user, request.POST.getlist("fields"))
+        except ListsError as refused:
+            return _stage_page(request, lst, stage, values=values, alert=refused)
+        return done(request, f"/lists/{lst.pk}/settings/process/")
+    return _stage_page(request, lst, stage)
+
+
+@login_required
+@require_POST
+def stage_move(request, list_id: int, stage_id: int):
+    lst = _manage_list(request, list_id)
+    stage = process_service.stage_of(lst, stage_id)
+    try:
+        process_service.move_stage(stage, request.POST.get("direction", ""), request.user)
+    except ListsError as refused:
+        return _process_page(request, lst, alert=refused)
+    return done(request, f"/lists/{lst.pk}/settings/process/")
+
+
+@login_required
+@require_POST
+def stage_delete(request, list_id: int, stage_id: int):
+    lst = _manage_list(request, list_id)
+    stage = process_service.stage_of(lst, stage_id)
+    try:
+        process_service.delete_stage(stage, request.user)
+    except ListsError as refused:
+        return _process_page(request, lst, alert=refused)
+    return done(request, f"/lists/{lst.pk}/settings/process/")

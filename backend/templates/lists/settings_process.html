@@ -1,0 +1,97 @@
+{% extends layout %}
+{% block title %}{{ lst.name }} — процесс{% endblock %}
+{% block content %}
+{% include "lists/_assets.html" %}
+<div data-lists-page="process" class="lists-page">
+  {% include "lists/_settings_head.html" %}
+  {% if alert %}{% include "lists/_alert.html" %}{% endif %}
+  <form class="lists-form" method="post" action="{% url 'lists:process' lst.pk %}">{% csrf_token %}
+    <div class="mb-3 form-check">
+      <input class="form-check-input" type="checkbox" name="enabled" id="process-enabled"{% if values.enabled %} checked{% endif %}>
+      <label class="form-check-label" for="process-enabled">Процесс включён</label>
+      <div class="form-text">Выключение скрывает доску и стадии, но сохраняет стадии записей.</div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="process-title">Название процесса</label>
+      <input class="form-control" id="process-title" name="title" maxlength="100" value="{{ values.title }}" placeholder="{{ lst.name }}">
+      <div class="form-text">Пусто — используется название списка.</div>
+    </div>
+    <div class="row g-2 mb-3">
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="process-mode">Запуск</label>
+        <select class="form-select" id="process-mode" name="launch_mode">
+          <option value="manual"{% if values.launch_mode == 'manual' %} selected{% endif %}>Вручную</option>
+          <option value="schedule"{% if values.launch_mode == 'schedule' %} selected{% endif %}>По расписанию</option>
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label" for="process-period">Период</label>
+        <select class="form-select" id="process-period" name="period">
+          <option value="">—</option>
+          {% for item in periods %}<option value="{{ item.value }}"{% if values.period == item.value %} selected{% endif %}>{{ item.title }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label" for="process-weekday">День недели</label>
+        <select class="form-select" id="process-weekday" name="weekday">
+          <option value="">—</option>
+          {% for item in weekdays %}<option value="{{ item.value }}"{% if values.weekday == item.value %} selected{% endif %}>{{ item.title }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label" for="process-monthday">День месяца</label>
+        <input class="form-control" id="process-monthday" name="monthday" type="number" min="1" max="28" value="{{ values.monthday }}">
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label" for="process-time">Время (МСК)</label>
+        <input class="form-control" id="process-time" name="time" type="time" value="{{ values.time }}">
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="process-template">Шаблон названия новой записи</label>
+      <input class="form-control" id="process-template" name="template" maxlength="200" value="{{ values.template }}" placeholder="Сверка лицензий — {дата}">
+      <div class="form-text">Подстановка {дата} — ДД.ММ.ГГГГ по Москве.</div>
+    </div>
+    <button class="btn btn-primary" type="submit">Сохранить</button>
+  </form>
+
+  <section class="mt-4">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <h2 class="h5 mb-0">Стадии</h2>
+      <a class="btn btn-outline-primary btn-sm" href="{% url 'lists:stage_new' lst.pk %}">Добавить стадию</a>
+    </div>
+    {% if stages %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle" data-lists-stages>
+        <thead><tr><th>Порядок</th><th>Стадия</th><th>Вид</th><th>Записей</th><th>Права</th><th>Обязательных полей</th><th></th></tr></thead>
+        <tbody>
+        {% for row in stages %}
+          <tr>
+            <td class="oc-num">{{ row.stage.order }}</td>
+            <td><a href="{% url 'lists:stage_edit' lst.pk row.stage.pk %}">{{ row.stage.title }}</a></td>
+            <td>{% if row.stage.kind == 'closed' %}<span class="badge text-bg-secondary">закрыта</span>{% else %}открыта{% endif %}</td>
+            <td class="oc-num">{{ row.records }}</td>
+            <td>{% if row.access %}сужает{% else %}как у списка{% endif %}</td>
+            <td class="oc-num">{{ row.fields }}</td>
+            <td class="text-nowrap">
+              <form class="d-inline" method="post" action="{% url 'lists:stage_move' lst.pk row.stage.pk %}">{% csrf_token %}
+                <input type="hidden" name="direction" value="up"><button class="btn btn-outline-secondary btn-sm" type="submit" title="Выше">↑</button>
+              </form>
+              <form class="d-inline" method="post" action="{% url 'lists:stage_move' lst.pk row.stage.pk %}">{% csrf_token %}
+                <input type="hidden" name="direction" value="down"><button class="btn btn-outline-secondary btn-sm" type="submit" title="Ниже">↓</button>
+              </form>
+              <form class="d-inline" method="post" action="{% url 'lists:stage_delete' lst.pk row.stage.pk %}">{% csrf_token %}
+                <button class="btn btn-outline-danger btn-sm" type="submit">Удалить</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p class="text-muted">Стадий пока нет. Добавьте хотя бы одну открытую стадию, чтобы включить процесс.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
