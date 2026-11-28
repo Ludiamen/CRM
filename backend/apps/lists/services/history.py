@@ -5,7 +5,7 @@
 """
 from typing import NamedTuple
 
-from apps.lists.models import Change, Field, Record
+from apps.lists.models import Change, Field, ListProcess, Record
 from apps.lists.services import access
 from apps.lists.services import values as values_service
 
@@ -80,8 +80,11 @@ def for_viewer(rows, lst, viewer) -> list:
     found = {record.pk: record for record in Record.objects.filter(pk__in=ids).select_related("list")}
     hidden_ids = {pk for pk, record in found.items() if not access.can_read_record(viewer, record)}
     ids_without_record = ids - set(found)
-    legacy = any(item.get("field") in record_codes and "ids" not in item
-                 for row in rows for item in row.changes or [])
+    target_ids = {field.target_id for field in Field.objects.filter(list=lst, type="record", target__isnull=False)}
+    restricted = bool(target_ids) and ListProcess.objects.filter(list_id__in=target_ids, enabled=True).exists()
+    legacy = restricted and not access.can_manage(viewer) and any(
+        item.get("field") in record_codes and "ids" not in item
+        for row in rows for item in row.changes or [])
     if not closed and not hidden_ids and not ids_without_record and not legacy:
         return rows
     def hide(item):

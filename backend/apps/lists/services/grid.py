@@ -195,6 +195,12 @@ def read(params, lst, viewer) -> GridParams:
     sort = params.get("sort", "")
     if sort in ("title", "number"):
         pass
+    elif sort == "stage":
+        from apps.lists.services import process as process_service
+
+        proc = process_service.get_process(lst)
+        if proc is None or not proc.enabled:
+            sort = ""
     elif sort in by_code and sortable(by_code[sort], viewer):
         pass
     else:

@@ -11,7 +11,7 @@ from typing import NamedTuple
 
 from django.db.models import Q
 
-from apps.lists.models import Access, Field, List, Record, UserView
+from apps.lists.models import Access, Field, List, ProcessStageAccess, Record, UserView
 from apps.lists.services import access
 from apps.lists.texts import TEXTS
 
@@ -96,6 +96,11 @@ def pinned(viewer, person) -> list[PinnedRow]:
 
 # --- подразделение и роль (FR-526) ------------------------------------------------------------------------------
 
+def _stage_list_names(query) -> str:
+    names = query.values_list("stage__process__list__name", flat=True)
+    return ", ".join(sorted(set(names), key=lambda name: (name.casefold(), name)))
+
+
 def _list_names(query) -> str:
     """Названия списков по алфавиту через «, » без повторов."""
     return ", ".join(sorted(set(query.values_list("list__name", flat=True)), key=lambda name: (name.casefold(), name)))
@@ -116,13 +121,23 @@ def unit_usage(unit_id: int) -> str | None:
     names = _list_names(Access.objects.filter(unit_id=unit_id))
     if names:
         reasons.append(TEXTS["unit_in_access"].format(names=names))
+    stage_names = _stage_list_names(ProcessStageAccess.objects.filter(unit_id=unit_id))
+    if stage_names:
+        reasons.append(TEXTS["unit_in_stage_access"].format(names=stage_names))
     return "; ".join(reasons) or None
 
 
 def role_usage(role) -> str | None:
-    """Точка `role_usage`: готовая фраза «Нельзя удалить: указано в правах списков: <названия>.» или `None`."""
-    names = _list_names(Access.objects.filter(role_id=getattr(role, "pk", role)))
-    return TEXTS["role_in_access"].format(names=names) if names else None
+    """Точка `role_usage`: причина запрета удаления роли — права списков и права стадий."""
+    role_id = getattr(role, "pk", role)
+    reasons = []
+    names = _list_names(Access.objects.filter(role_id=role_id))
+    if names:
+        reasons.append(TEXTS["role_in_access"].format(names=names))
+    stage_names = _stage_list_names(ProcessStageAccess.objects.filter(role_id=role_id))
+    if stage_names:
+        reasons.append(TEXTS["role_in_stage_access"].format(names=stage_names))
+    return " ".join(reasons) or None
 
 
 # --- подписчик события ядра -------------------------------------------------------------------------------------

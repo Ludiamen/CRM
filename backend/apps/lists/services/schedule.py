@@ -33,19 +33,22 @@ def period_start(process_row: ListProcess, now: datetime) -> date:
 
 
 def due(process_row: ListProcess, now: datetime):
-    """`(period_start, due_at)` текущего периода или `None`, если срок ещё не наступил."""
+    """`(period_start, due_date, due_at)` текущего периода или `None`, если срок ещё не наступил.
+
+    `period_start` — ключ периода (день, понедельник недели, 1-е число), дата запуска — отдельно."""
     if process_row.launch_mode != ListProcess.LaunchMode.SCHEDULE or process_row.schedule_time is None:
         return None
     start = period_start(process_row, now)
+    due_date = start
     if process_row.schedule_period == ListProcess.Period.WEEKLY:
         target = int(process_row.schedule_weekday or 1)
-        start = start + timedelta(days=(target - start.isoweekday()) % WEEKDAYS)
+        due_date = start + timedelta(days=(target - start.isoweekday()) % WEEKDAYS)
     elif process_row.schedule_period == ListProcess.Period.MONTHLY:
-        start = start.replace(day=int(process_row.schedule_monthday or 1))
-    moment = datetime.combine(start, process_row.schedule_time, tzinfo=MOSCOW)
+        due_date = start.replace(day=int(process_row.schedule_monthday or 1))
+    moment = datetime.combine(due_date, process_row.schedule_time, tzinfo=MOSCOW)
     if now < moment:
         return None
-    return start, moment
+    return start, due_date, moment
 
 
 def _defaults(lst, actor):
@@ -57,6 +60,9 @@ def _defaults(lst, actor):
             continue
         if isinstance(field.default, dict) and field.default.get("today"):
             data[field.code] = _moscow_now().strftime("%d.%m.%Y")
+        elif field.type in ("person", "unit", "record"):
+            raw = field.default if isinstance(field.default, list) else [field.default]
+            data[field.code] = [str(pk) for pk in raw if pk not in (None, "")]
         else:
             data[field.code] = values_service.display(field, field.default, actor)
     return data
@@ -75,7 +81,7 @@ def _can_fill(first, data, lst) -> bool:
     return True
 
 
-def launch(process_row: ListProcess, period: date, now: datetime) -> ProcessLaunch:
+def launch(process_row: ListProcess, period: date, due_date: date, now: datetime) -> ProcessLaunch:
     """Запуск периода: строка первой, конфигурация перечитывается под разделяемым замком списка."""
     lst = process_row.list
     with transaction.atomic():
@@ -84,12 +90,25 @@ def launch(process_row: ListProcess, period: date, now: datetime) -> ProcessLaun
                        .filter(pk=process_row.pk).first())
         if process_row is None:
             raise LookupError("процесс удалён")
+        previous = (ProcessLaunch.objects.filter(process=process_row).exclude(period_start=period)
+                    .order_by("-period_start").values_list("period_start", flat=True).first())
         row, created = ProcessLaunch.objects.get_or_create(
             process=process_row, period_start=period, defaults={"status": ProcessLaunch.Status.SKIPPED})
         if not created:
             return row
+        if previous is not None:
+            if process_row.schedule_period == ListProcess.Period.DAILY:
+                missed = (period - previous).days - 1
+            elif process_row.schedule_period == ListProcess.Period.WEEKLY:
+                missed = ((period - previous).days // 7) - 1
+            else:
+                missed = (period.year - previous.year) * 12 + period.month - previous.month - 1
+            if missed > 0:
+                audit.record("lists.process_launch_missed", actor=None, object_type="lists.process",
+                             object_id=process_row.list_id,
+                             after={"period": period.isoformat(), "missed": missed})
         current_due = due(process_row, now)
-        if current_due is None or current_due[0] != period:
+        if current_due is None or current_due[0] != period or current_due[1] != due_date:
             row.reason = "срок или режим изменились"
             row.save(update_fields=["reason"])
             audit.record("lists.process_launch_skipped", actor=None, object_type="lists.process",
@@ -146,7 +165,7 @@ def tick(now=None) -> dict:
             continue
         if ProcessLaunch.objects.filter(process=process_row, period_start=found[0]).exists():
             continue
-        row = launch(process_row, found[0], now)
+        row = launch(process_row, found[0], found[1], now)
         if row.status == ProcessLaunch.Status.CREATED:
             created += 1
         elif row.status == ProcessLaunch.Status.FAILED:
