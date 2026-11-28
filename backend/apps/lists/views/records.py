@@ -22,8 +22,8 @@ from apps.lists.services import process as process_service
 from apps.lists.services import records as records_service
 from apps.lists.services import transitions
 from apps.lists.services import values as values_service
-from apps.lists.services.errors import (ListsError, RecordArchived, RecordGone, StageRequired, ValuesInvalid,
-                                       VersionConflict)
+from apps.lists.services.errors import (ListsError, RecordArchived, RecordGone, StageChanged, StageRequired,
+                                       ValuesInvalid, VersionConflict)
 from apps.lists.texts import TEXTS
 
 from .home import done
@@ -208,7 +208,7 @@ def _post_data(lst, post) -> dict:
     """Данные для службы: «Название» и значения по кодам полей (списки — у выбора, строки — у остальных)."""
     data = {"title": post.get("title", "")}
     for field in schema.all_fields(lst):
-        if field.type == "file" or field.code not in post:
+        if field.type == "file":
             continue
         if field.type in ("choice", "person", "unit", "record"):
             data[field.code] = [v for v in post.getlist(field.code) if v.strip()]
@@ -343,10 +343,10 @@ def stage_form(request, list_id: int, number: int, stage_id: int):
     record = Record.objects.filter(list=lst, number=number).first()
     if record is None or not access.can_read_record(request.user, record):
         raise Http404("Запись не найдена")
-    if not access.can_edit_record(request.user, record):
-        raise PermissionDenied
     form_action = f"/lists/{lst.pk}/{number}/stage/{stage_id}/"
     if request.method == "GET":
+        if not access.can_edit_record(request.user, record):
+            raise PermissionDenied
         target = process_service.stage_of(lst, stage_id)
         if not access.can_read_stage(request.user, lst, target.pk):
             raise Http404("Стадия не найдена")
@@ -368,11 +368,12 @@ def stage_form(request, list_id: int, number: int, stage_id: int):
         return _form_page(request, lst, record=record, number=number, post=request.POST, errors=codes,
                           base_version=base, form_action=form_action, stage_target=_target_or_none(lst, stage_id))
     except ListsError as refused:
+        status = 409 if isinstance(refused, (VersionConflict, StageChanged)) else 200
         target = _target_or_none(lst, stage_id)
         if target is None:
-            return _card_page(request, lst, record, alert=refused)
+            return _card_page(request, lst, record, alert=refused, status=status)
         return _form_page(request, lst, record=record, number=number, post=request.POST, alert=refused,
-                          base_version=base, form_action=form_action, stage_target=target)
+                          base_version=base, form_action=form_action, stage_target=target, status=status)
     return done(request, _record_url(lst, number))
 
 
@@ -401,7 +402,8 @@ def stage_move_record(request, list_id: int, number: int):
                          expected_stage=expected,
                          title=request.POST.get("title") or None, actor=request.user)
     except ListsError as refused:
-        return _card_page(request, lst, record, alert=refused)
+        status = 409 if isinstance(refused, (VersionConflict, StageChanged)) else 200
+        return _card_page(request, lst, record, alert=refused, status=status)
     return done(request, _record_url(lst, number))
 
 

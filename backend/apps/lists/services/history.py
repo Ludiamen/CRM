@@ -80,7 +80,9 @@ def for_viewer(rows, lst, viewer) -> list:
     found = {record.pk: record for record in Record.objects.filter(pk__in=ids).select_related("list")}
     hidden_ids = {pk for pk, record in found.items() if not access.can_read_record(viewer, record)}
     ids_without_record = ids - set(found)
-    if not closed and not hidden_ids and not ids_without_record:
+    legacy = any(item.get("field") in record_codes and "ids" not in item
+                 for row in rows for item in row.changes or [])
+    if not closed and not hidden_ids and not ids_without_record and not legacy:
         return rows
     def hide(item):
         code = item.get("field")

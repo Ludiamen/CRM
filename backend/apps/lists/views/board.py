@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.core.views.common import is_fragment, render_page
 from apps.lists.models import Record
 from apps.lists.services import access, board as board_service, grid, process, transitions
-from apps.lists.services.errors import ListsError
+from apps.lists.services.errors import ListsError, StageChanged, VersionConflict
 
 from .home import done
 
@@ -70,9 +70,10 @@ def move(request, list_id: int):
         if request.headers.get("Accept", "").startswith("application/json"):
             return JsonResponse({"error": refused.message, "code": refused.code}, status=409)
         gp = _read(request, lst)
+        status = 409 if isinstance(refused, (VersionConflict, StageChanged)) else 200
         return render_page(request, "lists/board/page.html",
                            {"lst": lst, "board_columns": board_service.columns(lst, request.user, gp),
-                            "board_params": _params(request, {"view": "board"}), "alert": refused})
+                            "board_params": _params(request, {"view": "board"}), "alert": refused}, status=status)
     gp = _read(request, lst)
     if request.headers.get("Accept", "").startswith("application/json"):
         return JsonResponse({"ok": True, "number": record.number, "stage": int(raw_stage)})

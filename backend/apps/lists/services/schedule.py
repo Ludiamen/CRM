@@ -125,7 +125,7 @@ def launch(process_row: ListProcess, period: date, now: datetime) -> ProcessLaun
                 row.save(update_fields=["status", "record"])
         except Exception as error:  # noqa: BLE001 — строка запуска обязана получить финальный статус
             row.status = ProcessLaunch.Status.FAILED
-            row.reason = error.message if isinstance(error, ListsError) else "ошибка создания записи"
+            row.reason = (error.message if isinstance(error, ListsError) else "ошибка создания записи")[:200]
             row.save(update_fields=["status", "reason"])
             audit.record("lists.process_launch_failed", actor=None, object_type="lists.process",
                          object_id=process_row.list_id,
