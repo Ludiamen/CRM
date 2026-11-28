@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from apps.core.services import audit, table_file
 from apps.core.services.audit_search import FORMULA_START
-from apps.lists.models import Change, Field, ImportJob, List, Record, UniqueValue
+from apps.lists.models import Change, Field, ImportJob, List, Record, RecordFile, UniqueValue
 from apps.lists.services import access, history, records, schema, unique, values, vectors
 from apps.lists.services.errors import ListsError
 from apps.lists.texts import TABLE_FILE_TEXTS, TEXTS
@@ -197,6 +197,8 @@ def _evaluate(lst, rows, mapping, actor, lookups=None) -> list:
                 owner = next(iter(found.values()))
                 if owner.archived:
                     result, reason = "error", TEXTS["record_archived"]
+                elif not access.can_edit_record(actor, owner):
+                    result, reason = "error", TEXTS["stage_forbidden"]
                 else:
                     result = "will_update"
             else:
@@ -269,8 +271,11 @@ class _Batch:
 def _apply_row(locked, entry, result, actor, every, batch: _Batch, counter: list) -> None:
     """Создаёт или обновляет одну строку без проверки прав и замков; вставки уникальности и истории — в `batch`."""
     if result == "will_create":
+        from apps.lists.services import process as process_service
+
         stored = {code: value for code, value in entry["parsed"].items() if value is not None}
-        record = records.create_locked(locked, counter[0], entry["title"], stored, actor)
+        record = records.create_locked(locked, counter[0], entry["title"], stored, actor,
+                                       stage=process_service.first_open(locked))
         counter[0] += 1
         batch.unique_rows.extend(unique.rows_for(record, every))
         batch.changes.append(history.make(record, "created", [], actor, via_import=True))
@@ -280,6 +285,8 @@ def _apply_row(locked, entry, result, actor, every, batch: _Batch, counter: list
     record = Record.objects.select_for_update().filter(pk=entry["owner"].pk, list_id=locked.pk).first()
     if record is None or record.archived:
         raise ListsError("record_archived")
+    if not access.can_edit_record(actor, record):
+        raise ListsError("stage_forbidden")
     old = dict(record.values or {})
     new = dict(old)
     for code, value in entry["parsed"].items():
@@ -290,6 +297,16 @@ def _apply_row(locked, entry, result, actor, every, batch: _Batch, counter: list
         else:
             new[code] = value
     title = entry["title"] or record.title
+    if record.stage is not None:
+        for item in record.stage.required_fields.select_related("field"):
+            field = item.field
+            if field.type == "file":
+                exists = RecordFile.objects.filter(record=record, field=field).exists()
+            else:
+                value = new.get(field.code)
+                exists = bool(value) if not isinstance(value, (list, tuple)) else any(value)
+            if not exists:
+                raise ListsError("stage_required", params={"fields": field.name})
     batch.touched.append(record.pk)
     batch.updated += 1
     if title == record.title and new == old:
@@ -344,6 +361,11 @@ def confirm(lst, job_id, actor) -> dict:
     require_edit(actor, lst.pk)
     with transaction.atomic():
         access.lock_list(lst.pk, shared=True)
+        from apps.lists.services import process as process_service
+
+        first_stage = process_service.first_open(lst)
+        if first_stage is not None and not access.can_read_stage(actor, lst, first_stage.pk):
+            raise PermissionDenied("Первая стадия процесса доступна только другим сотрудникам")
         job = (ImportJob.objects.select_for_update()
                .filter(pk=job_id, list_id=lst.pk, created_by=actor, created_at__gte=timezone.now() - JOB_AGE).first())
         if job is None:

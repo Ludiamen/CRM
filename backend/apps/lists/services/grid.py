@@ -303,6 +303,9 @@ def records(lst, viewer, gp: GridParams):
     _check_read(lst, viewer)
     notes, condition = _preset(gp, viewer)
     queryset = Record.objects.filter(list_id=lst.pk).annotate(**notes).filter(condition)
+    stage_condition = access.record_condition(viewer, lst)
+    if stage_condition is not None:
+        queryset = queryset.filter(stage_condition)
     for index, item in enumerate(gp.filters):
         queryset = _apply_filter(queryset, index, item)
     found = None if gp.search is None else search.record_condition(

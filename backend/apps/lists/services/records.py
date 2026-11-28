@@ -141,9 +141,14 @@ def create(lst, data: dict, actor, *, via_import: bool = False, lookups=None) ->
         number = locked.next_number
         List.objects.filter(pk=locked.pk).update(next_number=number + 1)
         now = timezone.now()
+        from apps.lists.services import process as process_service
+
+        stage = process_service.first_open(locked)
+        if stage is not None and not access.can_read_stage(actor, locked, stage.pk):
+            raise PermissionDenied("Первая стадия процесса недоступна")
         record = Record.objects.create(
-            list=locked, number=number, title=title, values=stored, created_at=now, created_by=actor,
-            updated_at=now, updated_by=actor)
+            list=locked, number=number, title=title, values=stored, stage=stage, created_at=now,
+            created_by=actor, updated_at=now, updated_by=actor)
         _sync_unique(record, every)
         if not via_import:
             vectors.refresh([record.pk])
@@ -169,6 +174,8 @@ def save(lst, number: int, data: dict, *, base_version: int, actor) -> SaveResul
             raise RecordGone()
         if record.archived:
             raise RecordArchived()
+        if not access.can_edit_record(actor, record):
+            raise PermissionDenied("Нет права править запись на этой стадии")
         if record.version != base_version:
             raise VersionConflict(record.updated_by, record.updated_at)
         every = schema.all_fields(lst)
@@ -206,11 +213,11 @@ def save(lst, number: int, data: dict, *, base_version: int, actor) -> SaveResul
 # Список уже заблокирован и прочитан вызывающим (`imports.confirm`: замок, `FOR UPDATE` списка, поля один раз): права,
 # замки, схема и вложенные точки сохранения здесь не берутся. Публичные `create` и `save` выше не меняются.
 
-def create_locked(locked, number: int, title: str, stored: dict, actor) -> Record:
+def create_locked(locked, number: int, title: str, stored: dict, actor, stage=None) -> Record:
     """Создаёт запись с заданным номером; счётчик `next_number` ведёт вызывающий. `unique.sync` и история — пакетно."""
     now = timezone.now()
     return Record.objects.create(
-        list=locked, number=number, title=title, values=stored, created_at=now, created_by=actor,
+        list=locked, number=number, title=title, values=stored, stage=stage, created_at=now, created_by=actor,
         updated_at=now, updated_by=actor)
 
 

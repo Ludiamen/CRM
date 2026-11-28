@@ -64,6 +64,8 @@ def attach(lst, number: int, *, field_code: str, name: str, data: bytes, actor) 
     current = _require_edit(actor, lst)
     with transaction.atomic():
         record = _locked_record(current, number)
+        if not access.can_edit_record(actor, record):
+            raise PermissionDenied("Нет права править запись на этой стадии")
         field = _file_field(current, field_code)
         if RecordFile.objects.filter(record=record).count() >= MAX_FILES:
             raise ListsError("files_limit", field="file")
@@ -95,9 +97,18 @@ def remove(lst, number: int, file_id: int, *, actor) -> None:
     current = _require_edit(actor, lst)
     with transaction.atomic():
         record = _locked_record(current, number)
+        if not access.can_edit_record(actor, record):
+            raise PermissionDenied("Нет права править запись на этой стадии")
         item = RecordFile.objects.select_related("file", "field").filter(pk=file_id, record=record).first()
         if item is None:
             raise Http404("Файла нет")
+        stage = record.stage
+        if stage is not None and stage.required_fields.filter(field=item.field).exists():
+            rest = RecordFile.objects.filter(record=record, field=item.field).exclude(pk=item.pk).exists()
+            if not rest:
+                from apps.lists.services.errors import StageRequired
+
+                raise StageRequired([item.field.name])
         stored = item.file
         path = core_files.attachment_path(stored)
         history.write(record, "file_removed",

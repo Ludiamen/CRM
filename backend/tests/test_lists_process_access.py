@@ -146,3 +146,22 @@ def test_record_condition_filters_hidden_stage():
     found = set(Record.objects.filter(list=lst).filter(access.record_condition(user, lst)).values_list("pk", flat=True))
     assert found == {visible.pk, plain.pk}
     assert hidden.pk not in found
+
+
+def test_grid_and_direct_views_hide_unreadable_stage():
+    lst = ll.make_list()
+    process = make_process(lst)
+    hidden_stage = make_stage(process, "Скрыта", 1)
+    visible_stage = make_stage(process, "Открыта", 2)
+    allow(hidden_stage, factories.make_role(), "read")
+    hidden = record_at(lst, hidden_stage, "Скрытая запись")
+    visible = record_at(lst, visible_stage, "Видимая запись")
+    reader = ll.as_reader(lst)
+    page = reader.client.get(f"/lists/{lst.pk}/")
+    body = page.content.decode()
+    assert page.status_code == 200
+    assert "Видимая запись" in body
+    assert "Скрытая запись" not in body
+    assert reader.client.get(f"/lists/{lst.pk}/{hidden.number}/").status_code == 404
+    assert reader.client.get(f"/lists/{lst.pk}/{hidden.number}/history/").status_code == 404
+    assert reader.client.get(f"/lists/{lst.pk}/{visible.number}/").status_code == 200

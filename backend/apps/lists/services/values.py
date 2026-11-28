@@ -479,7 +479,7 @@ def _display_references(field: Field, ids: list, viewer) -> list[str]:
             continue
         if record.list_id not in readable:
             readable[record.list_id] = viewer is not None and access.can_read(viewer, record.list)
-        if not readable[record.list_id]:
+        if not readable[record.list_id] or not access.can_read_record(viewer, record):
             result.append("запись недоступного списка")
             continue
         result.append(f"{record.title} — №{record.number}" + (" (в архиве)" if record.archived else ""))

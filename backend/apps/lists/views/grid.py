@@ -62,7 +62,7 @@ def _labels(field, ids, viewer) -> dict:
         if record.list_id not in readable:
             readable[record.list_id] = access.can_read(viewer, List(pk=record.list_id))
         found[record.pk] = (f"{record.title} — №{record.number}" + (" (в архиве)" if record.archived else "")
-                            if readable[record.list_id] else UNAVAILABLE)
+                            if readable[record.list_id] and access.can_read_record(viewer, record) else UNAVAILABLE)
     return found
 
 
@@ -276,6 +276,9 @@ def filter_values(request, list_id: int, code: str):
         if target is None or not access.can_read(request.user, target):
             raise Http404("Список не найден")
         found = Record.objects.filter(list=target)
+        stage_condition = access.record_condition(request.user, target)
+        if stage_condition is not None:
+            found = found.filter(stage_condition)
         number = _ascii_int(wanted)
         if wanted:
             match = Q(title__icontains=wanted)

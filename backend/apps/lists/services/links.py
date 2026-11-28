@@ -55,7 +55,7 @@ def referrers(record, viewer) -> Referrers:
     for item in found:
         if item.list_id not in readable:
             readable[item.list_id] = access.can_read(viewer, item.list)
-        if readable[item.list_id]:
+        if readable[item.list_id] and access.can_read_record(viewer, item):
             rows.append(item)
     return Referrers(rows, len(found) - len(rows))
 
@@ -85,7 +85,7 @@ def pinned(viewer, person) -> list[PinnedRow]:
     for record in sorted(records, key=lambda item: (item.list.name.casefold(), item.list_id, item.number)):
         if record.list_id not in readable:
             readable[record.list_id] = viewer is not None and access.can_read(viewer, record.list)
-        can_open = readable[record.list_id]
+        can_open = readable[record.list_id] and access.can_read_record(viewer, record)
         if not own and not can_open:
             continue
         for field in by_list[record.list_id]:

@@ -101,7 +101,11 @@ def pick(user, ticket_number: int, q: str) -> list[Record]:
     digits = _NUMBER.fullmatch(text)
     if digits and len(digits.group(1)) <= MAX_NUMBER_DIGITS:
         found |= Q(number=int(digits.group(1)), list_id__in=ids, archived=False)
-    records = Record.objects.filter(found).select_related("list")
+    condition = Q(pk__in=[])
+    for list_id in ids:
+        current = access.record_condition(user, List(pk=list_id))
+        condition |= (Q(list_id=list_id) if current is None else (Q(list_id=list_id) & current))
+    records = Record.objects.filter(found).filter(condition).select_related("list")
     if parsed.raw:
         query = SearchQuery(parsed.raw, config=CONFIG, search_type="raw")
         records = records.annotate(rank=SearchRank(F("search"), query)).order_by("-rank", "list_id", "number", "pk")
@@ -116,7 +120,7 @@ def link(user, ticket_number: int, record_id: int) -> TicketLink:
     _brief(user, ticket_number)
     with transaction.atomic():
         record = Record.objects.select_for_update().filter(pk=record_id).first()
-        if record is None:
+        if record is None or not access.can_read_record(user, record):
             raise Http404("Запись не найдена")
         access.get_list(user, record.list_id)
         if record.archived:

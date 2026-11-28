@@ -92,7 +92,7 @@ def _ref_items(field: Field, ids, viewer) -> list[dict]:
                 continue
             if record.list_id not in readable:
                 readable[record.list_id] = access.can_read(viewer, record.list)
-            if not readable[record.list_id]:
+            if not readable[record.list_id] or not access.can_read_record(viewer, record):
                 items.append({"id": pk, "text": "запись недоступного списка", "unavailable": True})
                 continue
             items.append({"id": pk, "text": f"{record.title} — №{record.number}", "archived": record.archived,
@@ -241,9 +241,13 @@ def edit(request, list_id: int, number: int):
     lst = access.get_list(request.user, list_id)
     _require_edit(request, lst)
     record = Record.objects.filter(list=lst, number=number).first()
+    if record is not None and not access.can_read_record(request.user, record):
+        raise Http404("Запись не найдена")
     if request.method == "GET":
         if record is None:
             return _gone_or_404(request, lst, number)
+        if not access.can_edit_record(request.user, record):
+            raise PermissionDenied
         if record.archived:
             return render_page(request, "lists/record_archived_edit.html",
                                {"lst": lst, "record": record, "text": TEXTS["record_archived"]})
@@ -311,6 +315,8 @@ def record(request, list_id: int, number: int):
     found = Record.objects.filter(list=lst, number=number).first()
     if found is None:
         return _gone_or_404(request, lst, number)
+    if not access.can_read_record(request.user, found):
+        raise Http404("Запись не найдена")
     return _card_page(request, lst, found)
 
 
@@ -322,7 +328,7 @@ def history(request, list_id: int, number: int):
     """История записи по 50 строк, новые сверху: запрос HTMX — фрагмент строк, обычный — страница истории."""
     lst = access.get_list(request.user, list_id)
     found = Record.objects.filter(list=lst, number=number).first()
-    if found is None:
+    if found is None or not access.can_read_record(request.user, found):
         raise Http404("Запись не найдена")
     page = history_service.page(found, _ascii_int(request.GET.get("offset")))
     context = {"lst": lst, "record": found, "history_rows": history_service.for_viewer(page.rows, lst, request.user),

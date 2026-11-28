@@ -73,6 +73,9 @@ def record(request, list_id: int):
     """Записи целевого списка не в архиве по названию или номеру: «Название — №N», до 20 строк (только читающим список)."""
     lst = access.get_list(request.user, list_id)
     found = Record.objects.filter(list=lst, archived=False)
+    stage_condition = access.record_condition(request.user, lst)
+    if stage_condition is not None:
+        found = found.filter(stage_condition)
     text = _query(request)
     if text:
         match = Q(title__icontains=text)

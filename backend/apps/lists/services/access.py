@@ -222,6 +222,22 @@ def can_edit_record(user, record) -> bool:
     return current is None or record.stage_id in current.edit
 
 
+def global_record_condition(user):
+    """Условие видимости записей по всем читаемым спискам: `None` — ограничений нет (управляющий)."""
+    current = scope(user)
+    if current.manage:
+        return None
+    condition = Q(pk__in=[])
+    for lst in List.objects.filter(pk__in=current.readable).only("pk"):
+        stage = stage_scope(user, lst)
+        if stage is None:
+            condition |= Q(list_id=lst.pk)
+        else:
+            condition |= (Q(list_id=lst.pk, stage__isnull=True)
+                          | Q(list_id=lst.pk, stage_id__in=stage.read | stage.edit))
+    return condition
+
+
 def can_read_stage(user, lst, stage_id) -> bool:
     """Стадия видна: ограничений нет или она в наборе чтения/правки."""
     current = stage_scope(user, lst)

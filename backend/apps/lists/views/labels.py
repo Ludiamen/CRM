@@ -26,7 +26,7 @@ def _numbers(request) -> list[int]:
 def label(request, list_id: int, number: int):
     """Одна этикетка записи (лист с одной этикеткой)."""
     lst = access.get_list(request.user, list_id)
-    found = labels.records_by_numbers(lst, [number])
+    found = [record for record in labels.records_by_numbers(lst, [number]) if access.can_read_record(request.user, record)]
     if not found:
         raise Http404("Запись не найдена")
     context = {"lst": lst, "page": "label", "items": labels.build(lst, found, request.user)}
@@ -43,5 +43,7 @@ def sheet(request, list_id: int):
     if len(numbers) > labels.LIMIT:
         context["alert"] = ListsError("labels_too_many")
     else:
-        context["items"] = labels.build(lst, labels.records_by_numbers(lst, numbers), request.user)
+        records = [record for record in labels.records_by_numbers(lst, numbers)
+                   if access.can_read_record(request.user, record)]
+        context["items"] = labels.build(lst, records, request.user)
     return render_page(request, "lists/labels.html", context)

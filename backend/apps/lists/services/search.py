@@ -119,14 +119,21 @@ def _exact_ids(user, parsed: ParsedQuery) -> list[int]:
                 seen.add(record_id)
                 ids.append((number, list_id, record_id))
     ids.sort()
-    return [record_id for _number, _list, record_id in ids]
+    condition = access.global_record_condition(user)
+    result = [record_id for _number, _list, record_id in ids]
+    if condition is None:
+        return result
+    visible = set(Record.objects.filter(pk__in=result).filter(condition).values_list("pk", flat=True))
+    return [record_id for record_id in result if record_id in visible]
 
 
 def _vector(user, parsed: ParsedQuery, skip: list[int]):
     """Записи читаемых списков, найденные по вектору, кроме `skip` (уже выданных точным совпадением)."""
     if not parsed.raw:
         return Record.objects.none()
-    return _readable(user).filter(search=_vector_query(parsed)).exclude(pk__in=skip)
+    found = _readable(user).filter(search=_vector_query(parsed)).exclude(pk__in=skip)
+    condition = access.global_record_condition(user)
+    return found if condition is None else found.filter(condition)
 
 
 def _row(record: Record, names: dict) -> SearchRow:

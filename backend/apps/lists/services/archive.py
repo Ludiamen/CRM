@@ -59,8 +59,18 @@ def _set_archived(lst, number: int, archived: bool, actor) -> tuple[Record, bool
     """Одна запись, одна транзакция: возвращает запись и признак «состояние изменено»."""
     with transaction.atomic():
         record = _locked_record(lst, number)
+        if not access.can_edit_record(actor, record):
+            raise PermissionDenied("Нет права править запись на этой стадии")
         if record.archived == archived:
             return record, False
+        if not archived and record.stage_id is None:
+            from apps.lists.services import process as process_service
+
+            first = process_service.first_open(lst)
+            if first is not None:
+                record.stage = first
+                record.version += 1
+                record.save(update_fields=["stage", "version"])
         record.archived = archived
         record.archived_at = timezone.now() if archived else None
         record.archived_by = actor if archived else None
