@@ -58,10 +58,12 @@ def move(request, list_id: int):
     record = Record.objects.filter(list=lst, number=int(raw)).first() if raw.isdigit() else None
     if record is None or not access.can_read_record(request.user, record):
         return JsonResponse({"error": "Запись не найдена", "code": "record_absent"}, status=404)
-    target = process.stage_of(lst, request.POST.get("stage"))
+    raw_stage = str(request.POST.get("stage", ""))
+    if not raw_stage.isdigit():
+        return JsonResponse({"error": "Стадия не найдена", "code": "stage_absent"}, status=404)
     try:
-        transitions.move(record, target, base_version=int(request.POST.get("base_version", "0") or 0),
-                         expected_stage=record.stage_id, actor=request.user)
+        transitions.move(record, int(raw_stage), base_version=int(request.POST.get("base_version", "0") or 0),
+                         expected_stage=request.POST.get("expected") or record.stage_id, actor=request.user)
     except ListsError as refused:
         if request.headers.get("Accept", "").startswith("application/json"):
             return JsonResponse({"error": refused.message, "code": refused.code}, status=409)
@@ -70,6 +72,8 @@ def move(request, list_id: int):
                            {"lst": lst, "board_columns": board_service.columns(lst, request.user, gp),
                             "board_params": _params(request, {"view": "board"}), "alert": refused})
     gp = _read(request, lst)
+    if request.headers.get("Accept", "").startswith("application/json"):
+        return JsonResponse({"ok": True, "number": record.number, "stage": int(raw_stage)})
     if request.headers.get("HX-Request"):
         return render_page(request, "lists/board/_board.html",
                            {"lst": lst, "board_columns": board_service.columns(lst, request.user, gp),

@@ -61,6 +61,9 @@ def _links(user, number: int):
     current = access.scope(user)
     if not current.manage:
         found = found.filter(record__list_id__in=current.readable)
+        condition = access.global_record_condition(user)
+        if condition is not None:
+            found = found.filter(record__in=Record.objects.filter(condition))
     return found.select_related("record", "record__list").order_by("linked_at", "pk")
 
 
@@ -138,6 +141,8 @@ def unlink(user, link_id: int) -> int:
         raise Http404("Связь не найдена")
     _brief(user, found.ticket_number)
     access.get_list(user, found.record.list_id)
+    if not access.can_read_record(user, found.record):
+        raise Http404("Связь не найдена")
     number = found.ticket_number
     found.delete()
     return number

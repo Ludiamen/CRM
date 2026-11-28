@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from apps.core.services import audit
 from apps.lists.models import ProcessStage, Record, RecordFile, StageMove
-from apps.lists.services import access, history, schema, values as values_service
+from apps.lists.services import access, history, records as records_service, schema, unique, values as values_service
 from apps.lists.services.errors import (ListsError, StageChanged, StageForbidden, StageRequired,
                                         ValuesInvalid, VersionConflict)
 
@@ -71,11 +71,13 @@ def _required_names(stage, record, values) -> list[str]:
     return names
 
 
-def move(record, target_stage: ProcessStage, *, base_version: int, expected_stage, values=None, title=None,
+def move(record, target_stage, *, base_version: int, expected_stage, values=None, title=None,
          actor) -> MoveResult:
-    """Переход; `expected_stage` — номер текущей стадии или `None` для записи без стадии."""
+    """Переход; `target_stage` — стадия или её номер (повтор ищется по номеру до загрузки стадии)."""
+    target_key = target_stage.pk if hasattr(target_stage, "pk") else int(target_stage)
     with transaction.atomic():
         access.lock_list(record.list_id, shared=True)
+        access.clear_cache(actor)
         locked = Record.objects.select_for_update().select_related("list").filter(pk=record.pk).first()
         if locked is None:
             raise Http404("Запись не найдена")
@@ -83,15 +85,18 @@ def move(record, target_stage: ProcessStage, *, base_version: int, expected_stag
             raise Http404("Запись не найдена")
 
         repeated = StageMove.objects.filter(record=locked, base_version=base_version,
-                                            to_stage_key=target_stage.pk).first()
+                                            to_stage_key=target_key).first()
         if repeated is not None:
-            return MoveResult(locked, target_stage, locked.version, True)
+            found = ProcessStage.objects.filter(pk=target_key).first()
+            return MoveResult(locked, found, locked.version, True)
 
         if locked.version != base_version:
             raise VersionConflict(locked.updated_by, locked.updated_at)
         if (locked.stage_id or None) != (expected_stage or None):
             raise StageChanged()
-        if target_stage.process.list_id != locked.list_id:
+        target_stage = (ProcessStage.objects.select_related("process")
+                        .filter(pk=target_key, process__list_id=locked.list_id).first())
+        if target_stage is None or not target_stage.process.enabled:
             raise ListsError("stage_absent")
         if not access.can_read_stage(actor, locked.list, target_stage.pk):
             raise StageForbidden()
@@ -101,7 +106,15 @@ def move(record, target_stage: ProcessStage, *, base_version: int, expected_stag
             return MoveResult(locked, target_stage, locked.version, True)
 
         current = locked.stage
+        old_values = dict(locked.values or {})
+        old_title = locked.title
         effective, errors = _effective(locked, values, actor)
+        visible_fields = [field for field in schema.all_fields(locked.list) if not field.hidden]
+        for field in visible_fields:
+            if field.required and not _filled(effective.get(field.code)):
+                errors.setdefault(field.code, ListsError("required", field=field.code))
+        if not errors:
+            records_service._precheck_unique(locked, locked.list, visible_fields, effective, errors, actor)
         if errors:
             raise ValuesInvalid(errors)
         missing = _required_names(target_stage, locked, effective)
@@ -111,15 +124,16 @@ def move(record, target_stage: ProcessStage, *, base_version: int, expected_stag
         if missing:
             raise StageRequired(missing)
 
-        changes = []
+        changes = history.build_changes(visible_fields, old_values, effective, actor,
+                                        old_title=old_title, new_title=old_title)
         if title is not None:
             new_title = str(title).strip()
             if not new_title:
                 raise ListsError("required", field="title")
             if len(new_title) > 200:
                 raise ListsError("too_long", field="title", params={"limit": 200})
-            if new_title != locked.title:
-                changes.append({"field": "title", "name": "Название", "before": locked.title, "after": new_title})
+            if new_title != old_title:
+                changes.append({"field": "title", "name": "Название", "before": old_title, "after": new_title})
                 locked.title = new_title
         old_stage = current
         locked.values = effective
@@ -128,6 +142,10 @@ def move(record, target_stage: ProcessStage, *, base_version: int, expected_stag
         locked.updated_by = actor
         locked.updated_at = timezone.now()
         locked.save(update_fields=["title", "values", "stage", "version", "updated_by", "updated_at"])
+        records_service._sync_unique(locked, schema.all_fields(locked.list), actor)
+        from apps.lists.services import vectors
+
+        vectors.refresh([locked.pk])
         try:
             with transaction.atomic():
                 StageMove.objects.create(

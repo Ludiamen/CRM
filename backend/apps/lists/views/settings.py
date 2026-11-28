@@ -7,6 +7,7 @@
 from django.apps import apps
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Count
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
@@ -636,7 +637,12 @@ def stage_new(request, list_id: int):
     if request.method == "POST":
         values = {"title": request.POST.get("title", ""), "kind": request.POST.get("kind", "open")}
         try:
-            process_service.add_stage(lst, request.user, title=values["title"], kind=values["kind"])
+            with transaction.atomic():
+                stage = process_service.add_stage(lst, request.user, title=values["title"], kind=values["kind"])
+                process_service.save_stage_access(
+                    stage, request.user, narrow=request.POST.get("narrow") == "on",
+                    read=request.POST.getlist("readers"), edit=request.POST.getlist("editors"))
+                process_service.save_stage_fields(stage, request.user, request.POST.getlist("fields"))
         except ListsError as refused:
             return _stage_page(request, lst, values=values, alert=refused)
         return done(request, f"/lists/{lst.pk}/settings/process/")
@@ -651,11 +657,12 @@ def stage_edit(request, list_id: int, stage_id: int):
     if request.method == "POST":
         values = {"title": request.POST.get("title", ""), "kind": request.POST.get("kind", "open")}
         try:
-            stage = process_service.update_stage(stage, request.user, title=values["title"], kind=values["kind"])
-            process_service.save_stage_access(
-                stage, request.user, narrow=request.POST.get("narrow") == "on",
-                read=request.POST.getlist("readers"), edit=request.POST.getlist("editors"))
-            process_service.save_stage_fields(stage, request.user, request.POST.getlist("fields"))
+            with transaction.atomic():
+                stage = process_service.update_stage(stage, request.user, title=values["title"], kind=values["kind"])
+                process_service.save_stage_access(
+                    stage, request.user, narrow=request.POST.get("narrow") == "on",
+                    read=request.POST.getlist("readers"), edit=request.POST.getlist("editors"))
+                process_service.save_stage_fields(stage, request.user, request.POST.getlist("fields"))
         except ListsError as refused:
             return _stage_page(request, lst, stage, values=values, alert=refused)
         return done(request, f"/lists/{lst.pk}/settings/process/")

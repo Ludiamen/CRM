@@ -54,6 +54,7 @@ urlpatterns = [
     path("<int:list_id>/board/column/<str:key>/", board.column, name="board_column"),
     path("<int:list_id>/board/move/", board.move, name="board_move"),
     path("<int:list_id>/<int:number>/stage/", records.stage_move_record, name="stage_move_record"),
+    path("<int:list_id>/<int:number>/stage/<int:stage_id>/", records.stage_form, name="stage_form"),
     path("<int:list_id>/<int:number>/history/", records.history, name="history"),
     path("<int:list_id>/<int:number>/archive/", records.archive, name="archive"),
     path("<int:list_id>/<int:number>/restore/", records.restore, name="restore"),

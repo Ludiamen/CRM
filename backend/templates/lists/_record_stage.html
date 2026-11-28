@@ -7,6 +7,7 @@
     {% else %}<span class="text-muted">Без стадии</span>{% endif %}
   </p>
   {% if can_move and stage_targets %}
+  <p class="small mb-2">С заполнением полей:{% for stage in stage_targets %} <a class="btn btn-outline-secondary btn-sm" href="{% url 'lists:stage_form' lst.pk record.number stage.pk %}">{{ stage.title }}</a>{% endfor %}</p>
   <form class="d-flex flex-wrap gap-2 align-items-end" method="post" action="{% url 'lists:stage_move_record' lst.pk record.number %}">{% csrf_token %}
     <input type="hidden" name="base_version" value="{{ record.version }}">
     <div>

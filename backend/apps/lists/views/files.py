@@ -70,6 +70,10 @@ def attach(request, list_id: int, number: int):
         return HttpResponseBadRequest("Файл не передан")
     code = request.POST.get("field", "")
     record = Record.objects.filter(list=lst, number=number).first()
+    if record is None or not access.can_read_record(request.user, record):
+        raise Http404("Запись не найдена")
+    if not access.can_edit_record(request.user, record):
+        raise PermissionDenied
     field = _file_field_of(lst, code)
     try:
         files_service.attach(lst, number, field_code=code, name=upload.name, data=upload.read(), actor=request.user)
@@ -101,6 +105,10 @@ def delete(request, list_id: int, number: int, file_id: int):
     if not access.can_edit(request.user, lst):
         raise PermissionDenied
     record = Record.objects.filter(list=lst, number=number).first()
+    if record is None or not access.can_read_record(request.user, record):
+        raise Http404("Запись не найдена")
+    if not access.can_edit_record(request.user, record):
+        raise PermissionDenied
     item = RecordFile.objects.select_related("field").filter(pk=file_id, record=record).first() if record else None
     if item is None:
         raise Http404("Файла нет")

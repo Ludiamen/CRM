@@ -78,7 +78,11 @@ def stage_of(lst, stage_id) -> ProcessStage:
 
 
 def first_open(lst) -> ProcessStage | None:
-    return ProcessStage.objects.filter(process__list_id=lst.pk, kind=ProcessStage.Kind.OPEN).order_by(
+    """Первая открытая стадия действующего процесса; у выключенного процесса стадии не действуют."""
+    process_row = ListProcess.objects.filter(list_id=lst.pk, enabled=True).first()
+    if process_row is None:
+        return None
+    return ProcessStage.objects.filter(process=process_row, kind=ProcessStage.Kind.OPEN).order_by(
         "order", "pk").first()
 
 
@@ -146,7 +150,8 @@ def save_settings(lst, actor, *, title: str = "", launch_mode: str = "manual", p
         now = timezone.now()
         moved = 0
         if turning_on:
-            first = first_open(lst)
+            first = ProcessStage.objects.filter(process=process, kind=ProcessStage.Kind.OPEN).order_by(
+                "order", "pk").first()
             moved = Record.objects.filter(list_id=lst.pk, archived=False, stage__isnull=True).update(
                 stage=first, version=F("version") + 1, updated_by=actor, updated_at=now)
         process.title = title

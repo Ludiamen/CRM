@@ -8,7 +8,8 @@
     <a class="btn btn-outline-secondary btn-sm" href="{% if mode == 'edit' %}{% url 'lists:record' lst.pk number %}{% else %}{% url 'lists:grid' lst.pk %}{% endif %}">{% if mode == "edit" %}К карточке{% else %}{{ lst.name }}{% endif %}</a>
   </div>
   {% if alert %}{% include "lists/_record_alert.html" %}{% endif %}
-  <form class="lists-form lists-record-form" method="post" action="{% if mode == 'edit' %}{% url 'lists:edit' lst.pk number %}{% else %}{% url 'lists:add' lst.pk %}{% endif %}" data-lists-record-form>{% csrf_token %}
+  <form class="lists-form lists-record-form" method="post" action="{% if form_action %}{{ form_action }}{% elif mode == 'edit' %}{% url 'lists:edit' lst.pk number %}{% else %}{% url 'lists:add' lst.pk %}{% endif %}" data-lists-record-form>{% csrf_token %}
+    {% if stage_target %}<input type="hidden" name="stage" value="{{ stage_target.pk }}"><input type="hidden" name="expected" value="{{ record.stage_id|default:'' }}">{% endif %}
     {% if mode == "edit" %}<input type="hidden" name="base_version" value="{{ base_version }}">{% endif %}
     <div class="mb-3" data-lists-field="title" data-required>
       <label class="form-label" for="lists-f-title">Название</label>

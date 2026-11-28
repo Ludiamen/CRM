@@ -133,12 +133,21 @@ def get_list(user, list_id: int) -> List:
 
 
 def get_record(user, list_id: int, number: int) -> Record:
-    """Запись списка по номеру или `Http404`, если её нет или список не читается."""
+    """Запись списка по номеру или `Http404`, если её нет, список или стадия не читаются."""
     lst = get_list(user, list_id)
     record = Record.objects.filter(list=lst, number=number).first()
-    if record is None:
+    if record is None or not can_read_record(user, record):
         raise Http404("Запись не найдена")
     return record
+
+
+def clear_cache(user) -> None:
+    """Сбрасывает кэш прав на запрос: нужен после замка, если права могли измениться."""
+    for name in ("_lists_scope", "_lists_stage_scope"):
+        try:
+            delattr(user, name)
+        except AttributeError:
+            pass
 
 
 # --- права стадий (срез 015) -----------------------------------------------------------------------------

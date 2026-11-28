@@ -103,7 +103,13 @@ def remove(lst, number: int, file_id: int, *, actor) -> None:
         if item is None:
             raise Http404("Файла нет")
         stage = record.stage
-        if stage is not None and stage.required_fields.filter(field=item.field).exists():
+        proc = None
+        if stage is not None:
+            from apps.lists.services import process as process_service
+
+            proc = process_service.get_process(lst)
+        if stage is not None and proc is not None and proc.enabled \
+                and stage.required_fields.filter(field=item.field).exists():
             rest = RecordFile.objects.filter(record=record, field=item.field).exclude(pk=item.pk).exists()
             if not rest:
                 from apps.lists.services.errors import StageRequired

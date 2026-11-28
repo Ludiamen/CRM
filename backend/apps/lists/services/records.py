@@ -13,7 +13,7 @@ from django.db import transaction
 from django.http import Http404
 from django.utils import timezone
 
-from apps.lists.models import List, Record
+from apps.lists.models import List, Record, RecordFile
 from apps.lists.services import access, history, schema, unique, values, vectors
 from apps.lists.services.errors import (ListsError, RecordArchived, RecordGone, ValuesInvalid, VersionConflict)
 
@@ -81,7 +81,7 @@ def _parse_values(data: dict, fields, hidden_fields, old_values: dict, actor, *,
     return parsed, errors
 
 
-def _precheck_unique(record, lst, fields, new_values: dict, errors: dict) -> None:
+def _precheck_unique(record, lst, fields, new_values: dict, errors: dict, actor) -> None:
     """Предварительная проверка уникальности (тот же запрос, что у предпросмотра загрузки): понятный отказ со ссылкой на
     запись-владельца; гонку держит ограничение базы в `unique.sync` (FR-508)."""
     for field in fields:
@@ -92,15 +92,16 @@ def _precheck_unique(record, lst, fields, new_values: dict, errors: dict) -> Non
             continue
         owner = unique.find_owners(lst, field, [norm_value]).get(norm_value)
         if owner is not None and (record is None or owner.pk != record.pk):
+            visible = access.can_read_record(actor, owner)
             errors[field.code] = ListsError(
                 "unique_taken", field=field.code,
-                params={"number": owner.number, "url": f"/lists/{lst.pk}/{owner.number}/"})
+                params={"number": owner.number, "url": f"/lists/{lst.pk}/{owner.number}/"} if visible else {})
 
 
-def _sync_unique(record, all_fields) -> None:
+def _sync_unique(record, all_fields, actor=None) -> None:
     """`unique.sync` по всем полям; отказ ограничения — `ValuesInvalid` у поля (ответ Opus О2)."""
     try:
-        unique.sync(record, all_fields)
+        unique.sync(record, all_fields, actor)
     except ListsError as error:
         if isinstance(error, ValuesInvalid):
             raise
@@ -135,7 +136,7 @@ def create(lst, data: dict, actor, *, via_import: bool = False, lookups=None) ->
         title, title_error = _parse_title(data)
         new_values, errors = _parse_values(data, visible, hidden, {}, actor, source=source, lookups=lookups)
         stored = {code: value for code, value in new_values.items() if value is not None}
-        _precheck_unique(None, locked, visible, stored, errors)
+        _precheck_unique(None, locked, visible, stored, errors, actor)
         if title_error is not None or errors:
             raise ValuesInvalid(_ordered(errors, title_error))
         number = locked.next_number
@@ -149,7 +150,7 @@ def create(lst, data: dict, actor, *, via_import: bool = False, lookups=None) ->
         record = Record.objects.create(
             list=locked, number=number, title=title, values=stored, stage=stage, created_at=now,
             created_by=actor, updated_at=now, updated_by=actor)
-        _sync_unique(record, every)
+        _sync_unique(record, every, actor)
         if not via_import:
             vectors.refresh([record.pk])
         history.write(record, "created", [], actor, via_import=via_import)
@@ -190,8 +191,23 @@ def save(lst, number: int, data: dict, *, base_version: int, actor) -> SaveResul
                 new_values.pop(code, None)
             else:
                 new_values[code] = value
+        if not errors and record.stage_id is not None:
+            from apps.lists.models import ProcessStageField
+            from apps.lists.services import process as process_service
+
+            proc = process_service.get_process(lst)
+            if proc is not None and proc.enabled:
+                for item in ProcessStageField.objects.filter(stage=record.stage).select_related("field"):
+                    field = item.field
+                    if field.hidden:
+                        continue
+                    if field.type == "file":
+                        if not RecordFile.objects.filter(record=record, field=field).exists():
+                            errors[field.code] = ListsError("required", field=field.code)
+                    elif not _filled(new_values.get(field.code)):
+                        errors[field.code] = ListsError("required", field=field.code)
         if not errors:
-            _precheck_unique(record, lst, visible, new_values, errors)
+            _precheck_unique(record, lst, visible, new_values, errors, actor)
         if title_error is not None or errors:
             raise ValuesInvalid(_ordered(errors, title_error))
         if title == record.title and new_values == old_values:
@@ -203,7 +219,7 @@ def save(lst, number: int, data: dict, *, base_version: int, actor) -> SaveResul
         record.updated_by = actor
         record.updated_at = timezone.now()
         record.save(update_fields=["title", "values", "version", "updated_by", "updated_at"])
-        _sync_unique(record, every)
+        _sync_unique(record, every, actor)
         vectors.refresh([record.pk])
         history.write(record, "changed", entries, actor)
     return SaveResult(record, True)
@@ -243,7 +259,7 @@ def create_system(lst, data: dict, actor, *, stage=None) -> Record:
         title, title_error = _parse_title(data)
         new_values, errors = _parse_values(data, visible, hidden, {}, actor, source="form")
         stored = {code: value for code, value in new_values.items() if value is not None}
-        _precheck_unique(None, locked, visible, stored, errors)
+        _precheck_unique(None, locked, visible, stored, errors, actor)
         if title_error is not None or errors:
             raise ValuesInvalid(_ordered(errors, title_error))
         number = locked.next_number
@@ -252,7 +268,7 @@ def create_system(lst, data: dict, actor, *, stage=None) -> Record:
         record = Record.objects.create(
             list=locked, number=number, title=title, values=stored, stage=stage, created_at=now,
             created_by=actor, updated_at=now, updated_by=actor)
-        _sync_unique(record, every)
+        _sync_unique(record, every, actor)
         vectors.refresh([record.pk])
         history.write(record, "created", [], actor)
     return record

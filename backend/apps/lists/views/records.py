@@ -188,7 +188,7 @@ def _form_fields(lst, record, viewer, *, post=None, errors=None) -> list[dict]:
 
 
 def _form_page(request, lst, *, record=None, number=None, post=None, errors=None, alert=None, base_version=None,
-               status=200):
+               status=200, form_action=None, stage_target=None):
     """Страница формы: `add` без записи, `edit` с записью (`base_version` — скрытое поле)."""
     errors = errors or {}
     title = post.get("title", "") if post is not None else (record.title if record is not None else "")
@@ -197,7 +197,9 @@ def _form_page(request, lst, *, record=None, number=None, post=None, errors=None
     leftover = [err for code, err in errors.items() if code != "title" and code not in shown]
     context = {"lst": lst, "record": record, "number": number, "rows": rows, "title_value": title,
                "title_error": errors.get("title"), "base_version": base_version,
-               "mode": "edit" if number is not None else "add", **(_alert_context(alert or (leftover or [None])[0]) or {})}
+               "mode": "edit" if number is not None else "add", "form_action": form_action,
+               "stage_target": stage_target,
+               **(_alert_context(alert or (leftover or [None])[0]) or {})}
     return render_page(request, "lists/record_form.html", context, status=status)
 
 
@@ -333,6 +335,34 @@ def record(request, list_id: int, number: int):
 
 
 @login_required
+@require_http_methods(["GET", "POST"])
+def stage_form(request, list_id: int, number: int, stage_id: int):
+    """Форма перехода с полями: заполнить обязательные поля и перейти одной транзакцией."""
+    lst = access.get_list(request.user, list_id)
+    record = Record.objects.filter(list=lst, number=number).first()
+    if record is None or not access.can_read_record(request.user, record):
+        raise Http404("Запись не найдена")
+    target = process_service.stage_of(lst, stage_id)
+    if request.method == "GET":
+        return _form_page(request, lst, record=record, number=number, base_version=record.version,
+                          form_action=f"/lists/{lst.pk}/{number}/stage/{target.pk}/", stage_target=target)
+    try:
+        transitions.move(record, target.pk, base_version=_ascii_int(request.POST.get("base_version"), -1),
+                         expected_stage=request.POST.get("expected") or record.stage_id,
+                         values=_post_data(lst, request.POST), title=request.POST.get("title") or None,
+                         actor=request.user)
+    except ValuesInvalid as refused:
+        return _form_page(request, lst, record=record, number=number, post=request.POST, errors=refused.errors,
+                          base_version=record.version, form_action=f"/lists/{lst.pk}/{number}/stage/{target.pk}/",
+                          stage_target=target)
+    except ListsError as refused:
+        return _form_page(request, lst, record=record, number=number, post=request.POST, alert=refused,
+                          base_version=record.version, form_action=f"/lists/{lst.pk}/{number}/stage/{target.pk}/",
+                          stage_target=target)
+    return done(request, _record_url(lst, number))
+
+
+@login_required
 @require_POST
 def stage_move_record(request, list_id: int, number: int):
     """Переход записи на выбранную стадию из карточки."""
@@ -340,11 +370,14 @@ def stage_move_record(request, list_id: int, number: int):
     record = Record.objects.filter(list=lst, number=number).first()
     if record is None or not access.can_read_record(request.user, record):
         raise Http404("Запись не найдена")
-    target = process_service.stage_of(lst, request.POST.get("stage"))
+    raw_stage = str(request.POST.get("stage", ""))
+    if not raw_stage.isdigit():
+        raise Http404("Стадия не найдена")
     try:
-        transitions.move(record, target, base_version=_ascii_int(request.POST.get("base_version"), -1),
-                         expected_stage=record.stage_id, title=request.POST.get("title") or None,
-                         actor=request.user)
+        transitions.move(record, int(raw_stage),
+                         base_version=_ascii_int(request.POST.get("base_version"), -1),
+                         expected_stage=request.POST.get("expected") or record.stage_id,
+                         title=request.POST.get("title") or None, actor=request.user)
     except ListsError as refused:
         return _card_page(request, lst, record, alert=refused)
     return done(request, _record_url(lst, number))

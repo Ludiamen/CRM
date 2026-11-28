@@ -48,14 +48,20 @@ def find_owners(lst, field, norm_values) -> dict:
     return {row.norm_value: row.record for row in rows}
 
 
-def _taken(record, field, norm_value) -> ListsError:
-    """Отказ «Такое значение уже есть в списке» со ссылкой на запись-владельца (её номер — из той же таблицы)."""
+def _taken(record, field, norm_value, actor=None) -> ListsError:
+    """Отказ «Такое значение уже есть в списке»; номер и ссылка — только если владелец читается смотрящим."""
     owner = (UniqueValue.objects.filter(list_id=record.list_id, field=field, norm_value=norm_value)
              .select_related("record").first())
-    number = owner.record.number if owner else ""
-    return ListsError(
-        "unique_taken", field=field.code,
-        params={"number": number, "url": f"/lists/{record.list_id}/{number}/" if owner else f"/lists/{record.list_id}/"})
+    if owner is None:
+        return ListsError("unique_taken", field=field.code)
+    if actor is not None:
+        from apps.lists.services import access
+
+        if not access.can_read_record(actor, owner.record):
+            return ListsError("unique_taken", field=field.code)
+    number = owner.record.number
+    return ListsError("unique_taken", field=field.code,
+                      params={"number": number, "url": f"/lists/{record.list_id}/{number}/"})
 
 
 def rows_for(record, fields) -> list:
@@ -70,7 +76,7 @@ def rows_for(record, fields) -> list:
     return found
 
 
-def sync(record, fields) -> None:
+def sync(record, fields, actor=None) -> None:
     """Перезаписывает строки `UniqueValue` записи по уникальным полям из `fields` (видимым и скрытым — FR-508).
 
     Для каждого поля строка удаляется и вставляется заново, пустое значение строки не даёт. Удаление и вставка идут
@@ -86,4 +92,4 @@ def sync(record, fields) -> None:
                 if norm_value is not None:
                     UniqueValue.objects.create(list_id=record.list_id, field=field, norm_value=norm_value, record=record)
         except IntegrityError:
-            raise _taken(record, field, norm_value) from None
+            raise _taken(record, field, norm_value, actor) from None

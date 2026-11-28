@@ -221,8 +221,11 @@ def _all_selectable(field: Field, ids: list[int], viewer) -> bool:
         target = field.target
         if target is None or not access.can_read(viewer, target):
             return False
-        found = Record.objects.filter(pk__in=wanted, list=target, archived=False).values_list("pk", flat=True)
-        return wanted == set(found)
+        found = Record.objects.filter(pk__in=wanted, list=target, archived=False)
+        condition = access.record_condition(viewer, target)
+        if condition is not None:
+            found = found.filter(condition)
+        return wanted == set(found.values_list("pk", flat=True))
     return False
 
 
@@ -327,6 +330,9 @@ def _import_record(field: Field, value: str, viewer, lookups=None):
     if not access.can_read(viewer, target):
         return None, ListsError("value_unavailable", field=field.code)
     live = Record.objects.filter(list=target, archived=False)
+    condition = access.record_condition(viewer, target)
+    if condition is not None:
+        live = live.filter(condition)
     if (value.isascii() and value.isdigit()):
         by_number = live.filter(number=int(value)).values_list("pk", flat=True).first()
         if by_number:
@@ -396,8 +402,11 @@ def import_lookups(lst, fields, viewer) -> ImportLookups:
             continue
         by_number: dict = {}
         by_title: dict = {}
-        for pk, number, title in Record.objects.filter(list=target, archived=False).values_list(
-                "pk", "number", "title"):
+        live = Record.objects.filter(list=target, archived=False)
+        condition = access.record_condition(viewer, target)
+        if condition is not None:
+            live = live.filter(condition)
+        for pk, number, title in live.values_list("pk", "number", "title"):
             by_number[number] = pk
             by_title.setdefault(title.casefold(), []).append(pk)
         records[field.pk] = (by_number, by_title)

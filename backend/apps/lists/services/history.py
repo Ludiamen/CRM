@@ -5,7 +5,7 @@
 """
 from typing import NamedTuple
 
-from apps.lists.models import Change, Field
+from apps.lists.models import Change, Field, Record
 from apps.lists.services import access
 from apps.lists.services import values as values_service
 
@@ -47,10 +47,13 @@ def build_changes(fields, old_values: dict, new_values: dict, viewer, *, old_tit
         before, after = old_values.get(field.code), new_values.get(field.code)
         if before == after or (not before and not after):
             continue
-        entries.append({
+        entry = {
             "field": field.code, "name": field.name,
             "before": values_service.display(field, before, viewer),
-            "after": values_service.display(field, after, viewer)})
+            "after": values_service.display(field, after, viewer)}
+        if field.type == "record":
+            entry["ids"] = sorted({pk for pk in (before or []) + (after or []) if isinstance(pk, int)})
+        entries.append(entry)
     return entries
 
 
@@ -64,21 +67,26 @@ def page(record, offset: int = 0) -> HistoryPage:
 
 
 def for_viewer(rows, lst, viewer) -> list:
-    """Строки страницы истории для смотрящего: значения полей-ссылок на записи списка, которого он не читает, —
-    «запись недоступного списка» с пометкой `unavailable` (FR-514, FR-527).
-
-    Строки показа сохранены на момент изменения глазами автора. У поля «запись» один целевой список, и сменить его у
-    поля с историей нельзя (`schema.has_data`), поэтому решение принимается по полю. Строки `Change` не меняются:
-    подменяется только `changes` загруженных объектов для вывода."""
+    """Строки истории для смотрящего: ссылки на записи нечитаемого списка **или стадии** заменяются
+    «запись недоступного списка» с пометкой `unavailable` (FR-514, FR-527, FR-861)."""
     closed = {field.code for field in Field.objects.filter(list=lst, type="record").select_related("target")
               if not access.can_read(viewer, field.target)}
-    if not closed:
+    hidden_ids: set[int] = set()
+    for row in rows:
+        for item in row.changes or []:
+            for pk in item.get("ids") or ():
+                record = Record.objects.filter(pk=pk).select_related("list").first()
+                if record is not None and not access.can_read_record(viewer, record):
+                    hidden_ids.add(pk)
+    if not closed and not hidden_ids:
         return rows
     for row in rows:
-        if any(item.get("field") in closed for item in row.changes or []):
-            row.changes = [
-                {**item, "before": UNAVAILABLE if item.get("before") else "",
-                 "after": UNAVAILABLE if item.get("after") else "", "unavailable": True}
-                if item.get("field") in closed else item
-                for item in row.changes]
+        if not any(item.get("field") in closed or hidden_ids.intersection(item.get("ids") or ())
+                   for item in row.changes or []):
+            continue
+        row.changes = [
+            {**item, "before": UNAVAILABLE if item.get("before") else "",
+             "after": UNAVAILABLE if item.get("after") else "", "unavailable": True}
+            if item.get("field") in closed or hidden_ids.intersection(item.get("ids") or ()) else item
+            for item in row.changes]
     return rows

@@ -297,7 +297,10 @@ def _apply_row(locked, entry, result, actor, every, batch: _Batch, counter: list
         else:
             new[code] = value
     title = entry["title"] or record.title
-    if record.stage is not None:
+    from apps.lists.services import process as process_service
+
+    proc = process_service.get_process(locked)
+    if record.stage is not None and proc is not None and proc.enabled:
         for item in record.stage.required_fields.select_related("field"):
             field = item.field
             if field.type == "file":
